@@ -1,0 +1,254 @@
+🧩 1. Data Export (Download as CSV)
+🎯 Purpose
+
+Allow colleges and employers to own and extract their data anytime.
+
+📦 What can be exported
+Students list (with filters: eligible, placed, branch, etc.)
+Applications per company
+Interview schedules
+Placement results (offers, salaries, status)
+🖥️ UI Concept
+Tabular screen (already exists)
+Top-right button: “Export CSV”
+Optional:
+Export current view
+Export full dataset
+⚙️ Behavior
+Respects filters applied on table
+Generates .csv instantly or async (email if large)
+🧩 2. Data Import / Upload
+🎯 Purpose
+
+Bulk onboarding without manual entry.
+
+📦 Upload types
+Student data (Excel/CSV)
+Company/job details
+Past placement history
+🖥️ UI Concept
+Button: “Upload Data”
+Drag & drop CSV
+Show:
+preview (first 10 rows)
+validation errors
+⚙️ Behavior
+Template download available
+Error highlighting (row-level)
+Partial success allowed
+🧩 3. Google Calendar Integration (Auto Sync)
+🎯 Purpose
+
+Automatically sync interviews & events to calendar.
+
+⚙️ Flow
+User clicks: “Connect Google Calendar”
+OAuth permission
+System pushes:
+interview schedules
+deadlines
+drive dates
+🖥️ UI Concept
+Toggle: “Auto-sync calendar” (ON/OFF)
+Status: Connected / Not Connected
+🧩 4. Calendar Export (Manual)
+🎯 Purpose
+
+Fallback for users who don’t want integration.
+
+📦 Output
+.ics file (standard calendar format)
+🖥️ UI Concept
+Button: “Export to Calendar (.ics)”
+⚙️ Behavior
+Downloads file → user imports into Google Calendar manually
+
+👉 Good for your “static screen demo” requirement.
+
+🧩 5. Suggestions / Feedback / Feature Requests
+🎯 Purpose
+
+Continuous product improvement loop.
+
+🗂️ Categories
+Feature Request
+Bug Report
+General Feedback
+🖥️ UI Concept
+Simple form:
+Title
+Description
+Category (dropdown)
+Optional:
+Attach screenshot
+⚙️ Extra (nice touch)
+Public board (like mini roadmap)
+Status:
+Submitted
+Under Review
+Planned
+🧩 6. Authentication + User Validation (Very important)
+
+This is where your system becomes trustworthy.
+
+🔐 A. Basic Authentication
+Email + password login
+OTP / email verification
+🏫 B. College Validation (critical problem you mentioned)
+✅ Approach 1: Domain-based restriction
+Only allow domains like:
+@college.edu
+@university.ac.in
+
+👉 But not enough alone (you already spotted the loophole)
+
+✅ Approach 2: Admin Approval (stronger)
+First user becomes “Pending Admin”
+Must submit:
+college name
+official email
+website
+
+👉 Your team (or system) approves
+
+✅ Approach 3: Domain Whitelisting (best long-term)
+Maintain:
+verified college domains DB
+Auto-approve if domain matches
+🔥 Recommended Combo (practical)
+Domain check + email verification + admin approval
+
+👉 Balance between scale and security
+
+🧩 7. Organization-level User Management
+🎯 Purpose
+
+Multiple users per college/company
+
+🖥️ UI Concept
+“Team Members” tab
+Roles:
+Admin
+Staff
+Viewer
+⚙️ Behavior
+Invite via email
+Role-based access
+🧩 8. Discussion / Clarification Forum (Super important feature)
+
+This is actually a killer feature if done right.
+
+🎯 Use case
+
+Students ask questions → visible to all
+
+💬 Structure
+Thread example:
+
+Company: TCS
+Question: “What is the joining timeline?”
+Asked by: Rahul Sharma (Student)
+
+🖥️ UI Concept
+Threaded discussion per company
+Each message shows:
+👤 Username
+Role (Student / Company / TPO)
+Timestamp
+⚙️ Behavior
+Students → ask questions
+Companies → respond
+All students → can view
+
+👉 Eliminates repetitive queries
+
+🧩 9. Interview Scheduling (Core system feature)
+🎯 Who can schedule?
+Colleges (TPO)
+Companies
+📅 Features
+Create interview slots
+Assign students
+Multi-round interviews
+🖥️ UI Concept
+Calendar + list view
+Filters:
+company
+date
+student
+👨‍🎓 Student View
+“My Interviews” page
+Shows:
+date
+time
+company
+status
+🧩 10. Shared Clarifications (Public Q&A)
+
+(This is related to discussion but deserves clarity)
+
+🎯 Purpose
+
+Transparency across all students
+
+Example:
+One student asks about:
+salary
+bond
+role
+
+👉 Everyone sees answer
+
+⚙️ Rules
+No private chats
+Everything is public per company
+
+👉 Reduces confusion + builds trust
+
+🧩 11. LinkedIn / Sharing
+🎯 Purpose
+
+Viral + branding layer
+
+📦 What can be shared
+Placement achieved 🎉
+Offer details
+Company announcements
+🖥️ UI Concept
+Button: “Share on LinkedIn”
+🧩 12. Scheduling + Clarifications (your last note)
+
+I think you meant:
+
+Scheduling → interviews
+Clarifications → discussion
+
+👉 Already covered above, but in your product:
+These two should be tightly linked
+
+Example:
+
+Interview scheduled → discussion thread auto-created
+🧠 Final Structuring (for Antigravity)
+
+You can group features like this:
+
+🔹 Core Modules
+User Management (roles, auth, validation)
+Student Management
+Company Management
+Interview Scheduling
+🔹 Collaboration Layer
+Discussion / Clarification Forum
+Shared Q&A
+🔹 Data Layer
+Import (CSV upload)
+Export (CSV download)
+🔹 Integrations
+Google Calendar (auto)
+Calendar export (.ics)
+🔹 Growth / Feedback
+Suggestions / Feature Requests
+Social media 
+Users can refer platform on Social Media 
+They can connect to platforms like Discord

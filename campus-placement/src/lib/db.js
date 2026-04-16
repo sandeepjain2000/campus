@@ -1,0 +1,111 @@
+import { Pool } from 'pg';
+
+// Parse DATABASE_URL manually so that percent-encoded special characters
+// in the password (e.g. %2B → +, %21 → !) are correctly decoded before
+// being passed to the pg driver. Using connectionString directly causes
+// Supabase to reject the login because the encoded string is sent as-is.
+function buildPoolConfig() {
+  const rawUrl = process.env.DATABASE_URL;
+  if (!rawUrl) throw new Error('DATABASE_URL environment variable is not set.');
+
+  try {
+    const url = new URL(rawUrl);
+    return {
+      host: url.hostname,
+      port: parseInt(url.port, 10) || 5432,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database: url.pathname.replace(/^\//, ''),
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+      ssl: { rejectUnauthorized: false },
+    };
+  } catch {
+    // Fallback to connectionString if URL parsing fails
+    return {
+      connectionString: rawUrl,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+      ssl: { rejectUnauthorized: false },
+    };
+  }
+}
+
+// Create a connection pool for PostgreSQL
+const pool = new Pool(buildPoolConfig());
+
+// Log pool errors
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client', err);
+  process.exit(-1);
+});
+
+/**
+ * Execute a query against the database
+ * @param {string} text - SQL query string
+ * @param {Array} params - Query parameters
+ * @returns {Promise<import('pg').QueryResult>}
+ */
+export async function query(text, params) {
+  const start = Date.now();
+  try {
+    const res = await pool.query(text, params);
+    const duration = Date.now() - start;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Executed query', { text: text.substring(0, 80), duration, rows: res.rowCount });
+    }
+    return res;
+  } catch (error) {
+    console.error('Database query error:', { text: text.substring(0, 80), error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * Get a client from the pool for transactions
+ * @returns {Promise<import('pg').PoolClient>}
+ */
+export async function getClient() {
+  const client = await pool.connect();
+  const originalQuery = client.query.bind(client);
+  const originalRelease = client.release.bind(client);
+
+  // Set a timeout to auto-release
+  const timeout = setTimeout(() => {
+    console.error('Client has been checked out for too long!');
+    client.release();
+  }, 30000);
+
+  client.release = () => {
+    clearTimeout(timeout);
+    client.query = originalQuery;
+    client.release = originalRelease;
+    return originalRelease();
+  };
+
+  return client;
+}
+
+/**
+ * Execute a transaction
+ * @param {Function} callback - Async function that receives the client
+ * @returns {Promise<any>}
+ */
+export async function transaction(callback) {
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export default { query, getClient, transaction };

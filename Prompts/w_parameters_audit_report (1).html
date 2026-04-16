@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Report — W1-W6 Parameters Review</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:       #0d1117;
+    --ink-2:     #3a3f4a;
+    --ink-3:     #6b7280;
+    --rule:      #e2e5ea;
+    --surface:   #f7f8fa;
+    --surface-2: #eef0f4;
+    --accent:    #394571;
+    --accent-lt: #e8edf8;
+    --accent-dark: #2c3660;
+    --gold:      #eab84c;
+    --gold-lt:   #fff5e6;
+    --high:      #b91c1c;
+    --high-lt:   #fef2f2;
+    --med:       #b45309;
+    --med-lt:    #fffbeb;
+    --low:       #166534;
+    --low-lt:    #f0fdf4;
+    --radius:    6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.65;
+    color: var(--ink);
+    background: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .cover {
+    background: var(--accent);
+    color: #fff;
+    padding: 64px 72px 52px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 38px,
+      rgba(255,255,255,.03) 38px,
+      rgba(255,255,255,.03) 40px
+    );
+    pointer-events: none;
+  }
+  .cover-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    opacity: .6;
+    margin-bottom: 20px;
+  }
+  .cover h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 46px;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -.5px;
+    margin-bottom: 10px;
+  }
+  .cover h1 span {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 300;
+    letter-spacing: 0;
+    opacity: .75;
+    margin-top: 6px;
+  }
+  .cover-meta {
+    margin-top: 40px;
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .cover-meta-item strong {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    opacity: .5;
+    margin-bottom: 3px;
+  }
+  .cover-meta-item span {
+    font-size: 15px;
+    font-weight: 400;
+    opacity: .9;
+  }
+
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+    padding: 16px 48px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toolbar-left {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .toolbar-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar-btn {
+    background: #fff;
+    border: 1px solid var(--rule);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--ink);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .toolbar-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .save-status {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .save-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    transition: opacity 0.3s;
+  }
+  .save-indicator.saving { background: #eab308; animation: pulse 0.5s ease-in-out; }
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px 80px;
+  }
+
+  .section-header {
+    margin-top: 48px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--gold);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    opacity: .55;
+    letter-spacing: .1em;
+  }
+  .section-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -.2px;
+    color: var(--ink);
+  }
+  .section-desc {
+    font-size: 13px;
+    color: var(--ink-3);
+    margin-bottom: 18px;
+    line-height: 1.6;
+    max-width: 680px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    line-height: 1.55;
+    table-layout: fixed;
+  }
+  thead tr { background: var(--accent); }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.85);
+    border: none;
+  }
+  tbody tr { border-bottom: 1px solid var(--rule); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:nth-child(odd) td { background: #fff; }
+  tbody tr:nth-child(even) td { background: var(--surface); }
+  tbody td {
+    padding: 11px 14px;
+    vertical-align: top;
+    color: var(--ink-2);
+    border-right: 1px solid var(--rule);
+  }
+  tbody td:last-child { border-right: none; }
+  tbody td:first-child { font-weight: 500; color: var(--ink); }
+  table { border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+
+  .sev {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .sev-high { background: var(--high-lt); color: var(--high); border: 1px solid #fecaca; }
+  .sev-med  { background: var(--med-lt);  color: var(--med);  border: 1px solid #fde68a; }
+  .sev-low  { background: var(--low-lt);  color: var(--low);  border: 1px solid #bbf7d0; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    margin-top: 36px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  .editable-comment {
+    background: transparent;
+    border: 1px dashed var(--rule);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    width: 100%;
+    resize: vertical;
+    color: var(--ink);
+    transition: border-color 0.2s;
+  }
+  .editable-comment:focus {
+    outline: none;
+    border-color: var(--gold);
+    background: #fff;
+  }
+  .status-select {
+    padding: 4px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+    background: #fff;
+    cursor: pointer;
+    width: 100%;
+    font-weight: 500;
+  }
+  .status-select.status-fixed { background: #e8f5e9; color: #2e7d32; border-color: #81c784; }
+  .status-select.status-not-fixed { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
+  .status-select.status-na { background: #f5f5f5; color: #616161; border-color: #bdbdbd; }
+
+  footer {
+    padding: 24px 48px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--ink-3);
+    font-family: 'DM Mono', monospace;
+    background: var(--surface);
+  }
+
+  @media print {
+    .toolbar { display: none !important; }
+    .editable-comment, .status-select { border: 1px solid #ccc; background: #fff; }
+    body { background: #fff; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <p class="cover-label">W1–W6 Parameters Audit</p>
+  <h1>Web build wireframe audit report V1<span>Presentation Secondary School — Webbuildwf Review</span></h1>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><strong>Scope</strong><span>W1–W12 Parameter Analysis on Wireframe</span></div>
+    <div class="cover-meta-item"><strong>Method</strong><span>Heuristic Evaluation & UX Analysis</span></div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-left">
+    <div class="toolbar-buttons">
+      <button class="toolbar-btn export-btn" id="exportCsvBtn">📊 Export to CSV</button>
+      <button class="toolbar-btn export-btn" id="exportPdfBtn">📄 Export as PDF</button>
+    </div>
+  </div>
+  <div class="save-status">
+    <span class="save-indicator" id="saveIndicator"></span>
+    <span id="saveMessage">Auto-saved</span>
+  </div>
+</div>
+
+<div class="wrapper">
+  <div class="legend">
+    <div class="legend-item"><span class="sev sev-high">High</span> Blocks usability or causes confusion</div>
+    <div class="legend-item"><span class="sev sev-med">Medium</span> Creates friction or sub-optimal UX</div>
+    <div class="legend-item"><span class="sev sev-low">Low</span> Minor polish opportunity</div>
+  </div>
+
+  <!-- W1 -->
+  <div class="section-header"><span class="section-num">W1</span><h2>Navigation & Flow</h2></div>
+  <p class="section-desc">Evaluate navigation clarity, structure, feature discoverability, and identify broken or dead-end flows.</p>
+  <table id="table1"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table1-body"></tbody></table>
+
+  <!-- W2 -->
+  <div class="section-header"><span class="section-num">W2</span><h2>Landing Page & CTA</h2></div>
+  <p class="section-desc">Assess landing page value proposition, CTA visibility, trust signals, and potential drop-off points.</p>
+  <table id="table2"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table2-body"></tbody></table>
+
+  <!-- W3 -->
+  <div class="section-header"><span class="section-num">W3</span><h2>Forms & Data Entry</h2></div>
+  <p class="section-desc">Review form validation, error handling, field clarity, autofill usage, and data loss risks.</p>
+  <table id="table3"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table3-body"></tbody></table>
+
+  <!-- W4 -->
+  <div class="section-header"><span class="section-num">W4</span><h2>Content & Microcopy</h2></div>
+  <p class="section-desc">Analyze content clarity, user understanding, missing explanations, and microcopy effectiveness.</p>
+  <table id="table4"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table4-body"></tbody></table>
+
+  <!-- W5 -->
+  <div class="section-header"><span class="section-num">W5</span><h2>States & Edge Cases</h2></div>
+  <p class="section-desc">Check handling of empty, loading, and error states including edge case scenarios.</p>
+  <table id="table5"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table5-body"></tbody></table>
+
+  <!-- W6 -->
+  <div class="section-header"><span class="section-num">W6</span><h2>User Journey Continuity</h2></div>
+  <p class="section-desc">Evaluate user journey continuity, context retention, navigation flow, and drop-off points.</p>
+  <table id="table6"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table6-body"></tbody></table>
+
+  <!-- W7 -->
+  <div class="section-header"><span class="section-num">W7</span><h2>SEO Basics</h2></div>
+  <p class="section-desc">Audit SEO basics including meta tags, semantic HTML, URL structure, and internal linking.</p>
+  <table id="table7"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table7-body"></tbody></table>
+
+  <!-- W8 -->
+  <div class="section-header"><span class="section-num">W8</span><h2>Perceived Performance</h2></div>
+  <p class="section-desc">Assess perceived performance including load speed, layout shifts, and feedback during delays.</p>
+  <table id="table8"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table8-body"></tbody></table>
+
+  <!-- W9 -->
+  <div class="section-header"><span class="section-num">W9</span><h2>Trust & Transparency</h2></div>
+  <p class="section-desc">Evaluate trust signals like security indicators, transparency, and availability of contact information.</p>
+  <table id="table9"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table9-body"></tbody></table>
+
+  <!-- W10 -->
+  <div class="section-header"><span class="section-num">W10</span><h2>Mobile Usability</h2></div>
+  <p class="section-desc">Review mobile usability including navigation, tap targets, form interaction, and functional issues.</p>
+  <table id="table10"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table10-body"></tbody></table>
+
+  <!-- W11 -->
+  <div class="section-header"><span class="section-num">W11</span><h2>Accessibility Compliance</h2></div>
+  <p class="section-desc">Check accessibility compliance including keyboard navigation, screen reader support, contrast, and labels.</p>
+  <table id="table11"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table11-body"></tbody></table>
+
+  <!-- W12 -->
+  <div class="section-header"><span class="section-num">W12</span><h2>Localization Standards</h2></div>
+  <p class="section-desc">Evaluate localization including language switching, formatting standards, and translation completeness.</p>
+  <table id="table12"><thead><tr><th>Component</th><th>Issue / Finding</th><th>Observation & Impact</th><th>Severity</th><th>Comments</th><th>Status</th></tr></thead><tbody id="table12-body"></tbody></table>
+</div>
+
+<footer>
+  <span>W1-W12 Audit Report</span>
+</footer>
+
+<script>
+const tableData = {
+  table1: [
+    { col1: "Global Menu", col2: "Mega Menu Access", col3: "Mega Menu is grouped securely behind 'Menu' button instead of exposing primary links (About, Parents, etc.) directly on header. This reduces immediate discoverability.", severity: "med", comment: "", status: "" },
+    { col1: "Mobile Navigation", col2: "Missing Close Affordance", col3: "Overlay menu opens full-screen but lacks a clear persistent 'close' button at the top, potentially confusing users on how to exit.", severity: "high", comment: "", status: "" },
+    { col1: "Link Destinations", col2: "Dead Ends", col3: "Social media links point to generic placeholders ('#', instagram.com) rather than actual school profiles, creating dead ends.", severity: "high", comment: "", status: "" }
+  ],
+  table2: [
+    { col1: "Hero Section", col2: "Strong Value Proposition", col3: "Clear message ('A co-educational, inclusive school...') presented immediately over the hero image.", severity: "low", comment: "", status: "" },
+    { col1: "Calls to Action", col2: "High Visibility", col3: "'Admissions' and 'Start Application' buttons are highly visible, utilize standard contrasting colors (#eeb94a), and direct users clearly.", severity: "low", comment: "", status: "" },
+    { col1: "Trust Signals", col2: "Lack of Testimonials/Stats", col3: "The homepage lacks statistical trust signals (e.g., student success rates) or testimonials, missing an opportunity to build trust early.", severity: "med", comment: "", status: "" }
+  ],
+  table3: [
+    { col1: "Contact Page", col2: "Missing Inquiry Form", col3: "The contact page relies solely on 'mailto' links and phone numbers. A structural contact form is absent, reducing accessible data entry options for users without native mail clients.", severity: "high", comment: "", status: "" },
+    { col1: "Forms (General)", col2: "Feedback states missing", col3: "As there are no visible form configurations in this wireframe snippet, form validation and autofill attributes cannot be evaluated (Data loss risk remains N/A until form is built).", severity: "med", comment: "", status: "" }
+  ],
+  table4: [
+    { col1: "Gallery / News", col2: "Repetitive Copy", col3: "Content blocks rely heavily on filler text ('Presmiltown Gallery 1', 'News 4'). Microcopy explaining the actual value or context of these blocks is missing.", severity: "low", comment: "", status: "" },
+    { col1: "Table Details", col2: "Unclear Acronyms", col3: "Timetable and calendar views assume user familiarity with specific naming conventions; may need legends or tooltips for clarity.", severity: "med", comment: "", status: "" }
+  ],
+  table5: [
+    { col1: "Image Assets", col2: "Loading States", col3: "No skeleton screens or spinners provided during heavy image loads (e.g., main gallery). This could lead to perceived broken layouts on slow connections.", severity: "med", comment: "", status: "" },
+    { col1: "Data States", col2: "Empty Scenarios", col3: "Empty states for 'News' or 'Gallery' are not accommodated. If no query returns, user receives no feedback.", severity: "med", comment: "", status: "" },
+    { col1: "External Iframes", col2: "Error States", col3: "Google Maps iframe does not have proper fallback text or UI if the service fails to load.", severity: "low", comment: "", status: "" }
+  ],
+  table6: [
+    { col1: "Calendar", col2: "Fragmented Context", col3: "Switching between list view and monthly view may cause users to lose context if not handled through seamless state updates.", severity: "med", comment: "", status: "" },
+    { col1: "Gallery Modals", col2: "Journey Interruption", col3: "Viewing a gallery detail opens entirely without clear breadcrumbs to return to the parent category without using browser back.", severity: "high", comment: "", status: "" }
+  ],
+  table7: [
+    { col1: "Global Links", col2: "Missing Hrefs", col3: "Primary navigation relies on onclick js handlers instead of standard hrefs, effectively hiding linking structure from search crawlers and negatively impacting SEO.", severity: "high", comment: "", status: "" },
+    { col1: "Meta Tags", col2: "Limited Head Data", col3: "Apart from title and viewport, there are no robust meta descriptions, canonical links, or Open Graph tags to assist search agents.", severity: "med", comment: "", status: "" }
+  ],
+  table8: [
+    { col1: "Hero Images", col2: "High-Res LCP", col3: "Large hero images are loaded without priority optimization or size constraints, likely pushing out the Largest Contentful Paint metric.", severity: "med", comment: "", status: "" },
+    { col1: "Media Loading", col2: "Missing Layout Placeholders", col3: "Images have lazy loading enabled but lack explicit height/width attributes or aspect ratio containers, contributing to potential Cumulative Layout Shifts (CLS).", severity: "high", comment: "", status: "" }
+  ],
+  table9: [
+    { col1: "Contact Page", col2: "Prominent Availability", col3: "Contact paths and location maps are highly available, establishing baseline trust levels.", severity: "low", comment: "", status: "" },
+    { col1: "Policies", col2: "Missing Privacy Data", col3: "No explicit GDPR notice, privacy policies, or cookie consent trust signals visible in the immediate wireframes (though mega-menu lists 'Policies' which is good).", severity: "med", comment: "", status: "" }
+  ],
+  table10: [
+    { col1: "Mega Menu", col2: "Oversized Overlay", col3: "On mobile, the mega menu occupies the entire view and might make bottom items unreachable depending on overflow settings, lacking a fixed structural wrapper.", severity: "high", comment: "", status: "" },
+    { col1: "Tap Targets", col2: "Dense Anchors", col3: "Some sub-links within dense lists do not hit the minimum 44x44px touch target guidelines for mobile usability.", severity: "med", comment: "", status: "" }
+  ],
+  table11: [
+    { col1: "Interactive Elements", col2: "A11y Non-compliance", col3: "Links relying on onclick without proper ARIA roles aren't recognized accurately by screen readers. Menu button icon lacks aria-label or accessible text reading.", severity: "high", comment: "", status: "" },
+    { col1: "Keyboard Nav", col2: "Missing Outline", col3: "Lack of specific focus outlines on standard links reduces keyboard traversability visibility.", severity: "high", comment: "", status: "" }
+  ],
+  table12: [
+    { col1: "Multi-language", col2: "Missing Switcher", col3: "The title includes 'Meánscoil na Toirbhirte' (Irish), but there's no actual language switcher or localized formatting structure provided to present the Irish version of the site.", severity: "med", comment: "", status: "" }
+  ]
+};
+
+function getSeverityClass(sev) {
+  if (sev === 'high') return 'sev-high';
+  if (sev === 'med') return 'sev-med';
+  return 'sev-low';
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+function renderTables() {
+  for (let i = 1; i <= 12; i++) {
+    const tableId = `table${i}`;
+    const data = tableData[tableId];
+    if (data) {
+      const tbody = document.getElementById(`${tableId}-body`);
+      if (tbody) {
+        tbody.innerHTML = '';
+        data.forEach((row, idx) => {
+          const tr = document.createElement('tr');
+          let html = `<td>${escapeHtml(row.col1)}</td><td>${escapeHtml(row.col2)}</td><td>${escapeHtml(row.col3)}</td><td><span class="${getSeverityClass(row.severity)}">${row.severity === 'high' ? 'High' : row.severity === 'med' ? 'Medium' : 'Low'}</span></td>`;
+          html += `<td><textarea class="editable-comment" data-table="${tableId}" data-idx="${idx}" rows="2" placeholder="Add comment...">${escapeHtml(row.comment || '')}</textarea></td>`;
+          html += `<td><select class="status-select" data-table="${tableId}" data-idx="${idx}">
+            <option value="">Select status</option>
+            <option value="fixed" ${row.status === 'fixed' ? 'selected' : ''}>Fixed</option>
+            <option value="not-fixed" ${row.status === 'not-fixed' ? 'selected' : ''}>Not fixed</option>
+            <option value="na" ${row.status === 'na' ? 'selected' : ''}>Not applicable</option>
+          </select></td>`;
+          tr.innerHTML = html;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+  }
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  let csvRows = [['Section', 'Component', 'Finding', 'Observation', 'Severity']];
+  const sectionNames = { table1:'W1 - Navigation', table2:'W2 - Landing & CTA', table3:'W3 - Forms', table4:'W4 - Content', table5:'W5 - States', table6:'W6 - Journey', table7:'W7 - SEO', table8:'W8 - Performance', table9:'W9 - Trust', table10:'W10 - Mobile Usability', table11:'W11 - Accessibility', table12:'W12 - Localization' };
+  for (let i = 1; i <= 12; i++) {
+    const tid = `table${i}`;
+    const data = tableData[tid];
+    if (data) {
+      data.forEach(row => {
+        let severity = row.severity === 'high' ? 'High' : row.severity === 'med' ? 'Medium' : 'Low';
+        csvRows.push([sectionNames[tid], `"${row.col1}"`, `"${row.col2}"`, `"${row.col3}"`, severity]);
+      });
+    }
+  }
+  const csvContent = csvRows.map(r => r.join(',')).join('\n');
+  const blob = new Blob(["\uFEFF" + csvContent], {type: 'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `w_parameters_audit_${new Date().toISOString().slice(0,19)}.csv`;
+  a.click();
+});
+
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+  window.print();
+});
+
+renderTables();
+</script>
+</body>
+</html>

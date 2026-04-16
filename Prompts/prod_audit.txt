@@ -1,0 +1,36 @@
+Prompt 1 — Architecture & Code Structure
+Act as a Senior Software Architect.
+Evaluate the entire codebase for production readiness from an architectural perspective.
+Focus: Project structure, layering, dependency management, env configs, modularity.
+Output: Table with categories like PROJECT STRUCTURE, LAYERING, CONFIG MANAGEMENT,
+MODULARITY.
+Prompt 2 — Backend & API Design
+Act as a Backend Systems Auditor.
+Focus: API consistency, validation, error handling, response structure, idempotency.
+Sections: API DESIGN, ERROR HANDLING, VALIDATION, RESPONSE STRUCTURE, EDGE
+CASES.
+Prompt 3 — Database & Multi-Tenancy
+Act as a SaaS Database Architect.
+Focus: tenant isolation, schema design, indexing, query performance, migration readiness.
+Sections: MULTI-TENANCY MODEL, DATA ISOLATION, SCHEMA DESIGN, QUERY
+PERFORMANCE.
+Prompt 4 — Security Audit
+Act as a Security Auditor.
+Focus: auth, JWT, API protection, input sanitization, SQL injection, XSS/CSRF, secrets.
+Sections: AUTHENTICATION, AUTHORIZATION, DATA SECURITY, API SECURITY.
+Prompt 5 — Performance & Scalability
+Act as a Performance Engineer.
+Focus: API latency, DB efficiency, caching, async processing, bottlenecks.
+Sections: API PERFORMANCE, DATABASE PERFORMANCE, CACHING, ASYNC
+PROCESSING.
+Prompt 6 — DevOps & AWS Readiness
+Act as a DevOps Engineer.
+Focus: env configs, deployment, logging, CI/CD, AWS readiness.
+Sections: ENVIRONMENT MANAGEMENT, DEPLOYMENT, LOGGING, CI/CD, AWS.
+
+Prompt 7 — Code Quality & Maintainability
+Act as a Senior Code Reviewer.
+Focus: duplication, naming, file size, abstraction, documentation.
+Prompt 8 — Observability & Reliability
+Act as a Site Reliability Engineer.
+Focus: logging, monitoring, retries, failover, alerting.

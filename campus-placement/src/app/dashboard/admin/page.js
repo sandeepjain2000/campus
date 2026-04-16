@@ -1,0 +1,102 @@
+'use client';
+import { useSession } from 'next-auth/react';
+import useSWR from 'swr';
+import Link from 'next/link';
+import { Settings, School, Building2, GraduationCap, Users, Activity, ChevronRight } from 'lucide-react';
+import PageError from '@/components/PageError';
+
+const fetcher = (url) => fetch(url).then((res) => res.json());
+
+export default function AdminDashboard() {
+  const { data: session } = useSession();
+  const { data, error, isLoading } = useSWR('/api/admin/dashboard', fetcher);
+
+  if (error) return <PageError error={error} />;
+
+  if (isLoading || !data) {
+    return (
+      <div>
+        <div className="skeleton skeleton-heading" />
+        <div className="grid grid-4">
+          {[1,2,3,4].map(i => <div key={i} className="skeleton skeleton-card" />)}
+        </div>
+      </div>
+    );
+  }
+
+  const { stats, registeredColleges } = data;
+
+  return (
+    <div className="animate-fadeIn">
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Settings size={28} className="text-secondary" strokeWidth={1.5} /> Platform Administration
+          </h1>
+          <p className="text-secondary">PlacementHub Super Admin Dashboard</p>
+        </div>
+      </div>
+
+      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
+        <div className="stats-card">
+          <div className="stats-card-icon indigo"><School size={24} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{stats.colleges}</div>
+          <div className="stats-card-label">Colleges</div>
+        </div>
+        <div className="stats-card green">
+          <div className="stats-card-icon green"><Building2 size={24} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{stats.employers}</div>
+          <div className="stats-card-label">Employers</div>
+        </div>
+        <div className="stats-card amber">
+          <div className="stats-card-icon amber"><GraduationCap size={24} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{stats.students}</div>
+          <div className="stats-card-label">Students</div>
+        </div>
+        <div className="stats-card blue">
+          <div className="stats-card-icon blue"><Users size={24} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{stats.totalUsers}</div>
+          <div className="stats-card-label">Total Users</div>
+        </div>
+      </div>
+
+      <div className="grid grid-2">
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card-header" style={{ padding: '1.25rem 1.5rem', marginBottom: 0, borderBottom: '1px solid var(--border-default)' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <School size={18} className="text-secondary" /> Registered Colleges
+            </h3>
+            <Link href="/dashboard/admin/colleges" className="btn btn-ghost btn-sm">View All <ChevronRight size={14} /></Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {registeredColleges.map((c, index) => (
+              <div key={c.id || c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: index === 0 ? 'none' : '1px solid var(--border-default)', background: 'var(--bg-primary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div className="avatar avatar-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}><School size={16} /></div>
+                  <span className="font-semibold text-sm">{c.name}</span>
+                </div>
+                <span className="badge badge-green">Active</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card-header" style={{ padding: '1.25rem 1.5rem', marginBottom: 0, borderBottom: '1px solid var(--border-default)' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Activity size={18} className="text-secondary" /> Platform Health
+            </h3>
+          </div>
+          <div style={{ padding: '0 1.5rem 1rem' }}>
+            {[ { label: 'API Uptime', value: '99.97%', color: 'green' }, { label: 'Active Sessions', value: '142', color: 'blue' }, { label: 'Database Size', value: '2.4 GB', color: 'indigo' }, { label: 'Storage Used', value: '12.8 GB', color: 'amber' } ].map(m => (
+              <div key={m.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', borderBottom: '1px solid var(--border-default)' }}>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{m.label}</span>
+                <span className={`font-bold text-sm`} style={{ color: `var(--${m.color}-600)` }}>{m.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
