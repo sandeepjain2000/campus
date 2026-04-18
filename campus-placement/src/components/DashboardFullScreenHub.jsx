@@ -221,7 +221,7 @@ export default function DashboardFullScreenHub({ role, session }) {
               <h2 className="dashboard-nav-hub-category-title">{section.title}</h2>
               <ul className="dashboard-nav-hub-list">
                 {section.items.map((item) => (
-                  <li key={item.href}>
+                  <li key={`${section.id}-${item.href}`}>
                     <Link
                       href={item.href}
                       className="dashboard-nav-hub-link"
