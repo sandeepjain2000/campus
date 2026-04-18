@@ -7,7 +7,8 @@
     "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:aws": "node scripts/verify-aws-credentials.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1031.0",
@@ -26,6 +27,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-sts": "^3.1031.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.3"
   }
