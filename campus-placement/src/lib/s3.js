@@ -64,3 +64,33 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
 
   return { uploadUrl, fileUrl, key, bucket, expiresIn };
 }
+
+/**
+ * Profile photo — same bucket/IAM prefix `students/{userId}/…` as documents.
+ * @param {{ userId: string, fileName: string, contentType: string }} opts
+ * @returns {Promise<{ uploadUrl: string, fileUrl: string, key: string, bucket: string, expiresIn: number }>}
+ */
+export async function createStudentAvatarPresign({ userId, fileName, contentType }) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+
+  const bucket = process.env.S3_BUCKET_NAME;
+  const region = process.env.AWS_REGION;
+  const safe = sanitizeFilename(fileName);
+  const key = `students/${userId}/avatar/${randomUUID()}-${safe}`;
+
+  const client = getClient();
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ContentType: contentType || 'application/octet-stream',
+  });
+
+  const expiresIn = parseInt(process.env.S3_PRESIGN_EXPIRES_SECONDS || '900', 10);
+  const uploadUrl = await getSignedUrl(client, command, { expiresIn });
+
+  const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
+
+  return { uploadUrl, fileUrl, key, bucket, expiresIn };
+}

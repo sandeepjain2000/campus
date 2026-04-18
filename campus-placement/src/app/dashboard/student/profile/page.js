@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { getInitials } from '@/lib/utils';
+import { useToast } from '@/components/ToastProvider';
 import {
   defaultStudentProfile,
   loadStudentProfile,
@@ -23,10 +24,12 @@ function newLinkId() {
 }
 
 export default function StudentProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const { addToast } = useToast();
   const email = session?.user?.email || '';
   const [editing, setEditing] = useState(false);
   const [newSkill, setNewSkill] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [profile, setProfile] = useState(() => defaultStudentProfile(session?.user));
 
   useEffect(() => {
@@ -121,19 +124,103 @@ export default function StudentProfilePage() {
     });
   };
 
-  const onAvatarChange = (e) => {
+  const persistLocalAvatarDataUrl = useCallback(
+    (file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        if (typeof dataUrl === 'string' && dataUrl.length > 1_200_000) {
+          addToast('Image too large for offline storage. Use a smaller file (~900KB) or configure S3.', 'warning');
+          return;
+        }
+        setProfile((prev) => {
+          const next = {
+            ...prev,
+            avatarDataUrl: typeof dataUrl === 'string' ? dataUrl : '',
+            avatarUrl: '',
+            avatarName: file.name,
+          };
+          if (email) saveStudentProfile(email, next);
+          return next;
+        });
+        addToast('Photo saved in this browser only (S3 not configured).', 'info');
+      };
+      reader.readAsDataURL(file);
+    },
+    [addToast, email],
+  );
+
+  const onAvatarChange = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      if (typeof dataUrl === 'string' && dataUrl.length > 1_200_000) {
-        alert('Image is too large to store in the browser demo. Choose a smaller file (under ~900KB).');
+
+    const maxS3 = 2 * 1024 * 1024;
+    if (file.size > maxS3) {
+      addToast('Image too large (max 2MB).', 'warning');
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const presignRes = await fetch('/api/student/profile/avatar/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+        }),
+      });
+      const presign = await presignRes.json();
+
+      if (presignRes.status === 503 && presign.error === 'S3 not configured') {
+        persistLocalAvatarDataUrl(file);
         return;
       }
-      persist({ ...profile, avatarDataUrl: typeof dataUrl === 'string' ? dataUrl : '', avatarName: file.name });
-    };
-    reader.readAsDataURL(file);
+      if (!presignRes.ok) {
+        addToast(presign.error + (presign.hint ? ` — ${presign.hint}` : ''), 'warning');
+        return;
+      }
+
+      const putRes = await fetch(presign.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!putRes.ok) {
+        addToast('Upload to storage failed. Check bucket CORS and IAM.', 'warning');
+        return;
+      }
+
+      const completeRes = await fetch('/api/student/profile/avatar/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_url: presign.fileUrl }),
+      });
+      const complete = await completeRes.json();
+      if (!completeRes.ok) {
+        addToast(complete.error || 'File uploaded but profile could not be updated', 'warning');
+        return;
+      }
+
+      setProfile((prev) => {
+        const next = {
+          ...prev,
+          avatarUrl: presign.fileUrl,
+          avatarDataUrl: '',
+          avatarName: file.name,
+        };
+        if (email) saveStudentProfile(email, next);
+        return next;
+      });
+      await update({ avatar: presign.fileUrl });
+      addToast('Photo saved to cloud storage.', 'info');
+    } catch {
+      addToast('Upload failed (network).', 'warning');
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const onCvChange = (e) => {
@@ -155,12 +242,14 @@ export default function StudentProfilePage() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const avatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
+
   return (
     <div className="animate-fadeIn">
       <div className="profile-header">
         <div className="profile-avatar" style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}>
-          {profile.avatarDataUrl ? (
-            <img src={profile.avatarDataUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {avatarSrc ? (
+            <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             getInitials(session?.user?.name)
           )}
@@ -193,9 +282,12 @@ export default function StudentProfilePage() {
         <div style={{ marginLeft: 'auto', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
           {editing && (
             <>
-              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
-                📷 Photo
-                <input type="file" accept="image/*" hidden onChange={onAvatarChange} />
+              <label
+                className={`btn btn-secondary btn-sm${avatarUploading ? ' disabled' : ''}`}
+                style={{ cursor: avatarUploading ? 'wait' : 'pointer', margin: 0, opacity: avatarUploading ? 0.7 : 1 }}
+              >
+                {avatarUploading ? '⏳ Uploading…' : '📷 Photo'}
+                <input type="file" accept="image/*" hidden disabled={avatarUploading} onChange={onAvatarChange} />
               </label>
               <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
                 📄 CV / Resume

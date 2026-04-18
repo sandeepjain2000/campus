@@ -43,6 +43,8 @@ export function defaultStudentProfile(sessionUser) {
       { id: 'l1', kind: 'linkedin', url: 'https://linkedin.com/in/arjunverma', title: 'LinkedIn', description: 'Professional experience and recommendations.' },
       { id: 'l2', kind: 'github', url: 'https://github.com/arjunverma', title: 'GitHub', description: 'Repos: ML course projects, full-stack apps, competitive programming.' },
     ],
+    /** HTTPS URL from S3 after upload (also on users.avatar_url) */
+    avatarUrl: sessionUser?.avatar || '',
     avatarDataUrl: '',
     avatarName: '',
     cvFileName: '',
@@ -57,7 +59,11 @@ export function loadStudentProfile(email, sessionUser) {
     const raw = localStorage.getItem(key);
     if (!raw) return defaultStudentProfile(sessionUser);
     const parsed = JSON.parse(raw);
-    return { ...defaultStudentProfile(sessionUser), ...parsed };
+    const base = { ...defaultStudentProfile(sessionUser), ...parsed };
+    if (sessionUser?.avatar && !base.avatarDataUrl) {
+      base.avatarUrl = sessionUser.avatar;
+    }
+    return base;
   } catch {
     return defaultStudentProfile(sessionUser);
   }
