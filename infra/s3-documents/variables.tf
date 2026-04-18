@@ -48,9 +48,9 @@ variable "cors_max_age_seconds" {
   default     = 3000
 }
 
-variable "block_public_access" {
+variable "enable_public_read_for_student_objects" {
   type        = bool
-  description = "If true, objects are private unless you add CloudFront or presigned GET / bucket policy"
+  description = "If true, anonymous s3:GetObject is allowed on student_documents_prefix/* so <img> and direct links work (matches buildS3ObjectPublicUrl in the app). If false, bucket stays fully private — you must add presigned GET or CloudFront yourself."
   default     = true
 }
 

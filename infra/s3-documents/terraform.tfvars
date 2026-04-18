@@ -23,8 +23,9 @@ cors_allowed_methods = ["PUT", "GET", "HEAD", "POST"]
 cors_expose_headers  = ["ETag"]
 cors_max_age_seconds = 3000
 
-# Private objects; use presigned GET or CloudFront later if you need public links
-block_public_access = true
+# Allow browser <img> / open-in-new-tab for keys under students/* (see main.tf bucket policy).
+# Set false only if you will serve files via presigned GET or CloudFront instead.
+enable_public_read_for_student_objects = true
 
 # Set true only in dev if you want terraform destroy to empty the bucket
 bucket_force_destroy = false
