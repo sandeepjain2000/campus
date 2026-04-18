@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { getInitials } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
+import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
 import {
   defaultStudentProfile,
   loadStudentProfile,
@@ -183,13 +184,16 @@ export default function StudentProfilePage() {
         return;
       }
 
-      const putRes = await fetch(presign.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': presign.contentType || file.type || 'application/octet-stream' },
-        body: file,
-      });
+      const ph = {};
+      const ct = presign.contentType || file.type || 'application/octet-stream';
+      if (ct) ph['Content-Type'] = String(ct).split(';')[0].trim();
+      const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
       if (!putRes.ok) {
-        addToast('Upload to storage failed. Check bucket CORS and IAM.', 'warning');
+        const raw = (await putRes.text()).replace(/\s+/g, ' ').trim();
+        const code = (raw.match(/<Code>([^<]+)<\/Code>/) || [])[1];
+        const msg = (raw.match(/<Message>([^<]+)<\/Message>/) || [])[1];
+        const hint = code || msg ? `${code || 'Error'}${msg ? `: ${msg}` : ''}` : raw.slice(0, 140);
+        addToast(`Photo upload failed (${putRes.status}). ${hint || 'Check CORS and IAM.'}`, 'warning');
         return;
       }
 
@@ -632,7 +636,13 @@ export default function StudentProfilePage() {
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
                       <div>
-                        <label className="form-label text-xs">Type</label>
+                        <label
+                          className="form-label text-xs"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-tertiary)' }}
+                        >
+                          <ProfileLinkKindIcon kind={link.kind} />
+                          Type
+                        </label>
                         <select className="form-select" value={link.kind} onChange={(e) => updateLink(link.id, { kind: e.target.value })}>
                           {LINK_KINDS.map((k) => (
                             <option key={k.value} value={k.value}>
@@ -667,7 +677,11 @@ export default function StudentProfilePage() {
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                      <div>
+                      <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', minWidth: 0 }}>
+                        <div style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: '2px' }}>
+                          <ProfileLinkKindIcon kind={link.kind} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
                         <div className="text-xs font-bold text-tertiary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {LINK_KINDS.find((k) => k.value === link.kind)?.label || link.kind}
                         </div>
@@ -675,6 +689,7 @@ export default function StudentProfilePage() {
                           {link.title || link.url || 'Untitled'}
                         </a>
                         {link.description && <p className="text-sm text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.5 }}>{link.description}</p>}
+                        </div>
                       </div>
                     </div>
                   </>

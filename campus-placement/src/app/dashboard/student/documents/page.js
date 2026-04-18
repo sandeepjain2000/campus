@@ -58,14 +58,24 @@ export default function StudentDocumentsPage() {
         return;
       }
 
-      const putContentType = presign.contentType || file.type || 'application/octet-stream';
+      const putHeaders = {};
+      if (presign.contentType) {
+        putHeaders['Content-Type'] = String(presign.contentType).split(';')[0].trim();
+      }
       const putRes = await fetch(presign.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': putContentType },
+        headers: putHeaders,
         body: file,
       });
       if (!putRes.ok) {
-        addToast('Upload to storage failed. Check bucket CORS and IAM.', 'warning');
+        const raw = (await putRes.text()).replace(/\s+/g, ' ').trim();
+        const code = (raw.match(/<Code>([^<]+)<\/Code>/) || [])[1];
+        const msg = (raw.match(/<Message>([^<]+)<\/Message>/) || [])[1];
+        const hint = code || msg ? `${code || 'Error'}${msg ? `: ${msg}` : ''}` : raw.slice(0, 140);
+        addToast(
+          `Upload failed (${putRes.status}). ${hint || 'Check bucket CORS (include your exact Vercel origin) and IAM PutObject on students/*.'}`,
+          'warning',
+        );
         return;
       }
 

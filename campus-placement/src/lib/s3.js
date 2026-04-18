@@ -37,8 +37,12 @@ export function buildS3ObjectPublicUrl(bucket, region, key) {
 }
 
 /**
+ * Student documents (PDF, etc.): do **not** set ContentType on PutObject when presigning.
+ * If Content-Type is part of SigV4 signed headers, browser uploads often fail (403) due to
+ * case, charset, or SDK/browser drift. Objects default to binary/octet-stream; browsers still open PDFs.
+ * Set S3_PRESIGN_DOCUMENT_CONTENT_TYPE=1 to restore legacy signed Content-Type behavior.
+ *
  * @param {{ userId: string, fileName: string, contentType: string }} opts
- * @returns {Promise<{ uploadUrl: string, fileUrl: string, key: string, bucket: string, expiresIn: number }>}
  */
 export async function createStudentDocumentPresign({ userId, fileName, contentType }) {
   if (!isS3Configured()) {
@@ -52,10 +56,11 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
 
   const client = getClient();
   const resolvedType = contentType || 'application/octet-stream';
+  const signContentType = process.env.S3_PRESIGN_DOCUMENT_CONTENT_TYPE === '1';
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    ContentType: resolvedType,
+    ...(signContentType ? { ContentType: resolvedType } : {}),
   });
 
   const expiresIn = parseInt(process.env.S3_PRESIGN_EXPIRES_SECONDS || '900', 10);
@@ -63,7 +68,14 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
 
   const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
 
-  return { uploadUrl, fileUrl, key, bucket, expiresIn, contentType: resolvedType };
+  return {
+    uploadUrl,
+    fileUrl,
+    key,
+    bucket,
+    expiresIn,
+    contentType: signContentType ? resolvedType : null,
+  };
 }
 
 /**
