@@ -58,9 +58,10 @@ export default function StudentDocumentsPage() {
         return;
       }
 
+      const putContentType = presign.contentType || file.type || 'application/octet-stream';
       const putRes = await fetch(presign.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        headers: { 'Content-Type': putContentType },
         body: file,
       });
       if (!putRes.ok) {
@@ -113,7 +114,10 @@ export default function StudentDocumentsPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>📄 My documents</h1>
-          <p>Upload PDFs and images — files go to S3 when configured; metadata is stored in Postgres.</p>
+          <p>
+            Upload resumes, certificates, ID proofs, and scans — files are stored in <strong>S3</strong> (same AWS env as
+            profile photo); metadata is saved in Postgres.
+          </p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <div className="view-toggle" role="group" aria-label="Document view">
@@ -128,7 +132,9 @@ export default function StudentDocumentsPage() {
         <div className="card" style={{ marginBottom: '1.5rem', border: '2px dashed var(--primary-300)' }}>
           <div style={{ padding: '1.5rem' }}>
             <h3 style={{ marginBottom: '0.75rem' }}>Upload a file</h3>
-            <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>PDF, JPG, PNG, WebP · max 5MB · requires S3 env vars on the server.</p>
+            <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
+              PDF, Word (.doc / .docx), JPEG, PNG, WebP, GIF · max 5MB · needs AWS/S3 env vars on the server (Vercel).
+            </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
               <select className="form-select" style={{ width: 'auto' }} value={docType} onChange={(e) => setDocType(e.target.value)} disabled={uploading}>
                 <option value="resume">Resume</option>
@@ -139,7 +145,13 @@ export default function StudentDocumentsPage() {
               </select>
               <label className="btn btn-primary" style={{ cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
                 {uploading ? 'Uploading…' : 'Choose file'}
-                <input type="file" hidden accept=".pdf,image/jpeg,image/png,image/webp" disabled={uploading} onChange={onFileSelected} />
+                <input
+                  type="file"
+                  hidden
+                  accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp,image/gif"
+                  disabled={uploading}
+                  onChange={onFileSelected}
+                />
               </label>
             </div>
           </div>
@@ -211,7 +223,9 @@ export default function StudentDocumentsPage() {
             </table>
           </div>
           {documents.length === 0 && (
-            <p className="text-sm text-secondary" style={{ padding: '1rem' }}>No documents yet. Upload a file above (S3 must be configured).</p>
+            <p className="text-sm text-secondary" style={{ padding: '1rem' }}>
+              No documents yet. Use Upload above — files go to S3 when AWS credentials are set.
+            </p>
           )}
         </div>
       )}

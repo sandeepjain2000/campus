@@ -51,10 +51,11 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
   const key = `students/${userId}/${randomUUID()}-${safe}`;
 
   const client = getClient();
+  const resolvedType = contentType || 'application/octet-stream';
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    ContentType: contentType || 'application/octet-stream',
+    ContentType: resolvedType,
   });
 
   const expiresIn = parseInt(process.env.S3_PRESIGN_EXPIRES_SECONDS || '900', 10);
@@ -62,7 +63,7 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
 
   const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
 
-  return { uploadUrl, fileUrl, key, bucket, expiresIn };
+  return { uploadUrl, fileUrl, key, bucket, expiresIn, contentType: resolvedType };
 }
 
 /**
@@ -80,11 +81,12 @@ export async function createStudentAvatarPresign({ userId, fileName, contentType
   const safe = sanitizeFilename(fileName);
   const key = `students/${userId}/avatar/${randomUUID()}-${safe}`;
 
+  const resolvedType = contentType || 'application/octet-stream';
   const client = getClient();
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    ContentType: contentType || 'application/octet-stream',
+    ContentType: resolvedType,
   });
 
   const expiresIn = parseInt(process.env.S3_PRESIGN_EXPIRES_SECONDS || '900', 10);
@@ -92,5 +94,5 @@ export async function createStudentAvatarPresign({ userId, fileName, contentType
 
   const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
 
-  return { uploadUrl, fileUrl, key, bucket, expiresIn };
+  return { uploadUrl, fileUrl, key, bucket, expiresIn, contentType: resolvedType };
 }

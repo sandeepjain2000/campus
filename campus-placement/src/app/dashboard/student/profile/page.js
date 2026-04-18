@@ -185,7 +185,7 @@ export default function StudentProfilePage() {
 
       const putRes = await fetch(presign.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        headers: { 'Content-Type': presign.contentType || file.type || 'application/octet-stream' },
         body: file,
       });
       if (!putRes.ok) {
