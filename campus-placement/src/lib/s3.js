@@ -80,8 +80,11 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
 
 /**
  * Profile photo — same bucket/IAM prefix `students/{userId}/…` as documents.
+ * Like documents, **omit signed Content-Type by default** so browser PUTs cannot hit
+ * SigV4 SignatureDoesNotMatch (case/charset drift between presign and fetch).
+ * Set S3_PRESIGN_AVATAR_CONTENT_TYPE=1 to sign Content-Type again (legacy).
  * @param {{ userId: string, fileName: string, contentType: string }} opts
- * @returns {Promise<{ uploadUrl: string, fileUrl: string, key: string, bucket: string, expiresIn: number }>}
+ * @returns {Promise<{ uploadUrl: string, fileUrl: string, key: string, bucket: string, expiresIn: number, contentType: string | null }>}
  */
 export async function createStudentAvatarPresign({ userId, fileName, contentType }) {
   if (!isS3Configured()) {
@@ -95,10 +98,11 @@ export async function createStudentAvatarPresign({ userId, fileName, contentType
 
   const resolvedType = contentType || 'application/octet-stream';
   const client = getClient();
+  const signContentType = process.env.S3_PRESIGN_AVATAR_CONTENT_TYPE === '1';
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    ContentType: resolvedType,
+    ...(signContentType ? { ContentType: resolvedType } : {}),
   });
 
   const expiresIn = parseInt(process.env.S3_PRESIGN_EXPIRES_SECONDS || '900', 10);
@@ -106,5 +110,12 @@ export async function createStudentAvatarPresign({ userId, fileName, contentType
 
   const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
 
-  return { uploadUrl, fileUrl, key, bucket, expiresIn, contentType: resolvedType };
+  return {
+    uploadUrl,
+    fileUrl,
+    key,
+    bucket,
+    expiresIn,
+    contentType: signContentType ? resolvedType : null,
+  };
 }

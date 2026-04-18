@@ -185,8 +185,9 @@ export default function StudentProfilePage() {
       }
 
       const ph = {};
-      const ct = presign.contentType || file.type || 'application/octet-stream';
-      if (ct) ph['Content-Type'] = String(ct).split(';')[0].trim();
+      if (presign.contentType) {
+        ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
+      }
       const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
       if (!putRes.ok) {
         const raw = (await putRes.text()).replace(/\s+/g, ' ').trim();
