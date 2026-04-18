@@ -5,6 +5,7 @@ import EntityLogo from '@/components/EntityLogo';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
+import { SOCIAL_PLATFORM_ORDER } from '@/components/wireframe/SocialWireframeToolkit';
 
 const STAFF_DIRECTORY = [
   { id: 'st-1', name: 'Dr. Meera Krishnan', role: 'TPO Faculty' },
@@ -14,10 +15,10 @@ const STAFF_DIRECTORY = [
 ];
 
 const mockDrivesSeed = [
-  { id: 1, company: 'TechCorp Solutions', role: 'SDE', date: '2026-09-15', type: 'on_campus', status: 'scheduled', registered: 45, selected: 0, venue: 'Placement Hall A', staffIds: ['st-1', 'st-3'], jobPostingTitle: 'SDE — Campus 2026', jobPostingUrl: '/dashboard/employer/jobs' },
-  { id: 2, company: 'GlobalSoft Technologies', role: 'Full Stack Dev', date: '2026-09-22', type: 'virtual', status: 'approved', registered: 32, selected: 0, venue: 'Online', staffIds: ['st-2'], jobPostingTitle: '', jobPostingUrl: '' },
-  { id: 3, company: 'Infosys Limited', role: 'Systems Engineer', date: '2026-10-05', type: 'on_campus', status: 'requested', registered: 0, selected: 0, venue: 'Main Auditorium', staffIds: [], jobPostingTitle: 'Systems Engineer — linked JD', jobPostingUrl: '/dashboard/employer/jobs' },
-  { id: 4, company: 'DataVerse Analytics', role: 'Data Analyst', date: '2026-09-01', type: 'virtual', status: 'completed', registered: 40, selected: 5, venue: 'Online', staffIds: ['st-1', 'st-4'], jobPostingTitle: '', jobPostingUrl: '' },
+  { id: 1, company: 'TechCorp Solutions', role: 'SDE', date: '2026-09-15', type: 'on_campus', status: 'scheduled', registered: 45, selected: 0, venue: 'Placement Hall A', staffIds: ['st-1', 'st-3'], jobPostingTitle: 'SDE — Campus 2026', jobPostingUrl: '/dashboard/employer/jobs', socialShared: ['twitter', 'linkedin'] },
+  { id: 2, company: 'GlobalSoft Technologies', role: 'Full Stack Dev', date: '2026-09-22', type: 'virtual', status: 'approved', registered: 32, selected: 0, venue: 'Online', staffIds: ['st-2'], jobPostingTitle: '', jobPostingUrl: '', socialShared: [] },
+  { id: 3, company: 'Infosys Limited', role: 'Systems Engineer', date: '2026-10-05', type: 'on_campus', status: 'requested', registered: 0, selected: 0, venue: 'Main Auditorium', staffIds: [], jobPostingTitle: 'Systems Engineer — linked JD', jobPostingUrl: '/dashboard/employer/jobs', socialShared: [] },
+  { id: 4, company: 'DataVerse Analytics', role: 'Data Analyst', date: '2026-09-01', type: 'virtual', status: 'completed', registered: 40, selected: 5, venue: 'Online', staffIds: ['st-1', 'st-4'], jobPostingTitle: '', jobPostingUrl: '', socialShared: ['facebook', 'instagram'] },
 ];
 
 function staffById(id) {
@@ -105,7 +106,11 @@ export default function CollegeDrivesPage() {
   };
 
   const approveDrive = (id) => {
-    setDrives((prev) => prev.map((d) => (d.id === id ? { ...d, status: 'approved', registered: d.registered || 12 } : d)));
+    setDrives((prev) =>
+      prev.map((d) =>
+        d.id === id ? { ...d, status: 'approved', registered: d.registered || 12, socialShared: d.socialShared || [] } : d,
+      ),
+    );
     addToast('Drive approved (demo).', 'info');
   };
 
@@ -132,10 +137,24 @@ export default function CollegeDrivesPage() {
         staffIds: [],
         jobPostingTitle: '',
         jobPostingUrl: '',
+        socialShared: [],
       },
       ...prev,
     ]);
     addToast('Drive added to list (demo).', 'info');
+  };
+
+  const toggleDriveSocialShare = (driveId, platformId) => {
+    setDrives((prev) =>
+      prev.map((d) => {
+        if (d.id !== driveId) return d;
+        const list = d.socialShared || [];
+        const has = list.includes(platformId);
+        const socialShared = has ? list.filter((p) => p !== platformId) : [...list, platformId];
+        return { ...d, socialShared };
+      }),
+    );
+    addToast('Wireframe: share flag updated locally (nothing is posted).', 'info');
   };
 
   return (
@@ -143,7 +162,7 @@ export default function CollegeDrivesPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>🎯 Placement Drives</h1>
-          <p>Schedule and manage all placement drives</p>
+          <p>Schedule and manage all placement drives. Social icons per drive are wireframe only — green = marked shared in this demo.</p>
         </div>
         <div className="page-header-actions">
           <ExportCsvSplitButton filenameBase="college_placement_drives" currentCount={drives.length} fullCount={drives.length} getRows={getDrivesCsv} />
@@ -216,6 +235,29 @@ export default function CollegeDrivesPage() {
                 </button>
               </div>
             </div>
+            <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="drive-social-share-label">Share (wireframe)</span>
+              <div className="drive-social-share">
+                {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
+                  const shared = (drive.socialShared || []).includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`drive-social-icon-btn${shared ? ' is-shared' : ''}`}
+                      title={`${label}${shared ? ' — marked shared (demo)' : ' — click to mark shared (demo)'}`}
+                      aria-label={`${label} ${shared ? 'shared' : 'not shared'} — wireframe`}
+                      aria-pressed={shared}
+                      onClick={() => toggleDriveSocialShare(drive.id, id)}
+                    >
+                      <Icon size={16} />
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-xs text-tertiary">No live posting; green = recorded in this session.</span>
+            </div>
+
             <div className="drive-info-grid" style={{ marginTop: '0.75rem' }}>
               <div className="drive-info-item">
                 <div className="drive-info-label">Date</div>

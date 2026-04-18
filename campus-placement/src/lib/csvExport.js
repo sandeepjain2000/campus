@@ -43,3 +43,51 @@ export function downloadCsv(filename, csvString) {
 export function downloadCsvFromRows(filename, headers, rows) {
   downloadCsv(filename, rowsToCsv(headers, rows));
 }
+
+/**
+ * Parse CSV text into header row + data rows (RFC 4180 quotes, UTF-8 BOM stripped from first header).
+ * @param {string} text
+ * @returns {{ headers: string[]; rows: string[][] }}
+ */
+export function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  const s = text.replace(/^\uFEFF/, '');
+
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\n') {
+      row.push(field);
+      if (row.some((cell) => String(cell).trim() !== '')) rows.push(row);
+      row = [];
+      field = '';
+    } else if (c !== '\r') {
+      field += c;
+    }
+  }
+  row.push(field);
+  if (row.some((cell) => String(cell).trim() !== '')) rows.push(row);
+
+  if (rows.length === 0) return { headers: [], rows: [] };
+  const headers = rows[0].map((h) => String(h).trim());
+  const dataRows = rows.slice(1).filter((r) => r.some((cell) => String(cell).trim() !== ''));
+  return { headers, rows: dataRows };
+}

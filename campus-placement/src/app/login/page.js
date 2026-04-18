@@ -1,18 +1,41 @@
 'use client';
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
+import { getDashboardPath } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { status, data: session } = useSession();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [filledFrom, setFilledFrom] = useState(''); // tracks which card was clicked
   const toast = useToast();
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !session?.user?.role) return;
+    router.replace(getDashboardPath(session.user.role));
+  }, [status, session, router]);
+
+  if (status === 'loading') {
+    return (
+      <div className="auth-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="skeleton" style={{ width: 220, height: 28 }} />
+      </div>
+    );
+  }
+
+  if (status === 'authenticated') {
+    return (
+      <div className="auth-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="skeleton" style={{ width: 220, height: 28 }} />
+      </div>
+    );
+  }
 
   const DEMO_PASSWORD = 'Admin@123';
 
@@ -42,15 +65,14 @@ export default function LoginPage() {
         setError('Invalid email or password. Please try again.');
       } else {
         const res = await fetch('/api/auth/session');
-        const session = await res.json();
-        const role = session?.user?.role;
-        const paths = {
-          super_admin: '/dashboard/admin',
-          college_admin: '/dashboard/college',
-          employer: '/dashboard/employer',
-          student: '/dashboard/student',
-        };
-        router.push(paths[role] || '/dashboard');
+        const sess = await res.json();
+        const role = sess?.user?.role;
+        const path = getDashboardPath(role);
+        if (typeof window !== 'undefined') {
+          window.location.replace(`${window.location.origin}${path}`);
+        } else {
+          router.replace(path);
+        }
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');

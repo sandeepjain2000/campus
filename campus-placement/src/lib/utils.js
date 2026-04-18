@@ -100,6 +100,9 @@ export function getStatusColor(status) {
     placed: 'green',
     opted_out: 'gray',
     higher_studies: 'blue',
+    // Internship (student)
+    none: 'gray',
+    ongoing: 'indigo',
     // Generic
     active: 'green',
     inactive: 'gray',

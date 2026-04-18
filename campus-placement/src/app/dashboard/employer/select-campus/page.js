@@ -39,7 +39,12 @@ export default function SelectCampusPage() {
       city: college.city,
       state: college.state,
     }));
-    router.push('/dashboard/employer');
+    try {
+      window.dispatchEvent(new Event('placementhub-active-campus'));
+    } catch {
+      /* ignore */
+    }
+    router.replace('/dashboard/employer');
   };
 
   const handleRequestAccess = async (college) => {

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Trophy, FlaskConical, Palette, School, MapPin } from 'lucide-react';
+import { Trophy, FlaskConical, Palette, School, MapPin, X, CreditCard, Building2, Landmark } from 'lucide-react';
 
 const colleges = [
   {
@@ -50,9 +50,22 @@ const colleges = [
   }
 ];
 
+const PAY_TABS = [
+  { id: 'online', label: 'Pay online', icon: CreditCard },
+  { id: 'cheque', label: 'Cheque', icon: Building2 },
+  { id: 'bank', label: 'Bank transfer', icon: Landmark },
+];
+
 export default function EmployerSponsorshipsPage() {
   const [activeCollegeId, setActiveCollegeId] = useState(colleges[0].id);
+  const [sponsorModal, setSponsorModal] = useState(null);
+  const [payTab, setPayTab] = useState('online');
   const activeCollege = colleges.find(c => c.id === activeCollegeId);
+
+  const closeModal = () => {
+    setSponsorModal(null);
+    setPayTab('online');
+  };
 
   return (
     <div className="animate-fadeIn">
@@ -70,13 +83,9 @@ export default function EmployerSponsorshipsPage() {
       }}>
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Sponsor Top <span className="text-primary-600">Institutions</span></h1>
-          <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 2rem' }}>
+          <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 0' }}>
             Build your brand presence across premier campuses. Partner with institutions to empower student success and foster long-term recruitment pipelines.
           </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>View Analytics</button>
-            <button className="btn btn-secondary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Schedule Meeting</button>
-          </div>
         </div>
       </div>
 
@@ -161,7 +170,22 @@ export default function EmployerSponsorshipsPage() {
                           </li>
                         ))}
                       </ul>
-                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} onClick={() => alert("Feature coming soon!")}>Sponsor Now</button>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ width: '100%', marginTop: '1rem' }}
+                        onClick={() => {
+                          setPayTab('online');
+                          setSponsorModal({
+                            collegeName: activeCollege.name,
+                            category: level.category,
+                            tierName: tier.name,
+                            price: tier.price,
+                          });
+                        }}
+                      >
+                        Sponsor Now
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -177,6 +201,198 @@ export default function EmployerSponsorshipsPage() {
 
         </div>
       </div>
+
+      {sponsorModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sponsor-modal-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            background: 'rgba(15, 23, 42, 0.55)',
+          }}
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: 520,
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              padding: '1.5rem',
+              position: 'relative',
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon"
+              onClick={closeModal}
+              aria-label="Close"
+              style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+            <span className="badge badge-gray" style={{ marginBottom: '0.75rem', display: 'inline-block' }}>Wireframe</span>
+            <h2 id="sponsor-modal-title" style={{ margin: '0 0 0.25rem', fontSize: '1.25rem', fontWeight: 800 }}>
+              Complete sponsorship
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              {sponsorModal.tierName} · {sponsorModal.category} · {sponsorModal.collegeName} · <strong>{sponsorModal.price}</strong>
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
+              Demo only: choose how payment would work in production — gateway, cheque, or bank transfer.
+            </p>
+
+            <div
+              role="tablist"
+              aria-label="Payment method"
+              style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '1rem' }}
+            >
+              {PAY_TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={payTab === id}
+                  className={payTab === id ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+                  onClick={() => setPayTab(id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <Icon size={16} aria-hidden="true" /> {label}
+                </button>
+              ))}
+            </div>
+
+            {payTab === 'online' && (
+              <div
+                className="wireframe-banner"
+                style={{
+                  display: 'block',
+                  background: 'var(--bg-secondary)',
+                  borderStyle: 'solid',
+                  borderColor: 'var(--border-default)',
+                }}
+              >
+                <strong>Payment gateway (wireframe)</strong>
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  Integrate Razorpay, Stripe, or your bank&apos;s hosted checkout. Here you&apos;d see card / UPI / net banking and a
+                  receipt on success.
+                </p>
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-primary" disabled style={{ opacity: 0.85 }}>
+                    Pay {sponsorModal.price} (demo disabled)
+                  </button>
+                  <span className="text-xs text-secondary">Placeholder — no real charge in this demo.</span>
+                </div>
+              </div>
+            )}
+
+            {payTab === 'cheque' && (
+              <div
+                className="wireframe-banner"
+                style={{
+                  display: 'block',
+                  background: 'var(--bg-secondary)',
+                  borderStyle: 'solid',
+                  borderColor: 'var(--border-default)',
+                }}
+              >
+                <strong>Mail a cheque</strong>
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  Make cheque payable to <strong>{sponsorModal.collegeName}</strong> and mention <strong>{sponsorModal.tierName}</strong> on
+                  the memo line.
+                </p>
+                <address
+                  style={{
+                    marginTop: '1rem',
+                    fontSize: '0.875rem',
+                    fontStyle: 'normal',
+                    lineHeight: 1.6,
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed var(--border-default)',
+                    background: 'var(--bg-primary)',
+                  }}
+                >
+                  Sponsorship Cell (Demo Address)
+                  <br />
+                  Finance &amp; Accounts, Main Campus
+                  <br />
+                  Mumbai / Tiruchirappalli — 400001 / 620015
+                  <br />
+                  India
+                </address>
+              </div>
+            )}
+
+            {payTab === 'bank' && (
+              <div
+                className="wireframe-banner"
+                style={{
+                  display: 'block',
+                  background: 'var(--bg-secondary)',
+                  borderStyle: 'solid',
+                  borderColor: 'var(--border-default)',
+                }}
+              >
+                <strong>Bank transfer</strong>
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  Use these demo details for NEFT / RTGS / IMPS. Reference: your company name + tier.
+                </p>
+                <dl
+                  style={{
+                    margin: '1rem 0 0',
+                    display: 'grid',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed var(--border-default)',
+                    background: 'var(--bg-primary)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <dt className="text-secondary">Account name</dt>
+                    <dd style={{ margin: 0, fontWeight: 600 }}>{sponsorModal.collegeName} (Demo)</dd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <dt className="text-secondary">Bank</dt>
+                    <dd style={{ margin: 0, fontWeight: 600 }}>Demo National Bank</dd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <dt className="text-secondary">Account no.</dt>
+                    <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>50100XXXXXX42</dd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <dt className="text-secondary">IFSC</dt>
+                    <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>DEMO0001234</dd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                    <dt className="text-secondary">Branch</dt>
+                    <dd style={{ margin: 0 }}>Campus / Institutional</dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

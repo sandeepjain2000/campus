@@ -33,14 +33,18 @@ function buildPoolConfig() {
   }
 }
 
-// Create a connection pool for PostgreSQL
-const pool = new Pool(buildPoolConfig());
+/** Lazy pool so importing this module during `next build` does not require DATABASE_URL. */
+let pool;
 
-// Log pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle PostgreSQL client', err);
-  process.exit(-1);
-});
+function getPool() {
+  if (!pool) {
+    pool = new Pool(buildPoolConfig());
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle PostgreSQL client', err);
+    });
+  }
+  return pool;
+}
 
 /**
  * Execute a query against the database
@@ -51,7 +55,7 @@ pool.on('error', (err) => {
 export async function query(text, params) {
   const start = Date.now();
   try {
-    const res = await pool.query(text, params);
+    const res = await getPool().query(text, params);
     const duration = Date.now() - start;
     if (process.env.NODE_ENV === 'development') {
       console.log('Executed query', { text: text.substring(0, 80), duration, rows: res.rowCount });
@@ -68,7 +72,7 @@ export async function query(text, params) {
  * @returns {Promise<import('pg').PoolClient>}
  */
 export async function getClient() {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   const originalQuery = client.query.bind(client);
   const originalRelease = client.release.bind(client);
 

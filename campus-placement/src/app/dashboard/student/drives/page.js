@@ -1,18 +1,123 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 
-// Generate some dynamic dates relative to today
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
+import { useToast } from '@/components/ToastProvider';
+import { loadAppliedDriveIds, saveAppliedDriveIds } from '@/lib/studentProfileStorage';
+
 const today = new Date();
-const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-const past = new Date(today); past.setDate(today.getDate() - 1);
-const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
+const past = new Date(today);
+past.setDate(today.getDate() - 1);
+const nextWeek = new Date(today);
+nextWeek.setDate(today.getDate() + 7);
+
+function ymd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const mockDrives = [
-  { id: 1, company: 'TechCorp Solutions', role: 'Software Development Engineer', date: '2026-09-15', type: 'on_campus', salary: '₹12L - ₹18L PA', status: 'scheduled', branch: ['CSE', 'IT'], cgpa: 7.0, vacancies: 15, registered: 45, deadline: tomorrow.toISOString() },
-  { id: 2, company: 'GlobalSoft Technologies', role: 'Full Stack Developer', date: '2026-09-22', type: 'virtual', salary: '₹10L - ₹15L PA', status: 'approved', branch: ['CSE', 'IT', 'ECE'], cgpa: 6.5, vacancies: 10, registered: 32, deadline: past.toISOString() },
-  { id: 3, company: 'Infosys Limited', role: 'Systems Engineer', date: '2026-10-05', type: 'on_campus', salary: '8L - ₹10L PA', status: 'scheduled', branch: ['CSE', 'ECE', 'ME', 'EE'], cgpa: 6.0, vacancies: 50, registered: 0, deadline: nextWeek.toISOString() },
-  { id: 4, company: 'DataVerse Analytics', role: 'Data Analyst', date: '2026-10-12', type: 'virtual', salary: '₹9L - ₹14L PA', status: 'approved', branch: ['CSE', 'IT', 'Math'], cgpa: 7.5, vacancies: 8, registered: 15, deadline: null },
+  {
+    id: 1,
+    company: 'TechCorp Solutions',
+    role: 'Software Development Engineer',
+    date: '2026-09-15',
+    type: 'on_campus',
+    venue: 'Main Auditorium, IIT Madras',
+    offCampusCity: null,
+    salary: '₹12L - ₹18L PA',
+    status: 'scheduled',
+    branch: ['CSE', 'IT'],
+    cgpa: 7.0,
+    vacancies: 15,
+    registered: 45,
+    deadline: tomorrow.toISOString(),
+  },
+  {
+    id: 2,
+    company: 'GlobalSoft Technologies',
+    role: 'Full Stack Developer',
+    date: '2026-09-22',
+    type: 'virtual',
+    venue: 'Zoom — link shared post shortlist',
+    offCampusCity: null,
+    salary: '₹10L - ₹15L PA',
+    status: 'approved',
+    branch: ['CSE', 'IT', 'ECE'],
+    cgpa: 6.5,
+    vacancies: 10,
+    registered: 32,
+    deadline: past.toISOString(),
+  },
+  {
+    id: 3,
+    company: 'Infosys Limited',
+    role: 'Systems Engineer',
+    date: '2026-10-05',
+    type: 'on_campus',
+    venue: 'CRC Seminar Hall',
+    offCampusCity: null,
+    salary: '₹8L - ₹10L PA',
+    status: 'scheduled',
+    branch: ['CSE', 'ECE', 'ME', 'EE'],
+    cgpa: 6.0,
+    vacancies: 50,
+    registered: 0,
+    deadline: nextWeek.toISOString(),
+  },
+  {
+    id: 4,
+    company: 'DataVerse Analytics',
+    role: 'Data Analyst',
+    date: '2026-10-12',
+    type: 'virtual',
+    venue: 'Remote — HackerRank + video call',
+    offCampusCity: null,
+    salary: '₹9L - ₹14L PA',
+    status: 'approved',
+    branch: ['CSE', 'IT', 'Math'],
+    cgpa: 7.5,
+    vacancies: 8,
+    registered: 15,
+    deadline: null,
+  },
+  {
+    id: 5,
+    company: 'MegaHire Consortium',
+    role: 'Graduate Engineer Trainee',
+    date: '2026-10-24',
+    type: 'off_campus',
+    venue: 'Convention Centre, Manyata Tech Park',
+    offCampusCity: 'Bengaluru',
+    salary: '₹11L - ₹16L PA',
+    status: 'scheduled',
+    branch: ['CSE', 'IT', 'ECE', 'EEE'],
+    cgpa: 6.5,
+    vacancies: 200,
+    registered: 1200,
+    deadline: new Date('2026-10-20T23:59:59').toISOString(),
+  },
+  {
+    id: 6,
+    company: 'PastCorp (archived)',
+    role: 'Internship',
+    date: ymd(past),
+    type: 'on_campus',
+    venue: 'Old hall',
+    offCampusCity: null,
+    salary: '₹4L stipend',
+    status: 'approved',
+    branch: ['CSE'],
+    cgpa: 7.0,
+    vacancies: 5,
+    registered: 40,
+    deadline: past.toISOString(),
+  },
 ];
 
 function getTimeLeft(deadline) {
@@ -21,31 +126,108 @@ function getTimeLeft(deadline) {
   const now = new Date();
   const diff = d - now;
   if (diff < 0) return 'Expired';
-  
+
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  
+
   if (days > 0) return `${days}d ${hours}h left`;
   if (hours > 0) return `${hours}h left`;
   return '< 1h left';
 }
 
+function driveTypeLabel(type) {
+  if (type === 'virtual') return '🌐 Virtual';
+  if (type === 'off_campus') return '🏙️ Off-campus';
+  if (type === 'hybrid') return '🔄 Hybrid';
+  return '🏛️ On-campus';
+}
+
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
 export default function StudentDrivesPage() {
+  const { data: session } = useSession();
+  const email = session?.user?.email || '';
+  const { addToast } = useToast();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [datePreset, setDatePreset] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [rangeFrom, setRangeFrom] = useState('');
+  const [rangeTo, setRangeTo] = useState('');
   const [now, setNow] = useState(Date.now());
-  
-  const [applyingTo, setApplyingTo] = useState(null); // stores drive object
+  const [appliedIds, setAppliedIds] = useState(() => new Set());
+
+  const [applyingTo, setApplyingTo] = useState(null);
   const [locationPref, setLocationPref] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    if (email) setAppliedIds(loadAppliedDriveIds(email));
+  }, [email]);
+
+  const persistApplied = useCallback(
+    (set) => {
+      setAppliedIds(set);
+      if (email) saveAppliedDriveIds(email, set);
+    },
+    [email]
+  );
+
+  const monthOptions = useMemo(() => {
+    const opts = [];
+    for (let y = 2026; y <= 2027; y++) {
+      for (let m = 0; m < 12; m++) {
+        const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const label = new Date(y, m).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        opts.push({ key, label });
+      }
+    }
+    return opts;
+  }, []);
+
+  const filteredDrives = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    return mockDrives.filter((d) => {
+      if (search && !d.company.toLowerCase().includes(search.toLowerCase()) && !d.role.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filterType && d.type !== filterType) return false;
+      if (filterStatus && d.status !== filterStatus) return false;
+
+      const driveDay = startOfDay(new Date(d.date + 'T12:00:00'));
+
+      if (monthFilter) {
+        if (!d.date.startsWith(monthFilter)) return false;
+      }
+
+      if (datePreset === 'past' && driveDay >= todayStart) return false;
+      if (datePreset === 'future' && driveDay < todayStart) return false;
+
+      if (datePreset === 'range') {
+        if (rangeFrom) {
+          const from = startOfDay(new Date(rangeFrom + 'T12:00:00'));
+          if (driveDay < from) return false;
+        }
+        if (rangeTo) {
+          const to = startOfDay(new Date(rangeTo + 'T12:00:00'));
+          if (driveDay > to) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [search, filterType, filterStatus, datePreset, monthFilter, rangeFrom, rangeTo]);
+
   const openApplyModal = (drive) => {
+    if (appliedIds.has(drive.id)) return;
     setApplyingTo(drive);
     setLocationPref('');
   };
@@ -59,86 +241,127 @@ export default function StudentDrivesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           drive_id: applyingTo.id,
-          location_preference: locationPref
-        })
+          location_preference: locationPref,
+        }),
       });
-      if (res.ok) {
-        alert('Application submitted successfully!');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok || data.success) {
+        const next = new Set(appliedIds);
+        next.add(applyingTo.id);
+        persistApplied(next);
+        addToast(`Applied to ${applyingTo.company}. Good luck!`, 'info');
       } else {
-        alert('Failed to submit application');
+        addToast(data.error || 'Could not record application. Try again.', 'warning');
       }
-    } catch (e) {
-      alert('Network error during application');
+    } catch {
+      addToast('Network error — application may not be saved.', 'warning');
     } finally {
       setIsSubmitting(false);
       setApplyingTo(null);
     }
   };
 
-  const filteredDrives = mockDrives.filter(d => {
-    if (search && !d.company.toLowerCase().includes(search.toLowerCase()) && !d.role.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterType && d.type !== filterType) return false;
-    if (filterStatus && d.status !== filterStatus) return false;
-    return true;
-  });
-
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
           <h1>🎯 Placement Drives</h1>
-          <p>Browse and apply to upcoming campus placement drives</p>
+          <p>Browse on-campus, virtual, and off-campus drives — filter by date and apply when open.</p>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div className="table-search" style={{ flex: '1', maxWidth: '350px' }}>
-            <input className="form-input" placeholder="🔍 Search by company or role..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="table-search" style={{ flex: '1', minWidth: '220px', maxWidth: '360px' }}>
+              <input className="form-input" placeholder="🔍 Search company or role…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <select className="form-select" style={{ width: 'auto' }} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="">All modes</option>
+              <option value="on_campus">On-campus</option>
+              <option value="virtual">Virtual</option>
+              <option value="off_campus">Off-campus</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+            <select className="form-select" style={{ width: 'auto' }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="">All statuses</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="approved">Approved</option>
+            </select>
           </div>
-          <select className="form-select" style={{ width: 'auto' }} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-            <option value="">All Types</option>
-            <option value="on_campus">On-Campus</option>
-            <option value="virtual">Virtual</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-          <select className="form-select" style={{ width: 'auto' }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="approved">Approved</option>
-          </select>
-          <div className="text-sm text-secondary">{filteredDrives.length} drives found</div>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label className="form-label text-xs">When</label>
+              <select className="form-select" style={{ minWidth: '160px' }} value={datePreset} onChange={(e) => setDatePreset(e.target.value)}>
+                <option value="">Any date</option>
+                <option value="future">Upcoming only</option>
+                <option value="past">Past drives</option>
+                <option value="range">Custom range…</option>
+              </select>
+            </div>
+            {datePreset === 'range' && (
+              <>
+                <div>
+                  <label className="form-label text-xs">From</label>
+                  <input className="form-input" type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label text-xs">To</label>
+                  <input className="form-input" type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
+                </div>
+              </>
+            )}
+            <div>
+              <label className="form-label text-xs">Month</label>
+              <select className="form-select" style={{ minWidth: '200px' }} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
+                <option value="">Any month</option>
+                {monthOptions.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-sm text-secondary">{filteredDrives.length} drives match</div>
+          </div>
         </div>
       </div>
 
-      {/* Drive Cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {filteredDrives.map(drive => {
+        {filteredDrives.map((drive) => {
           const isExpired = drive.deadline ? new Date(drive.deadline) < now : false;
           const timeLeft = getTimeLeft(drive.deadline);
-          
+          const applied = appliedIds.has(drive.id);
+
           return (
-            <div key={drive.id} className={`card card-hover ${isExpired ? 'card-disabled' : ''}`} style={{ cursor: isExpired ? 'default' : 'pointer', opacity: isExpired ? 0.75 : 1 }}>
+            <div
+              key={drive.id}
+              className={`card card-hover ${isExpired && !applied ? 'card-disabled' : ''}`}
+              style={{ cursor: 'default', opacity: isExpired && !applied ? 0.75 : 1 }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                     <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{drive.company}</h3>
                     <span className={`badge badge-${getStatusColor(drive.status)}`}>{formatStatus(drive.status)}</span>
                   </div>
                   <p className="text-sm text-secondary">{drive.role}</p>
+                  <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
+                    📍 {drive.venue}
+                    {drive.offCampusCity ? ` · ${drive.offCampusCity}` : ''}
+                  </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                  <button 
-                    className={`btn ${isExpired ? 'btn-outline' : 'btn-primary'} btn-sm`}
-                    disabled={isExpired}
-                    onClick={() => openApplyModal(drive)}
-                  >
-                    {isExpired ? 'Application Closed' : 'Apply Now'}
-                  </button>
+                  {applied ? (
+                    <span className="badge badge-green">Applied</span>
+                  ) : (
+                    <button className={`btn ${isExpired ? 'btn-outline' : 'btn-primary'} btn-sm`} disabled={isExpired} onClick={() => openApplyModal(drive)}>
+                      {isExpired ? 'Closed' : 'Apply now'}
+                    </button>
+                  )}
                   {timeLeft && (
                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: isExpired ? 'var(--danger-500)' : 'var(--warning-600)' }}>
-                      🕒 {isExpired ? 'Deadline Passed' : `Ends in ${timeLeft}`}
+                      🕒 {isExpired ? 'Deadline passed' : `Ends in ${timeLeft}`}
                     </div>
                   )}
                 </div>
@@ -153,10 +376,10 @@ export default function StudentDrivesPage() {
                   <div className="drive-info-value">{drive.salary}</div>
                 </div>
                 <div className="drive-info-item">
-                  <div className="drive-info-label">Type</div>
+                  <div className="drive-info-label">Mode</div>
                   <div className="drive-info-value">
-                    <span className={`badge badge-${drive.type === 'virtual' ? 'blue' : drive.type === 'hybrid' ? 'amber' : 'indigo'}`}>
-                      {drive.type === 'virtual' ? '🌐 Virtual' : drive.type === 'hybrid' ? '🔄 Hybrid' : '🏛️ On-Campus'}
+                    <span className={`badge badge-${drive.type === 'virtual' ? 'blue' : drive.type === 'off_campus' ? 'amber' : drive.type === 'hybrid' ? 'amber' : 'indigo'}`}>
+                      {driveTypeLabel(drive.type)}
                     </span>
                   </div>
                 </div>
@@ -174,7 +397,11 @@ export default function StudentDrivesPage() {
                 </div>
               </div>
               <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                {drive.branch.map(b => <span key={b} className="badge badge-gray">{b}</span>)}
+                {drive.branch.map((b) => (
+                  <span key={b} className="badge badge-gray">
+                    {b}
+                  </span>
+                ))}
               </div>
             </div>
           );
@@ -182,33 +409,43 @@ export default function StudentDrivesPage() {
       </div>
 
       {applyingTo && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)'
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
           <div className="card" style={{ width: '100%', maxWidth: '400px', margin: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>
-              Apply to {applyingTo.company}
-            </h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>Apply to {applyingTo.company}</h3>
             <p className="text-secondary" style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-              Before completing your application for <strong>{applyingTo.role}</strong>, please provide your preferred work location if the company has multiple offices.
+              Confirm application for <strong>{applyingTo.role}</strong>. You can note a location preference if the role has multiple bases.
             </p>
             <div className="form-group">
-              <label className="form-label">Preferred Location (Optional)</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="E.g. Bangalore, Remote, Any" 
+              <label className="form-label">Preferred location (optional)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="E.g. Bangalore, Remote, Any"
                 value={locationPref}
                 onChange={(e) => setLocationPref(e.target.value)}
                 disabled={isSubmitting}
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-              <button className="btn btn-outline" onClick={() => setApplyingTo(null)} disabled={isSubmitting}>Cancel</button>
-              <button className="btn btn-primary" onClick={confirmApply} disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Confirm Application'}
+              <button type="button" className="btn btn-outline" onClick={() => setApplyingTo(null)} disabled={isSubmitting}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmApply} disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting…' : 'Confirm application'}
               </button>
             </div>
           </div>
@@ -217,4 +454,3 @@ export default function StudentDrivesPage() {
     </div>
   );
 }
-

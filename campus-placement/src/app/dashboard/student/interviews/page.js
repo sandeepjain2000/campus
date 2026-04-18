@@ -4,9 +4,46 @@ import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid
 import { formatDate } from '@/lib/utils';
 
 const myInterviews = [
-  { id: 1, company: 'TCS', round: 'Technical Round 1', date: '2026-10-01', time: '10:30 AM', mode: 'Virtual', status: 'Scheduled' },
-  { id: 2, company: 'Infosys', round: 'HR Round', date: '2026-10-02', time: '03:00 PM', mode: 'On-Campus', status: 'Scheduled' },
-  { id: 3, company: 'TechCorp', round: 'Coding Interview', date: '2026-09-26', time: '11:00 AM', mode: 'Virtual', status: 'Completed' },
+  {
+    id: 1,
+    company: 'TCS',
+    round: 'Technical Round 1',
+    date: '2026-10-01',
+    time: '10:30 AM',
+    mode: 'Virtual',
+    location: 'Microsoft Teams — link on dashboard',
+    status: 'Scheduled',
+  },
+  {
+    id: 2,
+    company: 'Infosys',
+    round: 'HR Round',
+    date: '2026-10-02',
+    time: '03:00 PM',
+    mode: 'On-Campus',
+    location: 'CRC Interview Room 204 · Block B',
+    status: 'Scheduled',
+  },
+  {
+    id: 3,
+    company: 'TechCorp',
+    round: 'Coding Interview',
+    date: '2026-09-26',
+    time: '11:00 AM',
+    mode: 'Virtual',
+    location: 'HackerRank + Google Meet',
+    status: 'Completed',
+  },
+  {
+    id: 4,
+    company: 'MegaHire Consortium',
+    round: 'Panel — systems',
+    date: '2026-10-24',
+    time: '09:00 AM',
+    mode: 'Off-Campus',
+    location: 'Manyata Tech Park, Bengaluru — Gate 3, Tower A, 5th floor',
+    status: 'Scheduled',
+  },
 ];
 
 export default function StudentInterviewsPage() {
@@ -19,7 +56,7 @@ export default function StudentInterviewsPage() {
         date: i.date,
         title: `${i.company} — ${i.round}`,
         time: i.time,
-        meta: `${i.mode} · ${i.status}`,
+        meta: `${i.mode} · ${i.location}`,
       })),
     [],
   );
@@ -55,6 +92,7 @@ export default function StudentInterviewsPage() {
                 <th>Date</th>
                 <th>Time</th>
                 <th>Mode</th>
+                <th>Location / venue</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -66,6 +104,9 @@ export default function StudentInterviewsPage() {
                   <td>{formatDate(i.date)}</td>
                   <td>{i.time}</td>
                   <td>{i.mode}</td>
+                  <td className="text-sm" style={{ maxWidth: '280px' }}>
+                    {i.location}
+                  </td>
                   <td>
                     <span className={`badge ${i.status === 'Completed' ? 'badge-green' : 'badge-blue'}`}>{i.status}</span>
                   </td>
