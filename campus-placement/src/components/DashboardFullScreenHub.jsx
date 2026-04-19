@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import { Sun, Moon, Search } from 'lucide-react';
+import { Sun, Moon, Search, Bell } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import EntityLogo from '@/components/EntityLogo';
 import { menuConfig, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
+import { getNotificationIconTitle } from '@/lib/appVersion';
 import { getRoleDisplayName } from '@/lib/utils';
 
 function getHubPageTitle(session, role, menu) {
@@ -113,6 +114,7 @@ export default function DashboardFullScreenHub({ role, session }) {
   const quickActions = getQuickActions(role, employerHasCampus);
   const logoName =
     role === 'super_admin' ? 'PlacementHub' : session?.user?.tenantName || session?.user?.name || 'PlacementHub';
+  const notificationTitle = getNotificationIconTitle();
 
   return (
     <div className="dashboard-nav-hub">
@@ -161,6 +163,15 @@ export default function DashboardFullScreenHub({ role, session }) {
             </div>
             <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>{getRoleDisplayName(role)}</div>
           </div>
+          <Link
+            href="/dashboard/alerts"
+            className="btn btn-ghost btn-icon notification-bell"
+            title={notificationTitle}
+            aria-label={notificationTitle}
+          >
+            <Bell size={18} aria-hidden="true" />
+            <span className="notification-dot" aria-hidden />
+          </Link>
           <button
             type="button"
             className="btn btn-ghost btn-icon"

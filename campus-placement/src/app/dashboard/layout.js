@@ -17,6 +17,7 @@ import {
   isSidebarItemActive,
   isRoleDashboardHome,
 } from '@/config/dashboardMenu';
+import { getNotificationIconTitle } from '@/lib/appVersion';
 import { Bell, Moon, Sun, Menu, Mail, Home } from 'lucide-react';
 
 const getActiveCampusName = () => {
@@ -72,6 +73,7 @@ export default function DashboardLayout({ children }) {
   const activeSection = menu.sections.find((s) => s.id === sectionId) || menu.sections[0];
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
   const isHub = isRoleDashboardHome(pathname, role);
+  const notificationTitle = getNotificationIconTitle();
 
   if (isHub) {
     return <>{children}</>;
@@ -261,7 +263,9 @@ export default function DashboardLayout({ children }) {
               <button
                 className="btn btn-ghost btn-icon notification-bell"
                 onClick={() => setNotifOpen(!notifOpen)}
-                aria-label="Notifications"
+                type="button"
+                title={notificationTitle}
+                aria-label={notificationTitle}
               >
                 <Bell size={18} aria-hidden="true" />
                 <span className="notification-dot" />
