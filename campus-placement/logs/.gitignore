@@ -1,0 +1,4 @@
+# Keep log files out of git; folder is kept via .gitkeep
+*
+!.gitignore
+!.gitkeep

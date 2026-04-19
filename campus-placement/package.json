@@ -6,9 +6,12 @@
     "dev": "next dev --webpack",
     "dev:turbo": "next dev",
     "build": "next build",
+    "build:log": "node scripts/run-with-log.mjs -- npm run build",
     "start": "next start",
     "lint": "eslint",
-    "verify:aws": "node scripts/verify-aws-credentials.mjs"
+    "verify:aws": "node scripts/verify-aws-credentials.mjs",
+    "verify:aws:log": "node scripts/run-with-log.mjs -- node scripts/verify-aws-credentials.mjs",
+    "vercel:prod:log": "node scripts/run-with-log.mjs -- npx vercel --prod"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1031.0",
