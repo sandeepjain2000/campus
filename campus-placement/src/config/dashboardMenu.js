@@ -2,7 +2,7 @@ import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
-  CalendarDays,
+  CalendarDays, PartyPopper, SlidersHorizontal,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -157,37 +157,64 @@ export const menuConfig = {
     sections: [
       {
         id: 'college-overview',
-        title: 'Overview',
+        title: '🧭 Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/college/overview', icon: LayoutDashboard },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
       {
-        id: 'college-management',
-        title: 'Management',
+        id: 'college-company',
+        title: '🏢 Company & Opportunities',
         items: [
-          { label: 'Students', href: '/dashboard/college/students', icon: GraduationCap },
           { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
-          { label: 'Interview Scheduling', href: '/dashboard/college/interviews', icon: Calendar },
-          { label: 'Hiring Assessment', href: '/dashboard/college/hiring-assessment', icon: ListChecks },
-          { label: 'Internships', href: '/dashboard/college/internships', icon: Calendar },
+          { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
-          { label: 'Clarifications (publish)', href: '/dashboard/college/clarifications', icon: HelpCircle },
-          { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
-          { label: 'Infrastructure', href: '/dashboard/college/infrastructure', icon: Building },
-          { label: 'Calendar', href: '/dashboard/college/calendar', icon: Calendar },
         ],
       },
       {
-        id: 'college-configuration',
-        title: 'Configuration',
+        id: 'college-students-apps',
+        title: '👨‍🎓 Students & Applications',
         items: [
-          { label: 'Placement Rules', href: '/dashboard/college/rules', icon: Settings },
+          { label: 'Students', href: '/dashboard/college/students', icon: Users },
+          { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
+          { label: 'Offers', href: '/dashboard/college/offers', icon: Send },
+        ],
+      },
+      {
+        id: 'college-evaluation',
+        title: '🧪 Evaluation & Selection',
+        items: [
+          { label: 'Hiring Assessment', href: '/dashboard/college/hiring-assessment', icon: ListChecks },
+          { label: 'Interview Scheduling', href: '/dashboard/college/interviews', icon: Calendar },
+        ],
+      },
+      {
+        id: 'college-engagement',
+        title: '📣 Engagement & Communication',
+        items: [
+          { label: 'Clarifications (publish)', href: '/dashboard/college/clarifications', icon: HelpCircle },
+          { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
+          { label: 'Calendar', href: '/dashboard/college/calendar', icon: CalendarDays },
+          { label: 'Events', href: '/dashboard/college/events', icon: PartyPopper },
+        ],
+      },
+      {
+        id: 'college-administration',
+        title: '⚙️ Administration',
+        items: [
+          { label: 'Placement Rules', href: '/dashboard/college/rules', icon: SlidersHorizontal },
+          { label: 'Infrastructure', href: '/dashboard/college/infrastructure', icon: Building },
+          { label: 'Settings', href: '/dashboard/college/settings', icon: Settings },
+        ],
+      },
+      {
+        id: 'college-insights',
+        title: '📊 Insights',
+        items: [
           { label: 'Reports', href: '/dashboard/college/reports', icon: TrendingUp },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
-          { label: 'Settings', href: '/dashboard/college/settings', icon: Settings },
         ],
       },
     ],
