@@ -1,27 +1,45 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import PageError from '@/components/PageError';
 
-const mockApplications = [
-  { id: 1, company: 'TechCorp Solutions', role: 'SDE', status: 'shortlisted', currentRound: 'Coding Round', rounds: ['Aptitude ✅', 'Coding 🔄', 'Technical Interview', 'HR Interview'], appliedAt: '2026-09-08', driveDate: '2026-09-15' },
-  { id: 2, company: 'GlobalSoft Technologies', role: 'Full Stack Dev', status: 'applied', currentRound: 'Pending Review', rounds: ['Coding Assessment', 'Technical Interview', 'HR'], appliedAt: '2026-09-11', driveDate: '2026-09-22' },
-  { id: 3, company: 'DataVerse Analytics', role: 'Data Analyst', status: 'rejected', currentRound: 'Aptitude Test', rounds: ['Aptitude ❌'], appliedAt: '2026-08-20', driveDate: '2026-09-01' },
-  { id: 4, company: 'CloudNine Systems', role: 'DevOps Engineer', status: 'selected', currentRound: 'All rounds cleared', rounds: ['Coding ✅', 'System Design ✅', 'HR ✅'], appliedAt: '2026-08-15', driveDate: '2026-08-25' },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to load applications');
+  }
+  return res.json();
+};
+
+function roundLabel(item) {
+  if (item.status === 'selected') return 'All rounds cleared';
+  if (item.status === 'rejected') return 'Not qualified';
+  if (Number(item.currentRound) > 0) return `Round ${item.currentRound}`;
+  return 'Pending review';
+}
 
 export default function StudentApplicationsPage() {
   const [filter, setFilter] = useState('');
+  const { data, error, isLoading } = useSWR('/api/student/applications', fetcher);
+  const applications = data?.items || [];
 
-  const filtered = mockApplications.filter(a => !filter || a.status === filter);
+  const filtered = useMemo(
+    () => applications.filter((a) => !filter || a.status === filter),
+    [applications, filter],
+  );
 
   const statusCounts = {
-    all: mockApplications.length,
-    applied: mockApplications.filter(a => a.status === 'applied').length,
-    shortlisted: mockApplications.filter(a => a.status === 'shortlisted').length,
-    selected: mockApplications.filter(a => a.status === 'selected').length,
-    rejected: mockApplications.filter(a => a.status === 'rejected').length,
+    all: applications.length,
+    applied: applications.filter((a) => a.status === 'applied').length,
+    shortlisted: applications.filter((a) => a.status === 'shortlisted').length,
+    selected: applications.filter((a) => a.status === 'selected').length,
+    rejected: applications.filter((a) => a.status === 'rejected').length,
   };
+
+  if (error) return <PageError error={error} />;
 
   return (
     <div className="animate-fadeIn">
@@ -43,6 +61,11 @@ export default function StudentApplicationsPage() {
 
       {/* Application Cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {isLoading && (
+          <div className="card">
+            <div className="text-sm text-secondary">Loading applications…</div>
+          </div>
+        )}
         {filtered.map(app => (
           <div key={app.id} className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -62,25 +85,12 @@ export default function StudentApplicationsPage() {
               </div>
             </div>
             
-            {/* Rounds Progress */}
             <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
-              <div className="text-xs font-semibold text-secondary" style={{ marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Round Progress
+              <div className="text-xs font-semibold text-secondary" style={{ marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Current stage
               </div>
-              <div className="steps">
-                {app.rounds.map((round, i) => {
-                  const isCompleted = round.includes('✅');
-                  const isCurrent = round.includes('🔄');
-                  const isFailed = round.includes('❌');
-                  return (
-                    <div key={i} className={`step ${isCompleted ? 'completed' : isCurrent ? 'active' : ''}`}>
-                      <div className="step-number" style={isFailed ? { background: 'var(--danger-500)', color: 'white' } : {}}>
-                        {isCompleted ? '✓' : isFailed ? '✗' : i + 1}
-                      </div>
-                      <span className="step-label">{round.replace(/[✅🔄❌]/g, '').trim()}</span>
-                    </div>
-                  );
-                })}
+              <div className="text-sm" style={{ fontWeight: 600 }}>
+                {roundLabel(app)}
               </div>
             </div>
 
@@ -95,6 +105,11 @@ export default function StudentApplicationsPage() {
             </div>
           </div>
         ))}
+        {!isLoading && filtered.length === 0 && (
+          <div className="card">
+            <div className="text-sm text-secondary">No applications found for this filter.</div>
+          </div>
+        )}
       </div>
     </div>
   );

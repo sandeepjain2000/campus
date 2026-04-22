@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
@@ -148,10 +149,21 @@ function startOfDay(d) {
   return x;
 }
 
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to fetch data');
+  }
+  return res.json();
+};
+
 export default function StudentDrivesPage() {
   const { data: session } = useSession();
   const email = session?.user?.email || '';
   const { addToast } = useToast();
+  const { data: drivesData } = useSWR('/api/student/drives', fetcher);
+  const { data: applicationsData } = useSWR('/api/student/applications', fetcher);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -172,8 +184,18 @@ export default function StudentDrivesPage() {
   }, []);
 
   useEffect(() => {
+    if (Array.isArray(applicationsData?.items)) {
+      const dbSet = new Set(
+        applicationsData.items
+          .filter((item) => item.status !== 'withdrawn')
+          .map((item) => item.drive_id),
+      );
+      setAppliedIds(dbSet);
+      if (email) saveAppliedDriveIds(email, dbSet);
+      return;
+    }
     if (email) setAppliedIds(loadAppliedDriveIds(email));
-  }, [email]);
+  }, [applicationsData, email]);
 
   const persistApplied = useCallback(
     (set) => {
@@ -182,6 +204,13 @@ export default function StudentDrivesPage() {
     },
     [email]
   );
+
+  const drives = useMemo(() => {
+    if (Array.isArray(drivesData?.drives) && drivesData.drives.length > 0) {
+      return drivesData.drives;
+    }
+    return mockDrives;
+  }, [drivesData]);
 
   const monthOptions = useMemo(() => {
     const opts = [];
@@ -197,7 +226,7 @@ export default function StudentDrivesPage() {
 
   const filteredDrives = useMemo(() => {
     const todayStart = startOfDay(new Date());
-    return mockDrives.filter((d) => {
+    return drives.filter((d) => {
       if (search && !d.company.toLowerCase().includes(search.toLowerCase()) && !d.role.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterType && d.type !== filterType) return false;
       if (filterStatus && d.status !== filterStatus) return false;
@@ -224,7 +253,7 @@ export default function StudentDrivesPage() {
 
       return true;
     });
-  }, [search, filterType, filterStatus, datePreset, monthFilter, rangeFrom, rangeTo]);
+  }, [drives, search, filterType, filterStatus, datePreset, monthFilter, rangeFrom, rangeTo]);
 
   const openApplyModal = (drive) => {
     if (appliedIds.has(drive.id)) return;
