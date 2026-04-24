@@ -108,6 +108,7 @@ export function getStatusColor(status) {
     inactive: 'gray',
     verified: 'green',
     unverified: 'amber',
+    blacklisted: 'red',
   };
   return colors[status] || 'gray';
 }

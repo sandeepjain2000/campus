@@ -27,10 +27,6 @@ export async function GET() {
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Error fetching employer requests:', error);
-    // Mock Data fallback
-    return NextResponse.json([
-      { approval_id: 'mock-1', status: 'pending', created_at: new Date().toISOString(), employer_id: 'emp-1', company_name: 'Stark Industries', industry: 'Defense', website: 'https://stark.com' },
-      { approval_id: 'mock-2', status: 'pending', created_at: new Date().toISOString(), employer_id: 'emp-2', company_name: 'Wayne Enterprises', industry: 'Technology', website: 'https://wayne.com' }
-    ]);
+    return NextResponse.json({ error: 'Failed to load requests' }, { status: 500 });
   }
 }

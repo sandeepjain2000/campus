@@ -2,7 +2,7 @@ import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
-  CalendarDays, PartyPopper, SlidersHorizontal,
+  CalendarDays, PartyPopper, SlidersHorizontal, Handshake,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -104,6 +104,11 @@ export const menuConfig = {
         title: '🧭 Core / Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/employer/overview', icon: LayoutDashboard },
+          {
+            label: 'Campus tie-ups',
+            href: '/dashboard/employer/select-campus',
+            icon: Handshake,
+          },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
           { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
         ],
@@ -168,6 +173,7 @@ export const menuConfig = {
         title: '🏢 Company & Opportunities',
         items: [
           { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
+          { label: 'Employer tie-up requests', href: '/dashboard/college/employers/requests', icon: Inbox },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },

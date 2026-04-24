@@ -20,21 +20,28 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import DevScreenTag from '@/components/DevScreenTag';
 import { Moon, Sun, Menu, Mail, Home } from 'lucide-react';
 
-const getActiveCampusName = () => {
-  try {
-    const raw = typeof window !== 'undefined' ? sessionStorage.getItem('activeCampus') : null;
-    return raw ? JSON.parse(raw).name : 'Select Campus';
-  } catch {
-    return 'Select Campus';
-  }
-};
-
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [employerCampusLabel, setEmployerCampusLabel] = useState(null);
+
+  useEffect(() => {
+    if (session?.user?.role !== 'employer') return;
+    const readCampus = () => {
+      try {
+        const raw = sessionStorage.getItem('activeCampus');
+        setEmployerCampusLabel(raw ? JSON.parse(raw).name : null);
+      } catch {
+        setEmployerCampusLabel(null);
+      }
+    };
+    readCampus();
+    window.addEventListener('placementhub-active-campus', readCampus);
+    return () => window.removeEventListener('placementhub-active-campus', readCampus);
+  }, [session?.user?.role]);
 
   useEffect(() => {
     if (!session?.user?.role) return;
@@ -211,7 +218,7 @@ export default function DashboardLayout({ children }) {
                 </>
               )}
 
-              {role === 'employer' && typeof window !== 'undefined' && sessionStorage.getItem('activeCampus') && (
+              {role === 'employer' && (
                 <>
                   <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -226,7 +233,7 @@ export default function DashboardLayout({ children }) {
                         fontWeight: 500,
                       }}
                     >
-                      {getActiveCampusName()}
+                      {employerCampusLabel || 'Choose or request tie-up'}
                       <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)' }}>▼</span>
                     </Link>
                   </div>

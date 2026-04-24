@@ -30,20 +30,34 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized role' }, { status: 403 });
     }
 
-    try {
+    if (role === 'college_admin') {
       const result = await query(
         `UPDATE employer_approvals 
-         SET status = 'rejected', rejection_reason = 'Mutual agreement cancelled', approved_at = NOW()
-         WHERE tenant_id = $1 AND employer_id = $2 
+         SET status = 'blacklisted', rejection_reason = COALESCE($3, 'Access revoked by college'), 
+             approved_by = $4, approved_at = NOW()
+         WHERE tenant_id = $1::uuid AND employer_id = $2::uuid 
          RETURNING id`,
-        [target_tenant_id, employer_id]
+        [target_tenant_id, employer_id, body.reason || null, user_id],
       );
-
-      return NextResponse.json({ success: true, message: 'Agreement cancelled successfully', result: result.rows });
-    } catch (dbError) {
-      console.error('DB Cancel failed:', dbError);
-      return NextResponse.json({ success: true, message: 'Agreement cancelled (mocked)', mock: true });
+      if (result.rowCount === 0) {
+        return NextResponse.json({ error: 'No partnership record found' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, message: 'Employer access blocked', result: result.rows });
     }
+
+    const result = await query(
+      `UPDATE employer_approvals 
+       SET status = 'rejected', rejection_reason = 'Partnership cancelled by employer', approved_at = NOW()
+       WHERE tenant_id = $1::uuid AND employer_id = $2::uuid 
+       RETURNING id`,
+      [target_tenant_id, employer_id],
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'No partnership record found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Partnership cancelled', result: result.rows });
   } catch (error) {
     console.error('Revoke API Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -1,10 +1,16 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import { formatDate } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 
-const fetcher = url => fetch(url).then(res => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load');
+  if (!Array.isArray(data)) throw new Error(data.error || 'Invalid response');
+  return data;
+};
 
 export default function EmployerRequestsPage() {
   const { data: requests, error, isLoading, mutate } = useSWR('/api/college/employers/requests', fetcher);
@@ -32,12 +38,20 @@ export default function EmployerRequestsPage() {
 
   if (isLoading) return <div className="skeleton skeleton-card" style={{ height: 200, margin: '2rem' }}></div>;
 
+  if (error) {
+    return (
+      <div className="animate-fadeIn" style={{ padding: '2rem', color: 'var(--danger-600)' }}>
+        <p>{error.message || 'Could not load requests.'}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
           <h1>🏢 Employer Requests</h1>
-          <p>Review and act on campus access requests from employers</p>
+          <p>Employers initiate tie-ups from their portal; you approve or reject here.</p>
         </div>
       </div>
 

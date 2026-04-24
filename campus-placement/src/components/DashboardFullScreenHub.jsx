@@ -27,7 +27,7 @@ function getQuickActions(role, employerHasCampus) {
   if (role === 'employer') {
     return [
       {
-        label: employerHasCampus ? 'Change campus' : 'Select campus',
+        label: employerHasCampus ? 'Change campus' : 'Campus tie-ups',
         href: '/dashboard/employer/select-campus',
       },
       { label: 'Job postings', href: '/dashboard/employer/jobs' },
@@ -50,6 +50,7 @@ function getQuickActions(role, employerHasCampus) {
       { label: 'Students', href: '/dashboard/college/students' },
       { label: 'Placement drives', href: '/dashboard/college/drives' },
       { label: 'Employers', href: '/dashboard/college/employers' },
+      { label: 'Employer tie-up requests', href: '/dashboard/college/employers/requests' },
       { label: 'Settings', href: '/dashboard/college/settings' },
       { label: 'Alerts', href: '/dashboard/alerts' },
     ];
@@ -208,7 +209,7 @@ export default function DashboardFullScreenHub({ role, session }) {
               below; pages that need a campus will prompt you.
             </p>
             <Link href="/dashboard/employer/select-campus" className="btn btn-primary btn-sm" style={{ marginTop: '0.75rem', display: 'inline-flex' }}>
-              Select campus →
+              Campus tie-ups →
             </Link>
           </div>
         )}

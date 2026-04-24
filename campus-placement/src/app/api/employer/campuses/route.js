@@ -15,12 +15,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    }
+
     // Get employer profile
     const empResult = await query(
       `SELECT ep.id, ep.company_name FROM employer_profiles ep
        JOIN users u ON u.id = ep.user_id
        WHERE u.id = $1`,
-      [session.user.id]
+      [userId]
     );
     if (!empResult.rows.length) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
@@ -62,10 +67,15 @@ export async function GET() {
       [employer.id]
     );
 
+    const colleges = result.rows.map((row) => ({
+      ...row,
+      approval_status: row.approval_status != null ? String(row.approval_status).trim() : null,
+    }));
+
     return NextResponse.json({
       employerId: employer.id,
       companyName: employer.company_name,
-      colleges: result.rows,
+      colleges,
     });
   } catch (error) {
     console.error('Campuses API error:', error);
@@ -87,9 +97,14 @@ export async function POST(req) {
       return NextResponse.json({ error: 'collegeId is required' }, { status: 400 });
     }
 
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    }
+
     const empResult = await query(
       `SELECT ep.id FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE u.id = $1`,
-      [session.user.id]
+      [userId]
     );
     if (!empResult.rows.length) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
@@ -99,10 +114,16 @@ export async function POST(req) {
     const empName = await query(`SELECT company_name FROM employer_profiles WHERE id = $1::uuid`, [employerId]);
     const companyName = empName.rows[0]?.company_name || 'An employer';
 
+    // New row, or re-open a rejected / blacklisted tie-up as pending again.
     const ins = await query(
       `INSERT INTO employer_approvals (tenant_id, employer_id, status)
-       VALUES ($1, $2, 'pending')
-       ON CONFLICT (tenant_id, employer_id) DO NOTHING
+       VALUES ($1::uuid, $2::uuid, 'pending')
+       ON CONFLICT (tenant_id, employer_id) DO UPDATE SET
+         status = 'pending',
+         rejection_reason = NULL,
+         approved_by = NULL,
+         approved_at = NULL
+       WHERE employer_approvals.status IN ('rejected', 'blacklisted')
        RETURNING id`,
       [collegeId, employerId],
     );
@@ -117,13 +138,34 @@ export async function POST(req) {
         type: 'info',
         link: '/dashboard/college/employers/requests',
       });
+      return NextResponse.json({
+        success: true,
+        message: 'Tie-up request submitted',
+        notified: true,
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: ins.rows.length ? 'Access requested successfully' : 'Request already exists or was submitted before',
-      notified: ins.rows.length > 0,
-    });
+    const existing = await query(
+      `SELECT status FROM employer_approvals WHERE tenant_id = $1::uuid AND employer_id = $2::uuid`,
+      [collegeId, employerId],
+    );
+    const st = existing.rows[0]?.status;
+    if (st === 'pending') {
+      return NextResponse.json({
+        success: true,
+        message: 'A tie-up request is already pending for this campus',
+        notified: false,
+        alreadyPending: true,
+      });
+    }
+    if (st === 'approved') {
+      return NextResponse.json(
+        { error: 'You already have an approved tie-up with this campus. Open it from the table.' },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json({ error: 'Could not create tie-up request' }, { status: 400 });
   } catch (error) {
     console.error('Campus request error:', error);
     return NextResponse.json({ error: 'Failed to request access' }, { status: 500 });

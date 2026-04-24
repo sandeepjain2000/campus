@@ -19,25 +19,19 @@ export async function POST(req) {
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-    try {
-      const result = await query(
-        `UPDATE employer_approvals 
-         SET status = $1, approved_by = $2, approved_at = NOW(), rejection_reason = $3
-         WHERE id = $4 AND tenant_id = $5 
-         RETURNING id, status`,
-        [newStatus, user_id, rejection_reason || null, approval_id, tenant_id]
-      );
+    const result = await query(
+      `UPDATE employer_approvals 
+       SET status = $1, approved_by = $2, approved_at = NOW(), rejection_reason = $3
+       WHERE id = $4::uuid AND tenant_id = $5::uuid 
+       RETURNING id, status`,
+      [newStatus, user_id, rejection_reason || null, approval_id, tenant_id],
+    );
 
-      if (result.rowCount === 0) {
-        return NextResponse.json({ error: 'Approval record not found' }, { status: 404 });
-      }
-
-      return NextResponse.json({ success: true, status: newStatus });
-    } catch (dbError) {
-      console.error('DB Update failed:', dbError);
-      // Mock Success if DB fails (for demo purposes if real db is empty or erroring)
-      return NextResponse.json({ success: true, status: newStatus, mock: true });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Approval record not found' }, { status: 404 });
     }
+
+    return NextResponse.json({ success: true, status: newStatus });
   } catch (error) {
     console.error('Approval API Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

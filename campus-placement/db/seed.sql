@@ -54,12 +54,7 @@ INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry
 ('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 'https://nitt.edu', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
 ('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 'https://bits-alumni.org', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']);
 
--- 4b. Employer campus approvals (demo: approved partnerships so employers can enter a campus)
-INSERT INTO employer_approvals (tenant_id, employer_id, status, approved_at) VALUES
-('a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'approved', NOW()),
-('a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'approved', NOW()),
-('a1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 'approved', NOW()),
-('a1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000003', 'approved', NOW());
+-- 4b. Employer campus approvals: none in seed — employers request tie-ups from the app.
 
 -- 5. Student Profiles
 INSERT INTO student_profiles (user_id, tenant_id, roll_number, department, branch, batch_year, graduation_year, cgpa, tenth_percentage, twelfth_percentage, gender, placement_status, is_verified, bio) VALUES
