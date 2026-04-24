@@ -4,6 +4,8 @@ import { query } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/employer/campuses
 // Returns all colleges with this employer's approval status for each
 export async function GET() {

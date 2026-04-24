@@ -162,7 +162,7 @@ export default function CollegeDrivesPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>🎯 Placement Drives</h1>
-          <p>Schedule and manage all placement drives. Social icons per drive are wireframe only — green = marked shared in this demo.</p>
+          <p>Schedule and manage all placement drives. Social share flags are a wireframe (compact, on the right of each card).</p>
         </div>
         <div className="page-header-actions">
           <ExportCsvSplitButton filenameBase="college_placement_drives" currentCount={drives.length} fullCount={drives.length} getRows={getDrivesCsv} />
@@ -186,11 +186,19 @@ export default function CollegeDrivesPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {drives.map((drive) => (
           <div key={drive.id} className="card card-hover" id={`drive-${drive.id}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: '1rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 14rem', minWidth: 0 }}>
                 <EntityLogo name={drive.company} size="md" shape="rounded" />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                     <h3 style={{ fontSize: '1.0625rem', fontWeight: 700 }}>{drive.company}</h3>
                     <span className={`badge badge-${getStatusColor(drive.status)} badge-dot`}>{formatStatus(drive.status)}</span>
                   </div>
@@ -210,52 +218,56 @@ export default function CollegeDrivesPage() {
                   )}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {drive.status === 'requested' && (
-                  <>
-                    <button className="btn btn-success btn-sm" type="button" onClick={() => approveDrive(drive.id)}>
-                      ✅ Approve
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {drive.status === 'requested' && (
+                    <>
+                      <button className="btn btn-success btn-sm" type="button" onClick={() => approveDrive(drive.id)}>
+                        ✅ Approve
+                      </button>
+                      <button className="btn btn-danger btn-sm" type="button" onClick={() => rejectDrive(drive.id)}>
+                        ❌ Reject
+                      </button>
+                    </>
+                  )}
+                  {drive.status === 'completed' && (
+                    <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleDownloadReport(drive)} disabled={downloading === drive.id}>
+                      {downloading === drive.id ? 'Generating...' : '📥 Generate Report'}
                     </button>
-                    <button className="btn btn-danger btn-sm" type="button" onClick={() => rejectDrive(drive.id)}>
-                      ❌ Reject
-                    </button>
-                  </>
-                )}
-                {drive.status === 'completed' && (
-                  <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleDownloadReport(drive)} disabled={downloading === drive.id}>
-                    {downloading === drive.id ? 'Generating...' : '📥 Generate Report'}
+                  )}
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    onClick={() => setExpandedId((id) => (id === drive.id ? null : drive.id))}
+                  >
+                    {expandedId === drive.id ? 'Hide details ↑' : 'View details →'}
                   </button>
-                )}
-                <button
-                  className="btn btn-ghost btn-sm"
-                  type="button"
-                  onClick={() => setExpandedId((id) => (id === drive.id ? null : drive.id))}
-                >
-                  {expandedId === drive.id ? 'Hide details ↑' : 'View details →'}
-                </button>
+                </div>
+                <div className="drive-social-sidebar">
+                  <span className="drive-social-share-label">Share (wireframe)</span>
+                  <div className="drive-social-share">
+                    {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
+                      const shared = (drive.socialShared || []).includes(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          className={`drive-social-icon-btn${shared ? ' is-shared' : ''}`}
+                          title={`${label}${shared ? ' — marked shared (demo)' : ' — click to mark shared (demo)'}`}
+                          aria-label={`${label} ${shared ? 'shared' : 'not shared'} — wireframe`}
+                          aria-pressed={shared}
+                          onClick={() => toggleDriveSocialShare(drive.id, id)}
+                        >
+                          <Icon size={15} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-xs text-tertiary" style={{ textAlign: 'right', lineHeight: 1.35, maxWidth: '10rem' }}>
+                    No live posting · green = saved in session
+                  </span>
+                </div>
               </div>
-            </div>
-            <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="drive-social-share-label">Share (wireframe)</span>
-              <div className="drive-social-share">
-                {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
-                  const shared = (drive.socialShared || []).includes(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      className={`drive-social-icon-btn${shared ? ' is-shared' : ''}`}
-                      title={`${label}${shared ? ' — marked shared (demo)' : ' — click to mark shared (demo)'}`}
-                      aria-label={`${label} ${shared ? 'shared' : 'not shared'} — wireframe`}
-                      aria-pressed={shared}
-                      onClick={() => toggleDriveSocialShare(drive.id, id)}
-                    >
-                      <Icon size={16} />
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="text-xs text-tertiary">No live posting; green = recorded in this session.</span>
             </div>
 
             <div className="drive-info-grid" style={{ marginTop: '0.75rem' }}>

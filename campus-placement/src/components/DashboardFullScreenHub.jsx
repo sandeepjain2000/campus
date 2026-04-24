@@ -9,6 +9,7 @@ import EntityLogo from '@/components/EntityLogo';
 import { menuConfig, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
 import { getNotificationIconTitle } from '@/lib/appVersion';
 import { getRoleDisplayName } from '@/lib/utils';
+import DevScreenTag from '@/components/DevScreenTag';
 
 function getHubPageTitle(session, role, menu) {
   if (role === 'super_admin') return 'Platform Administration';
@@ -131,7 +132,8 @@ export default function DashboardFullScreenHub({ role, session }) {
         <div className="dashboard-nav-hub-topbar-center">
           <h1 className="dashboard-nav-hub-page-title">{hubTitle}</h1>
         </div>
-        <div className="dashboard-nav-hub-topbar-right">
+        <div className="dashboard-nav-hub-topbar-right" style={{ alignItems: 'center', gap: '0.5rem' }}>
+          <DevScreenTag />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Search
               size={16}

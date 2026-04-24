@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Published internship job postings from employers with an approved tie-up to this college.
  */

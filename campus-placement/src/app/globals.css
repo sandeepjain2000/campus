@@ -1699,6 +1699,38 @@ h6 { font-size: 1rem; }
   border-color: var(--success-600);
 }
 
+/* Dev-only screen reference (S-1, S-2, …) */
+.dev-screen-id-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.drive-social-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  max-width: 11rem;
+}
+
+.drive-social-sidebar .drive-social-share {
+  justify-content: flex-end;
+}
+
+.drive-social-sidebar .drive-social-share-label {
+  margin-right: 0;
+  font-size: 0.65rem;
+  opacity: 0.9;
+}
+
 /* Table toolbar */
 .table-toolbar {
   display: flex;

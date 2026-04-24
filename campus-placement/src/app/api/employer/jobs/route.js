@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { fetchCollegeAdminUserIds, notifyStudentsOfTenant, notifyUsersOneAtATime } from '@/lib/notificationService';
 
+/** Avoid stale lists after posting (Next may cache GET route handlers). */
+export const dynamic = 'force-dynamic';
+
 async function getEmployerId(userId) {
   const r = await query(`SELECT id, company_name FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
   return r.rows[0] || null;
@@ -25,7 +28,12 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const emp = await getEmployerId(session.user.id);
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
+
+    const emp = await getEmployerId(userId);
     if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
     const { searchParams } = new URL(request.url);
@@ -73,7 +81,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const emp = await getEmployerId(session.user.id);
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
+
+    const emp = await getEmployerId(userId);
     if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
     const body = await request.json().catch(() => ({}));

@@ -17,6 +17,7 @@ import {
   isRoleDashboardHome,
 } from '@/config/dashboardMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
+import DevScreenTag from '@/components/DevScreenTag';
 import { Moon, Sun, Menu, Mail, Home } from 'lucide-react';
 
 const getActiveCampusName = () => {
@@ -234,7 +235,8 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
 
-          <div className="topbar-right" style={{ flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div className="topbar-right" style={{ flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+            <DevScreenTag />
             {role === 'student' && (
               <Link
                 href="/dashboard/student/reminders"

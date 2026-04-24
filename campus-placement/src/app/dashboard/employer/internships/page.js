@@ -6,7 +6,12 @@ import { GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings }
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 
-const fetcher = (url) => fetch(url).then((r) => r.json());
+async function swrFetcher(url) {
+  const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
 
 function buildDescription(durationMonths, notes) {
   const lines = [`Duration: ${durationMonths} months.`];
@@ -18,9 +23,15 @@ function buildDescription(durationMonths, notes) {
 
 export default function EmployerInternshipsPage() {
   const { addToast } = useToast();
-  const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
-  const { data: jobData, mutate: mutateInternships } = useSWR('/api/employer/jobs?jobType=internship', fetcher, {
+  const { data: campusData } = useSWR('/api/employer/campuses', swrFetcher, { revalidateOnFocus: true });
+  const {
+    data: jobData,
+    error: jobsError,
+    isLoading: jobsLoading,
+    mutate: mutateInternships,
+  } = useSWR('/api/employer/jobs?jobType=internship', swrFetcher, {
     revalidateOnFocus: true,
+    dedupingInterval: 0,
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -133,7 +144,7 @@ export default function EmployerInternshipsPage() {
       }
       addToast('Internship published to the database. Partner colleges and students were notified.', 'success');
       setShowForm(false);
-      mutateInternships();
+      await mutateInternships();
     } catch {
       addToast('Network error', 'error');
     } finally {
@@ -257,6 +268,14 @@ export default function EmployerInternshipsPage() {
         </div>
       )}
 
+      {jobsError && (
+        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--danger-500)' }}>
+          <p className="text-sm" style={{ margin: 0 }}>
+            Could not load internships: {jobsError.message}. Check login and database configuration.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-3" style={{ marginBottom: '2rem' }}>
         <div className="stats-card">
           <div className="stats-card-icon indigo"><Users size={24} strokeWidth={1.5} /></div>
@@ -276,11 +295,12 @@ export default function EmployerInternshipsPage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-        {internships.length === 0 && !jobData && (
-          <p className="text-sm text-secondary">Loading internships…</p>
+        {jobsLoading && <p className="text-sm text-secondary">Loading internships…</p>}
+        {!jobsLoading && !jobsError && internships.length === 0 && (
+          <p className="text-sm text-secondary">No internship postings yet. Publish one above (saved as job_type internship).</p>
         )}
         {internships.map((intern) => (
-          <div key={intern.id} className="stats-card stats-card--oneline">
+          <div key={String(intern.id)} className="stats-card stats-card--oneline">
             <div className="stats-card-icon indigo">
               <GraduationCap size={22} strokeWidth={1.5} />
             </div>
