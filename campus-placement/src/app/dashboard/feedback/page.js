@@ -99,9 +99,22 @@ export default function FeedbackPage() {
               <div key={item.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
                   <div className="font-semibold">{item.title}</div>
-                  <span className={`badge ${item.status === 'Planned' ? 'badge-green' : item.status === 'Under Review' ? 'badge-amber' : item.status === 'Closed' ? 'badge-gray' : 'badge-gray'}`}>{item.status}</span>
+                  <span className={`badge ${item.latest_reply ? 'badge-green' : item.status === 'Planned' ? 'badge-green' : item.status === 'Under Review' ? 'badge-amber' : item.status === 'Closed' ? 'badge-gray' : 'badge-gray'}`}>
+                    {item.latest_reply ? 'Responded' : item.status}
+                  </span>
                 </div>
                 <div className="text-sm text-secondary" style={{ marginTop: '0.25rem' }}>{item.description}</div>
+                {item.latest_reply && (
+                  <div style={{ marginTop: '0.65rem', padding: '0.6rem 0.65rem', border: '1px solid var(--success-200)', borderRadius: 'var(--radius-md)', background: 'var(--success-50)' }}>
+                    <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Super Admin reply
+                    </div>
+                    <div className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>{item.latest_reply}</div>
+                    <div className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
+                      {item.latest_reply_at ? `Updated ${new Date(item.latest_reply_at).toLocaleString()}` : ''}
+                    </div>
+                  </div>
+                )}
                 <div className="text-xs text-tertiary" style={{ marginTop: '0.5rem' }}>
                   {item.category}
                   {(item.user_name || item.user_email) && (

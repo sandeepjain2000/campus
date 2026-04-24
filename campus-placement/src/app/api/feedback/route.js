@@ -12,17 +12,46 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const res = await query(
-      `SELECT f.id, f.title, f.category, f.description, f.status, f.created_at, f.updated_at,
-              u.email AS user_email,
-              TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS user_name,
-              u.role AS user_role
-       FROM platform_feedback f
-       LEFT JOIN users u ON u.id = f.user_id
-       ORDER BY f.created_at DESC`,
-    );
+    const isSuperAdmin = session.user.role === 'super_admin';
+    const params = [];
+    const where = isSuperAdmin ? '' : 'WHERE f.user_id = $1';
+    if (!isSuperAdmin) params.push(session.user.id);
 
-    return NextResponse.json({ items: res.rows });
+    try {
+      const res = await query(
+        `SELECT f.id, f.title, f.category, f.description, f.status, f.created_at, f.updated_at,
+                u.email AS user_email,
+                TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS user_name,
+                u.role AS user_role,
+                COALESCE((SELECT COUNT(*) FROM platform_feedback_replies r WHERE r.feedback_id = f.id), 0) AS reply_count,
+                (SELECT r.message FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1) AS latest_reply,
+                (SELECT r.created_at FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1) AS latest_reply_at
+         FROM platform_feedback f
+         LEFT JOIN users u ON u.id = f.user_id
+         ${where}
+         ORDER BY f.created_at DESC`,
+        params,
+      );
+      return NextResponse.json({ items: res.rows });
+    } catch (inner) {
+      // Backward-compatible read path before migration 003 is applied.
+      if (inner.code !== '42P01') throw inner;
+      const fallback = await query(
+        `SELECT f.id, f.title, f.category, f.description, f.status, f.created_at, f.updated_at,
+                u.email AS user_email,
+                TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS user_name,
+                u.role AS user_role,
+                0 AS reply_count,
+                NULL::text AS latest_reply,
+                NULL::timestamptz AS latest_reply_at
+         FROM platform_feedback f
+         LEFT JOIN users u ON u.id = f.user_id
+         ${where}
+         ORDER BY f.created_at DESC`,
+        params,
+      );
+      return NextResponse.json({ items: fallback.rows });
+    }
   } catch (e) {
     console.error('GET /api/feedback', e);
     return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });

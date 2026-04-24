@@ -11,7 +11,8 @@
     "lint": "eslint",
     "verify:aws": "node scripts/verify-aws-credentials.mjs",
     "verify:aws:log": "node scripts/run-with-log.mjs -- node scripts/verify-aws-credentials.mjs",
-    "vercel:prod:log": "node scripts/run-with-log.mjs -- npx vercel --prod"
+    "vercel:prod:log": "node scripts/run-with-log.mjs -- npx vercel --prod",
+    "seed:email-marketing-sqlite": "python scripts/seed_email_marketing_sqlite.py"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1031.0",

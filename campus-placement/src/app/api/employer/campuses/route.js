@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
 
 // GET /api/employer/campuses
 // Returns all colleges with this employer's approval status for each
@@ -93,15 +94,34 @@ export async function POST(req) {
     }
     const employerId = empResult.rows[0].id;
 
-    // Upsert the approval request
-    await query(
+    const empName = await query(`SELECT company_name FROM employer_profiles WHERE id = $1::uuid`, [employerId]);
+    const companyName = empName.rows[0]?.company_name || 'An employer';
+
+    const ins = await query(
       `INSERT INTO employer_approvals (tenant_id, employer_id, status)
        VALUES ($1, $2, 'pending')
-       ON CONFLICT (tenant_id, employer_id) DO NOTHING`,
-      [collegeId, employerId]
+       ON CONFLICT (tenant_id, employer_id) DO NOTHING
+       RETURNING id`,
+      [collegeId, employerId],
     );
 
-    return NextResponse.json({ success: true, message: 'Access requested successfully' });
+    if (ins.rows.length > 0) {
+      const college = await query(`SELECT name FROM tenants WHERE id = $1::uuid`, [collegeId]);
+      const collegeName = college.rows[0]?.name || 'your institution';
+      const adminIds = await fetchCollegeAdminUserIds(collegeId);
+      await notifyUsersOneAtATime(adminIds, {
+        title: `${companyName} requested campus access`,
+        message: `${companyName} has requested to partner with ${collegeName}. Review pending employer requests.`,
+        type: 'info',
+        link: '/dashboard/college/employers/requests',
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: ins.rows.length ? 'Access requested successfully' : 'Request already exists or was submitted before',
+      notified: ins.rows.length > 0,
+    });
   } catch (error) {
     console.error('Campus request error:', error);
     return NextResponse.json({ error: 'Failed to request access' }, { status: 500 });

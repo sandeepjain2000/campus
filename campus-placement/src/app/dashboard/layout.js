@@ -1,6 +1,5 @@
 'use client';
 import { useSession } from 'next-auth/react';
-import { useToast } from '@/components/ToastProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -17,8 +16,8 @@ import {
   isSidebarItemActive,
   isRoleDashboardHome,
 } from '@/config/dashboardMenu';
-import { getNotificationIconTitle } from '@/lib/appVersion';
-import { Bell, Moon, Sun, Menu, Mail, Home } from 'lucide-react';
+import NotificationDropdown from '@/components/NotificationDropdown';
+import { Moon, Sun, Menu, Mail, Home } from 'lucide-react';
 
 const getActiveCampusName = () => {
   try {
@@ -31,12 +30,10 @@ const getActiveCampusName = () => {
 
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession();
-  const { addToast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     if (!session?.user?.role) return;
@@ -73,8 +70,6 @@ export default function DashboardLayout({ children }) {
   const activeSection = menu.sections.find((s) => s.id === sectionId) || menu.sections[0];
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
   const isHub = isRoleDashboardHome(pathname, role);
-  const notificationTitle = getNotificationIconTitle();
-
   if (isHub) {
     return <>{children}</>;
   }
@@ -259,53 +254,7 @@ export default function DashboardLayout({ children }) {
               {theme === 'light' ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
             </button>
 
-            <div className="dropdown" style={{ position: 'relative' }}>
-              <button
-                className="btn btn-ghost btn-icon notification-bell"
-                onClick={() => setNotifOpen(!notifOpen)}
-                type="button"
-                title={notificationTitle}
-                aria-label={notificationTitle}
-              >
-                <Bell size={18} aria-hidden="true" />
-                <span className="notification-dot" />
-              </button>
-
-              {notifOpen && (
-                <div className="notification-panel">
-                  <div className="notification-panel-header">
-                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 700 }}>Notifications</h4>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('All notifications marked as read (demo).', 'info')}>Mark all read</button>
-                  </div>
-                  <div className="notification-list">
-                    <div className="notification-item unread">
-                      <div className="notification-icon stats-card-icon green" style={{ width: 36, height: 36, fontSize: '0.875rem' }}>🎯</div>
-                      <div className="notification-content">
-                        <div className="notification-title">Google Campus Drive Approved</div>
-                        <div className="notification-message">The placement cell has approved the incoming 2026 drive.</div>
-                        <div className="notification-time">2 hours ago</div>
-                      </div>
-                    </div>
-                    <div className="notification-item unread">
-                      <div className="notification-icon stats-card-icon blue" style={{ width: 36, height: 36, fontSize: '0.875rem' }}>🧑‍💻</div>
-                      <div className="notification-content">
-                        <div className="notification-title">New Application Received</div>
-                        <div className="notification-message">Rohan Patel applied for Software Development Engineer.</div>
-                        <div className="notification-time">4 hours ago</div>
-                      </div>
-                    </div>
-                    <div className="notification-item">
-                      <div className="notification-icon stats-card-icon amber" style={{ width: 36, height: 36, fontSize: '0.875rem' }}>⚠️</div>
-                      <div className="notification-content">
-                        <div className="notification-title">Offer Deadline Approaching</div>
-                        <div className="notification-message">2 outstanding offers expire in 24 hours.</div>
-                        <div className="notification-time">1 day ago</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationDropdown />
 
             <div className="dropdown" style={{ position: 'relative' }}>
               <button

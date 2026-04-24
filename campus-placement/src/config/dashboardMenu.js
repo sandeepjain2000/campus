@@ -235,7 +235,6 @@ export const menuConfig = {
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },
-          { label: 'Submit feedback', href: '/dashboard/feedback', icon: MessageSquare },
           { label: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
         ],
       },

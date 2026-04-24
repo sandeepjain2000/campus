@@ -515,3 +515,17 @@ CREATE TABLE platform_feedback (
 CREATE INDEX idx_platform_feedback_user ON platform_feedback(user_id);
 CREATE INDEX idx_platform_feedback_status ON platform_feedback(status);
 CREATE INDEX idx_platform_feedback_created ON platform_feedback(created_at DESC);
+
+-- ============================================
+-- 25. PLATFORM FEEDBACK REPLIES (discussion track)
+-- ============================================
+CREATE TABLE platform_feedback_replies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    feedback_id UUID NOT NULL REFERENCES platform_feedback(id) ON DELETE CASCADE,
+    author_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    channel VARCHAR(30) NOT NULL DEFAULT 'dashboard',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_feedback_replies_feedback ON platform_feedback_replies(feedback_id, created_at DESC);

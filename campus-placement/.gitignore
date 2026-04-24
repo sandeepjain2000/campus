@@ -48,3 +48,10 @@ fix_emojis.js
 test-db.js
 run-sql.js
 update_seed.js
+
+.vercel
+
+# local SQLite marketing data
+db/sqlite/*.sqlite
+db/sqlite/*.sqlite-shm
+db/sqlite/*.sqlite-wal

@@ -13,6 +13,7 @@ import {
   studentCsvTemplateExampleRow,
   validateStudentCsvHeaders,
   parseStudentRow,
+  normalizeStudentRollKey,
 } from '@/lib/collegeStudentsCsv';
 import { useToast } from '@/components/ToastProvider';
 
@@ -67,10 +68,12 @@ function buildMockStudents() {
 }
 
 function mergeImportedStudents(prev, imported) {
-  const byRoll = new Map(prev.map((s) => [s.roll.toLowerCase(), { ...s, skills: [...s.skills] }]));
+  const byRoll = new Map(
+    prev.map((s) => [normalizeStudentRollKey(s.roll), { ...s, skills: [...s.skills] }]),
+  );
   let maxId = prev.reduce((m, s) => Math.max(m, s.id), 0);
   for (const u of imported) {
-    const key = u.roll.toLowerCase();
+    const key = normalizeStudentRollKey(u.roll);
     if (byRoll.has(key)) {
       const ex = byRoll.get(key);
       byRoll.set(key, {
@@ -160,8 +163,19 @@ export default function CollegeStudentsPage() {
           addToast('No data rows found in CSV', 'warning');
           return;
         }
-        setStudents((prev) => mergeImportedStudents(prev, imported));
-        addToast(`Imported ${imported.length} row(s); matched by roll number`, 'success');
+        const byRollInFile = new Map();
+        for (const row of imported) {
+          byRollInFile.set(normalizeStudentRollKey(row.roll), row);
+        }
+        const uniqueImported = Array.from(byRollInFile.values());
+        const duplicateRowsInFile = imported.length - uniqueImported.length;
+
+        setStudents((prev) => mergeImportedStudents(prev, uniqueImported));
+        const msg =
+          duplicateRowsInFile > 0
+            ? `Updated roster from ${uniqueImported.length} unique roll number(s); ${duplicateRowsInFile} duplicate row(s) in file used last value per roll`
+            : `Imported ${uniqueImported.length} row(s); insert or update by roll number`;
+        addToast(msg, duplicateRowsInFile > 0 ? 'warning' : 'success');
       } catch {
         addToast('Could not read CSV file', 'error');
       } finally {

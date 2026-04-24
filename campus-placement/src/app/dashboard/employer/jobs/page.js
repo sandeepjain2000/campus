@@ -1,19 +1,17 @@
 'use client';
+
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/utils';
+import { useToast } from '@/components/ToastProvider';
+
+const fetcher = (url) => fetch(url).then((r) => r.json());
 
 const placementDrives = [
   { id: '', name: '— Not linked —' },
   { id: 'drv-1', name: 'Campus 2026 · IIT Mumbai (Phase 1)' },
   { id: 'drv-2', name: 'Campus 2026 · NIT Trichy' },
   { id: 'drv-3', name: 'Off-campus requisitions · PAN India' },
-];
-
-const mockJobs = [
-  { id: 1, title: 'Software Development Engineer', keywords: 'React, TypeScript, Node.js, AWS, REST APIs', type: 'full_time', salaryMin: 1200000, salaryMax: 1800000, status: 'published', vacancies: 15, applications: 45, branches: ['CSE', 'IT'], cgpa: 7.0, createdAt: '2026-08-20', placementDriveId: 'drv-1' },
-  { id: 2, title: 'Data Science Intern', keywords: 'Python, SQL, ML fundamentals, Jupyter', type: 'internship', salaryMin: 60000, salaryMax: 80000, status: 'published', vacancies: 5, applications: 22, branches: ['CSE', 'Math'], cgpa: 8.0, createdAt: '2026-08-25', placementDriveId: '' },
-  { id: 3, title: 'Product Manager', keywords: 'Roadmapping, Stakeholder management, SQL, Analytics', type: 'full_time', salaryMin: 2000000, salaryMax: 2800000, status: 'draft', vacancies: 3, applications: 0, branches: ['MBA', 'CSE'], cgpa: 7.5, createdAt: '2026-09-05', placementDriveId: 'drv-3' },
-  { id: 4, title: 'Frontend Developer', keywords: 'React, CSS, Web performance, Accessibility', type: 'full_time', salaryMin: 1000000, salaryMax: 1500000, status: 'closed', vacancies: 10, applications: 67, branches: ['CSE', 'IT'], cgpa: 6.5, createdAt: '2026-07-15', placementDriveId: 'drv-2' },
 ];
 
 function driveLabel(id) {
@@ -98,12 +96,35 @@ const emptyForm = {
 };
 
 export default function EmployerJobsPage() {
+  const { addToast } = useToast();
+  const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs', fetcher, { revalidateOnFocus: true });
+  const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
+
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState(emptyForm);
+  const [selectedTenantIds, setSelectedTenantIds] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const filtered = mockJobs.filter((j) => !filter || j.status === filter);
+  const jobsList = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
+
+  const approvedCampuses = useMemo(
+    () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
+    [campusData],
+  );
+
+  const filtered = jobsList.filter((j) => !filter || j.status === filter);
+
+  const tabCounts = useMemo(
+    () => ({
+      all: jobsList.length,
+      published: jobsList.filter((j) => j.status === 'published').length,
+      draft: jobsList.filter((j) => j.status === 'draft').length,
+      closed: jobsList.filter((j) => j.status === 'closed').length,
+    }),
+    [jobsList],
+  );
 
   const autoSections = useMemo(() => buildAutoSections(form), [form]);
 
@@ -118,6 +139,11 @@ export default function EmployerJobsPage() {
   const openCreate = () => {
     setEditingJob(null);
     setForm({ ...emptyForm, type: 'full_time' });
+    const sel = {};
+    approvedCampuses.forEach((c) => {
+      sel[c.id] = true;
+    });
+    setSelectedTenantIds(sel);
     setShowForm(true);
   };
 
@@ -148,12 +174,70 @@ export default function EmployerJobsPage() {
     setForm((p) => ({ ...p, [key]: value }));
   }, []);
 
+  const submitJob = async (asDraft) => {
+    if (editingJob) {
+      addToast('Updating an existing job in the database is not wired yet.', 'info');
+      return;
+    }
+    if (!form.title.trim()) {
+      addToast('Job title is required', 'error');
+      return;
+    }
+    const tenantIds = Object.entries(selectedTenantIds)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    if (!asDraft && !tenantIds.length) {
+      addToast('Select at least one approved campus so notifications are created for that college.', 'warning');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/employer/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title.trim(),
+          description: form.description,
+          jobType: form.type,
+          status: asDraft ? 'draft' : 'published',
+          salaryMin: form.salaryMin,
+          salaryMax: form.salaryMax,
+          minCgpa: form.cgpa,
+          vacancies: form.vacancies,
+          keywords: form.keywords,
+          tenantIds: asDraft ? [] : tenantIds,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        addToast(json.error || 'Save failed', 'error');
+        return;
+      }
+      addToast(
+        asDraft
+          ? 'Draft saved to the database (no alerts sent).'
+          : 'Job published. College admins were notified one-by-one; internship posts also notify students per campus.',
+        'success',
+      );
+      closeForm();
+      mutateJobs();
+    } catch {
+      addToast('Network error', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
           <h1>💼 Job Postings</h1>
-          <p>Create and manage your job postings for campus recruitment</p>
+          <p>
+            Publishing with selected campuses saves the job to the database first, then creates notification rows: college admins
+            are notified one at a time per campus; internship posts also notify all students on those campuses.
+          </p>
         </div>
         <button className="btn btn-primary" type="button" onClick={() => (showForm ? closeForm() : openCreate())}>
           {showForm ? 'Close form' : '+ Create Job Posting'}
@@ -170,7 +254,10 @@ export default function EmployerJobsPage() {
           </div>
           <div className="grid grid-2">
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Target Campuses <span className="required">*</span></label>
+              <label className="form-label">Target campuses (approved only) <span className="required">*</span></label>
+              <p className="text-xs text-tertiary" style={{ marginBottom: '0.5rem' }}>
+                Used when you publish — each selected campus gets database notifications after the job row is inserted.
+              </p>
               <div
                 style={{
                   display: 'grid',
@@ -182,18 +269,25 @@ export default function EmployerJobsPage() {
                   border: '1px solid var(--border)',
                 }}
               >
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked /> Delhi Technological University (DTU)
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" /> Netaji Subhas University of Technology (NSUT)
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" /> IIT Bombay
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" /> NIT Trichy
-                </label>
+                {approvedCampuses.length === 0 ? (
+                  <span className="text-sm text-secondary">No approved campuses yet. Request access from the campus directory first.</span>
+                ) : (
+                  approvedCampuses.map((c) => (
+                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!selectedTenantIds[c.id]}
+                        onChange={() =>
+                          setSelectedTenantIds((p) => ({
+                            ...p,
+                            [c.id]: !p[c.id],
+                          }))
+                        }
+                      />
+                      {c.name}
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
@@ -227,7 +321,9 @@ export default function EmployerJobsPage() {
               <input className="form-input" placeholder="e.g., Software Development Engineer" value={form.title} onChange={(e) => setField('title', e.target.value)} />
             </div>
             <div className="form-group">
-              <label className="form-label">Job Type <span className="required">*</span></label>
+              <label className="form-label">
+                Job Type <span className="required">*</span>
+              </label>
               <select className="form-select" value={form.type} onChange={(e) => setField('type', e.target.value)}>
                 <option value="full_time">Full Time</option>
                 <option value="internship">Internship</option>
@@ -297,27 +393,27 @@ export default function EmployerJobsPage() {
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn btn-secondary" type="button" onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+            <button className="btn btn-secondary" type="button" disabled={submitting} onClick={() => submitJob(true)}>
               Save as Draft
             </button>
-            <button className="btn btn-primary" type="button" onClick={closeForm}>
-              {editingJob ? 'Update Job' : 'Publish Job'}
+            <button className="btn btn-primary" type="button" disabled={submitting} onClick={() => submitJob(false)}>
+              {editingJob ? 'Update Job' : submitting ? 'Publishing…' : 'Publish Job'}
             </button>
           </div>
         </div>
       )}
 
       <div className="tabs">
-        <button className={`tab ${filter === '' ? 'active' : ''}`} onClick={() => setFilter('')}>
-          All ({mockJobs.length})
+        <button type="button" className={`tab ${filter === '' ? 'active' : ''}`} onClick={() => setFilter('')}>
+          All ({tabCounts.all})
         </button>
-        <button className={`tab ${filter === 'published' ? 'active' : ''}`} onClick={() => setFilter('published')}>
+        <button type="button" className={`tab ${filter === 'published' ? 'active' : ''}`} onClick={() => setFilter('published')}>
           Published
         </button>
-        <button className={`tab ${filter === 'draft' ? 'active' : ''}`} onClick={() => setFilter('draft')}>
+        <button type="button" className={`tab ${filter === 'draft' ? 'active' : ''}`} onClick={() => setFilter('draft')}>
           Drafts
         </button>
-        <button className={`tab ${filter === 'closed' ? 'active' : ''}`} onClick={() => setFilter('closed')}>
+        <button type="button" className={`tab ${filter === 'closed' ? 'active' : ''}`} onClick={() => setFilter('closed')}>
           Closed
         </button>
       </div>
@@ -346,11 +442,14 @@ export default function EmployerJobsPage() {
                 ) : null}
                 <div className="text-sm text-secondary" style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   <span>
-                    💰 {formatCurrency(job.salaryMin)} - {formatCurrency(job.salaryMax)}
+                    💰{' '}
+                    {job.salaryMin != null && job.salaryMax != null
+                      ? `${formatCurrency(job.salaryMin)} - ${formatCurrency(job.salaryMax)}`
+                      : '—'}
                   </span>
                   <span>👥 {job.vacancies} vacancies</span>
                   <span>📝 {job.applications} applications</span>
-                  <span>🎓 Min CGPA: {job.cgpa}</span>
+                  <span>🎓 Min CGPA: {job.cgpa ?? '—'}</span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -370,13 +469,13 @@ export default function EmployerJobsPage() {
               </div>
             </div>
             <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-              {job.branches.map((b) => (
+              {(job.branches || []).map((b) => (
                 <span key={b} className="badge badge-indigo">
                   {b}
                 </span>
               ))}
               <span className="text-xs text-tertiary" style={{ marginLeft: 'auto' }}>
-                Created {formatDate(job.createdAt)}
+                Created {job.createdAt ? formatDate(job.createdAt) : '—'}
               </span>
             </div>
           </div>

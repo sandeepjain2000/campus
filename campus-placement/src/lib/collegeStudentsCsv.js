@@ -27,6 +27,11 @@ function normKey(h) {
   return String(h ?? '').trim().toLowerCase();
 }
 
+/** Match import / roster rows by roll (trim + case-insensitive). */
+export function normalizeStudentRollKey(roll) {
+  return String(roll ?? '').trim().toLowerCase();
+}
+
 export function buildHeaderIndex(headers) {
   const idx = {};
   headers.forEach((h, i) => {
