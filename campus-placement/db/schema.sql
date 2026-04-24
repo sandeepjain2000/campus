@@ -27,9 +27,12 @@ CREATE TABLE tenants (
     established_year INTEGER,
     is_active BOOLEAN DEFAULT true,
     settings JSONB DEFAULT '{}',
+    parent_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_tenants_parent ON tenants(parent_tenant_id);
 
 -- ============================================
 -- 2. USERS
@@ -91,11 +94,14 @@ CREATE TABLE student_profiles (
     verified_at TIMESTAMP,
     resume_url TEXT,
     bio TEXT,
+    affiliated_institution_name VARCHAR(255),
+    member_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_student_tenant ON student_profiles(tenant_id);
+CREATE INDEX idx_student_member_tenant ON student_profiles(member_tenant_id);
 CREATE INDEX idx_student_department ON student_profiles(department);
 CREATE INDEX idx_student_batch ON student_profiles(batch_year);
 CREATE INDEX idx_student_status ON student_profiles(placement_status);

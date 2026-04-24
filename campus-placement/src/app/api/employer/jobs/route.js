@@ -16,7 +16,9 @@ function parseKeywords(keywords) {
     .filter(Boolean);
 }
 
-export async function GET() {
+const JOB_TYPES = new Set(['full_time', 'internship', 'contract', 'ppo', 'hackathon', 'short_project', 'mentorship', 'guest_faculty']);
+
+export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'employer') {
@@ -26,13 +28,19 @@ export async function GET() {
     const emp = await getEmployerId(session.user.id);
     if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
+    const { searchParams } = new URL(request.url);
+    const jobTypeFilter = searchParams.get('jobType');
+    const typeClause =
+      jobTypeFilter && JOB_TYPES.has(jobTypeFilter) ? ` AND job_type = $2` : '';
+    const params = jobTypeFilter && JOB_TYPES.has(jobTypeFilter) ? [emp.id, jobTypeFilter] : [emp.id];
+
     const jobs = await query(
       `SELECT id, title, description, job_type, status, salary_min, salary_max, min_cgpa, vacancies,
               skills_required, eligible_branches, created_at
        FROM job_postings
-       WHERE employer_id = $1::uuid
+       WHERE employer_id = $1::uuid${typeClause}
        ORDER BY created_at DESC`,
-      [emp.id],
+      params,
     );
 
     const rows = jobs.rows.map((j) => ({
@@ -86,8 +94,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
     }
 
-    const allowedTypes = new Set(['full_time', 'internship', 'contract', 'ppo', 'hackathon', 'short_project', 'mentorship', 'guest_faculty']);
-    if (!allowedTypes.has(jobType)) {
+    if (!JOB_TYPES.has(jobType)) {
       return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
     }
 
@@ -151,7 +158,7 @@ export async function POST(request) {
                   : `${emp.company_name} published a job`,
               message: `${emp.company_name} published "${job.title}" (${jobType.replace('_', ' ')}) relevant to ${collegeName}. Open Job Postings to review pipeline activity.`,
               type: jobType === 'internship' ? 'info' : 'application',
-              link: '/dashboard/college/drives',
+              link: jobType === 'internship' ? '/dashboard/college/internships' : '/dashboard/college/drives',
             },
             client,
           );

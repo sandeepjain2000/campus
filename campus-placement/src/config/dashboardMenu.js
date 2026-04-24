@@ -170,6 +170,7 @@ export const menuConfig = {
           { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
+          { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
           { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
         ],
       },
