@@ -1,60 +1,24 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { formatDate } from '@/lib/utils';
-
-const DEPT_PLACEMENT = [
-  { dept: 'CSE', pct: 91, placed: 145, total: 160 },
-  { dept: 'ECE', pct: 75, placed: 98, total: 130 },
-  { dept: 'IT', pct: 82, placed: 73, total: 89 },
-  { dept: 'ME', pct: 54, placed: 65, total: 120 },
-  { dept: 'EE', pct: 55, placed: 55, total: 100 },
-  { dept: 'Civil', pct: 36, placed: 32, total: 90 },
-];
-
-const SALARY_DIST = [
-  { range: '< ₹5 LPA', count: 45, pct: 9 },
-  { range: '₹5-10 LPA', count: 180, pct: 38 },
-  { range: '₹10-15 LPA', count: 150, pct: 31 },
-  { range: '₹15-25 LPA', count: 78, pct: 16 },
-  { range: '₹25+ LPA', count: 25, pct: 5 },
-];
-
-const TOP_RECRUITERS = [
-  { name: 'Infosys', hires: 120, ctc: '₹8.5L' },
-  { name: 'TechCorp', hires: 45, ctc: '₹15L' },
-  { name: 'GlobalSoft', hires: 28, ctc: '₹12L' },
-  { name: 'Microsoft', hires: 15, ctc: '₹35L' },
-  { name: 'Google', hires: 8, ctc: '₹42L' },
-];
-
-const YOY = [
-  { metric: 'Placement %', prev: '67%', curr: '72%', change: '+5%', up: true },
-  { metric: 'Avg Package', prev: '₹11.4L', curr: '₹12.4L', change: '+8.7%', up: true },
-  { metric: 'Highest Package', prev: '₹40L', curr: '₹45L', change: '+12.5%', up: true },
-  { metric: 'Companies', prev: '38', curr: '45', change: '+18.4%', up: true },
-  { metric: 'Total Offers', prev: '455', curr: '523', change: '+14.9%', up: true },
-];
-
-/** One row per student × company event — attendance and pipeline outcome */
-const STUDENT_COMPANY_EVENTS = [
-  { student: 'Arjun Verma', roll: 'CS21001', dept: 'CSE', company: 'TCS', eventType: 'Pre-placement talk', eventDate: '2026-09-18', attended: 'Yes', outcome: '—' },
-  { student: 'Arjun Verma', roll: 'CS21001', dept: 'CSE', company: 'TCS', eventType: 'Aptitude screening', eventDate: '2026-09-19', attended: 'Yes', outcome: 'Passed' },
-  { student: 'Arjun Verma', roll: 'CS21001', dept: 'CSE', company: 'TCS', eventType: 'Technical interview R1', eventDate: '2026-10-01', attended: 'Yes', outcome: 'Shortlisted' },
-  { student: 'Sneha Iyer', roll: 'CS21044', dept: 'CSE', company: 'TCS', eventType: 'Pre-placement talk', eventDate: '2026-09-18', attended: 'Yes', outcome: '—' },
-  { student: 'Sneha Iyer', roll: 'CS21044', dept: 'CSE', company: 'TCS', eventType: 'Aptitude screening', eventDate: '2026-09-19', attended: 'No', outcome: 'Absent' },
-  { student: 'Sneha Iyer', roll: 'CS21044', dept: 'CSE', company: 'Infosys', eventType: 'Hackathon', eventDate: '2026-09-25', attended: 'Yes', outcome: 'Top 10' },
-  { student: 'Sneha Iyer', roll: 'CS21044', dept: 'CSE', company: 'Infosys', eventType: 'Technical interview', eventDate: '2026-10-02', attended: 'Yes', outcome: 'Offer (PPO)' },
-  { student: 'Rohan Patel', roll: 'EC21009', dept: 'ECE', company: 'TechCorp', eventType: 'Company orientation', eventDate: '2026-09-10', attended: 'Yes', outcome: '—' },
-  { student: 'Rohan Patel', roll: 'EC21009', dept: 'ECE', company: 'TechCorp', eventType: 'Coding test', eventDate: '2026-09-12', attended: 'Yes', outcome: 'Passed' },
-  { student: 'Rohan Patel', roll: 'EC21009', dept: 'ECE', company: 'TechCorp', eventType: 'Panel interview', eventDate: '2026-09-28', attended: 'Yes', outcome: 'Rejected' },
-  { student: 'Kavya Reddy', roll: 'CS21088', dept: 'CSE', company: 'Microsoft', eventType: 'Resume shortlist', eventDate: '2026-08-30', attended: 'N/A', outcome: 'Shortlisted' },
-  { student: 'Kavya Reddy', roll: 'CS21088', dept: 'CSE', company: 'Microsoft', eventType: 'On-site interviews', eventDate: '2026-09-15', attended: 'Yes', outcome: 'Offer' },
-  { student: 'Amit Sharma', roll: 'ME21002', dept: 'ME', company: 'L&T', eventType: 'GD + Technical', eventDate: '2026-09-05', attended: 'Yes', outcome: 'Waitlisted' },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load reports');
+  return json;
+};
 
 export default function CollegeReportsPage() {
+  const { data, isLoading, error } = useSWR('/api/college/reports', fetcher);
+  const DEPT_PLACEMENT = Array.isArray(data?.deptPlacement) ? data.deptPlacement : [];
+  const SALARY_DIST = Array.isArray(data?.salaryDist) ? data.salaryDist : [];
+  const TOP_RECRUITERS = Array.isArray(data?.topRecruiters) ? data.topRecruiters : [];
+  const YOY = Array.isArray(data?.yoy) ? data.yoy : [];
+  const STUDENT_COMPANY_EVENTS = Array.isArray(data?.studentCompanyEvents) ? data.studentCompanyEvents : [];
+  const summary = data?.summary || { placementRate: 0, avgPackage: 0, highestPackage: 0, companiesVisited: 0 };
   const [studentReportSearch, setStudentReportSearch] = useState('');
   const [studentReportCompany, setStudentReportCompany] = useState('');
 
@@ -165,12 +129,15 @@ export default function CollegeReportsPage() {
         </div>
       </div>
 
+      {isLoading ? <div className="card"><p className="text-secondary">Loading reports...</p></div> : null}
+      {error ? <div className="card"><p style={{ color: 'var(--danger-600)' }}>{error.message || 'Could not load reports.'}</p></div> : null}
+
       {/* Summary Cards */}
       <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-        <div className="stats-card"><div className="stats-card-icon green">📊</div><div className="stats-card-value">72%</div><div className="stats-card-label">Placement Rate</div><div className="stats-card-change up">↑ 5% vs last year</div></div>
-        <div className="stats-card green"><div className="stats-card-icon green">💰</div><div className="stats-card-value">₹12.4L</div><div className="stats-card-label">Average Package</div></div>
-        <div className="stats-card amber"><div className="stats-card-icon amber">📈</div><div className="stats-card-value">₹45L</div><div className="stats-card-label">Highest Package</div></div>
-        <div className="stats-card blue"><div className="stats-card-icon blue">🏢</div><div className="stats-card-value">45</div><div className="stats-card-label">Companies Visited</div></div>
+        <div className="stats-card"><div className="stats-card-icon green">📊</div><div className="stats-card-value">{summary.placementRate}%</div><div className="stats-card-label">Placement Rate</div></div>
+        <div className="stats-card green"><div className="stats-card-icon green">💰</div><div className="stats-card-value">{summary.avgPackage ? `₹${(summary.avgPackage / 100000).toFixed(1)}L` : '—'}</div><div className="stats-card-label">Average Package</div></div>
+        <div className="stats-card amber"><div className="stats-card-icon amber">📈</div><div className="stats-card-value">{summary.highestPackage ? `₹${(summary.highestPackage / 100000).toFixed(1)}L` : '—'}</div><div className="stats-card-label">Highest Package</div></div>
+        <div className="stats-card blue"><div className="stats-card-icon blue">🏢</div><div className="stats-card-value">{summary.companiesVisited || 0}</div><div className="stats-card-label">Companies Visited</div></div>
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>

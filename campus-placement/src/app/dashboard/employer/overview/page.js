@@ -51,6 +51,14 @@ export default function EmployerOverviewPage() {
   }
 
   const { stats, recentApplications, upcomingDrives } = data;
+  const pipelineCounts = [
+    stats.totalApplications || 0,
+    stats.shortlisted || 0,
+    stats.interviewStage || 0,
+    stats.selectedCount || 0,
+  ];
+  const acceptanceRate =
+    stats.offersExtended > 0 ? Math.round(((stats.selectedCount || 0) / stats.offersExtended) * 100) : 0;
 
   return (
     <div className="animate-fadeIn">
@@ -98,7 +106,7 @@ export default function EmployerOverviewPage() {
           </div>
           <div className="stats-card-value">{stats.offersExtended}</div>
           <div className="stats-card-label">Offers Extended</div>
-          <div className="stats-card-change up">75% acceptance</div>
+          <div className="stats-card-change up">{acceptanceRate}% acceptance</div>
         </div>
       </div>
 
@@ -111,7 +119,6 @@ export default function EmployerOverviewPage() {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {['Applied', 'Shortlisted', 'Interview', 'Selected'].map((stage, i) => {
-              const counts = [127, 34, 18, 8];
               const colors = ['var(--info-600)', 'var(--primary-600)', 'var(--warning-600)', 'var(--success-600)'];
               const bgColors = [
                 'rgba(2, 132, 199, 0.05)',
@@ -130,7 +137,7 @@ export default function EmployerOverviewPage() {
                     background: bgColors[i],
                   }}
                 >
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: colors[i] }}>{counts[i]}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: colors[i] }}>{pipelineCounts[i]}</div>
                   <div className="text-xs font-semibold" style={{ marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
                     {stage}
                   </div>
@@ -251,9 +258,9 @@ export default function EmployerOverviewPage() {
                   <td className="text-sm text-tertiary">{formatDate(app.appliedAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => showNotReady('View application')}>
+                      <Link className="btn btn-ghost btn-sm" href="/dashboard/employer/applications">
                         View
-                      </button>
+                      </Link>
                       <button className="btn btn-primary btn-sm" onClick={() => showNotReady('Shortlist candidate')}>
                         Shortlist
                       </button>

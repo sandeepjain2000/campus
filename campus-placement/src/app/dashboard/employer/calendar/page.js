@@ -1,17 +1,20 @@
 'use client';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { formatDate } from '@/lib/utils';
 
-const seedEvents = [
-  { id: 1, title: 'Pre-placement Talk - IITM', date: '2026-10-04', time: '11:00 AM', type: 'Event', mode: 'Hybrid' },
-  { id: 2, title: 'Round 1 Interviews - TCS', date: '2026-10-05', time: '10:00 AM', type: 'Interview', mode: 'Virtual' },
-  { id: 3, title: 'Offer Release - NIT Trichy', date: '2026-10-06', time: '05:00 PM', type: 'Milestone', mode: 'Online' },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load calendar');
+  return json;
+};
 
 export default function EmployerCalendarPage() {
-  const [events] = useState(seedEvents);
+  const { data, isLoading, error } = useSWR('/api/employer/calendar', fetcher);
+  const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
   const [view, setView] = useState('list');
 
   const getCalendarCsv = useCallback(
@@ -44,7 +47,7 @@ export default function EmployerCalendarPage() {
             fullCount={events.length}
             getRows={getCalendarCsv}
           />
-          <button className="btn btn-primary">+ Add Event</button>
+          <button className="btn btn-primary" disabled>+ Add Event</button>
         </div>
       </div>
 
@@ -67,9 +70,12 @@ export default function EmployerCalendarPage() {
         </div>
       </div>
 
-      {view === 'calendar' ? (
+      {isLoading ? <div className="card"><p className="text-secondary">Loading events...</p></div> : null}
+      {error ? <div className="card"><p style={{ color: 'var(--danger-600)' }}>{error.message || 'Could not load events.'}</p></div> : null}
+      {!isLoading && !error && view === 'calendar' ? (
         <EmployerCalendarGrid items={calItems} initialYear={2026} initialMonth={9} />
-      ) : (
+      ) : null}
+      {!isLoading && !error && view === 'list' ? (
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -93,10 +99,15 @@ export default function EmployerCalendarPage() {
                   <td>{e.mode}</td>
                 </tr>
               ))}
+              {events.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center text-secondary">No events available yet.</td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -37,7 +37,24 @@ export async function GET() {
       [tenantId]
     );
 
-    return NextResponse.json({ drives: drives.rows });
+    const staff = await query(
+      `SELECT id, first_name, last_name, role
+       FROM users
+       WHERE tenant_id = $1
+         AND role = 'college_admin'
+         AND is_active = true
+       ORDER BY first_name ASC, last_name ASC`,
+      [tenantId]
+    );
+
+    return NextResponse.json({
+      drives: drives.rows,
+      staffDirectory: staff.rows.map((s) => ({
+        id: s.id,
+        name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+        role: s.role === 'college_admin' ? 'Placement Coordinator' : s.role,
+      })),
+    });
   } catch (error) {
     console.error('Failed to load college drives:', error);
     return NextResponse.json({ error: 'Failed to load college drives' }, { status: 500 });

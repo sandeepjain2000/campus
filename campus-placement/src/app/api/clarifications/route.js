@@ -23,23 +23,49 @@ async function resolveTenantId(session) {
 }
 
 async function loadPayload(tenantId) {
-  const res = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
-  const settings = res.rows[0]?.settings || {};
-  const payload = settings.clarifications;
-  if (!payload || !Array.isArray(payload.batches)) return defaultPayload();
-  return payload;
-}
-
-async function savePayload(tenantId, payload) {
-  const existing = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
-  const settings = existing.rows[0]?.settings || {};
-  const merged = { ...settings, clarifications: payload };
-  await query(
-    `UPDATE tenants
-     SET settings = $1::jsonb, updated_at = NOW()
-     WHERE id = $2::uuid`,
-    [JSON.stringify(merged), tenantId]
+  const res = await query(
+    `SELECT
+      b.id AS batch_id,
+      b.company,
+      b.posted_by,
+      b.posted_at,
+      q.id AS question_id,
+      q.question_text,
+      q.answer_text,
+      q.answered_by,
+      q.created_at AS question_created_at
+     FROM clarification_batches b
+     LEFT JOIN clarification_questions q
+       ON q.batch_id = b.id
+     WHERE b.tenant_id = $1::uuid
+     ORDER BY b.posted_at DESC, b.created_at DESC, q.created_at ASC`,
+    [tenantId]
   );
+
+  if (res.rows.length === 0) return defaultPayload();
+
+  const batchesById = new Map();
+  for (const row of res.rows) {
+    if (!batchesById.has(row.batch_id)) {
+      batchesById.set(row.batch_id, {
+        id: row.batch_id,
+        company: row.company,
+        postedBy: row.posted_by,
+        postedAt: row.posted_at,
+        questions: [],
+      });
+    }
+    if (row.question_id) {
+      batchesById.get(row.batch_id).questions.push({
+        id: row.question_id,
+        text: row.question_text,
+        answer: row.answer_text || '',
+        answeredBy: row.answered_by || '',
+      });
+    }
+  }
+
+  return { batches: Array.from(batchesById.values()) };
 }
 
 export async function GET() {
@@ -76,22 +102,23 @@ export async function POST(request) {
       return NextResponse.json({ error: 'company, postedBy and at least one question are required' }, { status: 400 });
     }
 
+    const batchInsert = await query(
+      `INSERT INTO clarification_batches (tenant_id, company, posted_by, posted_at, created_by)
+       VALUES ($1::uuid, $2, $3, CURRENT_DATE, $4::uuid)
+       RETURNING id`,
+      [tenantId, company, postedBy, session?.user?.id || null]
+    );
+    const batchId = batchInsert.rows[0].id;
+
+    for (const text of trimmed) {
+      await query(
+        `INSERT INTO clarification_questions (batch_id, question_text)
+         VALUES ($1::uuid, $2)`,
+        [batchId, text]
+      );
+    }
+
     const payload = await loadPayload(tenantId);
-    const id = `b-${Date.now()}`;
-    const batch = {
-      id,
-      company,
-      postedBy,
-      postedAt: new Date().toISOString().slice(0, 10),
-      questions: trimmed.map((text, i) => ({
-        id: `q-${id}-${i}`,
-        text,
-        answer: '',
-        answeredBy: '',
-      })),
-    };
-    payload.batches = [batch, ...(payload.batches || [])];
-    await savePayload(tenantId, payload);
     return NextResponse.json(payload);
   } catch (error) {
     console.error('Failed to publish clarification batch:', error);
@@ -117,15 +144,30 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'batchId, questionId and answer are required' }, { status: 400 });
     }
 
-    const payload = await loadPayload(tenantId);
-    const batch = payload.batches.find((b) => b.id === batchId);
-    if (!batch) return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
-    const q = batch.questions.find((x) => x.id === questionId);
-    if (!q) return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+    const ownership = await query(
+      `SELECT q.id
+       FROM clarification_questions q
+       JOIN clarification_batches b ON b.id = q.batch_id
+       WHERE q.id = $1::uuid
+         AND b.id = $2::uuid
+         AND b.tenant_id = $3::uuid
+       LIMIT 1`,
+      [questionId, batchId, tenantId]
+    );
+    if (ownership.rows.length === 0) {
+      return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+    }
 
-    q.answer = answer;
-    q.answeredBy = answeredBy || 'Recruitment Team';
-    await savePayload(tenantId, payload);
+    await query(
+      `UPDATE clarification_questions
+       SET answer_text = $1,
+           answered_by = $2,
+           answered_at = NOW()
+       WHERE id = $3::uuid`,
+      [answer, answeredBy || 'Recruitment Team', questionId]
+    );
+
+    const payload = await loadPayload(tenantId);
     return NextResponse.json(payload);
   } catch (error) {
     console.error('Failed to save clarification answer:', error);

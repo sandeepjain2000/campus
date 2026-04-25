@@ -412,7 +412,7 @@ CREATE TABLE college_calendar (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
-    event_type VARCHAR(30) CHECK (event_type IN ('exam', 'holiday', 'festival', 'placement_drive', 'workshop', 'other')),
+    event_type VARCHAR(30) CHECK (event_type IN ('exam', 'holiday', 'festival', 'placement_drive', 'interview_slot', 'workshop', 'other')),
     start_date DATE NOT NULL,
     end_date DATE,
     is_blocking BOOLEAN DEFAULT false,
@@ -456,7 +456,53 @@ CREATE TABLE employer_approvals (
 );
 
 -- ============================================
--- 20. NOTIFICATIONS
+-- 20. SPONSORSHIP OPPORTUNITIES
+-- ============================================
+CREATE TABLE sponsorship_opportunities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    category VARCHAR(120) NOT NULL,
+    description TEXT,
+    tier_name VARCHAR(120) NOT NULL,
+    price_inr BIGINT NOT NULL CHECK (price_inr >= 0),
+    benefits TEXT[] DEFAULT '{}',
+    label VARCHAR(60),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_sponsorship_opportunities_tenant ON sponsorship_opportunities(tenant_id);
+CREATE INDEX idx_sponsorship_opportunities_active ON sponsorship_opportunities(is_active);
+
+-- ============================================
+-- 21. CLARIFICATION BATCHES + QUESTIONS
+-- ============================================
+CREATE TABLE clarification_batches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    company VARCHAR(255) NOT NULL,
+    posted_by VARCHAR(255) NOT NULL,
+    posted_at DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE clarification_questions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    batch_id UUID NOT NULL REFERENCES clarification_batches(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    answer_text TEXT,
+    answered_by VARCHAR(255),
+    answered_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_clarification_batches_tenant ON clarification_batches(tenant_id, posted_at DESC, created_at DESC);
+CREATE INDEX idx_clarification_questions_batch ON clarification_questions(batch_id, created_at ASC);
+
+-- ============================================
+-- 22. NOTIFICATIONS
 -- ============================================
 CREATE TABLE notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -473,7 +519,7 @@ CREATE INDEX idx_notif_user ON notifications(user_id);
 CREATE INDEX idx_notif_read ON notifications(is_read);
 
 -- ============================================
--- 21. AUDIT LOGS
+-- 23. AUDIT LOGS
 -- ============================================
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -493,7 +539,7 @@ CREATE INDEX idx_audit_tenant ON audit_logs(tenant_id);
 CREATE INDEX idx_audit_action ON audit_logs(action);
 
 -- ============================================
--- 22. MESSAGE TEMPLATES
+-- 24. MESSAGE TEMPLATES
 -- ============================================
 CREATE TABLE message_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -509,7 +555,7 @@ CREATE TABLE message_templates (
 );
 
 -- ============================================
--- 23. EMPLOYER RATINGS
+-- 25. EMPLOYER RATINGS
 -- ============================================
 CREATE TABLE employer_ratings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -527,7 +573,7 @@ CREATE TABLE employer_ratings (
 );
 
 -- ============================================
--- 24. PLATFORM FEEDBACK (product loop)
+-- 26. PLATFORM FEEDBACK (product loop)
 -- ============================================
 CREATE TABLE platform_feedback (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -546,7 +592,7 @@ CREATE INDEX idx_platform_feedback_status ON platform_feedback(status);
 CREATE INDEX idx_platform_feedback_created ON platform_feedback(created_at DESC);
 
 -- ============================================
--- 25. PLATFORM FEEDBACK REPLIES (discussion track)
+-- 27. PLATFORM FEEDBACK REPLIES (discussion track)
 -- ============================================
 CREATE TABLE platform_feedback_replies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

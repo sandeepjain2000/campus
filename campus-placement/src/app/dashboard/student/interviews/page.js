@@ -1,53 +1,20 @@
 'use client';
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { formatDate } from '@/lib/utils';
 
-const myInterviews = [
-  {
-    id: 1,
-    company: 'TCS',
-    round: 'Technical Round 1',
-    date: '2026-10-01',
-    time: '10:30 AM',
-    mode: 'Virtual',
-    location: 'Microsoft Teams — link on dashboard',
-    status: 'Scheduled',
-  },
-  {
-    id: 2,
-    company: 'Infosys',
-    round: 'HR Round',
-    date: '2026-10-02',
-    time: '03:00 PM',
-    mode: 'On-Campus',
-    location: 'CRC Interview Room 204 · Block B',
-    status: 'Scheduled',
-  },
-  {
-    id: 3,
-    company: 'TechCorp',
-    round: 'Coding Interview',
-    date: '2026-09-26',
-    time: '11:00 AM',
-    mode: 'Virtual',
-    location: 'HackerRank + Google Meet',
-    status: 'Completed',
-  },
-  {
-    id: 4,
-    company: 'MegaHire Consortium',
-    round: 'Panel — systems',
-    date: '2026-10-24',
-    time: '09:00 AM',
-    mode: 'Off-Campus',
-    location: 'Manyata Tech Park, Bengaluru — Gate 3, Tower A, 5th floor',
-    status: 'Scheduled',
-  },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load interviews');
+  return json;
+};
 
 export default function StudentInterviewsPage() {
   const [view, setView] = useState('list');
+  const { data, isLoading, error } = useSWR('/api/student/interviews', fetcher);
+  const myInterviews = Array.isArray(data?.interviews) ? data.interviews : [];
 
   const calItems = useMemo(
     () =>
@@ -58,7 +25,7 @@ export default function StudentInterviewsPage() {
         time: i.time,
         meta: `${i.mode} · ${i.location}`,
       })),
-    [],
+    [myInterviews],
   );
 
   return (
@@ -112,6 +79,13 @@ export default function StudentInterviewsPage() {
                   </td>
                 </tr>
               ))}
+              {!isLoading && myInterviews.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-secondary">
+                    {error?.message || 'No interview schedule found.'}
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

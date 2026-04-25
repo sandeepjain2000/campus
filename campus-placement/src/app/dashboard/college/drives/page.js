@@ -7,20 +7,10 @@ import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { SOCIAL_PLATFORM_ORDER } from '@/components/wireframe/SocialWireframeToolkit';
 
-const STAFF_DIRECTORY = [
-  { id: 'st-1', name: 'Dr. Meera Krishnan', role: 'TPO Faculty' },
-  { id: 'st-2', name: 'Prof. Sanjay Nair', role: 'CSE Dept Coordinator' },
-  { id: 'st-3', name: 'Ms. Ananya Bose', role: 'Placement Office' },
-  { id: 'st-4', name: 'Dr. Vikram Sethi', role: 'Infrastructure & Logistics' },
-];
-
-function staffById(id) {
-  return STAFF_DIRECTORY.find((s) => s.id === id);
-}
-
 export default function CollegeDrivesPage() {
   const { addToast } = useToast();
   const [drives, setDrives] = useState([]);
+  const [staffDirectory, setStaffDirectory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionBusyId, setActionBusyId] = useState(null);
   const [downloading, setDownloading] = useState(null);
@@ -36,6 +26,7 @@ export default function CollegeDrivesPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
         if (!mounted) return;
+        setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
         setDrives(
           (json.drives || []).map((d) => ({
             ...d,
@@ -76,10 +67,10 @@ export default function CollegeDrivesPage() {
   const addOptionsForDrive = useMemo(() => {
     const map = {};
     for (const d of drives) {
-      map[d.id] = STAFF_DIRECTORY.filter((s) => !d.staffIds.includes(s.id));
+      map[d.id] = staffDirectory.filter((s) => !d.staffIds.includes(s.id));
     }
     return map;
-  }, [drives]);
+  }, [drives, staffDirectory]);
 
   const calItems = useMemo(
     () =>
@@ -350,7 +341,7 @@ export default function CollegeDrivesPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                 {drive.staffIds.length === 0 && <span className="text-sm text-secondary">No staff linked yet.</span>}
                 {drive.staffIds.map((sid) => {
-                  const s = staffById(sid);
+                  const s = staffDirectory.find((staff) => staff.id === sid);
                   if (!s) return null;
                   return (
                     <span key={sid} className="badge badge-indigo" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', paddingRight: '0.35rem' }}>

@@ -23,46 +23,6 @@ const fetcher = async (url) => {
   return json;
 };
 
-/** Outcomes + evaluator feedback (visible to company only in full product; college sees outcome columns only). */
-const initialResults = [
-  {
-    id: 'r1',
-    student: 'Rahul Sharma',
-    company: 'TCS',
-    round: 'Round 1 - Technical',
-    outcome: 'Shortlisted',
-    date: '2026-10-07',
-    feedbackFree: 'Strong DS; tighten communication on edge cases.',
-    critComm: 7,
-    critProjects: 8,
-    critTech: 9,
-  },
-  {
-    id: 'r2',
-    student: 'Neha Gupta',
-    company: 'TCS',
-    round: 'Round 1 - Technical',
-    outcome: 'Rejected',
-    date: '2026-10-07',
-    feedbackFree: '',
-    critComm: 6,
-    critProjects: 7,
-    critTech: 6,
-  },
-  {
-    id: 'r3',
-    student: 'Arjun Verma',
-    company: 'Infosys',
-    round: 'Round 2 - HR',
-    outcome: 'Pending',
-    date: '2026-10-08',
-    feedbackFree: '',
-    critComm: '',
-    critProjects: '',
-    critTech: '',
-  },
-];
-
 function formatSlotRange(slot) {
   if (slot.startTime && slot.endTime) {
     return `${formatTimeDisplay(slot.startTime)} – ${formatTimeDisplay(slot.endTime)}`;
@@ -76,7 +36,7 @@ export default function CollegeInterviewsPage() {
   const { data, mutate, isLoading } = useSWR('/api/college/interviews', fetcher);
   const [section, setSection] = useState('schedule');
   const slots = Array.isArray(data?.slots) ? data.slots : [];
-  const [results] = useState(initialResults);
+  const results = Array.isArray(data?.results) ? data.results : [];
   const [form, setForm] = useState({
     company: 'TCS',
     round: 'Round 1 - Technical',

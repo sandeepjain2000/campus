@@ -22,8 +22,24 @@ export default function CollegeOverviewPage() {
   const { data, error, isLoading, mutate } = useSWR('/api/college/dashboard', fetcher);
   const [socialModalPlatform, setSocialModalPlatform] = useState(null);
 
-  const showNotReady = (label) => {
-    addToast(`${label} is not available yet in this build.`, 'info');
+  const exportOverview = () => {
+    const payload = {
+      stats,
+      departmentStats,
+      recentActivity,
+      pendingActions,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'college_overview_export.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    addToast('Overview exported.', 'success');
   };
 
   if (error) {
@@ -103,7 +119,7 @@ export default function CollegeOverviewPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => showNotReady('Export')}>
+          <button type="button" className="btn btn-secondary" onClick={exportOverview}>
             <Download size={16} /> Export
           </button>
           <Link href="/dashboard/college/drives" className="btn btn-primary">

@@ -13,36 +13,14 @@ function companyFromSession(email, tenantName) {
   return null;
 }
 
-const collegeThreadsSeed = [
-  {
-    id: 1,
-    campus: 'IIT Madras',
-    topic: 'Interview panel availability for Oct 7',
-    lastActivity: '3h ago',
-    replies: [
-      { by: 'TCS — Campus Hiring', text: 'Please confirm rooms A2/A3 are blocked for our morning panel.', role: 'company' },
-      { by: 'IIT Madras Placement Cell', text: 'Confirmed. AV checklist shared separately.', role: 'college' },
-    ],
-  },
-  {
-    id: 2,
-    campus: 'NIT Trichy',
-    topic: 'Accessibility & specialization records export',
-    lastActivity: 'Yesterday',
-    replies: [
-      { by: 'TCS — Campus Hiring', text: 'We need a CSV of shortlisted students with specialization for logistics planning.', role: 'company' },
-      { by: 'NIT Trichy Placement Cell', text: 'Export will be shared via secure link before the visit.', role: 'college' },
-    ],
-  },
-];
-
 export default function EmployerDiscussionsPage() {
   const { data: session } = useSession();
   const [tab, setTab] = useState('clarifications');
-  const [collegeThreads, setCollegeThreads] = useState(collegeThreadsSeed);
-  const [activeCollegeId, setActiveCollegeId] = useState(collegeThreadsSeed[0].id);
+  const [collegeThreads, setCollegeThreads] = useState([]);
+  const [activeCollegeId, setActiveCollegeId] = useState(null);
   const [collegeReply, setCollegeReply] = useState('');
   const [searchCollege, setSearchCollege] = useState('');
+  const [activeCampusId, setActiveCampusId] = useState(null);
 
   const [batchesAll, setBatchesAll] = useState([]);
   const myCompany = companyFromSession(session?.user?.email, session?.user?.tenantName);
@@ -50,6 +28,34 @@ export default function EmployerDiscussionsPage() {
     if (!myCompany) return batchesAll;
     return batchesAll.filter((b) => b.company === myCompany);
   }, [batchesAll, myCompany]);
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('activeCampus');
+    if (stored) setActiveCampusId(JSON.parse(stored)?.id || null);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadThreads = async () => {
+      if (!activeCampusId) return;
+      try {
+        const res = await fetch(`/api/discussions?campusId=${activeCampusId}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load college discussions');
+        if (!mounted) return;
+        const list = Array.isArray(json.threads) ? json.threads : [];
+        setCollegeThreads(list);
+        setActiveCollegeId(list[0]?.id || null);
+      } catch {
+        if (!mounted) return;
+        setCollegeThreads([]);
+      }
+    };
+    loadThreads();
+    return () => {
+      mounted = false;
+    };
+  }, [activeCampusId]);
 
   useEffect(() => {
     let mounted = true;
@@ -93,18 +99,19 @@ export default function EmployerDiscussionsPage() {
 
   const sendCollegeReply = () => {
     if (!collegeReply.trim() || !activeCollege) return;
-    setCollegeThreads((prev) =>
-      prev.map((t) =>
-        t.id === activeCollege.id
-          ? {
-              ...t,
-              replies: [...t.replies, { by: 'Recruitment Team', text: collegeReply.trim(), role: 'company' }],
-              lastActivity: 'Just now',
-            }
-          : t,
-      ),
-    );
-    setCollegeReply('');
+    fetch(`/api/discussions?campusId=${activeCampusId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threadId: activeCollege.id, text: collegeReply.trim(), campusId: activeCampusId }),
+    })
+      .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
+      .then(({ ok, json }) => {
+        if (!ok) return;
+        const list = Array.isArray(json.threads) ? json.threads : [];
+        setCollegeThreads(list);
+        setCollegeReply('');
+      })
+      .catch(() => {});
   };
 
   return (
@@ -208,7 +215,7 @@ export default function EmployerDiscussionsPage() {
                       {t.topic}
                     </div>
                   </span>
-                  <span className="badge badge-gray">{t.replies.length}</span>
+                  <span className="badge badge-gray">{(t.replies || []).length}</span>
                 </button>
               ))}
             </div>
@@ -220,7 +227,7 @@ export default function EmployerDiscussionsPage() {
                 <h3 style={{ marginTop: '0.5rem' }}>{activeCollege.topic}</h3>
                 <div className="text-sm text-secondary">Last activity: {activeCollege.lastActivity}</div>
                 <ConvThread>
-                  {activeCollege.replies.map((r, idx) => (
+                  {(activeCollege.replies || []).map((r, idx) => (
                     <ConvBubble
                       key={`${activeCollege.id}-${idx}`}
                       side={r.role === 'company' ? 'right' : 'left'}

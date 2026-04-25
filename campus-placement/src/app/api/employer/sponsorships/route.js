@@ -21,37 +21,47 @@ export async function GET() {
        ORDER BY name ASC`
     );
 
-    const colleges = [];
-    for (const college of collegesRes.rows) {
-      const facilityRes = await query(
-        `SELECT facility_type, COUNT(*) AS count
-         FROM college_facilities
-         WHERE tenant_id = $1
-         GROUP BY facility_type`,
-        [college.id]
-      );
-      const totalFacilities = facilityRes.rows.reduce((acc, r) => acc + Number(r.count || 0), 0);
+    const sponsorshipRes = await query(
+      `SELECT
+        so.tenant_id,
+        so.category,
+        so.description,
+        so.tier_name,
+        so.price_inr,
+        so.benefits,
+        so.label
+       FROM sponsorship_opportunities so
+       WHERE so.is_active = true
+       ORDER BY so.tenant_id, so.category, so.price_inr ASC`
+    );
 
-      const base = Math.max(200000, totalFacilities * 100000);
-      const sponsorshipLevels = [
-        {
-          category: 'Campus Infrastructure',
-          description: 'Support learning spaces, labs, and student infrastructure.',
-          tiers: [
-            { name: 'Bronze Sponsor', price: `₹${formatInr(base)}`, benefits: ['Brand mention on partner wall', 'Quarterly impact summary'] },
-            { name: 'Silver Sponsor', price: `₹${formatInr(base * 2)}`, benefits: ['Bronze benefits', 'Feature in campus events bulletin'] },
-            { name: 'Gold Sponsor', price: `₹${formatInr(base * 4)}`, benefits: ['Silver benefits', 'Priority branding slot on major events'] },
-          ],
-        },
-      ];
-
-      colleges.push({
-        id: college.id,
-        name: college.name,
-        location: college.city || 'India',
-        sponsorshipLevels,
+    const opportunitiesByTenant = new Map();
+    for (const row of sponsorshipRes.rows) {
+      const tenantMap = opportunitiesByTenant.get(row.tenant_id) || new Map();
+      if (!tenantMap.has(row.category)) {
+        tenantMap.set(row.category, {
+          category: row.category,
+          description: row.description || '',
+          tiers: [],
+        });
+      }
+      tenantMap.get(row.category).tiers.push({
+        name: row.tier_name,
+        price: `₹${formatInr(Number(row.price_inr || 0))}`,
+        benefits: Array.isArray(row.benefits) ? row.benefits : [],
+        label: row.label || null,
       });
+      opportunitiesByTenant.set(row.tenant_id, tenantMap);
     }
+
+    const colleges = collegesRes.rows.map((college) => ({
+      id: college.id,
+      name: college.name,
+      location: college.city || 'India',
+      sponsorshipLevels: opportunitiesByTenant.has(college.id)
+        ? Array.from(opportunitiesByTenant.get(college.id).values())
+        : [],
+    }));
 
     return NextResponse.json({
       colleges,

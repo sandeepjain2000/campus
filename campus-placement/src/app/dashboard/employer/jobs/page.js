@@ -185,10 +185,6 @@ export default function EmployerJobsPage() {
   }, []);
 
   const submitJob = async (asDraft) => {
-    if (editingJob) {
-      addToast('Updating an existing job in the database is not wired yet.', 'info');
-      return;
-    }
     if (!form.title.trim()) {
       addToast('Job title is required', 'error');
       return;
@@ -204,9 +200,10 @@ export default function EmployerJobsPage() {
     setSubmitting(true);
     try {
       const res = await fetch('/api/employer/jobs', {
-        method: 'POST',
+        method: editingJob ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: editingJob?.id,
           title: form.title.trim(),
           description: form.description,
           jobType: form.type,
@@ -225,9 +222,11 @@ export default function EmployerJobsPage() {
         return;
       }
       addToast(
-        asDraft
-          ? 'Draft saved to the database (no alerts sent).'
-          : 'Job published. College admins were notified one-by-one; internship posts also notify students per campus.',
+        editingJob
+          ? 'Job updated successfully.'
+          : asDraft
+            ? 'Draft saved to the database (no alerts sent).'
+            : 'Job published. College admins were notified one-by-one; internship posts also notify students per campus.',
         'success',
       );
       closeForm();
@@ -473,9 +472,9 @@ export default function EmployerJobsPage() {
                 >
                   Edit
                 </button>
-                <button className="btn btn-primary btn-sm" type="button" onClick={() => showNotReady('View pipeline')}>
+                <a className="btn btn-primary btn-sm" href={`/dashboard/employer/applications?jobId=${job.id}`}>
                   View Pipeline
-                </button>
+                </a>
               </div>
             </div>
             <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>

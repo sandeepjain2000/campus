@@ -1,6 +1,7 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { formatDate } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
@@ -16,17 +17,14 @@ function formatTimeDisplay(t) {
   return `${hr}:${mm} ${am ? 'AM' : 'PM'}`;
 }
 
-const seedPlan = [
-  { id: 1, campus: 'IIT Madras', round: 'Round 1 - DSA', date: '2026-10-07', time: '10:00', assigned: 18, mode: 'Virtual', panelNames: 'Panel: A. Rao, B. Sen' },
-  { id: 2, campus: 'NIT Trichy', round: 'Round 2 - System Design', date: '2026-10-08', time: '13:00', assigned: 9, mode: 'On-Campus', panelNames: '' },
-];
-
 export default function EmployerInterviewsPage() {
   const { addToast } = useToast();
-  const [rows, setRows] = useState(seedPlan);
+  const router = useRouter();
+  const [rows, setRows] = useState([]);
+  const [activeCampus, setActiveCampus] = useState(null);
   const [view, setView] = useState('list');
   const [form, setForm] = useState({
-    campus: 'IIT Madras',
+    campus: '',
     round: 'Round 1 - DSA',
     date: '',
     time: '',
@@ -35,12 +33,65 @@ export default function EmployerInterviewsPage() {
     panelNames: '',
   });
 
-  const create = (e) => {
+  useEffect(() => {
+    const stored = sessionStorage.getItem('activeCampus');
+    if (!stored) {
+      router.replace('/dashboard/employer/select-campus');
+      return;
+    }
+    const campus = JSON.parse(stored);
+    setActiveCampus(campus);
+    setForm((p) => ({ ...p, campus: campus?.name || '' }));
+  }, [router]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!activeCampus?.id) return;
+      try {
+        const res = await fetch(`/api/employer/interviews?campusId=${activeCampus.id}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load interview plan');
+        if (!mounted) return;
+        setRows(Array.isArray(json.rows) ? json.rows : []);
+      } catch (e) {
+        if (!mounted) return;
+        setRows([]);
+        addToast(e.message || 'Failed to load interview plan', 'error');
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [activeCampus?.id, addToast]);
+
+  const create = async (e) => {
     e.preventDefault();
-    if (!form.date || !form.time) return;
-    setRows((prev) => [{ id: Date.now(), ...form, assigned: Number(form.assigned) || 0 }, ...prev]);
-    setForm((p) => ({ ...p, date: '', time: '', assigned: 0, panelNames: '' }));
-    addToast('Interview slot added.', 'info');
+    if (!form.date || !form.time || !activeCampus?.id) return;
+    try {
+      const res = await fetch('/api/employer/interviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campusId: activeCampus.id,
+          campus: form.campus,
+          round: form.round,
+          date: form.date,
+          time: form.time,
+          assigned: Number(form.assigned) || 0,
+          mode: form.mode,
+          panelNames: form.panelNames,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to save interview slot');
+      setRows(Array.isArray(json.rows) ? json.rows : []);
+      setForm((p) => ({ ...p, date: '', time: '', assigned: 0, panelNames: '' }));
+      addToast('Interview slot added.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to save interview slot', 'error');
+    }
   };
 
   const calItems = useMemo(

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import Link from 'next/link';
 
 export default function AdminCollegesPage() {
   const { addToast } = useToast();
@@ -38,7 +39,7 @@ export default function AdminCollegesPage() {
 
   return (
     <div className="animate-fadeIn">
-      <div className="page-header"><div className="page-header-left"><h1>🏫 Manage Colleges</h1><p>All registered colleges on the platform</p></div><button className="btn btn-primary" onClick={() => showNotReady('Add college')}>+ Add College</button></div>
+      <div className="page-header"><div className="page-header-left"><h1>🏫 Manage Colleges</h1><p>All registered colleges on the platform</p></div><Link className="btn btn-primary" href="/data-entry/users">+ Add College</Link></div>
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>College</th><th>City</th><th>NAAC</th><th>Students</th><th>Placed</th><th>Rate</th><th>Status</th><th>Actions</th></tr></thead>

@@ -253,3 +253,87 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message || 'Failed to create job' }, { status });
   }
 }
+
+export async function PATCH(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'employer') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
+
+    const emp = await getEmployerId(userId);
+    if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
+
+    const body = await request.json().catch(() => ({}));
+    const {
+      id,
+      title,
+      description = '',
+      jobType,
+      status,
+      salaryMin = null,
+      salaryMax = null,
+      minCgpa = null,
+      vacancies = 1,
+      keywords = '',
+    } = body;
+
+    const jobId = String(id || '').trim();
+    if (!jobId || !title?.trim()) {
+      return NextResponse.json({ error: 'id and title are required' }, { status: 400 });
+    }
+    if (!JOB_TYPES.has(jobType)) {
+      return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
+    }
+    const allowedStatus = new Set(['draft', 'published', 'closed', 'cancelled']);
+    if (!allowedStatus.has(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    }
+
+    const skills = parseKeywords(keywords);
+    const skillsRequired = skills.length ? skills : ['General'];
+
+    const updated = await query(
+      `UPDATE job_postings
+       SET title = $1,
+           description = $2,
+           job_type = $3,
+           status = $4,
+           salary_min = $5,
+           salary_max = $6,
+           min_cgpa = $7,
+           vacancies = $8,
+           skills_required = $9::text[],
+           updated_at = NOW()
+       WHERE id = $10::uuid AND employer_id = $11::uuid
+       RETURNING id, title, job_type, status`,
+      [
+        title.trim(),
+        description || '',
+        jobType,
+        status,
+        salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+        salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+        minCgpa != null && minCgpa !== '' ? Number(minCgpa) : 0,
+        Math.max(1, parseInt(String(vacancies), 10) || 1),
+        skillsRequired,
+        jobId,
+        emp.id,
+      ],
+    );
+
+    if (!updated.rows.length) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, job: updated.rows[0] });
+  } catch (e) {
+    console.error('PATCH /api/employer/jobs', e);
+    return NextResponse.json({ error: e.message || 'Failed to update job' }, { status: 500 });
+  }
+}

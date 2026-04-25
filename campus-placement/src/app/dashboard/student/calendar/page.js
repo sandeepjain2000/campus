@@ -1,20 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** Drive & deadline oriented events for students (preview data). */
-const events = [
-  { date: 15, title: 'TechCorp — PPT + test', type: 'drive' },
-  { date: 16, title: 'Infosys — Application deadline', type: 'deadline' },
-  { date: 22, title: 'GlobalSoft — Virtual drive', type: 'drive' },
-  { date: 24, title: 'TCS — Off-campus venue (Chennai)', type: 'off_campus' },
-  { date: 26, title: 'Dussehra — no drives', type: 'holiday' },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load calendar');
+  return json;
+};
 
 export default function StudentPlacementCalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8));
+  const { data } = useSWR('/api/student/calendar', fetcher);
+  const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
@@ -58,7 +59,13 @@ export default function StudentPlacementCalendarPage() {
             </div>
           ))}
           {cells.map((day, i) => {
-            const dayEvents = day ? events.filter((e) => e.date === day) : [];
+            const dayEvents = day
+              ? events.filter((e) => {
+                if (!e.date) return false;
+                const d = new Date(e.date);
+                return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth() && d.getDate() === day;
+              })
+              : [];
             const isToday = day === 13;
             return (
               <div key={i} className={`calendar-cell ${!day ? 'other-month' : ''} ${isToday ? 'today' : ''}`}>
@@ -66,7 +73,7 @@ export default function StudentPlacementCalendarPage() {
                   <>
                     <div className="calendar-date">{day}</div>
                     {dayEvents.map((ev, j) => (
-                      <div key={j} className={`calendar-event ${ev.type === 'off_campus' ? 'drive' : ev.type}`} title={ev.title}>
+                      <div key={j} className={`calendar-event ${ev.type === 'off_campus' ? 'drive' : ev.type || 'drive'}`} title={ev.title}>
                         {ev.title}
                       </div>
                     ))}

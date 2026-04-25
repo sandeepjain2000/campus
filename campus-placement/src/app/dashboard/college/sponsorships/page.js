@@ -1,50 +1,65 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import useSWR from 'swr';
 
 import { Trophy, FlaskConical, Palette } from 'lucide-react';
 
-const sponsorshipLevels = [
-  {
-    category: 'Sports Programs',
-    icon: <Trophy size={24} />,
-    color: '#3b82f6',
-    description: 'Support our athletic programs and help students excel in sports',
-    tiers: [
-      { name: 'Bronze Sponsor', price: '$5,000', label: 'Popular', benefits: ['Logo on team uniforms', 'Website recognition'] },
-      { name: 'Silver Sponsor', price: '$15,000', label: 'Popular', benefits: ['Logo on team uniforms', 'Website recognition', 'Event banner display'] },
-      { name: 'Gold Sponsor', price: '$35,000', label: 'Premium', benefits: ['Logo on team uniforms', 'Website recognition', 'Event banner display', 'VIP event access'] },
-    ]
-  },
-  {
-    category: 'Science Labs',
-    icon: <FlaskConical size={24} />,
-    color: '#10b981',
-    description: 'Enhance our laboratory facilities and scientific equipment',
-    tiers: [
-      { name: 'Equipment Sponsor', price: '$10,000', benefits: ['Lab naming rights', 'Plaque recognition'] },
-      { name: 'Lab Partner', price: '$25,000', benefits: ['Lab naming rights', 'Plaque recognition', 'Student presentation access'] },
-    ]
-  },
-  {
-    category: 'Cultural Events',
-    icon: <Palette size={24} />,
-    color: '#a855f7',
-    description: 'Support arts, music, and cultural activities that enrich student life',
-    tiers: [
-      { name: 'Event Supporter', price: '$3,000', benefits: ['Program acknowledgment', 'Social media recognition'] },
-      { name: 'Cultural Partner', price: '$8,000', benefits: ['Program acknowledgment', 'Event tickets'] },
-    ]
-  }
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load sponsorship opportunities');
+  return json;
+};
+
+const categoryMeta = {
+  'Campus Infrastructure': { icon: <Trophy size={24} />, color: '#3b82f6' },
+  'Research & Labs': { icon: <FlaskConical size={24} />, color: '#10b981' },
+  'Alumni Mentorship': { icon: <Palette size={24} />, color: '#a855f7' },
+};
 
 export default function CollegeSponsorshipsPage() {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('All Categories');
+  const { data, error } = useSWR('/api/college/sponsorships', fetcher);
 
-  const showNotReady = (label) => {
-    addToast(`${label} is not available yet in this build.`, 'info');
+  const sponsorshipLevels = useMemo(() => (Array.isArray(data?.categories) ? data.categories : []), [data?.categories]);
+  const collegeName = data?.collegeName || 'Your Institution';
+
+  const downloadGuide = () => {
+    const lines = sponsorshipLevels.flatMap((level) => [
+      `${level.category}`,
+      `${level.description || ''}`,
+      ...level.tiers.map((tier) => `- ${tier.name}: ${tier.price} (${(tier.benefits || []).join('; ')})`),
+      '',
+    ]);
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'college_sponsorship_guide.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    addToast('Sponsorship guide downloaded.', 'success');
   };
+
+  const scheduleMeeting = () => {
+    window.location.href = `mailto:placement@iitm.edu?subject=${encodeURIComponent(
+      `Sponsorship discussion with ${collegeName}`
+    )}`;
+  };
+
+  const tabs = useMemo(
+    () => ['All Categories', ...sponsorshipLevels.map((s) => s.category)],
+    [sponsorshipLevels]
+  );
+
+  const visibleLevels = useMemo(
+    () => sponsorshipLevels.filter((s) => activeTab === 'All Categories' || s.category === activeTab),
+    [activeTab, sponsorshipLevels]
+  );
 
   return (
     <div className="animate-fadeIn">
@@ -63,11 +78,11 @@ export default function CollegeSponsorshipsPage() {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Invest in the <span className="text-primary-600">Future</span></h1>
           <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 2rem' }}>
-            Partner with us to empower student success through sponsorship opportunities that create lasting impact in education, sports, and technology.
+            Live sponsorship opportunities for {collegeName} are shown below. Use this as your college-facing catalog of active sponsor tiers.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => showNotReady('Download guide')}>Download Guide</button>
-            <button className="btn btn-secondary" onClick={() => showNotReady('Schedule meeting')}>Schedule Meeting</button>
+            <button className="btn btn-primary" onClick={downloadGuide}>Download Guide</button>
+            <button className="btn btn-secondary" onClick={scheduleMeeting}>Schedule Meeting</button>
           </div>
         </div>
       </div>
@@ -75,7 +90,7 @@ export default function CollegeSponsorshipsPage() {
       <div className="text-center" style={{ marginBottom: '3rem' }}>
         <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Sponsorship Opportunities</h2>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['All Categories', 'Sports Programs', 'Science Labs', 'Cultural Events'].map(tab => (
+          {tabs.map(tab => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -89,11 +104,13 @@ export default function CollegeSponsorshipsPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-        {sponsorshipLevels.filter(s => activeTab === 'All Categories' || s.category === activeTab).map((level, i) => (
+        {visibleLevels.map((level, i) => {
+          const meta = categoryMeta[level.category] || { icon: <Trophy size={24} />, color: '#3b82f6' };
+          return (
           <div key={i} className="card" style={{ padding: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
               <div style={{ 
-                background: level.color, 
+                background: meta.color, 
                 width: '50px', 
                 height: '50px', 
                 borderRadius: '1rem', 
@@ -103,7 +120,7 @@ export default function CollegeSponsorshipsPage() {
                 fontSize: '1.5rem',
                 color: 'white'
               }}>
-                {level.icon}
+                {meta.icon}
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{level.category}</h3>
@@ -117,7 +134,7 @@ export default function CollegeSponsorshipsPage() {
                   background: 'var(--bg-secondary)', 
                   borderRadius: '1rem', 
                   padding: '1.5rem',
-                  borderLeft: `4px solid ${level.color}`
+                  borderLeft: `4px solid ${meta.color}`
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
@@ -129,7 +146,7 @@ export default function CollegeSponsorshipsPage() {
                   <ul style={{ padding: 0, listStyle: 'none', margin: 0, fontSize: '0.875rem' }}>
                     {tier.benefits.map((b, bi) => (
                       <li key={bi} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                        <span style={{ color: level.color }}>✓</span> {b}
+                        <span style={{ color: meta.color }}>✓</span> {b}
                       </li>
                     ))}
                   </ul>
@@ -137,8 +154,19 @@ export default function CollegeSponsorshipsPage() {
               ))}
             </div>
           </div>
-        ))}
+        )})}
       </div>
+
+      {error && (
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <p className="text-secondary">Failed to load sponsorship opportunities.</p>
+        </div>
+      )}
+      {!error && sponsorshipLevels.length === 0 && (
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <p className="text-secondary">No active sponsorship opportunities found.</p>
+        </div>
+      )}
 
       <style jsx>{`
         .btn-white {

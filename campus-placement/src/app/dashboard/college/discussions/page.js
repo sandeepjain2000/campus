@@ -1,36 +1,34 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ConvBubble, ConvThread } from '@/components/messaging/ConvBubble';
 
-/** Company ↔ College — ongoing operational threads (not student clarifications). */
-const seedThreads = [
-  {
-    id: 1,
-    company: 'TCS',
-    topic: 'Panel rooms & AV for Oct 7 slot',
-    lastActivity: '2h ago',
-    replies: [
-      { by: 'TCS — Campus Hiring', text: 'Please confirm HDMI adapters in A2/A3.', role: 'company' },
-      { by: 'IIT Madras Placement Office', text: 'Confirmed. Two wireless presenter kits added to each room.', role: 'college' },
-    ],
-  },
-  {
-    id: 2,
-    company: 'Infosys',
-    topic: 'Virtual invigilation window + proctoring',
-    lastActivity: 'Yesterday',
-    replies: [
-      { by: 'Infosys — Operations', text: 'We need a 3-hour contiguous block with campus network whitelist for our proctor URL.', role: 'company' },
-      { by: 'IIT Madras Placement Office', text: 'IT team has whitelisted the domain; schedule shared in drive calendar.', role: 'college' },
-    ],
-  },
-];
-
 export default function CollegeDiscussionsPage() {
-  const [threads, setThreads] = useState(seedThreads);
-  const [activeId, setActiveId] = useState(seedThreads[0].id);
+  const [threads, setThreads] = useState([]);
+  const [activeId, setActiveId] = useState(null);
   const [reply, setReply] = useState('');
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/discussions');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load discussions');
+        if (!mounted) return;
+        const list = Array.isArray(json.threads) ? json.threads : [];
+        setThreads(list);
+        setActiveId(list[0]?.id || null);
+      } catch {
+        if (!mounted) return;
+        setThreads([]);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const visibleThreads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -40,20 +38,22 @@ export default function CollegeDiscussionsPage() {
 
   const activeThread = threads.find((t) => t.id === activeId) || visibleThreads[0];
 
-  const addReply = () => {
+  const addReply = async () => {
     if (!reply.trim() || !activeThread) return;
-    setThreads((prev) =>
-      prev.map((t) =>
-        t.id === activeThread.id
-          ? {
-              ...t,
-              replies: [...t.replies, { by: 'IIT Madras Placement Office', text: reply.trim(), role: 'college' }],
-              lastActivity: 'Just now',
-            }
-          : t,
-      ),
-    );
-    setReply('');
+    try {
+      const res = await fetch('/api/discussions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadId: activeThread.id, text: reply.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to send reply');
+      const list = Array.isArray(json.threads) ? json.threads : [];
+      setThreads(list);
+      setReply('');
+    } catch {
+      // keep current UI state if save fails
+    }
   };
 
   return (
@@ -90,7 +90,7 @@ export default function CollegeDiscussionsPage() {
                   </div>
                   <div className="text-xs text-tertiary">{t.lastActivity}</div>
                 </span>
-                <span className="badge badge-gray">{t.replies.length}</span>
+                <span className="badge badge-gray">{(t.replies || []).length}</span>
               </button>
             ))}
           </div>
@@ -103,7 +103,7 @@ export default function CollegeDiscussionsPage() {
               <h3 style={{ marginTop: '0.5rem' }}>{activeThread.topic}</h3>
               <div className="text-sm text-secondary">Last activity: {activeThread.lastActivity}</div>
               <ConvThread>
-                {activeThread.replies.map((r, idx) => (
+                {(activeThread.replies || []).map((r, idx) => (
                   <ConvBubble
                     key={`${activeThread.id}-${idx}`}
                     side={r.role === 'college' ? 'right' : 'left'}

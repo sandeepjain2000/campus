@@ -61,7 +61,41 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ slots });
+    const resultsRes = await query(
+      `SELECT a.id,
+              COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student,
+              ep.company_name AS company,
+              COALESCE(d.title, 'Interview Round') AS round,
+              a.status AS outcome,
+              d.drive_date AS date
+       FROM applications a
+       JOIN student_profiles sp ON sp.id = a.student_id
+       LEFT JOIN users u ON u.id = sp.user_id
+       LEFT JOIN placement_drives d ON d.id = a.drive_id
+       LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
+       WHERE sp.tenant_id = $1::uuid
+         AND a.status IN ('shortlisted', 'selected', 'rejected', 'in_progress')
+       ORDER BY a.updated_at DESC NULLS LAST, a.applied_at DESC
+       LIMIT 500`,
+      [tenantId],
+    );
+
+    const outcomeMap = {
+      shortlisted: 'Shortlisted',
+      selected: 'Selected',
+      rejected: 'Rejected',
+      in_progress: 'Pending',
+    };
+    const results = resultsRes.rows.map((r) => ({
+      id: r.id,
+      student: r.student,
+      company: r.company || '—',
+      round: r.round || 'Interview',
+      outcome: outcomeMap[r.outcome] || 'Pending',
+      date: r.date ? String(r.date).slice(0, 10) : '',
+    }));
+
+    return NextResponse.json({ slots, results });
   } catch (error) {
     console.error('GET /api/college/interviews failed:', error);
     return NextResponse.json({ error: 'Failed to load interview slots' }, { status: 500 });

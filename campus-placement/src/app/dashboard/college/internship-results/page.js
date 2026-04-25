@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import useSWR from 'swr';
+import Link from 'next/link';
 import { CalendarDays, Download, Plus, Users, Clock, IndianRupee, FileText } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
@@ -17,8 +18,27 @@ export default function CollegeInternshipResultsPage() {
   const { data, error, isLoading } = useSWR('/api/college/internships', fetcher);
   const internships = Array.isArray(data?.internships) ? data.internships : [];
 
-  const showNotReady = (label) => {
-    addToast(`${label} is not available yet in this build.`, 'info');
+  const exportCsv = () => {
+    const header = ['Role', 'Company', 'Salary Min', 'Salary Max', 'Type', 'Status'];
+    const rows = internships.map((intern) => [
+      intern.title || '',
+      intern.company_name || '',
+      String(intern.salary_min || ''),
+      String(intern.salary_max || ''),
+      intern.job_type || '',
+      intern.status || '',
+    ]);
+    const csv = [header, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'college_internship_results.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    addToast('Internship results exported.', 'success');
   };
 
   const stats = useMemo(() => {
@@ -65,12 +85,12 @@ export default function CollegeInternshipResultsPage() {
           <p className="text-secondary">Track live internship postings available to your campus.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => showNotReady('Export report')}>
+          <button type="button" className="btn btn-secondary" onClick={exportCsv}>
             <Download size={16} /> Export Report
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => showNotReady('Link new offer')}>
+          <Link href="/dashboard/college/offers" className="btn btn-primary">
             <Plus size={16} /> Link New Offer
-          </button>
+          </Link>
         </div>
       </div>
 

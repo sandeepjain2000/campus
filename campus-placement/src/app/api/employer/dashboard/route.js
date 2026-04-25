@@ -24,7 +24,9 @@ export async function GET(request) {
         (SELECT COUNT(DISTINCT job_id) FROM placement_drives WHERE employer_id = $1 AND tenant_id = $2 AND status IN ('scheduled', 'approved')) as active_jobs,
         (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2) as total_applications,
         (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status IN ('shortlisted', 'selected')) as shortlisted,
-        (SELECT COUNT(*) FROM offers o JOIN placement_drives pd ON o.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2) as offers_extended
+        (SELECT COUNT(*) FROM offers o JOIN placement_drives pd ON o.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2) as offers_extended,
+        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status = 'in_progress') as interview_stage,
+        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status = 'selected') as selected_count
     `, [employerId, campusId]);
 
     const appsQuery = await query(`
@@ -56,6 +58,8 @@ export async function GET(request) {
         totalApplications: parseInt(statsQuery.rows[0].total_applications || 0),
         shortlisted: parseInt(statsQuery.rows[0].shortlisted || 0),
         offersExtended: parseInt(statsQuery.rows[0].offers_extended || 0),
+        interviewStage: parseInt(statsQuery.rows[0].interview_stage || 0),
+        selectedCount: parseInt(statsQuery.rows[0].selected_count || 0),
       },
       recentApplications: appsQuery.rows,
       upcomingDrives: drivesQuery.rows,
