@@ -1,6 +1,7 @@
 'use client';
 import { useState, useCallback } from 'react';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { useToast } from '@/components/ToastProvider';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const events = [
@@ -13,7 +14,8 @@ const events = [
 ];
 
 export default function CollegeCalendarPage() {
-  const [currentMonth] = useState(new Date(2026, 8)); // September 2026
+  const { addToast } = useToast();
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8)); // September 2026
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
@@ -23,6 +25,14 @@ export default function CollegeCalendarPage() {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const shiftMonth = (delta) => {
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+  };
+
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
+  };
 
   const getScheduleCsv = useCallback(
     (_scope) => {
@@ -49,16 +59,16 @@ export default function CollegeCalendarPage() {
             fullCount={events.length}
             getRows={getScheduleCsv}
           />
-          <button className="btn btn-secondary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>+ Add Event</button>
-          <button className="btn btn-secondary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>+ Block Dates</button>
+          <button className="btn btn-secondary" onClick={() => showNotReady('Add event')}>+ Add Event</button>
+          <button className="btn btn-secondary" onClick={() => showNotReady('Block dates')}>+ Block Dates</button>
         </div>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <button className="btn btn-ghost btn-sm" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>← Prev</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => shiftMonth(-1)}>← Prev</button>
           <h3 className="card-title">{monthName}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Next →</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => shiftMonth(1)}>Next →</button>
         </div>
 
         <div className="calendar-grid">

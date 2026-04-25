@@ -1,16 +1,41 @@
 'use client';
-import { formatStatus, getStatusColor, getRoleDisplayName } from '@/lib/utils';
-
-const users = [
-  { id: 1, name: 'Platform Admin', email: 'admin@placementhub.com', role: 'super_admin', active: true },
-  { id: 2, name: 'Rajesh Kumar', email: 'admin@iitm.edu', role: 'college_admin', active: true },
-  { id: 3, name: 'Priya Sharma', email: 'admin@nitt.edu', role: 'college_admin', active: true },
-  { id: 4, name: 'Anita Desai', email: 'hr@techcorp.com', role: 'employer', active: true },
-  { id: 5, name: 'Arjun Verma', email: 'arjun.verma@iitm.edu', role: 'student', active: true },
-  { id: 6, name: 'Sneha Iyer', email: 'sneha.iyer@iitm.edu', role: 'student', active: true },
-];
+import { useEffect, useState } from 'react';
+import { getRoleDisplayName } from '@/lib/utils';
+import { useToast } from '@/components/ToastProvider';
 
 export default function AdminUsersPage() {
+  const { addToast } = useToast();
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/admin/users');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load users');
+        if (!mounted) return;
+        setUsers(Array.isArray(json.users) ? json.users : []);
+      } catch (e) {
+        if (!mounted) return;
+        setError(e.message || 'Failed to load users');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header"><div className="page-header-left"><h1>👥 Manage Users</h1><p>All users across the platform</p></div></div>
@@ -22,10 +47,16 @@ export default function AdminUsersPage() {
               <td><div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}><div className="avatar avatar-sm">{u.name.split(' ').map(n=>n[0]).join('')}</div><span className="font-semibold">{u.name}</span></div></td>
               <td className="text-sm">{u.email}</td>
               <td><span className={`badge badge-${u.role === 'super_admin' ? 'red' : u.role === 'college_admin' ? 'indigo' : u.role === 'employer' ? 'green' : 'blue'}`}>{getRoleDisplayName(u.role)}</span></td>
-              <td><span className="badge badge-green badge-dot">Active</span></td>
-              <td><button className="btn btn-ghost btn-sm" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Edit</button></td>
+              <td><span className={`badge ${u.active ? 'badge-green' : 'badge-gray'} badge-dot`}>{u.active ? 'Active' : 'Inactive'}</span></td>
+              <td><button className="btn btn-ghost btn-sm" onClick={() => showNotReady('Edit user')}>Edit</button></td>
             </tr>
-          ))}</tbody>
+          ))}
+          {!isLoading && users.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="text-center text-secondary">{error || 'No users found.'}</td>
+            </tr>
+          ) : null}
+          </tbody>
         </table>
       </div>
     </div>

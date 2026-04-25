@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { ImportCsvSplitButton } from '@/components/import/ImportCsvSplitButton';
@@ -16,56 +16,6 @@ import {
   normalizeStudentRollKey,
 } from '@/lib/collegeStudentsCsv';
 import { useToast } from '@/components/ToastProvider';
-
-const firstNames = ['Arjun', 'Sneha', 'Rohan', 'Kavya', 'Amit', 'Priya', 'Rahul', 'Divya', 'Vikram', 'Neha', 'Karan', 'Pooja', 'Siddharth', 'Anjali', 'Raj', 'Meera'];
-const lastNames = ['Verma', 'Iyer', 'Patel', 'Reddy', 'Sharma', 'Nair', 'Shah', 'Joshi', 'Singh', 'Gupta', 'Rao', 'Deshmukh', 'Menon', 'Das', 'Sen', 'Kapoor'];
-const depts = ['Computer Science', 'Electronics', 'Mechanical', 'Information Technology', 'Civil'];
-const baseSkills = ['React', 'Node.js', 'Python', 'Java', 'Spring Boot', 'SQL', 'C++', 'IoT', 'Embedded C', 'Figma', 'UI/UX', 'CSS', 'AutoCAD', 'SolidWorks', 'Machine Learning', 'AWS', 'JavaScript', 'Docker', 'Data Analysis'];
-const specializations = ['AI & ML', 'Cyber Security', 'Data Science', 'Cloud Computing', 'Robotics', 'Embedded Systems'];
-const disabilityOptions = ['None', 'Locomotor', 'Visual', 'Hearing', 'Neurodivergent'];
-const genders = ['Male', 'Female', 'Non-binary'];
-const semestersPool = ['4', '5', '6', '7', '8'];
-const jobStatusesPool = ['unplaced', 'placed', 'opted_out', 'higher_studies'];
-const internshipStatusesPool = ['none', 'ongoing', 'completed'];
-const diversityPool = ['General', 'OBC', 'SC', 'ST', 'EWS', 'Other'];
-
-function buildMockStudents() {
-  return Array.from({ length: 30 }, (_, i) => {
-    const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
-    const dept = depts[Math.floor(Math.random() * depts.length)];
-    const rollPrefix = dept === 'Computer Science' || dept === 'Information Technology' ? 'CS' : dept === 'Electronics' ? 'EC' : dept === 'Mechanical' ? 'ME' : 'CV';
-    const shuffledSkills = [...baseSkills].sort(() => 0.5 - Math.random());
-    const specialization = dept === 'Computer Science' || dept === 'Information Technology'
-      ? specializations[Math.floor(Math.random() * specializations.length)]
-      : dept === 'Electronics'
-        ? 'Embedded Systems'
-        : 'Core Engineering';
-    const disabilityStatus = Math.random() > 0.88
-      ? disabilityOptions[Math.floor(Math.random() * (disabilityOptions.length - 1)) + 1]
-      : 'None';
-    const gender = genders[Math.floor(Math.random() * genders.length)];
-
-    return {
-      id: i + 1,
-      academicYear: CURRENT_ACADEMIC_YEAR,
-      semester: semestersPool[Math.floor(Math.random() * semestersPool.length)],
-      name: `${fName} ${lName}`,
-      photo: `https://i.pravatar.cc/64?img=${(i % 70) + 1}`,
-      roll: `${rollPrefix}2021${String(i + 1).padStart(3, '0')}`,
-      dept,
-      specialization,
-      gender,
-      disabilityStatus,
-      diversityCategory: diversityPool[Math.floor(Math.random() * diversityPool.length)],
-      cgpa: Number((Math.random() * 3 + 6.5).toFixed(2)),
-      jobStatus: jobStatusesPool[Math.floor(Math.random() * jobStatusesPool.length)],
-      internshipStatus: internshipStatusesPool[Math.floor(Math.random() * internshipStatusesPool.length)],
-      verified: Math.random() > 0.2,
-      skills: shuffledSkills.slice(0, Math.floor(Math.random() * 3) + 2),
-    };
-  });
-}
 
 function mergeImportedStudents(prev, imported) {
   const byRoll = new Map(
@@ -92,7 +42,8 @@ function mergeImportedStudents(prev, imported) {
 
 export default function CollegeStudentsPage() {
   const { addToast } = useToast();
-  const [students, setStudents] = useState(buildMockStudents);
+  const [students, setStudents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [jobStatusFilter, setJobStatusFilter] = useState('');
@@ -102,6 +53,30 @@ export default function CollegeStudentsPage() {
   const [semesterFilter, setSemesterFilter] = useState('');
   const [detailStudent, setDetailStudent] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadStudents = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/college/students');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load students');
+        if (!mounted) return;
+        setStudents(Array.isArray(json) ? json : []);
+      } catch (error) {
+        if (!mounted) return;
+        addToast(error.message || 'Failed to load students', 'error');
+        setStudents([]);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    loadStudents();
+    return () => {
+      mounted = false;
+    };
+  }, [addToast]);
 
   const filtered = useMemo(() => students.filter((s) => {
     if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.roll.toLowerCase().includes(search.toLowerCase())) return false;
@@ -123,6 +98,16 @@ export default function CollegeStudentsPage() {
 
   const uniqueSpecializations = useMemo(
     () => Array.from(new Set(students.map((s) => s.specialization))),
+    [students],
+  );
+
+  const uniqueDepartments = useMemo(
+    () => Array.from(new Set(students.map((s) => s.dept).filter(Boolean))),
+    [students],
+  );
+
+  const uniqueSemesters = useMemo(
+    () => Array.from(new Set(students.map((s) => s.semester).filter(Boolean))),
     [students],
   );
 
@@ -238,7 +223,7 @@ export default function CollegeStudentsPage() {
           <input className="form-input" placeholder="💡 Search by skill..." value={skillFilter} onChange={(e) => setSkillFilter(e.target.value)} style={{ maxWidth: 180 }} />
           <select className="form-select" style={{ width: 'auto' }} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
             <option value="">All Departments</option>
-            {depts.map((d) => <option key={d} value={d}>{d}</option>)}
+            {uniqueDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
           <select className="form-select" style={{ width: 'auto' }} value={specializationFilter} onChange={(e) => setSpecializationFilter(e.target.value)}>
             <option value="">All Specializations</option>
@@ -246,7 +231,7 @@ export default function CollegeStudentsPage() {
           </select>
           <select className="form-select" style={{ width: 'auto' }} value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
             <option value="">All Semesters</option>
-            {['1', '2', '3', '4', '5', '6', '7', '8'].map((sem) => (
+            {uniqueSemesters.map((sem) => (
               <option key={sem} value={sem}>{`Semester ${sem}`}</option>
             ))}
           </select>
@@ -317,13 +302,18 @@ export default function CollegeStudentsPage() {
                 <td className="text-sm font-mono">{s.roll}</td>
                 <td className="text-sm">{s.dept}</td>
                 <td><span className="badge badge-indigo">{s.specialization}</span></td>
-                <td className="text-sm font-mono">{s.semester}</td>
-                <td><span className="font-bold" style={{ color: s.cgpa >= 8 ? 'var(--success-600)' : 'inherit' }}>{s.cgpa}</span></td>
+                <td className="text-sm font-mono">{s.semester || '—'}</td>
+                <td><span className="font-bold" style={{ color: s.cgpa >= 8 ? 'var(--success-600)' : 'inherit' }}>{s.cgpa ?? '—'}</span></td>
                 <td><span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`}>{formatStatus(s.jobStatus)}</span></td>
                 <td><span className={`badge badge-${getStatusColor(s.internshipStatus)} badge-dot`}>{formatStatus(s.internshipStatus)}</span></td>
                 <td>{s.verified ? <span className="badge badge-green">Verified</span> : <span className="badge badge-amber">Pending</span>}</td>
               </tr>
             ))}
+            {!isLoading && filtered.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="text-center text-secondary">No students found.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

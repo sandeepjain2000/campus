@@ -1,8 +1,10 @@
 'use client';
 import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { useToast } from '@/components/ToastProvider';
 
 function formatTimeDisplay(t) {
   if (!t) return '';
@@ -14,32 +16,12 @@ function formatTimeDisplay(t) {
   return `${hr}:${mm} ${am ? 'AM' : 'PM'}`;
 }
 
-const initialSlots = [
-  {
-    id: 1,
-    company: 'TCS',
-    round: 'Round 1 - Technical',
-    date: '2026-10-07',
-    startTime: '10:00',
-    endTime: '11:00',
-    interviewer: 'A. Iyer',
-    panelNames: 'Dr. Kavita Menon, Prof. R. Iyer',
-    students: ['Rahul Sharma', 'Neha Gupta'],
-    createdBy: 'TPO',
-  },
-  {
-    id: 2,
-    company: 'Infosys',
-    round: 'Round 2 - HR',
-    date: '2026-10-08',
-    startTime: '14:30',
-    endTime: '15:30',
-    interviewer: 'P. Menon',
-    panelNames: 'HR — Ms. S. Das',
-    students: ['Arjun Verma'],
-    createdBy: 'Company',
-  },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load interview slots');
+  return json;
+};
 
 /** Outcomes + evaluator feedback (visible to company only in full product; college sees outcome columns only). */
 const initialResults = [
@@ -90,8 +72,10 @@ function formatSlotRange(slot) {
 }
 
 export default function CollegeInterviewsPage() {
+  const { addToast } = useToast();
+  const { data, mutate, isLoading } = useSWR('/api/college/interviews', fetcher);
   const [section, setSection] = useState('schedule');
-  const [slots, setSlots] = useState(initialSlots);
+  const slots = Array.isArray(data?.slots) ? data.slots : [];
   const [results] = useState(initialResults);
   const [form, setForm] = useState({
     company: 'TCS',
@@ -105,18 +89,26 @@ export default function CollegeInterviewsPage() {
     createdBy: 'TPO',
   });
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.date || !form.startTime || !form.endTime || !form.interviewer.trim()) return;
-    setSlots((prev) => [
-      {
-        id: Date.now(),
-        ...form,
-        students: form.students ? form.students.split(',').map((s) => s.trim()).filter(Boolean) : [],
-      },
-      ...prev,
-    ]);
-    setForm((prev) => ({ ...prev, date: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: '' }));
+    try {
+      const res = await fetch('/api/college/interviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          students: form.students ? form.students.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to create slot');
+      await mutate();
+      setForm((prev) => ({ ...prev, date: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: '' }));
+      addToast('Interview slot created successfully.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to create interview slot', 'error');
+    }
   };
 
   const stats = useMemo(
@@ -244,6 +236,7 @@ export default function CollegeInterviewsPage() {
               <div className="card-header">
                 <h3 className="card-title">Upcoming Slots</h3>
               </div>
+              {isLoading ? <div className="text-sm text-secondary">Loading slots...</div> : null}
               <div style={{ display: 'grid', gap: '0.6rem' }}>
                 {slots.map((slot) => (
                   <div key={slot.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.7rem' }}>

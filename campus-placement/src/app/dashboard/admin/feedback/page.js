@@ -39,7 +39,7 @@ export default function AdminFeedbackInboxPage() {
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      alert(j.error || 'Update failed');
+      addToast(j.error || 'Update failed', 'warning');
       return;
     }
     mutate();

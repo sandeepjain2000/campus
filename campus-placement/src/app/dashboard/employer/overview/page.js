@@ -7,13 +7,19 @@ import { useEffect, useState } from 'react';
 import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
+import { useToast } from '@/components/ToastProvider';
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function EmployerOverviewPage() {
   const { data: session } = useSession();
+  const { addToast } = useToast();
   const router = useRouter();
   const [activeCampus, setActiveCampus] = useState(null);
+
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
+  };
 
   useEffect(() => {
     const stored = sessionStorage.getItem('activeCampus');
@@ -245,10 +251,10 @@ export default function EmployerOverviewPage() {
                   <td className="text-sm text-tertiary">{formatDate(app.appliedAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => showNotReady('View application')}>
                         View
                       </button>
-                      <button className="btn btn-primary btn-sm" onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+                      <button className="btn btn-primary btn-sm" onClick={() => showNotReady('Shortlist candidate')}>
                         Shortlist
                       </button>
                     </div>

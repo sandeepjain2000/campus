@@ -7,120 +7,6 @@ import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
 import { loadAppliedDriveIds, saveAppliedDriveIds } from '@/lib/studentProfileStorage';
 
-const today = new Date();
-const tomorrow = new Date(today);
-tomorrow.setDate(today.getDate() + 1);
-const past = new Date(today);
-past.setDate(today.getDate() - 1);
-const nextWeek = new Date(today);
-nextWeek.setDate(today.getDate() + 7);
-
-function ymd(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-const mockDrives = [
-  {
-    id: 1,
-    company: 'TechCorp Solutions',
-    role: 'Software Development Engineer',
-    date: '2026-09-15',
-    type: 'on_campus',
-    venue: 'Main Auditorium, IIT Madras',
-    offCampusCity: null,
-    salary: '₹12L - ₹18L PA',
-    status: 'scheduled',
-    branch: ['CSE', 'IT'],
-    cgpa: 7.0,
-    vacancies: 15,
-    registered: 45,
-    deadline: tomorrow.toISOString(),
-  },
-  {
-    id: 2,
-    company: 'GlobalSoft Technologies',
-    role: 'Full Stack Developer',
-    date: '2026-09-22',
-    type: 'virtual',
-    venue: 'Zoom — link shared post shortlist',
-    offCampusCity: null,
-    salary: '₹10L - ₹15L PA',
-    status: 'approved',
-    branch: ['CSE', 'IT', 'ECE'],
-    cgpa: 6.5,
-    vacancies: 10,
-    registered: 32,
-    deadline: past.toISOString(),
-  },
-  {
-    id: 3,
-    company: 'Infosys Limited',
-    role: 'Systems Engineer',
-    date: '2026-10-05',
-    type: 'on_campus',
-    venue: 'CRC Seminar Hall',
-    offCampusCity: null,
-    salary: '₹8L - ₹10L PA',
-    status: 'scheduled',
-    branch: ['CSE', 'ECE', 'ME', 'EE'],
-    cgpa: 6.0,
-    vacancies: 50,
-    registered: 0,
-    deadline: nextWeek.toISOString(),
-  },
-  {
-    id: 4,
-    company: 'DataVerse Analytics',
-    role: 'Data Analyst',
-    date: '2026-10-12',
-    type: 'virtual',
-    venue: 'Remote — HackerRank + video call',
-    offCampusCity: null,
-    salary: '₹9L - ₹14L PA',
-    status: 'approved',
-    branch: ['CSE', 'IT', 'Math'],
-    cgpa: 7.5,
-    vacancies: 8,
-    registered: 15,
-    deadline: null,
-  },
-  {
-    id: 5,
-    company: 'MegaHire Consortium',
-    role: 'Graduate Engineer Trainee',
-    date: '2026-10-24',
-    type: 'off_campus',
-    venue: 'Convention Centre, Manyata Tech Park',
-    offCampusCity: 'Bengaluru',
-    salary: '₹11L - ₹16L PA',
-    status: 'scheduled',
-    branch: ['CSE', 'IT', 'ECE', 'EEE'],
-    cgpa: 6.5,
-    vacancies: 200,
-    registered: 1200,
-    deadline: new Date('2026-10-20T23:59:59').toISOString(),
-  },
-  {
-    id: 6,
-    company: 'PastCorp (archived)',
-    role: 'Internship',
-    date: ymd(past),
-    type: 'on_campus',
-    venue: 'Old hall',
-    offCampusCity: null,
-    salary: '₹4L stipend',
-    status: 'approved',
-    branch: ['CSE'],
-    cgpa: 7.0,
-    vacancies: 5,
-    registered: 40,
-    deadline: past.toISOString(),
-  },
-];
-
 function getTimeLeft(deadline) {
   if (!deadline) return null;
   const d = new Date(deadline);
@@ -162,7 +48,7 @@ export default function StudentDrivesPage() {
   const { data: session } = useSession();
   const email = session?.user?.email || '';
   const { addToast } = useToast();
-  const { data: drivesData } = useSWR('/api/student/drives', fetcher);
+  const { data: drivesData, error: drivesError, isLoading: drivesLoading } = useSWR('/api/student/drives', fetcher);
   const { data: applicationsData } = useSWR('/api/student/applications', fetcher);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -206,10 +92,7 @@ export default function StudentDrivesPage() {
   );
 
   const drives = useMemo(() => {
-    if (Array.isArray(drivesData?.drives) && drivesData.drives.length > 0) {
-      return drivesData.drives;
-    }
-    return mockDrives;
+    return Array.isArray(drivesData?.drives) ? drivesData.drives : [];
   }, [drivesData]);
 
   const monthOptions = useMemo(() => {
@@ -355,6 +238,18 @@ export default function StudentDrivesPage() {
           </div>
         </div>
       </div>
+
+      {drivesLoading && <div className="skeleton skeleton-card" style={{ height: 180 }} />}
+      {drivesError && (
+        <div className="card" style={{ color: 'var(--danger-600)' }}>
+          <p>{drivesError.message || 'Could not load drives.'}</p>
+        </div>
+      )}
+      {!drivesLoading && !drivesError && filteredDrives.length === 0 && (
+        <div className="card">
+          <p className="text-secondary">No drives found for your current filters.</p>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {filteredDrives.map((drive) => {

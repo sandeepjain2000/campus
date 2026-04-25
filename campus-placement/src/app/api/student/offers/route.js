@@ -46,34 +46,54 @@ export async function GET() {
       updatedOffers.push(offer);
     }
 
-    if (updatedOffers.length === 0) {
-      throw new Error('Fallback to mock');
-    }
-
     return NextResponse.json(updatedOffers);
 
   } catch (error) {
-    // Mock Data fallback
-    const now = new Date();
-    const past = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 1 day ago (Expired)
-    const future = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours left (Pending)
+    console.error('Failed to load student offers:', error);
+    return NextResponse.json(
+      { error: 'Failed to load student offers' },
+      { status: 500 }
+    );
+  }
+}
 
-    return NextResponse.json([
-      {
-        id: 'mock-1', company: 'TechCorp Solutions', role: 'Software Development Engineer',
-        salary: 1500000, currency: 'INR', location: 'Bangalore', joiningDate: '2026-07-01',
-        status: 'pending', deadline: future.toISOString(), createdAt: '2026-09-18',
-      },
-      {
-        id: 'mock-2', company: 'Initech', role: 'Backend Dev',
-        salary: 1200000, currency: 'INR', location: 'Remote', joiningDate: '2026-07-15',
-        status: 'expired', deadline: past.toISOString(), createdAt: '2026-09-10',
-      },
-      {
-        id: 'mock-3', company: 'CloudNine Systems', role: 'DevOps Engineer',
-        salary: 1800000, currency: 'INR', location: 'Hyderabad', joiningDate: '2026-08-01',
-        status: 'accepted', deadline: '2026-09-10', createdAt: '2026-09-03', acceptedAt: '2026-09-07',
-      }
-    ]);
+export async function PATCH(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'student') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const studentQuery = await query(`SELECT id FROM student_profiles WHERE user_id = $1`, [userId]);
+    const studentId = studentQuery.rows[0]?.id;
+    if (!studentId) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+
+    const body = await request.json();
+    const id = String(body?.id || '').trim();
+    const action = String(body?.action || '').trim();
+    if (!id || !['accept', 'decline'].includes(action)) {
+      return NextResponse.json({ error: 'id and valid action are required' }, { status: 400 });
+    }
+
+    const nextStatus = action === 'accept' ? 'accepted' : 'declined';
+    const result = await query(
+      `UPDATE offers
+       SET status = $1,
+           accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
+           updated_at = NOW()
+       WHERE id = $2 AND student_id = $3 AND status = 'pending'
+       RETURNING id, status`,
+      [nextStatus, id, studentId]
+    );
+
+    if (!result.rows[0]) {
+      return NextResponse.json({ error: 'Offer not found or not pending' }, { status: 404 });
+    }
+
+    return NextResponse.json({ offer: result.rows[0] });
+  } catch (error) {
+    console.error('Failed to update student offer:', error);
+    return NextResponse.json({ error: 'Failed to update offer status' }, { status: 500 });
   }
 }

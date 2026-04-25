@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useToast } from '@/components/ToastProvider';
 
 import { Trophy, FlaskConical, Palette } from 'lucide-react';
 
@@ -38,7 +39,12 @@ const sponsorshipLevels = [
 ];
 
 export default function CollegeSponsorshipsPage() {
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('All Categories');
+
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
+  };
 
   return (
     <div className="animate-fadeIn">
@@ -60,8 +66,8 @@ export default function CollegeSponsorshipsPage() {
             Partner with us to empower student success through sponsorship opportunities that create lasting impact in education, sports, and technology.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Download Guide</button>
-            <button className="btn btn-secondary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Schedule Meeting</button>
+            <button className="btn btn-primary" onClick={() => showNotReady('Download guide')}>Download Guide</button>
+            <button className="btn btn-secondary" onClick={() => showNotReady('Schedule meeting')}>Schedule Meeting</button>
           </div>
         </div>
       </div>

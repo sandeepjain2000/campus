@@ -4,17 +4,62 @@ import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { Users, CheckCircle, Building2, Target, BarChart2, Activity, Zap, ClipboardList, GraduationCap, FileText, Download, Plus } from 'lucide-react';
-import PageError from '@/components/PageError';
 import { DashboardSocialWireframeDock, SocialWireframeModal } from '@/components/wireframe/SocialWireframeToolkit';
+import { useToast } from '@/components/ToastProvider';
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error || 'Failed to load college dashboard');
+  }
+  return json;
+};
 
 export default function CollegeOverviewPage() {
   const { data: session } = useSession();
-  const { data, error, isLoading } = useSWR('/api/college/dashboard', fetcher);
+  const { addToast } = useToast();
+  const { data, error, isLoading, mutate } = useSWR('/api/college/dashboard', fetcher);
   const [socialModalPlatform, setSocialModalPlatform] = useState(null);
 
-  if (error) return <PageError error={error} />;
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
+  };
+
+  if (error) {
+    return (
+      <div className="animate-fadeIn">
+        <div className="card" style={{ maxWidth: '52rem', margin: '2rem auto', textAlign: 'left' }}>
+          <div className="card-header">
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Activity size={18} className="text-warning-600" />
+              Dashboard data not available yet
+            </h3>
+          </div>
+          <p className="text-secondary" style={{ marginBottom: '1rem' }}>
+            We could not load live college dashboard metrics right now. Add core records first, then retry.
+          </p>
+          <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+            <strong>Required data:</strong> users, student profiles, placement drives, and accepted offers.
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary" onClick={() => mutate()}>
+              Retry
+            </button>
+            <Link href="/dashboard/college/students" className="btn btn-secondary">
+              Open Students
+            </Link>
+            <Link href="/dashboard/college/drives" className="btn btn-secondary">
+              Open Drives
+            </Link>
+          </div>
+          <p className="text-xs text-tertiary" style={{ marginTop: '0.75rem' }}>
+            {error?.message || 'Failed to load college dashboard data'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !data) {
     return (
@@ -29,7 +74,22 @@ export default function CollegeOverviewPage() {
     );
   }
 
-  const { stats, departmentStats, recentActivity, pendingActions } = data;
+  const stats = data?.stats ?? {
+    totalStudents: 0,
+    placedStudents: 0,
+    placementRate: 0,
+    activeEmployers: 0,
+    activeDrives: 0,
+    avgPackage: 0,
+    highestPackage: 0,
+  };
+  const departmentStats = Array.isArray(data?.departmentStats) ? data.departmentStats : [];
+  const recentActivity = Array.isArray(data?.recentActivity) ? data.recentActivity : [];
+  const pendingActions = data?.pendingActions ?? {
+    drivesCount: 0,
+    studentsCount: 0,
+    documentsCount: 0,
+  };
 
   return (
     <div className="animate-fadeIn">
@@ -43,7 +103,7 @@ export default function CollegeOverviewPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+          <button type="button" className="btn btn-secondary" onClick={() => showNotReady('Export')}>
             <Download size={16} /> Export
           </button>
           <Link href="/dashboard/college/drives" className="btn btn-primary">
@@ -195,7 +255,7 @@ export default function CollegeOverviewPage() {
                 <div className="text-xs text-secondary" style={{ margin: '0.5rem 0 1rem' }}>
                   {pendingActions.drivesCount} drive requests awaiting approval
                 </div>
-                <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+                <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => showNotReady('Review drives')}>
                   Review Drives
                 </button>
               </div>
@@ -221,7 +281,7 @@ export default function CollegeOverviewPage() {
                 <div className="text-xs text-secondary" style={{ margin: '0.5rem 0 1rem' }}>
                   {pendingActions.documentsCount} student documents need verification
                 </div>
-                <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+                <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => showNotReady('Review documents')}>
                   Review Documents
                 </button>
               </div>

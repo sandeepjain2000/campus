@@ -20,6 +20,7 @@ function parseKeywords(keywords) {
 }
 
 const JOB_TYPES = new Set(['full_time', 'internship', 'contract', 'ppo', 'hackathon', 'short_project', 'mentorship', 'guest_faculty']);
+const PROGRAM_JOB_TYPES = new Set(['internship', 'short_project', 'hackathon']);
 
 export async function GET(request) {
   try {
@@ -119,7 +120,35 @@ export async function POST(request) {
     const skills = parseKeywords(keywords);
     const skillsRequired = skills.length ? skills : ['General'];
 
+    const uniqueTenants = [...new Set((tenantIds || []).map((t) => String(t).trim()).filter(Boolean))];
+
+    if (status === 'published' && PROGRAM_JOB_TYPES.has(jobType) && uniqueTenants.length === 0) {
+      return NextResponse.json(
+        { error: 'Select at least one approved campus so students and the college can see this posting.' },
+        { status: 400 },
+      );
+    }
+
     const result = await transaction(async (client) => {
+      let tenantsToPublish = [];
+      if (status === 'published' && uniqueTenants.length) {
+        for (const tenantId of uniqueTenants) {
+          const appr = await client.query(
+            `SELECT 1 FROM employer_approvals
+             WHERE tenant_id = $1::uuid AND employer_id = $2::uuid AND status = 'approved'`,
+            [tenantId, emp.id],
+          );
+          if (appr.rows.length) tenantsToPublish.push(tenantId);
+        }
+        if (PROGRAM_JOB_TYPES.has(jobType) && tenantsToPublish.length === 0) {
+          const err = new Error(
+            'Cannot publish: none of the selected campuses have an approved employer tie-up. Ask the college to approve access, then try again.',
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+      }
+
       const ins = await client.query(
         `INSERT INTO job_postings (
            employer_id, title, description, job_type, category, locations,
@@ -136,7 +165,11 @@ export async function POST(request) {
           title.trim(),
           description || '',
           jobType,
-          jobType === 'internship' ? 'Internship' : 'Engineering',
+          jobType === 'internship'
+            ? 'Internship'
+            : jobType === 'short_project' || jobType === 'hackathon'
+              ? 'Student program'
+              : 'Engineering',
           salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
           salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
           minCgpa != null && minCgpa !== '' ? Number(minCgpa) : 0,
@@ -147,31 +180,38 @@ export async function POST(request) {
       );
 
       const job = ins.rows[0];
-      const uniqueTenants = [...new Set((tenantIds || []).filter(Boolean))];
 
-      if (status === 'published' && uniqueTenants.length) {
-        for (const tenantId of uniqueTenants) {
-          const ok = await client.query(
-            `SELECT 1 FROM employer_approvals
-             WHERE tenant_id = $1::uuid AND employer_id = $2::uuid AND status = 'approved'`,
-            [tenantId, emp.id],
+      if (status === 'published' && tenantsToPublish.length) {
+        for (const tenantId of tenantsToPublish) {
+          await client.query(
+            `INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES ($1::uuid, $2::uuid)
+             ON CONFLICT (job_id, tenant_id) DO NOTHING`,
+            [job.id, tenantId],
           );
-          if (!ok.rowCount) continue;
 
           const college = await client.query(`SELECT name FROM tenants WHERE id = $1::uuid`, [tenantId]);
           const collegeName = college.rows[0]?.name || 'Campus';
 
           const adminIds = await fetchCollegeAdminUserIds(tenantId, client);
+          const isProgram =
+            jobType === 'internship' || jobType === 'short_project' || jobType === 'hackathon';
           await notifyUsersOneAtATime(
             adminIds,
             {
               title:
                 jobType === 'internship'
                   ? `${emp.company_name} posted an internship`
-                  : `${emp.company_name} published a job`,
-              message: `${emp.company_name} published "${job.title}" (${jobType.replace('_', ' ')}) relevant to ${collegeName}. Open Job Postings to review pipeline activity.`,
+                  : isProgram
+                    ? `${emp.company_name} posted a student program`
+                    : `${emp.company_name} published a job`,
+              message: `${emp.company_name} published "${job.title}" (${String(jobType).replace(/_/g, ' ')}) for ${collegeName}.`,
               type: jobType === 'internship' ? 'info' : 'application',
-              link: jobType === 'internship' ? '/dashboard/college/internships' : '/dashboard/college/drives',
+              link:
+                jobType === 'internship'
+                  ? '/dashboard/college/internships'
+                  : isProgram
+                    ? '/dashboard/college/internships'
+                    : '/dashboard/college/drives',
             },
             client,
           );
@@ -181,9 +221,21 @@ export async function POST(request) {
               tenantId,
               {
                 title: `New internship: ${job.title}`,
-                message: `${emp.company_name} posted an internship opportunity. Browse drives and applications to learn more.`,
+                message: `${emp.company_name} posted an internship. Open Internships under Placements to apply.`,
                 type: 'drive',
-                link: '/dashboard/student/drives',
+                link: '/dashboard/student/internships',
+              },
+              client,
+            );
+          }
+          if (jobType === 'short_project' || jobType === 'hackathon') {
+            await notifyStudentsOfTenant(
+              tenantId,
+              {
+                title: `New project: ${job.title}`,
+                message: `${emp.company_name} posted a ${String(jobType).replace(/_/g, ' ')}. Open Projects under Placements to apply.`,
+                type: 'info',
+                link: '/dashboard/student/projects',
               },
               client,
             );
@@ -197,6 +249,7 @@ export async function POST(request) {
     return NextResponse.json(result);
   } catch (e) {
     console.error('POST /api/employer/jobs', e);
-    return NextResponse.json({ error: e.message || 'Failed to create job' }, { status: 500 });
+    const status = e.statusCode === 400 ? 400 : 500;
+    return NextResponse.json({ error: e.message || 'Failed to create job' }, { status });
   }
 }

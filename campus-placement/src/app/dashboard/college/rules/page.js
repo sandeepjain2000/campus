@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
+import { useToast } from '@/components/ToastProvider';
 
 const fetcher = url => fetch(url).then(res => res.json());
 
@@ -8,6 +9,7 @@ export default function CollegeRulesPage() {
   const { data, isLoading } = useSWR('/api/college/rules', fetcher);
   const [rules, setRules] = useState(null);
   const [saving, setSaving] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (data) setRules(data);
@@ -22,12 +24,12 @@ export default function CollegeRulesPage() {
         body: JSON.stringify(rules),
       });
       if (res.ok) {
-        alert('Rules saved successfully');
+        addToast('Rules saved successfully.', 'success');
       } else {
-        alert('Failed to save rules');
+        addToast('Failed to save rules.', 'error');
       }
-    } catch (e) {
-      alert('Network error');
+    } catch {
+      addToast('Network error while saving rules.', 'error');
     } finally {
       setSaving(false);
     }

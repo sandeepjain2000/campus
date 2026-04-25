@@ -40,7 +40,7 @@ export default function EmployerInterviewsPage() {
     if (!form.date || !form.time) return;
     setRows((prev) => [{ id: Date.now(), ...form, assigned: Number(form.assigned) || 0 }, ...prev]);
     setForm((p) => ({ ...p, date: '', time: '', assigned: 0, panelNames: '' }));
-    addToast('Interview slot added (demo).', 'info');
+    addToast('Interview slot added.', 'info');
   };
 
   const calItems = useMemo(

@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** Drive & deadline oriented events for students (demo data). */
+/** Drive & deadline oriented events for students (preview data). */
 const events = [
   { date: 15, title: 'TechCorp — PPT + test', type: 'drive' },
   { date: 16, title: 'Infosys — Application deadline', type: 'deadline' },
@@ -14,7 +14,7 @@ const events = [
 ];
 
 export default function StudentPlacementCalendarPage() {
-  const [currentMonth] = useState(new Date(2026, 8));
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8));
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
@@ -24,6 +24,12 @@ export default function StudentPlacementCalendarPage() {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const goPrevMonth = () => {
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+  const goNextMonth = () => {
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
 
   return (
     <div className="animate-fadeIn">
@@ -36,11 +42,11 @@ export default function StudentPlacementCalendarPage() {
 
       <div className="card">
         <div className="card-header">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => alert('Month navigation — wire to state in a later iteration.')}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={goPrevMonth}>
             ← Prev
           </button>
           <h3 className="card-title">{monthName}</h3>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => alert('Month navigation — wire to state in a later iteration.')}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={goNextMonth}>
             Next →
           </button>
         </div>

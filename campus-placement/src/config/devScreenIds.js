@@ -57,11 +57,18 @@ const ROUTES_SORTED = [
   '/dashboard/student/discussions',
   '/dashboard/student/documents',
   '/dashboard/student/drives',
+  '/dashboard/student/internships',
+  '/dashboard/student/projects',
   '/dashboard/student/interviews',
   '/dashboard/student/offers',
   '/dashboard/student/overview',
   '/dashboard/student/profile',
   '/dashboard/student/reminders',
+  '/data-entry',
+  '/data-entry/users',
+  '/data-entry/student-profiles',
+  '/data-entry/placement-drives',
+  '/data-entry/offers',
 ];
 
 /** @type {Record<string, string>} */

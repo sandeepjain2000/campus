@@ -3,20 +3,6 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
-const MOCK_DATA = {
-  stats: {
-    colleges: 3,
-    employers: 3,
-    students: 5,
-    totalUsers: 11,
-  },
-  registeredColleges: [
-    { id: 1, name: 'IIT Mumbai' },
-    { id: 2, name: 'NIT Trichy' },
-    { id: 3, name: 'BITS Pilani' },
-  ]
-};
-
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -51,7 +37,10 @@ export async function GET(request) {
       registeredColleges: collegesQuery.rows,
     });
   } catch (error) {
-    console.log('Database not connected, falling back to mock data...');
-    return NextResponse.json(MOCK_DATA);
+    console.error('Failed to load admin dashboard data:', error);
+    return NextResponse.json(
+      { error: 'Failed to load admin dashboard data' },
+      { status: 500 }
+    );
   }
 }

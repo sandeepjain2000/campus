@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { loadClarifications, saveAnswer } from '@/lib/demoClarifications';
 import { ConvBubble, ConvThread } from '@/components/messaging/ConvBubble';
@@ -44,8 +44,7 @@ export default function EmployerDiscussionsPage() {
   const [collegeReply, setCollegeReply] = useState('');
   const [searchCollege, setSearchCollege] = useState('');
 
-  const [tick, setTick] = useState(0);
-  const batchesAll = useMemo(() => loadClarifications().batches, [tick]);
+  const [batchesAll, setBatchesAll] = useState([]);
   const myCompany = companyFromSession(session?.user?.email, session?.user?.tenantName);
   const batches = useMemo(() => {
     if (!myCompany) return batchesAll;
@@ -53,22 +52,35 @@ export default function EmployerDiscussionsPage() {
   }, [batchesAll, myCompany]);
 
   useEffect(() => {
-    const on = () => setTick((t) => t + 1);
-    window.addEventListener('clarifications-updated', on);
-    return () => window.removeEventListener('clarifications-updated', on);
+    let mounted = true;
+    (async () => {
+      try {
+        const payload = await loadClarifications();
+        if (!mounted) return;
+        setBatchesAll(payload.batches || []);
+      } catch {
+        if (!mounted) return;
+        setBatchesAll([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
-
-  const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   const [answerDraft, setAnswerDraft] = useState({});
 
-  const submitAnswer = (batchId, qId) => {
+  const submitAnswer = async (batchId, qId) => {
     const key = `${batchId}:${qId}`;
     const text = (answerDraft[key] || '').trim();
     if (!text) return;
-    saveAnswer(batchId, qId, text, 'Recruitment Team');
-    setAnswerDraft((d) => ({ ...d, [key]: '' }));
-    refresh();
+    try {
+      const payload = await saveAnswer(batchId, qId, text, 'Recruitment Team');
+      setBatchesAll(payload.batches || []);
+      setAnswerDraft((d) => ({ ...d, [key]: '' }));
+    } catch {
+      // keep UI unchanged on failure
+    }
   };
 
   const visibleCollege = useMemo(() => {
@@ -120,12 +132,12 @@ export default function EmployerDiscussionsPage() {
         <div style={{ display: 'grid', gap: '1rem' }}>
           {myCompany && (
             <p className="text-sm text-secondary" style={{ margin: 0 }}>
-              Showing clarification batches for <strong>{myCompany}</strong> (demo filter from your account).
+              Showing clarification batches for <strong>{myCompany}</strong> based on your account context.
             </p>
           )}
           {!myCompany && (
             <p className="text-sm text-secondary" style={{ margin: 0 }}>
-              Demo: showing all companies&apos; batches. Sign in as TechCorp or Infosys to see a filtered view.
+              Showing all companies&apos; batches. Sign in as a company account to see a filtered view.
             </p>
           )}
           {batches.map((batch) => (

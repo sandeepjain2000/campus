@@ -37,8 +37,6 @@ export default function LoginPage() {
     );
   }
 
-  const DEMO_PASSWORD = 'Admin@123';
-
   const demoLogins = [
     { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu', icon: '🎓', name: 'IIT Madras' },
     { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu', icon: '🎓', name: 'NIT Trichy' },
@@ -89,7 +87,8 @@ export default function LoginPage() {
     }
     setError('');
     setFilledFrom(demo.email);
-    setFormData({ email: demo.email, password: DEMO_PASSWORD });
+    setFormData((prev) => ({ ...prev, email: demo.email }));
+    toast.info('Email filled. Enter the account password to continue.');
   };
 
   return (
@@ -131,7 +130,7 @@ export default function LoginPage() {
               alignItems: 'center',
               gap: '0.4rem',
             }}>
-              ✅ Credentials filled — click <strong>Sign In</strong> to continue
+              ✅ Email filled — enter password and click <strong>Sign In</strong>
             </div>
           )}
 
@@ -174,9 +173,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="auth-divider">or try a demo account</div>
+          <div className="auth-divider">or use a quick account</div>
 
-          {/* Demo disclaimer */}
+          {/* Quick-fill helper */}
           <div style={{
             background: 'linear-gradient(135deg, #fef9c3, #fef3c7)',
             border: '1px solid #fde68a',
@@ -191,7 +190,7 @@ export default function LoginPage() {
           }}>
             <span>💡</span>
             <span>
-              <strong>Demo mode:</strong> Click any card below to auto-fill credentials into the login form, then click <strong>Sign In</strong>.
+              <strong>Quick fill:</strong> Click any card below to auto-fill email into the login form, enter password, then click <strong>Sign In</strong>.
             </span>
           </div>
 
@@ -222,7 +221,7 @@ export default function LoginPage() {
                       📧 {demo.email}
                     </div>
                     <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)' }}>
-                      🔑 Auto-fills credentials
+                      🔑 Auto-fills email
                     </div>
                   </div>
                 </button>

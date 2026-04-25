@@ -3,6 +3,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { formatDate } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import { useToast } from '@/components/ToastProvider';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -13,6 +14,7 @@ const fetcher = async (url) => {
 };
 
 export default function EmployerRequestsPage() {
+  const { addToast } = useToast();
   const { data: requests, error, isLoading, mutate } = useSWR('/api/college/employers/requests', fetcher);
   const [processing, setProcessing] = useState(null);
 
@@ -26,11 +28,12 @@ export default function EmployerRequestsPage() {
       });
       if (res.ok) {
         mutate(); // Refresh the list
+        addToast(`Request ${action}d successfully.`, 'success');
       } else {
-        alert('Failed to process request');
+        addToast('Failed to process request.', 'error');
       }
     } catch (e) {
-      alert('Network error');
+      addToast('Network error while processing request.', 'error');
     } finally {
       setProcessing(null);
     }
@@ -124,7 +127,7 @@ export default function EmployerRequestsPage() {
               <span>Showing 1-{requests.length} of {requests.length}</span>
               <div className="table-pagination-controls">
                 <button className="pagination-btn" disabled>‹</button>
-                <button className="pagination-btn active" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>1</button>
+                <button className="pagination-btn active" onClick={() => addToast('Pagination is not available yet in this build.', 'info')}>1</button>
                 <button className="pagination-btn" disabled>›</button>
               </div>
             </div>

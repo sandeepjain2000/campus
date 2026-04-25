@@ -1,12 +1,31 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { HIRING_ROUNDS, MOCK_HIRING_ASSESSMENT } from '@/lib/demoHiringAssessment';
+import { HIRING_ROUNDS } from '@/lib/demoHiringAssessment';
 
 export default function CollegeHiringAssessmentPage() {
-  const rows = MOCK_HIRING_ASSESSMENT;
+  const [rows, setRows] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/hiring-assessment');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load hiring assessment');
+        if (!mounted) return;
+        setRows(Array.isArray(json.rows) ? json.rows : []);
+      } catch {
+        if (!mounted) return;
+        setRows([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const getCsv = useCallback(
     (_scope) => ({
@@ -91,6 +110,13 @@ export default function CollegeHiringAssessmentPage() {
                   })}
                 </tr>
               ))}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={3 + HIRING_ROUNDS.length} className="text-center text-secondary">
+                    No hiring assessment records available.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

@@ -1,16 +1,32 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { HIRING_ROUNDS, MOCK_HIRING_ASSESSMENT } from '@/lib/demoHiringAssessment';
-
-function cloneRows() {
-  return JSON.parse(JSON.stringify(MOCK_HIRING_ASSESSMENT));
-}
+import { HIRING_ROUNDS } from '@/lib/demoHiringAssessment';
 
 export default function EmployerHiringAssessmentPage() {
-  const [rows, setRows] = useState(cloneRows);
+  const [rows, setRows] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/hiring-assessment');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load hiring assessment');
+        if (!mounted) return;
+        setRows(Array.isArray(json.rows) ? json.rows : []);
+      } catch {
+        if (!mounted) return;
+        setRows([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const getCsv = useCallback(
     (_scope) => ({
@@ -53,18 +69,36 @@ export default function EmployerHiringAssessmentPage() {
     }));
   }, [rows]);
 
+  const saveRows = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/hiring-assessment', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
           <h1>📋 Hiring Assessment</h1>
           <p>
-            Structured outcomes across pipeline stages. Round names are <strong>fixed in this demo</strong> (Aptitude, Group Discussion, Interviews); in
+            Structured outcomes across pipeline stages. Round names are currently <strong>fixed in this build</strong> (Aptitude, Group Discussion, Interviews); in
             production companies define their own stages. This data is designed to <strong>feed reports and dashboards</strong>.
           </p>
         </div>
         <div className="page-header-actions">
           <ExportCsvSplitButton filenameBase="hiring_assessment" currentCount={rows.length} fullCount={rows.length} getRows={getCsv} />
+          <button className="btn btn-primary" type="button" onClick={saveRows} disabled={saving}>
+            {saving ? 'Saving...' : 'Save updates'}
+          </button>
         </div>
       </div>
 
@@ -84,7 +118,7 @@ export default function EmployerHiringAssessmentPage() {
             <div className="stats-card-value">{r.done}</div>
             <div className="stats-card-label">{r.name}</div>
             <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-              {r.short} · demo counts
+              {r.short} · current counts
             </div>
           </div>
         ))}
@@ -144,6 +178,13 @@ export default function EmployerHiringAssessmentPage() {
                   })}
                 </tr>
               ))}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={3 + HIRING_ROUNDS.length} className="text-center text-secondary">
+                    No hiring assessment records available.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

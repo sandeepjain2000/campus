@@ -79,11 +79,20 @@ export const menuConfig = {
         title: 'Placements',
         items: [
           { label: 'Browse Drives', href: '/dashboard/student/drives', icon: Target },
+          { label: 'Internships', href: '/dashboard/student/internships', icon: GraduationCap },
+          { label: 'Projects', href: '/dashboard/student/projects', icon: FolderDot },
           { label: 'Placement calendar', href: '/dashboard/student/calendar', icon: CalendarDays },
           { label: 'My Applications', href: '/dashboard/student/applications', icon: FileEdit },
           { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
           { label: 'My Offers', href: '/dashboard/student/offers', icon: Award },
+        ],
+      },
+      {
+        id: 'student-communication',
+        title: 'Communication',
+        items: [
           { label: 'Clarifications', href: '/dashboard/student/clarifications', icon: HelpCircle },
+          { label: 'Discussions', href: '/dashboard/student/discussions', icon: MessageSquare },
         ],
       },
       {
@@ -198,11 +207,17 @@ export const menuConfig = {
         ],
       },
       {
-        id: 'college-engagement',
-        title: '📣 Engagement & Communication',
+        id: 'college-communication',
+        title: '💬 Communication',
         items: [
           { label: 'Clarifications (publish)', href: '/dashboard/college/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
+        ],
+      },
+      {
+        id: 'college-engagement',
+        title: '📣 Engagement',
+        items: [
           { label: 'Calendar', href: '/dashboard/college/calendar', icon: CalendarDays },
           { label: 'Events', href: '/dashboard/college/events', icon: PartyPopper },
         ],

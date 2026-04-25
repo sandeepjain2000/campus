@@ -7,17 +7,17 @@ import { ConvBubble, ConvThread } from '@/components/messaging/ConvBubble';
 export default function StudentClarificationsPage() {
   const [data, setData] = useState({ batches: [] });
 
-  const refresh = useCallback(() => setData(loadClarifications()), []);
+  const refresh = useCallback(async () => {
+    try {
+      const payload = await loadClarifications();
+      setData(payload);
+    } catch {
+      setData({ batches: [] });
+    }
+  }, []);
 
   useEffect(() => {
     refresh();
-    const on = () => refresh();
-    window.addEventListener('clarifications-updated', on);
-    window.addEventListener('storage', on);
-    return () => {
-      window.removeEventListener('clarifications-updated', on);
-      window.removeEventListener('storage', on);
-    };
   }, [refresh]);
 
   return (

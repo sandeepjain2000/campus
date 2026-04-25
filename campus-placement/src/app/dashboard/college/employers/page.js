@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import { useToast } from '@/components/ToastProvider';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -31,6 +32,7 @@ export default function CollegeEmployersPage() {
   const { data: employers, error, isLoading, mutate } = useSWR('/api/college/employers', fetcher);
   const [processingId, setProcessingId] = useState(null);
   const [pocModal, setPocModal] = useState(null);
+  const { addToast } = useToast();
 
   const list = employers || [];
 
@@ -48,12 +50,12 @@ export default function CollegeEmployersPage() {
 
       if (res.ok) {
         await mutate();
-        alert('Employer access blocked.');
+        addToast('Employer access blocked.', 'success');
       } else {
-        alert(data.error || 'Failed to block employer.');
+        addToast(data.error || 'Failed to block employer.', 'error');
       }
     } catch {
-      alert('Network error while blocking access.');
+      addToast('Network error while blocking access.', 'error');
     } finally {
       setProcessingId(null);
     }
@@ -256,7 +258,7 @@ export default function CollegeEmployersPage() {
                 type="button"
                 className="btn btn-primary"
                 onClick={() => {
-                  alert('POCs assigned successfully! (demo only)');
+                  addToast('POCs assignment is not available yet in this build.', 'info');
                   setPocModal(null);
                 }}
               >

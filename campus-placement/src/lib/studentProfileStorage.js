@@ -1,6 +1,6 @@
 /**
- * Client-side persistence for student profile (demo / pre-DB).
- * Keyed by user email so refreshes keep edits until API backs the shape.
+ * Client-side persistence for student profile (local, pre-DB sync).
+ * Keyed by user email so refreshes keep edits until API-backed profile sync is enabled.
  */
 
 export function profileStorageKey(email) {

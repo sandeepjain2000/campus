@@ -1705,9 +1705,9 @@ h6 { font-size: 1rem; }
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   letter-spacing: 0.06em;
-  color: var(--text-tertiary);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
   padding: 0.2rem 0.45rem;
   border-radius: var(--radius-sm);
   flex-shrink: 0;

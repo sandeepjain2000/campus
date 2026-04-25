@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import PageError from '@/components/PageError';
+import { useToast } from '@/components/ToastProvider';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -22,9 +23,30 @@ function roundLabel(item) {
 }
 
 export default function StudentApplicationsPage() {
+  const { addToast } = useToast();
   const [filter, setFilter] = useState('');
-  const { data, error, isLoading } = useSWR('/api/student/applications', fetcher);
+  const [withdrawingId, setWithdrawingId] = useState(null);
+  const { data, error, isLoading, mutate } = useSWR('/api/student/applications', fetcher);
   const applications = data?.items || [];
+
+  const handleWithdraw = async (applicationId) => {
+    setWithdrawingId(applicationId);
+    try {
+      const res = await fetch('/api/student/applications/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ application_id: applicationId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to withdraw application');
+      addToast('Application withdrawn successfully.', 'success');
+      mutate();
+    } catch (e) {
+      addToast(e.message || 'Failed to withdraw application', 'error');
+    } finally {
+      setWithdrawingId(null);
+    }
+  };
 
   const filtered = useMemo(
     () => applications.filter((a) => !filter || a.status === filter),
@@ -97,7 +119,13 @@ export default function StudentApplicationsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
               <span className="text-sm text-tertiary">Drive Date: {formatDate(app.driveDate)}</span>
               {app.status === 'applied' && (
-                <button className="btn btn-danger btn-sm" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Withdraw</button>
+                <button
+                  className="btn btn-danger btn-sm"
+                  disabled={withdrawingId === app.id}
+                  onClick={() => handleWithdraw(app.id)}
+                >
+                  {withdrawingId === app.id ? 'Withdrawing...' : 'Withdraw'}
+                </button>
               )}
               {app.status === 'selected' && (
                 <span className="badge badge-green" style={{ padding: '0.375rem 1rem' }}>🎉 Offer Available</span>

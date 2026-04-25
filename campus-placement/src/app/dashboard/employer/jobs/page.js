@@ -7,18 +7,6 @@ import { useToast } from '@/components/ToastProvider';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
-const placementDrives = [
-  { id: '', name: '— Not linked —' },
-  { id: 'drv-1', name: 'Campus 2026 · IIT Mumbai (Phase 1)' },
-  { id: 'drv-2', name: 'Campus 2026 · NIT Trichy' },
-  { id: 'drv-3', name: 'Off-campus requisitions · PAN India' },
-];
-
-function driveLabel(id) {
-  const d = placementDrives.find((x) => x.id === id);
-  return d?.name || '';
-}
-
 const TYPE_LABELS = {
   full_time: 'Full-time',
   internship: 'Internship',
@@ -99,6 +87,7 @@ export default function EmployerJobsPage() {
   const { addToast } = useToast();
   const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs', fetcher, { revalidateOnFocus: true });
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
+  const { data: drivesData } = useSWR('/api/employer/drives', fetcher, { revalidateOnFocus: true });
 
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
@@ -107,7 +96,28 @@ export default function EmployerJobsPage() {
   const [selectedTenantIds, setSelectedTenantIds] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
+  };
+
   const jobsList = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
+  const placementDrives = useMemo(() => {
+    const live = Array.isArray(drivesData?.drives)
+      ? drivesData.drives.map((d) => ({
+          id: d.id,
+          name: `${d.college || 'Campus'} · ${d.role || 'Drive'}${d.date ? ` (${formatDate(d.date)})` : ''}`,
+        }))
+      : [];
+    return [{ id: '', name: '— Not linked —' }, ...live];
+  }, [drivesData]);
+
+  const driveLabel = useCallback(
+    (id) => {
+      const d = placementDrives.find((x) => x.id === id);
+      return d?.name || '';
+    },
+    [placementDrives],
+  );
 
   const approvedCampuses = useMemo(
     () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
@@ -463,7 +473,7 @@ export default function EmployerJobsPage() {
                 >
                   Edit
                 </button>
-                <button className="btn btn-primary btn-sm" type="button" onClick={() => alert('Feature coming soon! (Wireframe Action)')}>
+                <button className="btn btn-primary btn-sm" type="button" onClick={() => showNotReady('View pipeline')}>
                   View Pipeline
                 </button>
               </div>

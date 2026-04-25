@@ -69,10 +69,8 @@ export async function POST(req) {
     const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
       return NextResponse.json({
-        success: true,
-        message: 'Application recorded locally (student profile pending in database)',
-        mock: true,
-      });
+        error: 'Student profile not found. Complete profile setup before applying.',
+      }, { status: 400 });
     }
 
     const notes = location_preference ? `Preferred Location: ${location_preference}` : null;

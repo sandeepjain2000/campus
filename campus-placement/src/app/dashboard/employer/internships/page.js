@@ -45,6 +45,9 @@ export default function EmployerInternshipsPage() {
   const [keywords, setKeywords] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedTenantIds, setSelectedTenantIds] = useState({});
+  const [campusSyncJobId, setCampusSyncJobId] = useState(null);
+  const [campusSyncSelection, setCampusSyncSelection] = useState({});
+  const [campusSyncSubmitting, setCampusSyncSubmitting] = useState(false);
 
   const approvedCampuses = useMemo(
     () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
@@ -163,6 +166,54 @@ export default function EmployerInternshipsPage() {
     addToast,
     mutateInternships,
   ]);
+
+  const openCampusSync = useCallback(
+    (jobId) => {
+      const sel = {};
+      approvedCampuses.forEach((c) => {
+        sel[c.id] = true;
+      });
+      setCampusSyncSelection(sel);
+      setCampusSyncJobId(jobId);
+    },
+    [approvedCampuses],
+  );
+
+  const submitCampusSync = useCallback(async () => {
+    if (!campusSyncJobId) return;
+    const tenantIds = Object.entries(campusSyncSelection)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    if (!tenantIds.length) {
+      addToast('Select at least one approved campus.', 'warning');
+      return;
+    }
+    setCampusSyncSubmitting(true);
+    try {
+      const res = await fetch('/api/employer/jobs/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: campusSyncJobId, tenantIds }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(json.error || 'Could not sync campuses', 'error');
+        return;
+      }
+      const msg =
+        json.inserted > 0
+          ? `Campus visibility updated (${json.inserted} new). College and students can refresh.`
+          : json.skippedNotApproved > 0
+            ? 'No new visibility rows (check tie-ups are approved for selected campuses).'
+            : 'Visibility already present for those campuses.';
+      addToast(msg, json.inserted > 0 ? 'success' : 'info');
+      setCampusSyncJobId(null);
+    } catch {
+      addToast('Network error', 'error');
+    } finally {
+      setCampusSyncSubmitting(false);
+    }
+  }, [campusSyncJobId, campusSyncSelection, addToast]);
 
   return (
     <div className="animate-fadeIn">
@@ -313,6 +364,11 @@ export default function EmployerInternshipsPage() {
               {intern.createdAt ? formatDate(intern.createdAt) : ''}
             </p>
             <div className="stats-card-oneline-actions">
+              {intern.status === 'published' && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openCampusSync(intern.id)}>
+                  <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync campuses
+                </button>
+              )}
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(intern.title, 'info')}>
                 <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
               </button>
@@ -329,6 +385,52 @@ export default function EmployerInternshipsPage() {
           {internships.length} internship posting{internships.length === 1 ? '' : 's'} from your company
         </div>
       </div>
+
+      {campusSyncJobId && (
+        <div className="card" style={{ marginTop: '1.25rem' }}>
+          <div className="card-header">
+            <h3 className="card-title">Campus visibility for students &amp; college</h3>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCampusSyncJobId(null)}>
+              ✕ Close
+            </button>
+          </div>
+          <p className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
+            If this internship is published but does not appear on the college or student dashboards, add visibility rows for the
+            campuses that should see it (approved tie-up required).
+          </p>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {approvedCampuses.length === 0 ? (
+              <span className="text-sm text-secondary">No approved campuses.</span>
+            ) : (
+              approvedCampuses.map((c) => (
+                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!campusSyncSelection[c.id]}
+                    onChange={() => setCampusSyncSelection((p) => ({ ...p, [c.id]: !p[c.id] }))}
+                  />
+                  {c.name}
+                </label>
+              ))
+            )}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button type="button" className="btn btn-secondary" disabled={campusSyncSubmitting} onClick={() => setCampusSyncJobId(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary" disabled={campusSyncSubmitting} onClick={submitCampusSync}>
+              {campusSyncSubmitting ? 'Saving…' : 'Save visibility'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

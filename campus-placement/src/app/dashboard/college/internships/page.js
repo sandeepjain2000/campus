@@ -54,11 +54,11 @@ export default function CollegeInternshipsPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <GraduationCap size={28} className="text-secondary" strokeWidth={1.5} /> Internships
+            <GraduationCap size={28} className="text-secondary" strokeWidth={1.5} /> Internships & programs
           </h1>
           <p className="text-secondary">
-            Published internship roles from employers who have an approved partnership with your institution. Data comes from{' '}
-            <span className="font-mono text-xs">job_postings</span> and <span className="font-mono text-xs">employer_approvals</span>.
+            Published internships, short projects, and hackathons for which your campus was selected when the employer published. Tied to{' '}
+            <span className="font-mono text-xs">job_posting_visibility</span>, <span className="font-mono text-xs">job_postings</span>, and approved tie-ups.
           </p>
         </div>
       </div>
@@ -67,7 +67,7 @@ export default function CollegeInternshipsPage() {
         <div className="stats-card">
           <div className="stats-card-icon indigo"><GraduationCap size={24} strokeWidth={1.5} /></div>
           <div className="stats-card-value">{isLoading ? '…' : stats.count}</div>
-          <div className="stats-card-label">Posted internships</div>
+          <div className="stats-card-label">Posted listings</div>
         </div>
         <div className="stats-card green">
           <div className="stats-card-icon green"><IndianRupee size={24} strokeWidth={1.5} /></div>
@@ -94,7 +94,7 @@ export default function CollegeInternshipsPage() {
       {!isLoading && !error && list.length === 0 && (
         <div className="card">
           <p className="text-secondary" style={{ margin: 0 }}>
-            No published internships from partner employers yet. Approve employer tie-ups under Employers, then ask partners to publish internship roles from their dashboard.
+            No published listings for your campus yet. Partners must publish from Internships or Projects and include your college. Ensure migration <span className="font-mono text-xs">006</span> (visibility table) is applied.
           </p>
         </div>
       )}
@@ -106,7 +106,12 @@ export default function CollegeInternshipsPage() {
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
                   <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, margin: 0 }}>{row.title}</h3>
-                  <span className="badge badge-indigo badge-dot">{row.company_name}</span>
+                  {row.job_type && row.job_type !== 'internship' ? (
+                    <span className="badge badge-amber badge-dot">{row.job_type === 'hackathon' ? 'Hackathon' : 'Short project'}</span>
+                  ) : (
+                    <span className="badge badge-indigo badge-dot">Internship</span>
+                  )}
+                  <span className="badge badge-gray badge-dot">{row.company_name}</span>
                 </div>
                 <p className="text-sm text-secondary" style={{ margin: '0 0 0.5rem', lineHeight: 1.5 }}>
                   {(row.description || '').slice(0, 280)}

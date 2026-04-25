@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Rocket, GraduationCap, Building2, School, BarChart3, CalendarDays, ShieldCheck, ArrowRight, Mail } from 'lucide-react';
+import { Rocket, GraduationCap, Building2, School, BarChart3, CalendarDays, ShieldCheck, ArrowRight, Mail, Database } from 'lucide-react';
 
 export default function LandingPage() {
   return (
@@ -12,6 +12,9 @@ export default function LandingPage() {
           PlacementHub
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Link href="/data-entry" className="btn btn-ghost" style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Database size={16} /> Data entry
+          </Link>
           <Link href="/email-notifications" className="btn btn-ghost" style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
             <Mail size={16} /> Email workflows
           </Link>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { CLARIFICATION_RULES, loadClarifications, publishClarificationBatch } from '@/lib/demoClarifications';
 import { ConvBubble, ConvThread } from '@/components/messaging/ConvBubble';
@@ -13,16 +13,26 @@ export default function CollegeClarificationsPage() {
   const [postedBy, setPostedBy] = useState('IIT Madras — Placement Committee');
   const [lines, setLines] = useState('');
 
-  const [tick, setTick] = useState(0);
-  const batches = useMemo(() => loadClarifications().batches, [tick]);
+  const [batches, setBatches] = useState([]);
 
   useEffect(() => {
-    const on = () => setTick((t) => t + 1);
-    window.addEventListener('clarifications-updated', on);
-    return () => window.removeEventListener('clarifications-updated', on);
-  }, []);
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await loadClarifications();
+        if (!mounted) return;
+        setBatches(data.batches || []);
+      } catch (e) {
+        if (!mounted) return;
+        addToast(e.message || 'Failed to load clarifications', 'error');
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [addToast]);
 
-  const publish = (e) => {
+  const publish = async (e) => {
     e.preventDefault();
     const questionTexts = lines
       .split(/\n+/)
@@ -35,10 +45,14 @@ export default function CollegeClarificationsPage() {
     if (questionTexts.length > CLARIFICATION_RULES.maxQuestions) {
       addToast(`Maximum ${CLARIFICATION_RULES.maxQuestions} questions per batch. Extra lines were ignored.`, 'warning');
     }
-    publishClarificationBatch({ company, postedBy, questionTexts });
-    setLines('');
-    setTick((t) => t + 1);
-    addToast(`Published ${Math.min(questionTexts.length, CLARIFICATION_RULES.maxQuestions)} question(s) for ${company}.`, 'info');
+    try {
+      const data = await publishClarificationBatch({ company, postedBy, questionTexts });
+      setBatches(data.batches || []);
+      setLines('');
+      addToast(`Published ${Math.min(questionTexts.length, CLARIFICATION_RULES.maxQuestions)} question(s) for ${company}.`, 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to publish batch', 'error');
+    }
   };
 
   return (

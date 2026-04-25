@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { Settings, School, Building2, GraduationCap, Users, Activity, ChevronRight } from 'lucide-react';
 import PageError from '@/components/PageError';
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load admin overview');
+  return json;
+};
 
 export default function AdminOverviewPage() {
   const { data, error, isLoading } = useSWR('/api/admin/dashboard', fetcher);
@@ -24,7 +29,8 @@ export default function AdminOverviewPage() {
     );
   }
 
-  const { stats, registeredColleges } = data;
+  const stats = data?.stats || { colleges: 0, employers: 0, students: 0, totalUsers: 0 };
+  const registeredColleges = Array.isArray(data?.registeredColleges) ? data.registeredColleges : [];
 
   return (
     <div className="animate-fadeIn">
@@ -109,30 +115,12 @@ export default function AdminOverviewPage() {
               <Activity size={18} className="text-secondary" /> Platform Health
             </h3>
           </div>
-          <div style={{ padding: '0 1.5rem 1rem' }}>
-            {[
-              { label: 'API Uptime', value: '99.97%', color: 'green' },
-              { label: 'Active Sessions', value: '142', color: 'blue' },
-              { label: 'Database Size', value: '2.4 GB', color: 'indigo' },
-              { label: 'Storage Used', value: '12.8 GB', color: 'amber' },
-            ].map((m) => (
-              <div
-                key={m.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '1rem 0',
-                  borderBottom: '1px solid var(--border-default)',
-                }}
-              >
-                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  {m.label}
-                </span>
-                <span className="font-bold text-sm" style={{ color: `var(--${m.color}-600)` }}>
-                  {m.value}
-                </span>
-              </div>
-            ))}
+          <div style={{ padding: '1rem 1.5rem 1.25rem' }}>
+            <div className="text-sm text-secondary" style={{ lineHeight: 1.6 }}>
+              Real-time platform telemetry is not configured in this build yet.
+              Connect monitoring sources before surfacing uptime/session/storage metrics.
+            </div>
+            <span className="badge badge-gray" style={{ marginTop: '0.75rem' }}>No telemetry source configured</span>
           </div>
         </div>
       </div>

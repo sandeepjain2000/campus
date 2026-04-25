@@ -90,7 +90,9 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('Cancel Application Error:', error);
-    // For demo continuity if DB errors out:
-    return NextResponse.json({ success: true, message: 'Application withdrawn (mocked)' });
+    return NextResponse.json(
+      { error: 'Failed to withdraw application' },
+      { status: 500 }
+    );
   }
 }

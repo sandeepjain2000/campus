@@ -10,7 +10,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { tenant_id } = session.user;
+    const tenantId = session.user.tenantId || session.user.tenant_id;
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
+    }
 
     // Fetch pending approvals for this college
     const result = await query(`
@@ -20,9 +23,7 @@ export async function GET() {
       JOIN employer_profiles ep ON ea.employer_id = ep.id
       WHERE ea.tenant_id = $1 AND ea.status = 'pending'
       ORDER BY ea.created_at DESC
-    `, [tenant_id]);
-
-    // Mock response if DB connection fails, or return empty
+    `, [tenantId]);
     
     return NextResponse.json(result.rows);
   } catch (error) {

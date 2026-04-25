@@ -32,6 +32,7 @@ function getQuickActions(role, employerHasCampus) {
       },
       { label: 'Job postings', href: '/dashboard/employer/jobs' },
       { label: 'Placement drives', href: '/dashboard/employer/drives' },
+      { label: 'Applications', href: '/dashboard/employer/applications' },
       { label: 'Alerts', href: '/dashboard/alerts' },
       { label: 'Feedback', href: '/dashboard/feedback' },
     ];
@@ -39,6 +40,8 @@ function getQuickActions(role, employerHasCampus) {
   if (role === 'student') {
     return [
       { label: 'Browse drives', href: '/dashboard/student/drives' },
+      { label: 'Internships', href: '/dashboard/student/internships' },
+      { label: 'Projects', href: '/dashboard/student/projects' },
       { label: 'My applications', href: '/dashboard/student/applications' },
       { label: 'Calendar', href: '/dashboard/student/calendar' },
       { label: 'Alerts', href: '/dashboard/alerts' },
@@ -147,13 +150,13 @@ export default function DashboardFullScreenHub({ role, session }) {
               }}
             />
             <input
-              id="hub-search-demo"
+              id="hub-search"
               type="search"
               className="dashboard-nav-hub-search form-input"
               placeholder="Search…"
               readOnly
-              aria-label="Search (demo, not wired)"
-              title="Wireframe — search is not wired in this demo"
+              aria-label="Search (not wired yet)"
+              title="Search is not wired yet in this build"
               style={{ paddingLeft: '2.25rem' }}
             />
           </div>

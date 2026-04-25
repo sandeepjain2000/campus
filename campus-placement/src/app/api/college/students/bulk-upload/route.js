@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { hash } from 'bcryptjs';
 
 export async function POST(req) {
   try {
@@ -10,8 +11,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { tenant_id } = session.user;
-    if (!tenant_id) {
+    const tenantId = session.user.tenantId || session.user.tenant_id;
+    if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
 
@@ -45,6 +46,7 @@ export async function POST(req) {
 
     let processedCount = 0;
     const errors = [];
+    const defaultPasswordHash = await hash('ChangeMe@123', 10);
 
     // Skip header row
     for (let i = 1; i < lines.length; i++) {
@@ -58,16 +60,55 @@ export async function POST(req) {
       const cgpa = parseFloat(parts[cgpaIdx]);
 
       try {
-        // Here we would strictly insert it into the Postgres DB in production.
-        // A minimal logic for creating user -> student_profile
-        // For safety in this demo, we'll simulate the insertion or do a basic UPSERT
-        
-        // 1. Create User
-        // INSERT INTO users (tenant_id, email, password_hash, role, first_name) ...
-        
-        // 2. Create Student Profile
-        // INSERT INTO student_profiles (user_id, tenant_id, roll_number, department, cgpa) ...
-        
+        if (!email || !name || !rollNumber || !department || Number.isNaN(cgpa)) {
+          throw new Error('Missing required values (name/email/rollNumber/department/cgpa)');
+        }
+
+        const [firstName, ...rest] = name.split(/\s+/);
+        const lastName = rest.join(' ') || null;
+        const normalizedEmail = email.toLowerCase();
+
+        const existingUser = await query(
+          `SELECT id, tenant_id FROM users WHERE email = $1 LIMIT 1`,
+          [normalizedEmail],
+        );
+
+        let userId = existingUser.rows[0]?.id || null;
+        if (existingUser.rows[0] && existingUser.rows[0].tenant_id !== tenantId) {
+          throw new Error('Email already exists in another tenant');
+        }
+
+        if (!userId) {
+          const insertedUser = await query(
+            `INSERT INTO users (
+               tenant_id, email, password_hash, role, first_name, last_name, is_verified, is_active
+             ) VALUES ($1, $2, $3, 'student', $4, $5, true, true)
+             RETURNING id`,
+            [tenantId, normalizedEmail, defaultPasswordHash, firstName || 'Student', lastName],
+          );
+          userId = insertedUser.rows[0]?.id;
+        } else {
+          await query(
+            `UPDATE users
+             SET first_name = $1, last_name = $2, role = 'student', is_active = true, updated_at = NOW()
+             WHERE id = $3`,
+            [firstName || 'Student', lastName, userId],
+          );
+        }
+
+        await query(
+          `INSERT INTO student_profiles (
+             user_id, tenant_id, roll_number, department, cgpa, placement_status, is_verified
+           ) VALUES ($1, $2, $3, $4, $5, 'unplaced', true)
+           ON CONFLICT (user_id) DO UPDATE SET
+             tenant_id = EXCLUDED.tenant_id,
+             roll_number = EXCLUDED.roll_number,
+             department = EXCLUDED.department,
+             cgpa = EXCLUDED.cgpa,
+             updated_at = NOW()`,
+          [userId, tenantId, rollNumber, department, cgpa],
+        );
+
         processedCount++;
       } catch (err) {
         errors.push(`Row ${i + 1} (${email}): ${err.message}`);

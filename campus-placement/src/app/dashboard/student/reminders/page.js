@@ -28,7 +28,7 @@ export default function StudentEmailRemindersPage() {
         <Link href="/dashboard/student" className="btn btn-ghost btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
           <ArrowLeft size={16} /> Back to dashboard
         </Link>
-        <span className="text-sm text-secondary">Dummy inbox — no email is sent from this screen</span>
+        <span className="text-sm text-secondary">Preview inbox — no email is sent from this screen</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
@@ -49,7 +49,7 @@ export default function StudentEmailRemindersPage() {
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Reminders & email preview</h1>
           <p className="text-sm text-secondary" style={{ margin: '0.25rem 0 0' }}>
-            Static reminders about upcoming companies, deadlines, and off-campus venues — mirrors the landing-page email demo inside the student app.
+            Reminder previews for upcoming companies, deadlines, and off-campus venues.
           </p>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function StudentEmailRemindersPage() {
       </div>
 
       <h2 className="text-sm font-bold" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: '0.75rem' }}>
-        Upcoming (demo list)
+        Upcoming reminders
       </h2>
       <div style={{ display: 'grid', gap: '0.75rem' }}>
         {REMINDERS.map((r) => (

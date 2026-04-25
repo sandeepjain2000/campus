@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { formatDate } from '@/lib/utils';
 
 const CHANNELS = [
@@ -18,21 +18,8 @@ const SOCIAL_PLATFORMS = [
   { id: 'linkedin', name: 'LinkedIn', accent: '#0a66c2' },
 ];
 
-// Mock Infrastructure Assets
-const assets = [
-  { id: 'R1', name: 'Main Auditorium', capacity: 1500, type: 'Event Hall' },
-  { id: 'R2', name: 'Computer Lab 1', capacity: 60, type: 'Lab' },
-  { id: 'R3', name: 'Computer Lab 2', capacity: 60, type: 'Lab' },
-  { id: 'R4', name: 'Conference Room A', capacity: 20, type: 'Meeting Room' },
-];
-
-const initialBookings = [
-  { id: 1, roomId: 'R1', roomName: 'Main Auditorium', date: '2026-08-20', startTime: '09:00', endTime: '18:00', company: 'Google India', description: 'Day 0 Pre-Placement Talk and Inauguration' },
-  { id: 2, roomId: 'R2', roomName: 'Computer Lab 1', date: '2026-08-21', startTime: '10:00', endTime: '13:00', company: 'Microsoft', description: 'Online Coding Assessment for SDE' },
-];
-
 function emptyChannelsMap(bookings) {
-  return Object.fromEntries(bookings.map((b) => [b.id, []]));
+  return Object.fromEntries(bookings.map((b) => [b.id, b.channels || []]));
 }
 
 function buildMonthGrid(year, monthIndex) {
@@ -53,8 +40,10 @@ function bookingsForDay(bookings, year, monthIndex, day) {
 }
 
 export default function CollegeInfrastructurePage() {
-  const [bookings, setBookings] = useState(initialBookings);
-  const [channelToggles, setChannelToggles] = useState(() => emptyChannelsMap(initialBookings));
+  const [assets, setAssets] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [channelToggles, setChannelToggles] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [calYear, setCalYear] = useState(2026);
@@ -66,6 +55,33 @@ export default function CollegeInfrastructurePage() {
   const [endTime, setEndTime] = useState('');
   const [company, setCompany] = useState('');
   const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/college/infrastructure');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load infrastructure data');
+        if (!mounted) return;
+        const loadedAssets = Array.isArray(json.assets) ? json.assets : [];
+        const loadedBookings = Array.isArray(json.bookings) ? json.bookings : [];
+        setAssets(loadedAssets);
+        setBookings(loadedBookings.sort((a, b) => new Date(a.date) - new Date(b.date)));
+        setChannelToggles(emptyChannelsMap(loadedBookings));
+      } catch (e) {
+        if (!mounted) return;
+        setErrorMsg(e.message || 'Failed to load infrastructure data');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    loadData();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const monthCells = useMemo(() => buildMonthGrid(calYear, calMonth), [calYear, calMonth]);
   const monthLabel = useMemo(
@@ -79,13 +95,23 @@ export default function CollegeInfrastructurePage() {
     setCalMonth(d.getMonth());
   };
 
-  const toggleChannel = (bookingId, ch) => {
-    setChannelToggles((prev) => {
-      const cur = prev[bookingId] || [];
-      const has = cur.includes(ch);
-      const next = has ? cur.filter((c) => c !== ch) : [...cur, ch];
-      return { ...prev, [bookingId]: next };
-    });
+  const toggleChannel = async (bookingId, ch) => {
+    const cur = channelToggles[bookingId] || [];
+    const has = cur.includes(ch);
+    const next = has ? cur.filter((c) => c !== ch) : [...cur, ch];
+    setChannelToggles((prev) => ({ ...prev, [bookingId]: next }));
+    try {
+      const res = await fetch('/api/college/infrastructure', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: bookingId, channels: next }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to save channels');
+    } catch (e) {
+      setErrorMsg(e.message || 'Failed to save channels');
+      setChannelToggles((prev) => ({ ...prev, [bookingId]: cur }));
+    }
   };
 
   const bookingsForChannel = (ch) =>
@@ -99,7 +125,7 @@ export default function CollegeInfrastructurePage() {
       return false;
     });
 
-  const handleBooking = (e) => {
+  const handleBooking = async (e) => {
     e.preventDefault();
     if (!roomId || !date || !startTime || !endTime || !company) {
       setErrorMsg('Please fill out all required fields.');
@@ -117,19 +143,31 @@ export default function CollegeInfrastructurePage() {
     }
 
     const roomInfo = assets.find((a) => a.id === roomId);
-    const newBooking = {
-      id: Date.now(),
-      roomId,
-      roomName: roomInfo?.name || 'Unknown Room',
-      date,
-      startTime,
-      endTime,
-      company,
-      description,
-    };
+    try {
+      const res = await fetch('/api/college/infrastructure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          roomName: roomInfo?.name || 'Unknown Room',
+          date,
+          startTime,
+          endTime,
+          company,
+          description,
+          channels: [],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to create booking');
+      const newBooking = json.booking;
+      setBookings((prev) => [...prev, newBooking].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setChannelToggles((prev) => ({ ...prev, [newBooking.id]: [] }));
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to create booking');
+      return;
+    }
 
-    setBookings([...bookings, newBooking].sort((a, b) => new Date(a.date) - new Date(b.date)));
-    setChannelToggles((prev) => ({ ...prev, [newBooking.id]: [] }));
     setShowForm(false);
     setErrorMsg('');
     setRoomId('');
@@ -140,8 +178,21 @@ export default function CollegeInfrastructurePage() {
     setDescription('');
   };
 
-  const handleCancel = (id) => {
+  const handleCancel = async (id) => {
     if (confirm('Are you sure you want to cancel this booking?')) {
+      try {
+        const res = await fetch('/api/college/infrastructure', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to cancel booking');
+      } catch (e) {
+        setErrorMsg(e.message || 'Failed to cancel booking');
+        return;
+      }
+
       setBookings(bookings.filter((b) => b.id !== id));
       setChannelToggles((prev) => {
         const next = { ...prev };
@@ -156,18 +207,17 @@ export default function CollegeInfrastructurePage() {
       <div className="wireframe-banner" role="note">
         <span className="badge badge-gray" style={{ flexShrink: 0 }}>Wireframe</span>
         <div>
-          <strong>Dummy previews only.</strong>
+          <strong>Live bookings with visual previews.</strong>
           {' '}
-          The calendar, website frame, and social cards below are static mockups for layout and copy review.
-          They do not call external APIs, sync in real time, or publish anything. Toggle “wireframe channels” on a booking
-          only simulates where an announcement might appear in a future integration.
+          Bookings and channel selections persist to the database. Website and social cards remain visual previews only
+          (they do not publish to external platforms yet).
         </div>
       </div>
 
       <div className="page-header">
         <div className="page-header-left">
           <h1>🏛️ Infrastructure & Logistics</h1>
-          <p>Book rooms, labs, and auditoriums. Wireframe sections preview calendar and public channels (no live connection).</p>
+          <p>Book rooms, labs, and auditoriums. Bookings persist and appear in calendar and preview channels.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel Creation' : '+ New Booking'}
@@ -445,7 +495,7 @@ export default function CollegeInfrastructurePage() {
               </div>
             </div>
           ))}
-          {bookings.length === 0 && (
+          {!isLoading && bookings.length === 0 && (
             <p style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>No upcoming bookings scheduled.</p>
           )}
         </div>

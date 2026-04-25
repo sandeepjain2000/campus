@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
@@ -14,23 +14,53 @@ const STAFF_DIRECTORY = [
   { id: 'st-4', name: 'Dr. Vikram Sethi', role: 'Infrastructure & Logistics' },
 ];
 
-const mockDrivesSeed = [
-  { id: 1, company: 'TechCorp Solutions', role: 'SDE', date: '2026-09-15', type: 'on_campus', status: 'scheduled', registered: 45, selected: 0, venue: 'Placement Hall A', staffIds: ['st-1', 'st-3'], jobPostingTitle: 'SDE — Campus 2026', jobPostingUrl: '/dashboard/employer/jobs', socialShared: ['twitter', 'linkedin'] },
-  { id: 2, company: 'GlobalSoft Technologies', role: 'Full Stack Dev', date: '2026-09-22', type: 'virtual', status: 'approved', registered: 32, selected: 0, venue: 'Online', staffIds: ['st-2'], jobPostingTitle: '', jobPostingUrl: '', socialShared: [] },
-  { id: 3, company: 'Infosys Limited', role: 'Systems Engineer', date: '2026-10-05', type: 'on_campus', status: 'requested', registered: 0, selected: 0, venue: 'Main Auditorium', staffIds: [], jobPostingTitle: 'Systems Engineer — linked JD', jobPostingUrl: '/dashboard/employer/jobs', socialShared: [] },
-  { id: 4, company: 'DataVerse Analytics', role: 'Data Analyst', date: '2026-09-01', type: 'virtual', status: 'completed', registered: 40, selected: 5, venue: 'Online', staffIds: ['st-1', 'st-4'], jobPostingTitle: '', jobPostingUrl: '', socialShared: ['facebook', 'instagram'] },
-];
-
 function staffById(id) {
   return STAFF_DIRECTORY.find((s) => s.id === id);
 }
 
 export default function CollegeDrivesPage() {
   const { addToast } = useToast();
-  const [drives, setDrives] = useState(mockDrivesSeed);
+  const [drives, setDrives] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionBusyId, setActionBusyId] = useState(null);
   const [downloading, setDownloading] = useState(null);
   const [view, setView] = useState('list');
   const [expandedId, setExpandedId] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadDrives = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/college/drives');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
+        if (!mounted) return;
+        setDrives(
+          (json.drives || []).map((d) => ({
+            ...d,
+            date: d.date ? String(d.date).slice(0, 10) : '',
+            registered: Number(d.registered || 0),
+            selected: Number(d.selected || 0),
+            staffIds: [],
+            jobPostingTitle: '',
+            jobPostingUrl: '',
+            socialShared: [],
+          })),
+        );
+      } catch (error) {
+        if (!mounted) return;
+        addToast(error.message || 'Failed to load drives', 'error');
+        setDrives([]);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    loadDrives();
+    return () => {
+      mounted = false;
+    };
+  }, [addToast]);
 
   const attachStaff = (driveId, staffId) => {
     if (!staffId) return;
@@ -105,43 +135,46 @@ export default function CollegeDrivesPage() {
     }
   };
 
-  const approveDrive = (id) => {
-    setDrives((prev) =>
-      prev.map((d) =>
-        d.id === id ? { ...d, status: 'approved', registered: d.registered || 12, socialShared: d.socialShared || [] } : d,
-      ),
-    );
-    addToast('Drive approved (demo).', 'info');
+  const approveDrive = async (id) => {
+    setActionBusyId(id);
+    try {
+      const res = await fetch('/api/college/drives', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driveId: id, action: 'approve' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to approve drive');
+      setDrives((prev) => prev.map((d) => (d.id === id ? { ...d, status: 'approved' } : d)));
+      addToast('Drive approved.', 'success');
+    } catch (error) {
+      addToast(error.message || 'Failed to approve drive', 'error');
+    } finally {
+      setActionBusyId(null);
+    }
   };
 
-  const rejectDrive = (id) => {
-    setDrives((prev) => prev.filter((d) => d.id !== id));
-    addToast('Drive request removed (demo).', 'info');
+  const rejectDrive = async (id) => {
+    setActionBusyId(id);
+    try {
+      const res = await fetch('/api/college/drives', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driveId: id, action: 'reject' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to reject drive');
+      setDrives((prev) => prev.map((d) => (d.id === id ? { ...d, status: 'cancelled' } : d)));
+      addToast('Drive rejected.', 'info');
+    } catch (error) {
+      addToast(error.message || 'Failed to reject drive', 'error');
+    } finally {
+      setActionBusyId(null);
+    }
   };
 
   const scheduleNewDrive = () => {
-    const name = typeof window !== 'undefined' ? window.prompt('Company name for new drive (demo):', 'Acme Corp') : 'Acme Corp';
-    if (!name) return;
-    const id = Date.now();
-    setDrives((prev) => [
-      {
-        id,
-        company: name,
-        role: 'Graduate Engineer',
-        date: new Date().toISOString().slice(0, 10),
-        type: 'on_campus',
-        status: 'scheduled',
-        registered: 0,
-        selected: 0,
-        venue: 'TBD',
-        staffIds: [],
-        jobPostingTitle: '',
-        jobPostingUrl: '',
-        socialShared: [],
-      },
-      ...prev,
-    ]);
-    addToast('Drive added to list (demo).', 'info');
+    addToast('Use employer drive creation flow for now.', 'warning');
   };
 
   const toggleDriveSocialShare = (driveId, platformId) => {
@@ -154,7 +187,7 @@ export default function CollegeDrivesPage() {
         return { ...d, socialShared };
       }),
     );
-    addToast('Wireframe: share flag updated locally (nothing is posted).', 'info');
+    addToast('Share flag updated locally (nothing is posted).', 'info');
   };
 
   return (
@@ -162,7 +195,7 @@ export default function CollegeDrivesPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>🎯 Placement Drives</h1>
-          <p>Schedule and manage all placement drives. Social share flags are a wireframe (compact, on the right of each card).</p>
+          <p>Schedule and manage all placement drives. Social share flags are preview-only (compact, on the right of each card).</p>
         </div>
         <div className="page-header-actions">
           <ExportCsvSplitButton filenameBase="college_placement_drives" currentCount={drives.length} fullCount={drives.length} getRows={getDrivesCsv} />
@@ -223,10 +256,10 @@ export default function CollegeDrivesPage() {
                   {drive.status === 'requested' && (
                     <>
                       <button className="btn btn-success btn-sm" type="button" onClick={() => approveDrive(drive.id)}>
-                        ✅ Approve
+                        {actionBusyId === drive.id ? 'Approving...' : '✅ Approve'}
                       </button>
                       <button className="btn btn-danger btn-sm" type="button" onClick={() => rejectDrive(drive.id)}>
-                        ❌ Reject
+                        {actionBusyId === drive.id ? 'Rejecting...' : '❌ Reject'}
                       </button>
                     </>
                   )}
@@ -244,7 +277,7 @@ export default function CollegeDrivesPage() {
                   </button>
                 </div>
                 <div className="drive-social-sidebar">
-                  <span className="drive-social-share-label">Share (wireframe)</span>
+                  <span className="drive-social-share-label">Share</span>
                   <div className="drive-social-share">
                     {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
                       const shared = (drive.socialShared || []).includes(id);
@@ -253,8 +286,8 @@ export default function CollegeDrivesPage() {
                           key={id}
                           type="button"
                           className={`drive-social-icon-btn${shared ? ' is-shared' : ''}`}
-                          title={`${label}${shared ? ' — marked shared (demo)' : ' — click to mark shared (demo)'}`}
-                          aria-label={`${label} ${shared ? 'shared' : 'not shared'} — wireframe`}
+                          title={`${label}${shared ? ' — marked shared' : ' — click to mark shared'}`}
+                          aria-label={`${label} ${shared ? 'shared' : 'not shared'}`}
                           aria-pressed={shared}
                           onClick={() => toggleDriveSocialShare(drive.id, id)}
                         >
@@ -357,6 +390,9 @@ export default function CollegeDrivesPage() {
             </div>
           </div>
         ))}
+        {!isLoading && drives.length === 0 ? (
+          <div className="card text-secondary">No drives found.</div>
+        ) : null}
       </div>
       )}
     </div>

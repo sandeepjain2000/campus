@@ -1,54 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { Trophy, FlaskConical, Palette, School, MapPin, X, CreditCard, Building2, Landmark } from 'lucide-react';
-
-const colleges = [
-  {
-    id: 'iit-mumbai',
-    name: 'Indian Institute of Technology, Mumbai',
-    location: 'Mumbai, Maharashtra',
-    sponsorshipLevels: [
-      {
-        category: 'Sports Programs',
-        icon: <Trophy size={24} />,
-        color: '#3b82f6',
-        description: 'Support athletic programs and help students excel in sports',
-        tiers: [
-          { name: 'Bronze Sponsor', price: '₹5,00,000', label: 'Popular', benefits: ['Logo on team uniforms', 'Website recognition'] },
-          { name: 'Silver Sponsor', price: '₹15,00,000', label: 'Popular', benefits: ['Logo on uniforms', 'Website recognition', 'Event banner display'] },
-          { name: 'Gold Sponsor', price: '₹35,00,000', label: 'Premium', benefits: ['Logo on uniforms', 'Website recognition', 'Event banner display', 'VIP event access'] },
-        ]
-      },
-      {
-        category: 'Science Labs',
-        icon: <FlaskConical size={24} />,
-        color: '#10b981',
-        description: 'Enhance laboratory facilities and scientific equipment',
-        tiers: [
-          { name: 'Equipment Sponsor', price: '₹10,00,000', benefits: ['Lab naming rights', 'Plaque recognition'] },
-          { name: 'Lab Partner', price: '₹25,00,000', benefits: ['Lab naming rights', 'Plaque recognition', 'Student presentation access'] },
-        ]
-      }
-    ]
-  },
-  {
-    id: 'nit-trichy',
-    name: 'National Institute of Technology, Trichy',
-    location: 'Tiruchirappalli, Tamil Nadu',
-    sponsorshipLevels: [
-      {
-        category: 'Cultural Events',
-        icon: <Palette size={24} />,
-        color: '#a855f7',
-        description: 'Support arts, music, and cultural activities that enrich student life',
-        tiers: [
-          { name: 'Event Supporter', price: '₹3,00,000', benefits: ['Program acknowledgment', 'Social media recognition'] },
-          { name: 'Cultural Partner', price: '₹8,00,000', benefits: ['Program acknowledgment', 'Event tickets'] },
-        ]
-      }
-    ]
-  }
-];
+import { useEffect, useMemo, useState } from 'react';
+import { Trophy, School, MapPin, X, CreditCard, Building2, Landmark } from 'lucide-react';
 
 const PAY_TABS = [
   { id: 'online', label: 'Pay online', icon: CreditCard },
@@ -57,10 +9,38 @@ const PAY_TABS = [
 ];
 
 export default function EmployerSponsorshipsPage() {
-  const [activeCollegeId, setActiveCollegeId] = useState(colleges[0].id);
+  const [colleges, setColleges] = useState([]);
+  const [paymentInfo, setPaymentInfo] = useState({});
+  const [activeCollegeId, setActiveCollegeId] = useState(null);
   const [sponsorModal, setSponsorModal] = useState(null);
   const [payTab, setPayTab] = useState('online');
-  const activeCollege = colleges.find(c => c.id === activeCollegeId);
+  const activeCollege = useMemo(
+    () => colleges.find(c => c.id === activeCollegeId) || colleges[0],
+    [colleges, activeCollegeId]
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/employer/sponsorships');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load sponsorship data');
+        if (!mounted) return;
+        const list = Array.isArray(json.colleges) ? json.colleges : [];
+        setColleges(list);
+        setPaymentInfo(json.paymentInfo || {});
+        if (list.length > 0) setActiveCollegeId(list[0].id);
+      } catch {
+        if (!mounted) return;
+        setColleges([]);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const closeModal = () => {
     setSponsorModal(null);
@@ -123,15 +103,15 @@ export default function EmployerSponsorshipsPage() {
         {/* Main Content: Sponsorships for Active College */}
         <div>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', fontWeight: 700, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-default)' }}>
-            Opportunities at {activeCollege.name}
+            Opportunities at {activeCollege?.name || '—'}
           </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-            {activeCollege.sponsorshipLevels.map((level, i) => (
+            {(activeCollege?.sponsorshipLevels || []).map((level, i) => (
               <div key={i} className="card" style={{ padding: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                   <div style={{ 
-                    background: level.color, 
+                    background: '#3b82f6', 
                     width: '50px', 
                     height: '50px', 
                     borderRadius: '1rem', 
@@ -140,7 +120,7 @@ export default function EmployerSponsorshipsPage() {
                     justifyContent: 'center',
                     color: 'white'
                   }}>
-                    {level.icon}
+                    <Trophy size={24} />
                   </div>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{level.category}</h3>
@@ -154,7 +134,7 @@ export default function EmployerSponsorshipsPage() {
                       background: 'var(--bg-secondary)', 
                       borderRadius: '1rem', 
                       padding: '1.5rem',
-                      borderLeft: `4px solid ${level.color}`
+                      borderLeft: '4px solid #3b82f6'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                         <div>
@@ -166,7 +146,7 @@ export default function EmployerSponsorshipsPage() {
                       <ul style={{ padding: 0, listStyle: 'none', margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                         {tier.benefits.map((b, bi) => (
                           <li key={bi} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
-                            <span style={{ color: level.color, fontWeight: 'bold' }}>✓</span> {b}
+                            <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>✓</span> {b}
                           </li>
                         ))}
                       </ul>
@@ -193,7 +173,7 @@ export default function EmployerSponsorshipsPage() {
             ))}
           </div>
           
-          {activeCollege.sponsorshipLevels.length === 0 && (
+          {(activeCollege?.sponsorshipLevels?.length || 0) === 0 && (
              <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
                  <p className="text-secondary">No active sponsorship opportunities currently available for this institution.</p>
              </div>
@@ -283,16 +263,16 @@ export default function EmployerSponsorshipsPage() {
                   borderColor: 'var(--border-default)',
                 }}
               >
-                <strong>Payment gateway (wireframe)</strong>
+                <strong>Payment gateway (preview)</strong>
                 <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                   Integrate Razorpay, Stripe, or your bank&apos;s hosted checkout. Here you&apos;d see card / UPI / net banking and a
                   receipt on success.
                 </p>
                 <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <button type="button" className="btn btn-primary" disabled style={{ opacity: 0.85 }}>
-                    Pay {sponsorModal.price} (demo disabled)
+                    Pay {sponsorModal.price} (not available in this build)
                   </button>
-                  <span className="text-xs text-secondary">Placeholder — no real charge in this demo.</span>
+                  <span className="text-xs text-secondary">Payment integration is pending; this action is currently disabled.</span>
                 </div>
               </div>
             )}
@@ -324,7 +304,7 @@ export default function EmployerSponsorshipsPage() {
                     background: 'var(--bg-primary)',
                   }}
                 >
-                  Sponsorship Cell (Demo Address)
+                  Sponsorship Cell
                   <br />
                   Finance &amp; Accounts, Main Campus
                   <br />
@@ -347,7 +327,7 @@ export default function EmployerSponsorshipsPage() {
               >
                 <strong>Bank transfer</strong>
                 <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                  Use these demo details for NEFT / RTGS / IMPS. Reference: your company name + tier.
+                  Use configured details for NEFT / RTGS / IMPS. Reference: your company name + tier.
                 </p>
                 <dl
                   style={{
@@ -363,23 +343,23 @@ export default function EmployerSponsorshipsPage() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                     <dt className="text-secondary">Account name</dt>
-                    <dd style={{ margin: 0, fontWeight: 600 }}>{sponsorModal.collegeName} (Demo)</dd>
+                    <dd style={{ margin: 0, fontWeight: 600 }}>{paymentInfo.accountName || `${sponsorModal.collegeName} (Not configured)`}</dd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                     <dt className="text-secondary">Bank</dt>
-                    <dd style={{ margin: 0, fontWeight: 600 }}>Demo National Bank</dd>
+                    <dd style={{ margin: 0, fontWeight: 600 }}>{paymentInfo.bankName || 'Not configured'}</dd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                     <dt className="text-secondary">Account no.</dt>
-                    <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>50100XXXXXX42</dd>
+                    <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>{paymentInfo.accountNumberMasked || 'Not configured'}</dd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                     <dt className="text-secondary">IFSC</dt>
-                    <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>DEMO0001234</dd>
+                    <dd style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>{paymentInfo.ifsc || 'Not configured'}</dd>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                     <dt className="text-secondary">Branch</dt>
-                    <dd style={{ margin: 0 }}>Campus / Institutional</dd>
+                    <dd style={{ margin: 0 }}>{paymentInfo.branch || 'Not configured'}</dd>
                   </div>
                 </dl>
               </div>

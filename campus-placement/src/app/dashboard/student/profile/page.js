@@ -316,7 +316,7 @@ export default function StudentProfilePage() {
 
       {profile.cvFileName && (
         <p className="text-sm text-secondary" style={{ margin: '-0.5rem 0 1rem' }}>
-          Résumé on file: <strong>{profile.cvFileName}</strong> (stored locally in this demo)
+          Résumé on file: <strong>{profile.cvFileName}</strong> (stored locally on this device)
         </p>
       )}
 
@@ -630,7 +630,7 @@ export default function StudentProfilePage() {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {profile.profileLinks.length === 0 && <p className="text-sm text-secondary">No links yet. Add LinkedIn, GitHub, a general site, or a demo project.</p>}
+            {profile.profileLinks.length === 0 && <p className="text-sm text-secondary">No links yet. Add LinkedIn, GitHub, a general site, or a project link.</p>}
             {profile.profileLinks.map((link) => (
               <div key={link.id} className="card" style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
                 {editing ? (

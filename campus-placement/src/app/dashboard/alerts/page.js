@@ -1,22 +1,69 @@
 'use client';
-import { useState } from 'react';
-import { getInitials } from '@/lib/utils';
+import { useMemo, useState } from 'react';
+import useSWR from 'swr';
+import { getInitials, timeAgo } from '@/lib/utils';
+import { useToast } from '@/components/ToastProvider';
 
-const mockEmails = [
-  { id: 1, sender: 'Placement Cell - Logistics', subject: 'Room Booking Confirmed: Main Auditorium', snippet: 'Your request for Main Auditorium for Day 0 has been confirmed...', time: '10:45 AM', read: false },
-  { id: 2, sender: 'System Notifications', subject: 'New Application Received', snippet: 'A student has just applied for Software Development Engineer role.', time: '09:30 AM', read: true },
-  { id: 3, sender: 'Placement Committee', subject: 'POC Assignment for Google India', snippet: 'You have been assigned as the Point of Contact for Google India.', time: 'Yesterday', read: true },
-  { id: 4, sender: 'Placement Portal', subject: 'Action Required: Deadline Approaching', snippet: 'Reminder: The offer deadline for 3 students expires tomorrow.', time: 'Aug 14', read: true }
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load notifications');
+  return data;
+};
 
 export default function AlertsEmailPage() {
-  const [emails, setEmails] = useState(mockEmails);
+  const { addToast } = useToast();
+  const { data, error, isLoading, mutate } = useSWR('/api/notifications', fetcher);
+  const emails = useMemo(
+    () =>
+      Array.isArray(data?.notifications)
+        ? data.notifications.map((n) => ({
+            id: n.id,
+            sender: n.type ? `System ${n.type}` : 'Placement Portal',
+            subject: n.title || 'Notification',
+            snippet: n.message || '',
+            time: timeAgo(n.created_at),
+            read: Boolean(n.is_read),
+          }))
+        : [],
+    [data],
+  );
   const [openEmailId, setOpenEmailId] = useState(null);
+  const [mailbox, setMailbox] = useState('inbox');
 
-  const handleOpen = (id) => {
-    setOpenEmailId(openEmailId === id ? null : id);
-    setEmails(emails.map(e => e.id === id ? { ...e, read: true } : e));
+  const showNotReady = (label) => {
+    addToast(`${label} is not available yet in this build.`, 'info');
   };
+
+  const handleOpen = async (id) => {
+    setOpenEmailId(openEmailId === id ? null : id);
+    const row = emails.find((e) => e.id === id);
+    if (row?.read) return;
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      if (res.ok) {
+        mutate();
+      }
+    } catch {
+      // Keep drawer behavior even if marking as read fails.
+    }
+  };
+
+  if (isLoading) {
+    return <div className="skeleton skeleton-card" style={{ height: 240, margin: '2rem' }} />;
+  }
+
+  if (error) {
+    return (
+      <div className="animate-fadeIn" style={{ padding: '2rem', color: 'var(--danger-600)' }}>
+        <p>{error.message || 'Could not load inbox alerts.'}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
@@ -25,23 +72,23 @@ export default function AlertsEmailPage() {
           <h1>📨 Inbox & Alerts</h1>
           <p>System notifications, event coordination, and alerts.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Compose Mock Alert</button>
+        <button className="btn btn-primary" onClick={() => showNotReady('Compose alert')}>Compose Alert</button>
       </div>
 
       <div className="card" style={{ flex: 1, padding: 0, display: 'flex', overflow: 'hidden' }}>
         
         {/* Left Sidebar Menu */}
         <div style={{ width: '250px', borderRight: '1px solid var(--border)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-secondary)' }}>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: 'var(--primary-100)', color: 'var(--primary-700)', fontWeight: 600 }} onClick={() => alert("Feature coming soon! (Wireframe Action)")}>
-            📥 Inbox <span className="badge badge-accent" style={{ marginLeft: 'auto' }}>1</span>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: mailbox === 'inbox' ? 'var(--primary-100)' : undefined, color: mailbox === 'inbox' ? 'var(--primary-700)' : 'var(--text-secondary)', fontWeight: mailbox === 'inbox' ? 600 : 400 }} onClick={() => setMailbox('inbox')}>
+            📥 Inbox <span className="badge badge-accent" style={{ marginLeft: 'auto' }}>{Number(data?.unreadCount || 0)}</span>
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => alert("Feature coming soon! (Wireframe Action)")}>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => { setMailbox('starred'); showNotReady('Starred'); }}>
             ⭐ Starred
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => alert("Feature coming soon! (Wireframe Action)")}>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => { setMailbox('sent'); showNotReady('Sent mailbox'); }}>
             📤 Sent
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => alert("Feature coming soon! (Wireframe Action)")}>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => { setMailbox('trash'); showNotReady('Trash'); }}>
             🗑️ Trash
           </button>
         </div>
@@ -87,8 +134,8 @@ export default function AlertsEmailPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{email.subject}</h2>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Reply</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => alert("Feature coming soon! (Wireframe Action)")}>Forward</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => showNotReady('Reply')}>Reply</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => showNotReady('Forward')}>Forward</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -111,6 +158,11 @@ export default function AlertsEmailPage() {
 
             </div>
           ))}
+          {emails.length === 0 && (
+            <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>
+              No alerts yet.
+            </div>
+          )}
         </div>
 
       </div>

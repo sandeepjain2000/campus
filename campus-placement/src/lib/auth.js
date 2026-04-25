@@ -33,7 +33,7 @@ export const authOptions = {
             
             await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
             
-            // Fallback for missing tenant_names in DB for demo purposes
+            // Fallback for missing tenant names in incomplete tenant setups
             let fallbackTenantName = user.tenant_name;
             if (!fallbackTenantName) {
               if (user.role === 'employer') {
@@ -90,6 +90,8 @@ export const authOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.tenantId = token.tenantId;
+        // APIs use snake_case tenant_id; JWT only had tenantId — keep both in sync
+        session.user.tenant_id = token.tenantId ?? null;
         session.user.tenantName = token.tenantName;
         session.user.tenantSlug = token.tenantSlug;
         session.user.avatar = token.avatar;

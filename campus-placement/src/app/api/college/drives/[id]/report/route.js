@@ -11,7 +11,10 @@ export async function GET(req, { params }) {
     }
 
     const { id: driveId } = await params;
-    const { tenant_id } = session.user;
+    const tenantId = session.user.tenantId || session.user.tenant_id;
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
+    }
 
     // Fetch Drive Info
     const driveQuery = await query(`
@@ -21,7 +24,7 @@ export async function GET(req, { params }) {
       LEFT JOIN employer_profiles ep ON pd.employer_id = ep.id
       LEFT JOIN job_postings jp ON pd.job_id = jp.id
       WHERE pd.id = $1 AND pd.tenant_id = $2
-    `, [driveId, tenant_id]);
+    `, [driveId, tenantId]);
 
     if (driveQuery.rowCount === 0) {
       return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
@@ -79,28 +82,9 @@ export async function GET(req, { params }) {
 
   } catch (error) {
     console.error('Report Generation Error:', error);
-    // Mock response for frontend tests without DB
-    return NextResponse.json({
-      generatedAt: new Date().toISOString(),
-      drive: {
-        title: 'Mock Placement Drive',
-        company_name: 'Tech Mock Corp',
-        drive_date: '2026-09-15',
-        status: 'completed',
-        salary_max: 2000000
-      },
-      statistics: {
-        total_applied: 120,
-        shortlisted: 45,
-        in_progress: 10,
-        selected: 5,
-        withdrawn: 2,
-        rejected: 68
-      },
-      selectedStudents: [
-        { name: 'Arjun Verma', rollNumber: 'CS2021001', department: 'CS', cgpa: 8.72 },
-        { name: 'Kavya Reddy', rollNumber: 'CS2021003', department: 'CS', cgpa: 8.45 },
-      ]
-    });
+    return NextResponse.json(
+      { error: error.message || 'Failed to generate drive report' },
+      { status: 500 },
+    );
   }
 }

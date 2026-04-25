@@ -2,8 +2,14 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { useToast } from '@/components/ToastProvider';
 
-const fetcher = url => fetch(url).then(res => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || 'Failed to load offers');
+  return data;
+};
 
 function formatTimeLeft(deadline, now) {
   if (!deadline) return null;
@@ -21,8 +27,25 @@ function formatTimeLeft(deadline, now) {
 }
 
 export default function StudentOffersPage() {
-  const { data: offers, error, isLoading, mutate } = useSWR('/api/student/offers', fetcher);
+  const { data: offers, isLoading, mutate } = useSWR('/api/student/offers', fetcher);
   const [now, setNow] = useState(Date.now());
+  const { addToast } = useToast();
+
+  const respondToOffer = async (id, action) => {
+    try {
+      const res = await fetch('/api/student/offers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Failed to update offer');
+      await mutate();
+      addToast(action === 'accept' ? 'Offer accepted.' : 'Offer declined.', 'success');
+    } catch (e) {
+      addToast(e.message || 'Failed to update offer', 'error');
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000); // update every minute
@@ -93,8 +116,8 @@ export default function StudentOffersPage() {
 
               {effectiveStatus === 'pending' && (
                 <div className="offer-actions">
-                  <button className="btn btn-success" style={{ flex: 1 }} onClick={() => alert("Feature coming soon! (Wireframe Action)")}>✅ Accept Offer</button>
-                  <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => alert("Feature coming soon! (Wireframe Action)")}>❌ Decline Offer</button>
+                  <button className="btn btn-success" style={{ flex: 1 }} onClick={() => respondToOffer(offer.id, 'accept')}>✅ Accept Offer</button>
+                  <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => respondToOffer(offer.id, 'decline')}>❌ Decline Offer</button>
                 </div>
               )}
 

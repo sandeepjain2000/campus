@@ -229,7 +229,7 @@ export default function SelectCampusPage() {
               <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
                 Welcome, {session?.user?.tenantName || session?.user?.name}.{' '}
                 <strong>Only your company starts a tie-up:</strong> request below; the college approves or declines.
-                After approval, open a campus to work in. Data is from your live directory (no demo list in the UI).
+                After approval, open a campus to work in. Data is from your live directory.
               </p>
             </div>
           </div>
