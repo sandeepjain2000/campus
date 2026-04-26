@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useToast } from '@/components/ToastProvider';
 import EntityLogo from '@/components/EntityLogo';
+import { appendClientDebugLog } from '@/lib/clientDebugLog';
+import { inferImageContentType } from '@/lib/inferImageContentType';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -81,28 +83,83 @@ export default function EmployerProfilePage() {
   const onLogoChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) {
+      addToast('No file selected.', 'warning');
+      return;
+    }
+    const contentType = inferImageContentType(file);
+    if (!contentType) {
+      addToast('Choose a JPEG, PNG, WebP, or GIF (browser did not report a usable image type).', 'warning');
+      appendClientDebugLog({
+        source: 'employer_profile_logo',
+        action: 'reject_type',
+        fileName: file.name,
+        reportedType: file.type || null,
+      });
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
       addToast('Image too large (max 2MB).', 'warning');
       return;
     }
     setLogoUploading(true);
     try {
+      appendClientDebugLog({
+        source: 'employer_profile_logo',
+        action: 'presign_request',
+        fileName: file.name,
+        contentType,
+        fileSize: file.size,
+      });
       const presignRes = await fetch('/api/employer/profile/logo/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream', fileSize: file.size }),
+        body: JSON.stringify({ fileName: file.name, contentType, fileSize: file.size }),
       });
-      const presign = await presignRes.json();
+      let presign = {};
+      try {
+        presign = await presignRes.json();
+      } catch {
+        presign = {};
+      }
+      appendClientDebugLog({
+        source: 'employer_profile_logo',
+        action: 'presign_response',
+        status: presignRes.status,
+        ok: presignRes.ok,
+        error: presign.error || null,
+      });
+      if (presignRes.status === 503) {
+        addToast(
+          `${presign.error || 'Logo storage not configured'}. Add AWS/S3 env vars on the server and redeploy.`,
+          'error',
+        );
+        return;
+      }
       if (!presignRes.ok) {
-        addToast(presign.error || 'Failed to start logo upload', 'error');
+        addToast(presign.error || `Could not start upload (HTTP ${presignRes.status}).`, 'error');
         return;
       }
       const ph = {};
       if (presign.contentType) ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
       const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
+      let putDetail = '';
+      try {
+        putDetail = (await putRes.text()).slice(0, 500);
+      } catch {
+        putDetail = '';
+      }
+      appendClientDebugLog({
+        source: 'employer_profile_logo',
+        action: 's3_put',
+        status: putRes.status,
+        ok: putRes.ok,
+      });
       if (!putRes.ok) {
-        addToast('Logo upload failed while sending file to storage.', 'error');
+        addToast(
+          `Upload to storage failed (HTTP ${putRes.status}). Check S3 CORS for PUT from this site. ${putDetail ? putDetail.slice(0, 120) : ''}`.trim(),
+          'error',
+        );
         return;
       }
       const completeRes = await fetch('/api/employer/profile/logo/complete', {
@@ -110,16 +167,26 @@ export default function EmployerProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_url: presign.fileUrl }),
       });
-      const complete = await completeRes.json();
+      const complete = await completeRes.json().catch(() => ({}));
+      appendClientDebugLog({
+        source: 'employer_profile_logo',
+        action: 'complete',
+        status: completeRes.status,
+        ok: completeRes.ok,
+        error: complete.error || null,
+      });
       if (!completeRes.ok) {
-        addToast(complete.error || 'Logo uploaded but could not be saved.', 'error');
+        addToast(complete.error || 'Logo uploaded but could not be saved to your profile.', 'error');
         return;
       }
       if (form) setForm((p) => ({ ...p, logoUrl: presign.fileUrl }));
       await mutate();
       addToast('Company logo uploaded.', 'success');
-    } catch {
-      addToast('Upload failed (network).', 'error');
+      appendClientDebugLog({ source: 'employer_profile_logo', action: 'success', fileUrl: presign.fileUrl });
+    } catch (err) {
+      const msg = err?.message || 'Upload failed (network).';
+      addToast(msg, 'error');
+      appendClientDebugLog({ source: 'employer_profile_logo', action: 'error', message: msg });
     } finally {
       setLogoUploading(false);
     }
