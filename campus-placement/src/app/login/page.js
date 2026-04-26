@@ -6,7 +6,7 @@ import Link from 'next/link';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
-import { DEMO_LOGINS, isDemoLoginsEnabled } from '@/lib/demoLogins';
+import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled } from '@/lib/demoLogins';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +24,11 @@ export default function LoginPage() {
     if (email) {
       const match = DEMO_LOGINS.find((d) => d.email === email && !d.isDummy);
       if (match) {
-        setFormData((prev) => ({ ...prev, email: match.email }));
+        setFormData((prev) => ({
+          ...prev,
+          email: match.email,
+          password: DEMO_SEED_PASSWORD,
+        }));
         setFilledFrom(match.email);
       }
     }
@@ -95,7 +99,7 @@ export default function LoginPage() {
     }
   };
 
-  // Card click: only populate the form fields (user then clicks Sign In)
+  // Card click: prefill seed email + password (user clicks Sign In)
   const handleDemoCardClick = (demo) => {
     if (demo.isDummy) {
       toast.info("Placement Committee is coming soon. It's currently in design.");
@@ -103,8 +107,8 @@ export default function LoginPage() {
     }
     setError('');
     setFilledFrom(demo.email);
-    setFormData((prev) => ({ ...prev, email: demo.email }));
-    toast.info('Email filled. Enter the account password to continue.');
+    setFormData((prev) => ({ ...prev, email: demo.email, password: DEMO_SEED_PASSWORD }));
+    toast.info('Demo email and password filled — click Sign In.');
   };
 
   return (
@@ -162,7 +166,7 @@ export default function LoginPage() {
               alignItems: 'center',
               gap: '0.4rem',
             }}>
-              ✅ Email filled — enter password and click <strong>Sign In</strong>
+              ✅ Demo credentials filled — click <strong>Sign In</strong>
             </div>
           )}
 
@@ -256,7 +260,7 @@ export default function LoginPage() {
                           📧 {demo.email}
                         </div>
                         <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)' }}>
-                          🔑 Auto-fills email
+                          🔑 Auto-fills email &amp; password
                         </div>
                       </div>
                     </button>

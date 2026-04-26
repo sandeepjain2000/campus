@@ -1,4 +1,7 @@
 /** Seed / demo accounts for try-the-app flows (password is set in your DB seed). */
+/** Same as `db/seed.sql` default for seeded users — only used to prefill the login form for these accounts. */
+export const DEMO_SEED_PASSWORD = 'Admin@123';
+
 export const DEMO_LOGINS = [
   { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu', icon: '🎓', name: 'IIT Madras' },
   { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu', icon: '🎓', name: 'NIT Trichy' },

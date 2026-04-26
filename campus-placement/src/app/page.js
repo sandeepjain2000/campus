@@ -14,8 +14,6 @@ import {
   Database,
   Download,
 } from 'lucide-react';
-import EntityLogo from '@/components/EntityLogo';
-import { DEMO_LOGINS } from '@/lib/demoLogins';
 import { appendClientDebugLog, downloadClientDebugLog } from '@/lib/clientDebugLog';
 
 export default function LandingPage() {
@@ -140,79 +138,6 @@ export default function LandingPage() {
               <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827' }}>₹12L</div>
               <div style={{ color: '#6B7280', fontWeight: 500 }}>Avg. Package</div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Demo accounts — always visible on the landing page for try-the-app flows */}
-      <section
-        style={{
-          padding: '3rem 2rem 4rem',
-          background: 'linear-gradient(180deg, #FFFBEB 0%, #FEF9C3 100%)',
-          borderTop: '1px solid #FDE68A',
-          borderBottom: '1px solid #FDE68A',
-        }}
-      >
-        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#78350F', marginBottom: '0.5rem', textAlign: 'center' }}>
-            Demo accounts
-          </h2>
-          <p style={{ color: '#92400E', textAlign: 'center', fontSize: '0.95rem', maxWidth: '560px', margin: '0 auto 1.75rem', lineHeight: 1.5 }}>
-            Use these seeded roles after sign-in. Password comes from your database seed (same as local dev). Click a card to open Sign in with email filled.
-          </p>
-          <div
-            className="role-select-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-              gap: '0.75rem',
-            }}
-          >
-            {DEMO_LOGINS.map((demo) =>
-              demo.isDummy ? (
-                <div
-                  key={demo.email}
-                  className="role-card"
-                  style={{
-                    textAlign: 'left',
-                    opacity: 0.85,
-                    cursor: 'default',
-                    background: '#FFFBEB',
-                    borderStyle: 'dashed',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                    <EntityLogo name={demo.name} size="xs" shape="rounded" />
-                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#78350F' }}>{demo.label}</span>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#A16207' }}>Coming soon</div>
-                </div>
-              ) : (
-                <Link
-                  key={demo.email}
-                  href={`/login?email=${encodeURIComponent(demo.email)}`}
-                  className="role-card"
-                  style={{
-                    textAlign: 'left',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    display: 'block',
-                    transition: 'box-shadow 0.15s ease, transform 0.15s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                    <EntityLogo name={demo.name} size="xs" shape="rounded" />
-                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)' }}>{demo.label}</span>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)', wordBreak: 'break-all' }}>
-                    📧 {demo.email}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', marginTop: '0.35rem', color: 'var(--primary-600)', fontWeight: 600 }}>
-                    Sign in →
-                  </div>
-                </Link>
-              ),
-            )}
           </div>
         </div>
       </section>
