@@ -5,6 +5,11 @@ import { useToast } from '@/components/ToastProvider';
 import EntityLogo from '@/components/EntityLogo';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
 import { inferImageContentType } from '@/lib/inferImageContentType';
+import {
+  EMPLOYER_COMPANY_TYPE_OPTIONS,
+  EMPLOYER_COMPANY_SIZE_OPTIONS,
+  labelEmployerCompanyType,
+} from '@/lib/employerCompanyTypeLabels';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -30,9 +35,13 @@ export default function EmployerProfilePage() {
     return {
       companyName: str(p.company_name),
       industry: str(p.industry),
-      companyType: str(p.company_type),
+      companyTypeLabel: labelEmployerCompanyType(p.company_type),
       companySize: str(p.company_size),
-      founded: str(p.founded_year),
+      founded: p.founded_year != null && String(p.founded_year).trim() !== '' ? String(p.founded_year) : '—',
+      industryRaw: (p.industry && String(p.industry).trim()) || '',
+      companyTypeRaw: (p.company_type && String(p.company_type).trim()) || '',
+      companySizeRaw: (p.company_size && String(p.company_size).trim()) || '',
+      foundedRaw: p.founded_year != null ? String(p.founded_year) : '',
       logoUrl: p.logo_url != null && String(p.logo_url).trim() !== '' ? String(p.logo_url).trim() : '',
       website: p.website != null && String(p.website).trim() !== '' ? String(p.website).trim() : '',
       headquarters: str(p.headquarters),
@@ -57,6 +66,10 @@ export default function EmployerProfilePage() {
         logoUrl: profile.logoUrl || '',
         website: profile.website || '',
         locations: profile.locations.join(', '),
+        industry: profile.industryRaw,
+        companyType: profile.companyTypeRaw,
+        companySize: profile.companySizeRaw,
+        foundedYear: profile.foundedRaw,
       });
     }
     setEditing((v) => !v);
@@ -68,7 +81,20 @@ export default function EmployerProfilePage() {
       const res = await fetch('/api/employer/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          description: form.description,
+          contactPerson: form.contactPerson,
+          contactEmail: form.contactEmail,
+          contactPhone: form.contactPhone,
+          headquarters: form.headquarters,
+          website: form.website,
+          logoUrl: form.logoUrl,
+          locations: form.locations,
+          industry: form.industry,
+          companyType: form.companyType,
+          companySize: form.companySize,
+          foundedYear: form.foundedYear === '' ? null : form.foundedYear,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to update profile');
@@ -207,7 +233,7 @@ export default function EmployerProfilePage() {
         </div>
         <div className="profile-info" style={{ position: 'relative', zIndex: 1 }}>
           <h2>{profile.companyName}</h2>
-          <p>{profile.industry} • {profile.companyType} • Founded {profile.founded}</p>
+          <p>{profile.industry} • {profile.companyTypeLabel} • Founded {profile.founded}</p>
           <div className="profile-meta">
             <div className="profile-meta-item">📍 {profile.headquarters}</div>
             <div className="profile-meta-item">
@@ -235,7 +261,7 @@ export default function EmployerProfilePage() {
           <div className="card-header"><h3 className="card-title">🏢 Company Details</h3></div>
           <div className="drive-info-grid">
             <div className="drive-info-item"><div className="drive-info-label">Industry</div><div className="drive-info-value">{profile.industry}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Type</div><div className="drive-info-value">{profile.companyType}</div></div>
+            <div className="drive-info-item"><div className="drive-info-label">Type</div><div className="drive-info-value">{profile.companyTypeLabel}</div></div>
             <div className="drive-info-item"><div className="drive-info-label">Size</div><div className="drive-info-value">{profile.companySize}</div></div>
             <div className="drive-info-item"><div className="drive-info-label">Founded</div><div className="drive-info-value">{profile.founded}</div></div>
             <div className="drive-info-item">
@@ -275,6 +301,52 @@ export default function EmployerProfilePage() {
           <div className="card-header"><h3 className="card-title">📝 About</h3></div>
           {editing && form ? (
             <div style={{ display: 'grid', gap: '0.6rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Industry</label>
+                <input className="form-input" value={form.industry} onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))} placeholder="e.g. Information Technology" />
+              </div>
+              <div className="grid grid-2" style={{ gap: '0.6rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Company type</label>
+                  <select
+                    className="form-input"
+                    value={form.companyType}
+                    onChange={(e) => setForm((p) => ({ ...p, companyType: e.target.value }))}
+                  >
+                    <option value="">— Select —</option>
+                    {EMPLOYER_COMPANY_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Company size (employees)</label>
+                  <input
+                    className="form-input"
+                    list="employer-company-size-presets"
+                    value={form.companySize}
+                    onChange={(e) => setForm((p) => ({ ...p, companySize: e.target.value }))}
+                    placeholder="e.g. 10000+ or pick a suggestion"
+                  />
+                  <datalist id="employer-company-size-presets">
+                    {EMPLOYER_COMPANY_SIZE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Founded year</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  min={1600}
+                  max={new Date().getFullYear() + 1}
+                  value={form.foundedYear}
+                  onChange={(e) => setForm((p) => ({ ...p, foundedYear: e.target.value }))}
+                  placeholder="e.g. 1981"
+                />
+              </div>
               <textarea className="form-textarea" rows={4} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
               <input className="form-input" value={form.contactPerson} onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))} placeholder="Contact person" />
               <input className="form-input" value={form.contactEmail} onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))} placeholder="Contact email" />

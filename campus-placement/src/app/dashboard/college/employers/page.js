@@ -6,6 +6,7 @@ import { formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -14,20 +15,6 @@ const fetcher = async (url) => {
   if (!Array.isArray(data)) throw new Error(data.error || 'Invalid response');
   return data;
 };
-
-function formatCompanyType(companyType) {
-  if (!companyType) return '—';
-  const labels = {
-    mnc: 'MNC',
-    startup: 'Startup',
-    psu: 'PSU',
-    private: 'Private',
-    government: 'Government',
-    ngo: 'NGO',
-    other: 'Other',
-  };
-  return labels[companyType] || formatStatus(companyType);
-}
 
 export default function CollegeEmployersPage() {
   const { data: employers, error, isLoading, mutate } = useSWR('/api/college/employers', fetcher);
@@ -130,7 +117,7 @@ export default function CollegeEmployersPage() {
                     </td>
                     <td>{emp.industry || '—'}</td>
                     <td>
-                      <span className="badge badge-gray">{formatCompanyType(emp.company_type)}</span>
+                      <span className="badge badge-gray">{labelEmployerCompanyType(emp.company_type)}</span>
                     </td>
                     <td>{emp.past_hires ?? 0}</td>
                     <td>{emp.drives_count ?? 0}</td>
