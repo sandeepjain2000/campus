@@ -2,12 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import EntityLogo from '@/components/EntityLogo';
+import { appendClientDebugLog } from '@/lib/clientDebugLog';
 import {
   IconTwitter,
   IconFacebook,
   IconInstagram,
   IconLinkedIn,
 } from '@/components/wireframe/SocialWireframeToolkit';
+
+/** Browsers often leave `file.type` empty (e.g. some HEIC/JPEG on Windows). */
+function inferImageContentType(file) {
+  const t = (file?.type || '').toLowerCase().trim();
+  if (t.startsWith('image/')) return t;
+  const n = (file?.name || '').toLowerCase();
+  if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+  if (n.endsWith('.png')) return 'image/png';
+  if (n.endsWith('.webp')) return 'image/webp';
+  if (n.endsWith('.gif')) return 'image/gif';
+  if (n.endsWith('.heic') || n.endsWith('.heif')) return 'image/heic';
+  return '';
+}
 
 function LabelWithIcon({ Icon, children }) {
   return (
@@ -96,7 +110,21 @@ export default function CollegeSettingsPage() {
   const onLogoChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) {
+      setMessage('No file selected.');
+      return;
+    }
+    const contentType = inferImageContentType(file);
+    if (!contentType) {
+      setMessage('Please choose a JPEG, PNG, WebP, or GIF image (your browser did not report a usable type).');
+      appendClientDebugLog({
+        source: 'college_settings_logo',
+        action: 'reject_type',
+        fileName: file.name,
+        reportedType: file.type || null,
+      });
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
       setMessage('Logo image too large (max 2MB).');
       return;
@@ -104,31 +132,85 @@ export default function CollegeSettingsPage() {
     setLogoUploading(true);
     setMessage('');
     try {
+      appendClientDebugLog({
+        source: 'college_settings_logo',
+        action: 'presign_request',
+        fileName: file.name,
+        contentType,
+        fileSize: file.size,
+      });
       const presignRes = await fetch('/api/college/settings/logo/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream', fileSize: file.size }),
+        body: JSON.stringify({ fileName: file.name, contentType, fileSize: file.size }),
       });
-      const presign = await presignRes.json();
-      if (!presignRes.ok) throw new Error(presign?.error || 'Failed to start logo upload');
+      let presign = {};
+      try {
+        presign = await presignRes.json();
+      } catch {
+        presign = {};
+      }
+      appendClientDebugLog({
+        source: 'college_settings_logo',
+        action: 'presign_response',
+        status: presignRes.status,
+        ok: presignRes.ok,
+        error: presign.error || null,
+      });
+      if (presignRes.status === 503) {
+        throw new Error(
+          presign?.error
+            ? `${presign.error}. Add AWS_REGION, S3_BUCKET_NAME, and IAM keys to your Vercel env, then redeploy.`
+            : 'Logo storage is not configured. Add S3/AWS environment variables on the server and redeploy.',
+        );
+      }
+      if (!presignRes.ok) {
+        throw new Error(presign?.error || `Could not start upload (HTTP ${presignRes.status}).`);
+      }
 
       const ph = {};
       if (presign.contentType) ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
       const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
-      if (!putRes.ok) throw new Error('Failed while uploading logo file');
+      let putDetail = '';
+      try {
+        putDetail = (await putRes.text()).slice(0, 500);
+      } catch {
+        putDetail = '';
+      }
+      appendClientDebugLog({
+        source: 'college_settings_logo',
+        action: 's3_put',
+        status: putRes.status,
+        ok: putRes.ok,
+      });
+      if (!putRes.ok) {
+        throw new Error(
+          `Upload to storage failed (HTTP ${putRes.status}). Often this is S3 bucket CORS: allow PUT from ${typeof window !== 'undefined' ? window.location.origin : 'your site'} and headers Content-Type. ${putDetail ? `Details: ${putDetail.slice(0, 200)}` : ''}`.trim(),
+        );
+      }
 
       const completeRes = await fetch('/api/college/settings/logo/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_url: presign.fileUrl }),
       });
-      const complete = await completeRes.json();
-      if (!completeRes.ok) throw new Error(complete?.error || 'Failed to save uploaded logo');
+      const complete = await completeRes.json().catch(() => ({}));
+      appendClientDebugLog({
+        source: 'college_settings_logo',
+        action: 'complete',
+        status: completeRes.status,
+        ok: completeRes.ok,
+        error: complete.error || null,
+      });
+      if (!completeRes.ok) throw new Error(complete?.error || 'Failed to save uploaded logo URL to your college profile.');
 
       setForm((prev) => ({ ...prev, logoUrl: presign.fileUrl }));
       setMessage('Logo uploaded successfully.');
+      appendClientDebugLog({ source: 'college_settings_logo', action: 'success', fileUrl: presign.fileUrl });
     } catch (e2) {
-      setMessage(e2.message || 'Logo upload failed');
+      const msg = e2.message || 'Logo upload failed';
+      setMessage(msg);
+      appendClientDebugLog({ source: 'college_settings_logo', action: 'error', message: msg });
     } finally {
       setLogoUploading(false);
     }
@@ -147,7 +229,15 @@ export default function CollegeSettingsPage() {
       </div>
 
       {message ? (
-        <div className="wireframe-banner" style={{ marginBottom: '1.5rem' }} role="note">
+        <div
+          className="wireframe-banner"
+          style={{
+            marginBottom: '1.5rem',
+            ...(message.includes('successfully') ? {} : { borderColor: 'var(--danger-200)', background: 'var(--danger-50)' }),
+          }}
+          role={message.includes('successfully') ? 'status' : 'alert'}
+          aria-live="polite"
+        >
           <span className="badge badge-gray" style={{ flexShrink: 0 }}>Status</span>
           <div>{message}</div>
         </div>
