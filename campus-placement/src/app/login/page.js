@@ -228,8 +228,9 @@ export default function LoginPage() {
               >
                 <span>💡</span>
                 <span>
-                  <strong>Demo / staging:</strong> Quick-fill seed accounts. Set{' '}
-                  <code className="font-mono">NEXT_PUBLIC_SHOW_DEMO_LOGINS=true</code> to show this in production (not recommended).
+                  <strong>Demo accounts:</strong> Quick-fill seeded roles (same password as <code className="font-mono">db/seed.sql</code>).
+                  To hide this block on a private deployment, set{' '}
+                  <code className="font-mono">NEXT_PUBLIC_HIDE_DEMO_LOGINS=true</code>.
                 </span>
               </div>
               <div className="role-select-grid">

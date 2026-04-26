@@ -20,9 +20,13 @@ export const DEMO_LOGINS = [
   },
 ];
 
+/**
+ * Whether to show quick demo account cards on `/login`.
+ * Default is on (including Vercel production) so try-the-app flows work without extra env.
+ * Set `NEXT_PUBLIC_HIDE_DEMO_LOGINS=true` to hide, or `NEXT_PUBLIC_SHOW_DEMO_LOGINS=false`.
+ */
 export function isDemoLoginsEnabled() {
-  return (
-    process.env.NODE_ENV === 'development' ||
-    process.env.NEXT_PUBLIC_SHOW_DEMO_LOGINS === 'true'
-  );
+  if (process.env.NEXT_PUBLIC_HIDE_DEMO_LOGINS === 'true') return false;
+  if (process.env.NEXT_PUBLIC_SHOW_DEMO_LOGINS === 'false') return false;
+  return true;
 }
