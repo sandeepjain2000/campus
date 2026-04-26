@@ -21,9 +21,9 @@ export default function AdminSettingsPage() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [platformName, setPlatformName] = useState('PlacementHub');
-  const [supportEmail, setSupportEmail] = useState('support@placementhub.com');
-  const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [platformName, setPlatformName] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   const [requireEmailVerification, setRequireEmailVerification] = useState(true);
   const [enableTwoFactorAuth, setEnableTwoFactorAuth] = useState(false);
   const [sessionTimeoutValue, setSessionTimeoutValue] = useState(24);
@@ -33,7 +33,7 @@ export default function AdminSettingsPage() {
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState(587);
   const [fromEmail, setFromEmail] = useState('');
-  const [storageProvider, setStorageProvider] = useState('Local Filesystem');
+  const [storageProvider, setStorageProvider] = useState('');
   const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5);
 
   const timezones = useMemo(() => {
@@ -56,9 +56,12 @@ export default function AdminSettingsPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load settings');
         if (!mounted) return;
-        setPlatformName(json.platformName ?? 'PlacementHub');
-        setSupportEmail(json.supportEmail ?? 'support@placementhub.com');
-        setTimezone(json.timezone ?? 'Asia/Kolkata');
+        setPlatformName(json.platformName ?? '');
+        setSupportEmail(json.supportEmail ?? '');
+        setTimezone(
+          json.timezone ??
+            (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+        );
         setRequireEmailVerification(Boolean(json.requireEmailVerification));
         setEnableTwoFactorAuth(Boolean(json.enableTwoFactorAuth));
         setSessionTimeoutValue(Number(json.sessionTimeoutValue ?? 24));
@@ -68,7 +71,7 @@ export default function AdminSettingsPage() {
         setSmtpHost(json.smtpHost ?? '');
         setSmtpPort(Number(json.smtpPort ?? 587));
         setFromEmail(json.fromEmail ?? '');
-        setStorageProvider(json.storageProvider ?? 'Local Filesystem');
+        setStorageProvider(json.storageProvider ?? '');
         setMaxUploadSizeMb(Number(json.maxUploadSizeMb ?? 5));
       } catch (e) {
         addToast(e.message || 'Failed to load settings', 'error');
@@ -129,15 +132,15 @@ export default function AdminSettingsPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>⚙️ Platform Settings</h1>
-          <p>Global configuration for PlacementHub</p>
+          <p>Global platform configuration</p>
         </div>
         <button className="btn btn-primary" onClick={saveSettings} disabled={loading || saving}>{saving ? 'Saving...' : '💾 Save'}</button>
       </div>
       <div className="grid grid-2">
         <div className="card">
           <div className="card-header"><h3 className="card-title">🌐 General</h3></div>
-          <div className="form-group"><label className="form-label">Platform Name</label><input className="form-input" value={platformName} onChange={(e) => setPlatformName(e.target.value)} /></div>
-          <div className="form-group"><label className="form-label">Support Email</label><input className="form-input" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Platform Name</label><input className="form-input" placeholder="Set platform name" value={platformName} onChange={(e) => setPlatformName(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Support Email</label><input className="form-input" placeholder="Set support email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} /></div>
           <div className="form-group">
             <label className="form-label">Default Timezone</label>
             <select className="form-select" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
@@ -209,7 +212,7 @@ export default function AdminSettingsPage() {
         </div>
         <div className="card">
           <div className="card-header"><h3 className="card-title">📦 Storage</h3></div>
-          <div className="form-group"><label className="form-label">Storage Provider</label><select className="form-select" value={storageProvider} onChange={(e) => setStorageProvider(e.target.value)}><option>Local Filesystem</option><option>AWS S3</option><option>Supabase Storage</option></select></div>
+          <div className="form-group"><label className="form-label">Storage Provider</label><select className="form-select" value={storageProvider} onChange={(e) => setStorageProvider(e.target.value)}><option value="">Select storage provider</option><option>Local Filesystem</option><option>AWS S3</option><option>Supabase Storage</option></select></div>
           <div className="form-group"><label className="form-label">Max Upload Size (MB)</label><input className="form-input" type="number" value={maxUploadSizeMb} onChange={(e) => setMaxUploadSizeMb(Number(e.target.value || 5))} /></div>
         </div>
       </div>

@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useToast } from '@/components/ToastProvider';
 
 export default function AdminEmployersPage() {
-  const { addToast } = useToast();
   const [employers, setEmployers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,10 +30,6 @@ export default function AdminEmployersPage() {
     };
   }, []);
 
-  const showNotReady = (label) => {
-    addToast(`${label} is not available yet in this build.`, 'info');
-  };
-
   return (
     <div className="animate-fadeIn">
       <div className="page-header"><div className="page-header-left"><h1>🏢 Manage Employers</h1></div></div>
@@ -45,7 +39,7 @@ export default function AdminEmployersPage() {
           <tbody>{employers.map((e,i) => (
             <tr key={i}><td className="font-semibold">{e.name}</td><td>{e.industry}</td><td>{e.hires}</td>
             <td>{e.verified ? <span className="badge badge-green">✅ Verified</span> : <span className="badge badge-amber">Pending</span>}</td>
-            <td><button className="btn btn-ghost btn-sm" onClick={() => showNotReady('View employer details')}>View</button></td></tr>
+            <td><button className="btn btn-ghost btn-sm" disabled title="Coming soon">View</button></td></tr>
           ))}
           {!isLoading && employers.length === 0 ? (
             <tr>

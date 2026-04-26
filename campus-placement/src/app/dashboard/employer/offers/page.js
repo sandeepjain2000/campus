@@ -108,7 +108,7 @@ export default function EmployerOffersPage() {
       <div className="animate-fadeIn" style={{ padding: '2rem', color: 'var(--danger-600)' }}>
         <p>{error.message || 'Could not load offers.'}</p>
         <p className="text-sm text-secondary" style={{ marginTop: '0.5rem' }}>
-          Check employer login and database connectivity, then reload.
+          Confirm you are signed in as an employer, then reload or contact support if this continues.
         </p>
       </div>
     );

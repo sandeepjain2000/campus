@@ -1,48 +1,41 @@
 /**
- * Client-side persistence for student profile (local, pre-DB sync).
- * Keyed by user email so refreshes keep edits until API-backed profile sync is enabled.
+ * Client helpers for student profile UI shape and applied-drives local cache.
+ * Profile fields are loaded/saved via GET/PUT /api/student/profile — not localStorage.
  */
-
-export function profileStorageKey(email) {
-  if (!email) return null;
-  return `ph_student_profile:${email.toLowerCase()}`;
-}
 
 export function appliedDrivesStorageKey(email) {
   if (!email) return null;
   return `ph_student_applied_drives:${email.toLowerCase()}`;
 }
 
+/** Empty shell before API load or when session has no email yet. */
 export function defaultStudentProfile(sessionUser) {
   const email = sessionUser?.email || '';
   return {
-    department: 'Computer Science',
-    branch: 'Computer Science & Engineering',
-    rollNumber: 'CS2021001',
-    batchYear: 2021,
-    graduationYear: 2025,
-    cgpa: 8.72,
-    tenthPercentage: 94.5,
-    twelfthPercentage: 91.2,
-    gender: 'Male',
+    department: '',
+    branch: '',
+    rollNumber: '',
+    batchYear: '',
+    graduationYear: '',
+    cgpa: '',
+    tenthPercentage: '',
+    twelfthPercentage: '',
+    gender: '',
     collegeEmail: email,
     personalEmail: '',
-    phones: [{ label: 'Primary', value: '+91 98765 43210' }],
+    phones: [{ label: 'Primary', value: '' }],
     emails: [
       { label: 'College', value: email },
       { label: 'Personal', value: '' },
     ],
-    bio: 'Passionate about AI/ML and full-stack development. Looking for challenging opportunities in technology.',
-    skills: ['Python', 'JavaScript', 'React', 'Machine Learning', 'SQL', 'Node.js', 'Docker'],
-    expectedSalaryMin: 1200000,
-    expectedSalaryMax: 1800000,
-    preferredLocations: 'Bangalore, Hyderabad, Pune',
+    bio: '',
+    skills: [],
+    expectedSalaryMin: 0,
+    expectedSalaryMax: 0,
+    preferredLocations: '',
     willingToRelocate: true,
     /** @type {{ id: string, kind: string, url: string, title: string, description: string }[]} */
-    profileLinks: [
-      { id: 'l1', kind: 'linkedin', url: 'https://linkedin.com/in/arjunverma', title: 'LinkedIn', description: 'Professional experience and recommendations.' },
-      { id: 'l2', kind: 'github', url: 'https://github.com/arjunverma', title: 'GitHub', description: 'Repos: ML course projects, full-stack apps, competitive programming.' },
-    ],
+    profileLinks: [],
     /** HTTPS URL from S3 after upload (also on users.avatar_url) */
     avatarUrl: sessionUser?.avatar || '',
     avatarDataUrl: '',
@@ -50,29 +43,6 @@ export function defaultStudentProfile(sessionUser) {
     cvFileName: '',
     cvDataUrl: '',
   };
-}
-
-export function loadStudentProfile(email, sessionUser) {
-  const key = profileStorageKey(email);
-  if (!key || typeof window === 'undefined') return defaultStudentProfile(sessionUser);
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return defaultStudentProfile(sessionUser);
-    const parsed = JSON.parse(raw);
-    const base = { ...defaultStudentProfile(sessionUser), ...parsed };
-    if (sessionUser?.avatar && !base.avatarDataUrl) {
-      base.avatarUrl = sessionUser.avatar;
-    }
-    return base;
-  } catch {
-    return defaultStudentProfile(sessionUser);
-  }
-}
-
-export function saveStudentProfile(email, profile) {
-  const key = profileStorageKey(email);
-  if (!key || typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(profile));
 }
 
 export function loadAppliedDriveIds(email) {

@@ -1,27 +1,60 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import { ArrowLeft, Mail, CalendarClock, Building2, Bell } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
+import PageError from '@/components/PageError';
 
-const REMINDERS = [
-  {
-    title: 'TechCorp campus visit',
-    when: 'Tomorrow · 10:00 AM',
-    detail: 'Pre-placement talk in Main Auditorium. Bring college ID.',
-  },
-  {
-    title: 'Infosys application window',
-    when: 'Closes in 2 days',
-    detail: 'Submit before the deadline on your drives list; backup email will receive a copy when we enable mail.',
-  },
-  {
-    title: 'Off-campus: DataVerse (Bangalore)',
-    when: 'Next week · Friday',
-    detail: 'Central venue: Manyata Tech Park. Arrive 30 minutes early for security.',
-  },
-];
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || 'Failed to load reminders');
+  return json;
+};
+
+function toStartOfDay(dateLike) {
+  const d = new Date(dateLike);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function describeWhen(date) {
+  const today = toStartOfDay(new Date());
+  const eventDay = toStartOfDay(date);
+  const diffDays = Math.round((eventDay - today) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  return `In ${diffDays} days`;
+}
 
 export default function StudentEmailRemindersPage() {
+  const { data, error, isLoading } = useSWR('/api/student/drives', fetcher);
+  const drives = Array.isArray(data?.drives) ? data.drives : [];
+
+  const reminders = useMemo(() => {
+    const today = toStartOfDay(new Date());
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+    return drives
+      .map((drive) => ({ ...drive, parsedDate: new Date(drive.date) }))
+      .filter((drive) => {
+        const day = toStartOfDay(drive.parsedDate);
+        return day >= today && day <= sevenDaysLater;
+      })
+      .sort((a, b) => a.parsedDate - b.parsedDate)
+      .map((drive) => ({
+        id: drive.id,
+        title: `${drive.company} drive`,
+        when: `${describeWhen(drive.parsedDate)} · ${formatDate(drive.date)}`,
+        detail: `${drive.role} at ${drive.venue || 'TBD'}${drive.applied ? ' · You have already applied.' : ''}`,
+      }));
+  }, [drives]);
+
+  if (error) return <PageError error={error} />;
+
   return (
     <div style={{ minHeight: '100%', color: 'var(--text-primary)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -65,7 +98,7 @@ export default function StudentEmailRemindersPage() {
             Hi,
             <br />
             <br />
-            This is a reminder that <strong>TechCorp Solutions</strong> will be on campus tomorrow for the pre-placement session.
+            This is a reminder for your upcoming placement drive.
             <br />
             Check your <Link href="/dashboard/student/interviews">interviews</Link> and <Link href="/dashboard/student/drives">drives</Link> for the latest.
           </div>
@@ -76,8 +109,16 @@ export default function StudentEmailRemindersPage() {
         Upcoming reminders
       </h2>
       <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {REMINDERS.map((r) => (
-          <div key={r.title} className="card" style={{ padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+        {isLoading && <div className="skeleton skeleton-card" style={{ height: 140 }} />}
+        {!isLoading && reminders.length === 0 && (
+          <div className="card" style={{ padding: '1rem' }}>
+            <p className="text-sm text-secondary" style={{ margin: 0 }}>
+              No upcoming drives in the next 7 days.
+            </p>
+          </div>
+        )}
+        {!isLoading && reminders.map((r) => (
+          <div key={r.id} className="card" style={{ padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
             <CalendarClock size={20} className="text-tertiary" style={{ flexShrink: 0, marginTop: '0.15rem' }} />
             <div>
               <div style={{ fontWeight: 700 }}>{r.title}</div>

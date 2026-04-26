@@ -1,67 +1,21 @@
 'use client';
 import { useState } from 'react';
-import { getInitials } from '@/lib/utils';
-
-// Maps a string name to a deterministic index
-function getHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash);
-}
-
-function getGenericLogo(name) {
-  const lowerName = (name || 'default').toLowerCase();
-  
-  // College mappings
-  if (lowerName.includes('iit madras') || lowerName.includes('iitm')) return '/logos/IITM.jpg';
-  if (lowerName.includes('nit trichy') || lowerName.includes('nitt')) return '/logos/nitt.jpg';
-  if (lowerName.includes('bits pilani') || lowerName.includes('bits')) return '/logos/BITS.jpg';
-
-  // Company mappings
-  if (lowerName.includes('techcorp') || lowerName.includes('tech corp')) return '/logos/TechCorp.jpg';
-  if (lowerName.includes('infosys')) return '/logos/infosys.jpg';
-
-  // Admin / Platform
-  if (lowerName.includes('placementhub') || lowerName.includes('admin') || lowerName.includes('super')) return '/logos/superadmin.jpg';
-  
-  // Generic deterministic fallback — cycles across all logos
-  const allLogos = [
-    '/logos/IITM.jpg',
-    '/logos/nitt.jpg',
-    '/logos/BITS.jpg',
-    '/logos/TechCorp.jpg',
-    '/logos/infosys.jpg',
-    '/logos/superadmin.jpg'
-  ];
-  const hash = getHash(name || 'default');
-  return allLogos[hash % allLogos.length];
-}
+import { getEntityLogoUrl, getInitials } from '@/lib/utils';
 
 /**
- * EntityLogo — smart logo component for companies and colleges.
- *
- * It uses the newly generated beautiful local generic image assets
- * mathematically assigned based on the entity's name.
- *
- * Props:
- *   name      {string}  Display name 
- *   logoUrl   {string=} Explicit URL if one exists
- *   size      {'xs'|'sm'|'md'|'lg'|'xl'}  Default: 'md'
- *   shape     {'circle'|'rounded'}         Default: 'rounded'
- *   className {string=}
+ * Entity logo: prefers explicit logoUrl, then a URL derived from the website (when provided).
+ * Otherwise shows initials — no hard-coded institution or brand image guessing.
  */
 export default function EntityLogo({
   name = '',
   logoUrl = null,
+  website = null,
   size = 'md',
   shape = 'rounded',
   className = '',
 }) {
-  const genericImageFallback = getGenericLogo(name);
-  const externalGithubFallback = `https://github.com/identicons/${getHash(name)}.png`;
-  const candidates = [logoUrl, genericImageFallback, externalGithubFallback].filter(Boolean);
+  const derivedFromWebsite = getEntityLogoUrl(name, website);
+  const candidates = [logoUrl, derivedFromWebsite].filter(Boolean);
 
   const [idx, setIdx] = useState(0);
 
@@ -70,27 +24,6 @@ export default function EntityLogo({
       setIdx(idx + 1);
     }
   };
-
-  if (idx >= candidates.length) {
-    return (
-      <div 
-        className={`entity-logo ${className}`}
-        style={{
-          width: size === 'md' ? 40 : 32, // simplified inline fallback
-          height: size === 'md' ? 40 : 32,
-          background: '#f1f5f9',
-          color: '#64748b',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 600,
-          borderRadius: shape === 'circle' ? '50%' : '8px'
-        }}
-      >
-        {getInitials(name)}
-      </div>
-    );
-  }
 
   const sizeMap = {
     xs: { boxSize: 20, borderRadius: shape === 'circle' ? '50%' : '4px' },
@@ -101,7 +34,32 @@ export default function EntityLogo({
   };
   const { boxSize, borderRadius } = sizeMap[size] || sizeMap.md;
 
-  // We no longer render gradients. We render the generic high-quality logo asset
+  if (!candidates.length || idx >= candidates.length) {
+    return (
+      <div
+        className={`entity-logo ${className}`}
+        style={{
+          width: boxSize,
+          height: boxSize,
+          minWidth: boxSize,
+          background: 'var(--bg-tertiary, #f1f5f9)',
+          color: 'var(--text-secondary, #64748b)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 600,
+          fontSize: Math.max(10, boxSize * 0.32),
+          borderRadius,
+          border: '1px solid var(--border-default)',
+          flexShrink: 0,
+        }}
+        title={name}
+      >
+        {getInitials(name)}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`entity-logo ${className}`}
@@ -118,7 +76,7 @@ export default function EntityLogo({
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
       }}
       title={name}
     >

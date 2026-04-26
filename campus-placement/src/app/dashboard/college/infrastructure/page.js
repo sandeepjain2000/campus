@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const CHANNELS = [
   { id: 'web', label: 'Web' },
@@ -17,6 +19,12 @@ const SOCIAL_PLATFORMS = [
   { id: 'instagram', name: 'Instagram', accent: '#e4405f' },
   { id: 'linkedin', name: 'LinkedIn', accent: '#0a66c2' },
 ];
+
+function normalizeExternalUrl(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+}
 
 function emptyChannelsMap(bookings) {
   return Object.fromEntries(bookings.map((b) => [b.id, b.channels || []]));
@@ -46,8 +54,13 @@ export default function CollegeInfrastructurePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [calYear, setCalYear] = useState(2026);
-  const [calMonth, setCalMonth] = useState(7);
+  const [cancelTargetId, setCancelTargetId] = useState(null);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [collegeComms, setCollegeComms] = useState({
+    website: '',
+    social: { twitter: '', facebook: '', instagram: '', linkedin: '' },
+  });
 
   const [roomId, setRoomId] = useState('');
   const [date, setDate] = useState('');
@@ -82,6 +95,42 @@ export default function CollegeInfrastructurePage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/college/settings');
+        const json = await res.json();
+        if (!res.ok || !mounted) return;
+        setCollegeComms({
+          website: (json.website || '').trim(),
+          social: {
+            twitter: json.social?.twitter || '',
+            facebook: json.social?.facebook || '',
+            instagram: json.social?.instagram || '',
+            linkedin: json.social?.linkedin || '',
+          },
+        });
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const websiteDisplay = useMemo(() => {
+    const w = collegeComms.website;
+    if (!w) return { href: '', label: '' };
+    const href = normalizeExternalUrl(w);
+    try {
+      return { href, label: new URL(href).href.replace(/\/$/, '') };
+    } catch {
+      return { href, label: href };
+    }
+  }, [collegeComms.website]);
 
   const monthCells = useMemo(() => buildMonthGrid(calYear, calMonth), [calYear, calMonth]);
   const monthLabel = useMemo(
@@ -179,45 +228,47 @@ export default function CollegeInfrastructurePage() {
   };
 
   const handleCancel = async (id) => {
-    if (confirm('Are you sure you want to cancel this booking?')) {
-      try {
-        const res = await fetch('/api/college/infrastructure', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to cancel booking');
-      } catch (e) {
-        setErrorMsg(e.message || 'Failed to cancel booking');
-        return;
-      }
-
-      setBookings(bookings.filter((b) => b.id !== id));
-      setChannelToggles((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+    try {
+      const res = await fetch('/api/college/infrastructure', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
       });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to cancel booking');
+    } catch (e) {
+      setErrorMsg(e.message || 'Failed to cancel booking');
+      return;
     }
+
+    setBookings(bookings.filter((b) => b.id !== id));
+    setChannelToggles((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   return (
     <div className="animate-fadeIn">
-      <div className="wireframe-banner" role="note">
-        <span className="badge badge-gray" style={{ flexShrink: 0 }}>Wireframe</span>
+      <div className="infra-context-note" role="note">
+        <span className="badge badge-gray" style={{ flexShrink: 0 }}>Note</span>
         <div>
-          <strong>Live bookings with visual previews.</strong>
+          <strong>Room bookings are saved to your database.</strong>
           {' '}
-          Bookings and channel selections persist to the database. Website and social cards remain visual previews only
-          (they do not publish to external platforms yet).
+          Use the calendar and sections below to see which bookings you have marked for your public website and social destinations
+          configured in{' '}
+          <Link href="/dashboard/college/settings" className="text-primary-600" style={{ fontWeight: 600 }}>
+            College Settings
+          </Link>
+          . PlacementHub does not post to third-party platforms from this page.
         </div>
       </div>
 
       <div className="page-header">
         <div className="page-header-left">
           <h1>🏛️ Infrastructure & Logistics</h1>
-          <p>Book rooms, labs, and auditoriums. Bookings persist and appear in calendar and preview channels.</p>
+          <p>Book rooms, labs, and auditoriums. Tag each booking with announcement destinations for your own planning.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel Creation' : '+ New Booking'}
@@ -282,25 +333,24 @@ export default function CollegeInfrastructurePage() {
         </div>
       )}
 
-      {/* Calendar wireframe */}
+      {/* Calendar — defaults to current month */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
           <div>
-            <h3 className="card-title" style={{ marginBottom: '0.25rem' }}>Calendar view</h3>
+            <h3 className="card-title" style={{ marginBottom: '0.25rem' }}>Infrastructure calendar</h3>
             <p className="text-sm text-secondary" style={{ margin: 0 }}>
-              Wireframe month grid — bookings shown as chips for layout only (not a synced calendar service).
+              Saved placement bookings on your campus schedule (PlacementHub only — not synced to external calendars).
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="badge badge-gray">Wireframe</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => shiftMonth(-1)} aria-label="Previous month">←</button>
             <span className="text-sm font-semibold" style={{ minWidth: '10rem', textAlign: 'center' }}>{monthLabel}</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => shiftMonth(1)} aria-label="Next month">→</button>
           </div>
         </div>
 
-        <div className="wireframe-panel">
-          <div className="wireframe-panel-inner" style={{ padding: '0.75rem' }}>
+        <div className="infra-panel">
+          <div className="infra-panel-inner">
             <div
               style={{
                 display: 'grid',
@@ -324,11 +374,11 @@ export default function CollegeInfrastructurePage() {
                 return (
                   <div
                     key={idx}
-                    className={`wireframe-calendar-cell ${day ? '' : 'wireframe-calendar-cell--muted'}`}
+                    className={`infra-calendar-cell ${day ? '' : 'infra-calendar-cell--muted'}`}
                   >
                     {day != null && <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{day}</span>}
                     {dayBookings.map((b) => (
-                      <span key={b.id} className="wireframe-calendar-chip" title={b.description}>
+                      <span key={b.id} className="infra-calendar-chip" title={b.description}>
                         {b.company}
                       </span>
                     ))}
@@ -340,98 +390,94 @@ export default function CollegeInfrastructurePage() {
         </div>
       </div>
 
-      {/* Website wireframe */}
+      {/* Website announcements */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <h3 className="card-title" style={{ margin: 0 }}>College website (preview)</h3>
-          <span className="badge badge-gray">Wireframe</span>
-        </div>
+        <h3 className="card-title" style={{ marginBottom: '0.35rem' }}>Website announcements</h3>
         <p className="text-sm text-secondary" style={{ marginTop: 0, marginBottom: '1rem' }}>
-          Static browser chrome and placeholder blocks. Configure URLs under College Settings; no live site or API calls here.
+          Public site URL from College Settings and bookings you mark for <strong>Web</strong>. This list is for coordination only — your live site is not loaded here.
         </p>
-        <div className="wireframe-panel" style={{ overflow: 'hidden' }}>
-          <div className="wireframe-browser-chrome">
-            <div className="wireframe-browser-dots" aria-hidden>
-              <span /><span /><span />
-            </div>
-            <div
-              style={{
-                flex: 1,
-                padding: '0.25rem 0.75rem',
-                background: 'var(--bg-primary)',
-                borderRadius: '4px',
-                color: 'var(--text-tertiary)',
-                fontFamily: 'var(--font-mono)',
-              }}
+        {!collegeComms.website ? (
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>
+            No website URL saved yet.{' '}
+            <Link href="/dashboard/college/settings" className="text-primary-600" style={{ fontWeight: 600 }}>
+              Add one in College Settings
+            </Link>{' '}
+            to anchor this section.
+          </p>
+        ) : (
+          <div style={{ marginBottom: '1rem' }}>
+            <div className="text-xs text-tertiary" style={{ marginBottom: '0.35rem' }}>Configured URL</div>
+            <a
+              href={websiteDisplay.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="infra-url-pill"
+              style={{ textDecoration: 'none', color: 'var(--primary-700, #4338ca)' }}
             >
-              https://college.example.edu/placement — wireframe
-            </div>
+              {websiteDisplay.label}
+            </a>
           </div>
-          <div className="wireframe-panel-inner" style={{ borderRadius: 0, margin: 0 }}>
-            <div className="wireframe-block" style={{ height: '3rem', width: '40%', marginBottom: '1rem' }} />
-            <div className="wireframe-block" style={{ width: '85%' }} />
-            <div className="wireframe-block" style={{ width: '70%' }} />
-            <div className="wireframe-block" style={{ width: '90%' }} />
-            <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
-              <div className="text-xs text-tertiary" style={{ marginBottom: '0.5rem' }}>Wireframe “announcements” (from bookings with Web checked)</div>
-              {bookingsForChannel('web').length === 0 ? (
-                <div className="text-sm text-secondary">No items flagged for the website wireframe. Use the toggles in the booking list below.</div>
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem' }}>
-                  {bookingsForChannel('web').map((b) => (
-                    <li key={b.id}>{b.company} — {formatDate(b.date)}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        )}
+        <div className="text-xs text-tertiary" style={{ marginBottom: '0.5rem' }}>
+          Bookings with <strong>Web</strong> selected
         </div>
+        {bookingsForChannel('web').length === 0 ? (
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>None yet — use <strong>Announcement destinations</strong> on a booking below.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {bookingsForChannel('web').map((b) => (
+              <div key={b.id} className="infra-announcement-card">
+                <div style={{ fontWeight: 600 }}>{b.company}</div>
+                <div className="text-xs text-tertiary">{formatDate(b.date)} · {b.startTime}–{b.endTime} · {b.roomName}</div>
+                {b.description ? <div className="text-sm text-secondary" style={{ marginTop: '0.35rem' }}>{b.description}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Social wireframes */}
+      {/* Channel distribution */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <h3 className="card-title" style={{ marginBottom: '0.25rem' }}>College social channels (preview)</h3>
-          <p className="text-sm text-secondary" style={{ margin: 0 }}>
-            Static post shells for X, Facebook, Instagram, and LinkedIn — labeled wireframe. No tokens, no posting, no feeds.
-            Check channels on a booking to simulate copy that could appear in a future integration.
-          </p>
-        </div>
+        <h3 className="card-title" style={{ marginBottom: '0.35rem' }}>Channel distribution</h3>
+        <p className="text-sm text-secondary" style={{ marginTop: 0, marginBottom: '1rem' }}>
+          Your URLs from College Settings. Each card lists bookings you tagged for that destination — for internal planning only (no posting or feeds).
+        </p>
         <div className="grid grid-2" style={{ gap: '1rem' }}>
-          {SOCIAL_PLATFORMS.map((p) => (
-            <div key={p.id} className="wireframe-panel">
-              <div className="wireframe-panel-inner">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          {SOCIAL_PLATFORMS.map((p) => {
+            const url = (collegeComms.social?.[p.id] || '').trim();
+            const href = url ? normalizeExternalUrl(url) : '';
+            return (
+              <div key={p.id} className="infra-channel-card">
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
                   <span className="font-semibold text-sm" style={{ color: p.accent }}>{p.name}</span>
-                  <span className="badge badge-gray">Wireframe</span>
+                  {href ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ flexShrink: 0, padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
+                      Open URL
+                    </a>
+                  ) : (
+                    <Link href="/dashboard/college/settings" className="text-xs text-tertiary" style={{ flexShrink: 0 }}>
+                      Configure →
+                    </Link>
+                  )}
                 </div>
-                <div className="wireframe-social-post">
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-tertiary)', flexShrink: 0 }} aria-hidden />
-                    <div style={{ flex: 1 }}>
-                      <div className="wireframe-block" style={{ width: '45%' }} />
-                      <div className="wireframe-block" style={{ width: '30%', height: '0.35rem' }} />
-                    </div>
-                  </div>
-                  <div className="wireframe-block" style={{ width: '100%' }} />
-                  <div className="wireframe-block" style={{ width: '92%' }} />
-                  <div className="wireframe-block" style={{ width: '60%' }} />
-                  <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border-default)' }}>
-                    <div className="text-xs text-tertiary" style={{ marginBottom: '0.35rem' }}>Simulated cross-posts (this channel)</div>
-                    {bookingsForChannel(p.id).length === 0 ? (
-                      <span className="text-sm text-secondary">—</span>
-                    ) : (
-                      <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem' }}>
-                        {bookingsForChannel(p.id).map((b) => (
-                          <li key={b.id}>{b.company} · {formatDate(b.date)}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
+                {!url ? (
+                  <p className="text-xs text-secondary" style={{ margin: '0 0 0.75rem' }}>No URL saved for this channel.</p>
+                ) : (
+                  <div className="infra-url-pill" style={{ marginBottom: '0.75rem', display: 'block' }}>{url}</div>
+                )}
+                <div className="text-xs text-tertiary" style={{ marginBottom: '0.35rem' }}>Tagged bookings</div>
+                {bookingsForChannel(p.id).length === 0 ? (
+                  <span className="text-sm text-secondary">None — tag bookings below.</span>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem' }}>
+                    {bookingsForChannel(p.id).map((b) => (
+                      <li key={b.id}>{b.company} · {formatDate(b.date)}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -439,7 +485,7 @@ export default function CollegeInfrastructurePage() {
       <div className="card">
         <h3 className="card-title">Existing Bookings Schedule</h3>
         <p className="text-sm text-secondary" style={{ marginTop: '0.35rem' }}>
-          Wireframe channels: choose where a <strong>dummy</strong> preview would surface (website or social shells above). This does not publish or call APIs.
+          <strong>Announcement destinations:</strong> choose where each booking should appear in the website and channel lists above. Stored in PlacementHub only — no external APIs.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
           {bookings.map((b) => (
@@ -470,7 +516,7 @@ export default function CollegeInfrastructurePage() {
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>{b.description}</div>
                 <div style={{ marginTop: '0.65rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
-                  <span className="text-xs text-tertiary" style={{ marginRight: '0.25rem' }}>Wireframe publish targets:</span>
+                  <span className="text-xs text-tertiary" style={{ marginRight: '0.25rem' }}>Announcement destinations:</span>
                   {CHANNELS.map((ch) => {
                     const on = (channelToggles[b.id] || []).includes(ch.id);
                     return (
@@ -489,7 +535,12 @@ export default function CollegeInfrastructurePage() {
               </div>
 
               <div style={{ marginLeft: 'auto' }}>
-                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-600)' }} onClick={() => handleCancel(b.id)}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--danger-600)' }}
+                  onClick={() => setCancelTargetId(b.id)}
+                >
                   ✕ Cancel Booking
                 </button>
               </div>
@@ -500,6 +551,20 @@ export default function CollegeInfrastructurePage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(cancelTargetId)}
+        title="Cancel this booking?"
+        message="This removes the booking from the infrastructure schedule."
+        confirmLabel="Cancel booking"
+        onCancel={() => setCancelTargetId(null)}
+        onConfirm={async () => {
+          if (!cancelTargetId) return;
+          const id = cancelTargetId;
+          setCancelTargetId(null);
+          await handleCancel(id);
+        }}
+      />
     </div>
   );
 }

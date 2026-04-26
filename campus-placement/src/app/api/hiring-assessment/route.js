@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
+
+const HIRING_ROLES = ['employer', 'college_admin', 'super_admin'];
 
 function normalizeRows(rows) {
   if (!Array.isArray(rows)) return [];
@@ -26,31 +29,29 @@ function normalizeRows(rows) {
   }));
 }
 
-async function resolveTenantId(session, requestedTenantId = null) {
-  if (requestedTenantId) return requestedTenantId;
-  const fromSession = session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
-  if (fromSession) return fromSession;
-  const fallback = await query(
-    `SELECT id
-     FROM tenants
-     WHERE type = 'college'
-     ORDER BY created_at ASC
-     LIMIT 1`
-  );
-  return fallback.rows[0]?.id || null;
+function resolveHiringTenantId(session, requestedTenantId) {
+  const fromSession = getSessionTenantId(session.user);
+  if (session.user.role === 'super_admin') {
+    const req = requestedTenantId != null ? String(requestedTenantId).trim() : '';
+    if (req && isUuid(req)) return req;
+    return fromSession;
+  }
+  return fromSession;
 }
 
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user || !HIRING_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const url = new URL(request.url);
     const requestedTenantId = url.searchParams.get('tenantId');
-    const tenantId = await resolveTenantId(session, requestedTenantId);
-    if (!tenantId) return NextResponse.json({ rows: [] });
+    const tenantId = resolveHiringTenantId(session, requestedTenantId);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 403 });
+    }
 
     const res = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
     const settings = res.rows[0]?.settings || {};
@@ -65,14 +66,14 @@ export async function GET(request) {
 export async function PUT(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !['employer', 'college_admin', 'super_admin'].includes(session.user.role)) {
+    if (!session?.user || !HIRING_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const tenantId = await resolveTenantId(session, body?.tenantId || null);
+    const tenantId = resolveHiringTenantId(session, body?.tenantId || null);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 403 });
     }
 
     const rows = normalizeRows(body?.rows);

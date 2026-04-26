@@ -67,7 +67,18 @@ export function validateRegistration(data) {
   if (!data.role || !['student', 'employer', 'college_admin'].includes(data.role)) {
     errors.role = 'Valid role is required';
   }
-  
+
+  if (data.role === 'student') {
+    const key =
+      typeof data.campusBindingToken === 'string'
+        ? data.campusBindingToken.trim().replace(/\s+/g, '')
+        : '';
+    if (key.length < 32) {
+      errors.campusBindingToken =
+        'Campus enrollment key is required (ask your placement office for the key)';
+    }
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,

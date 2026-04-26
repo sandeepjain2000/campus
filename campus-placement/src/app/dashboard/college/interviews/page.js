@@ -38,8 +38,8 @@ export default function CollegeInterviewsPage() {
   const slots = Array.isArray(data?.slots) ? data.slots : [];
   const results = Array.isArray(data?.results) ? data.results : [];
   const [form, setForm] = useState({
-    company: 'TCS',
-    round: 'Round 1 - Technical',
+    company: '',
+    round: '',
     date: '',
     startTime: '',
     endTime: '',
@@ -51,7 +51,7 @@ export default function CollegeInterviewsPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.date || !form.startTime || !form.endTime || !form.interviewer.trim()) return;
+    if (!form.company.trim() || !form.round.trim() || !form.date || !form.startTime || !form.endTime || !form.interviewer.trim()) return;
     try {
       const res = await fetch('/api/college/interviews', {
         method: 'POST',
@@ -64,7 +64,7 @@ export default function CollegeInterviewsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to create slot');
       await mutate();
-      setForm((prev) => ({ ...prev, date: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: '' }));
+      setForm((prev) => ({ ...prev, company: '', round: '', date: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: '' }));
       addToast('Interview slot created successfully.', 'success');
     } catch (err) {
       addToast(err.message || 'Failed to create interview slot', 'error');

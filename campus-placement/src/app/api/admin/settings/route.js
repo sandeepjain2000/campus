@@ -3,6 +3,16 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+/** Respect explicit empty strings (e.g. clear platform name); only fall back when key absent or null. */
+function pickString(payload, key, defaultVal) {
+  if (!payload || !Object.prototype.hasOwnProperty.call(payload, key)) {
+    return defaultVal;
+  }
+  const v = payload[key];
+  if (v === null || v === undefined) return defaultVal;
+  return String(v);
+}
+
 const DEFAULTS = {
   platformName: 'PlacementHub',
   supportEmail: 'support@placementhub.com',
@@ -20,11 +30,9 @@ const DEFAULTS = {
   maxUploadSizeMb: 5,
 };
 
-async function resolveSettingsTenantId(session) {
-  if (session?.user?.tenantId) return session.user.tenantId;
-  if (session?.user?.tenant_id) return session.user.tenant_id;
-  const fallback = await query(`SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1`);
-  return fallback.rows[0]?.id || null;
+function resolveSettingsTenantId(session) {
+  const id = session?.user?.tenantId ?? session?.user?.tenant_id ?? null;
+  return id && String(id).trim() ? String(id).trim() : null;
 }
 
 export async function GET() {
@@ -61,9 +69,9 @@ export async function POST(request) {
 
     const payload = await request.json();
     const normalized = {
-      platformName: String(payload?.platformName || DEFAULTS.platformName),
-      supportEmail: String(payload?.supportEmail || DEFAULTS.supportEmail),
-      timezone: String(payload?.timezone || DEFAULTS.timezone),
+      platformName: pickString(payload, 'platformName', DEFAULTS.platformName),
+      supportEmail: pickString(payload, 'supportEmail', DEFAULTS.supportEmail),
+      timezone: pickString(payload, 'timezone', DEFAULTS.timezone),
       requireEmailVerification: Boolean(payload?.requireEmailVerification),
       enableTwoFactorAuth: Boolean(payload?.enableTwoFactorAuth),
       sessionTimeoutValue: Number(payload?.sessionTimeoutValue || DEFAULTS.sessionTimeoutValue),
@@ -73,7 +81,7 @@ export async function POST(request) {
       smtpHost: String(payload?.smtpHost || ''),
       smtpPort: Number(payload?.smtpPort || DEFAULTS.smtpPort),
       fromEmail: String(payload?.fromEmail || ''),
-      storageProvider: String(payload?.storageProvider || DEFAULTS.storageProvider),
+      storageProvider: String(payload?.storageProvider ?? DEFAULTS.storageProvider),
       maxUploadSizeMb: Number(payload?.maxUploadSizeMb || DEFAULTS.maxUploadSizeMb),
     };
 

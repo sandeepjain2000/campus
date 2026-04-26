@@ -17,7 +17,10 @@ export default function StudentClarificationsPage() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    const t = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [refresh]);
 
   return (

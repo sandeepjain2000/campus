@@ -14,7 +14,7 @@ const TYPE_LABELS = {
   ppo: 'PPO',
 };
 
-function buildAutoSections({ title, keywords, type, salaryMin, salaryMax, cgpa, vacancies }) {
+function buildAutoSections({ title, keywords, type, salaryMin, salaryMax, cgpa, vacancies, headquarters }) {
   const kw = keywords
     .split(',')
     .map((k) => k.trim())
@@ -42,10 +42,12 @@ function buildAutoSections({ title, keywords, type, salaryMin, salaryMax, cgpa, 
       ? `Compensation band: ${formatCurrency(sm)} – ${formatCurrency(sx)} CTC per annum (structure and components per company policy and campus norms). ${vacancies ? `Open headcount: ${vacancies}.` : ''}`
       : 'Set min/max annual compensation (and vacancies) to auto-fill this section.';
 
-  const location =
-    type === 'internship'
-      ? 'Location: India — internship base as per business unit (hybrid / office days communicated before offer).'
-      : 'Location: India — primary hubs Bengaluru / Hyderabad / Pune with hybrid flexibility unless the role is tagged fully remote by HR.';
+  const hq = headquarters != null ? String(headquarters).trim() : '';
+  const location = hq
+    ? `Location: anchored at ${hq}. Hybrid, office, or remote arrangements follow company policy and are confirmed during hiring.`
+    : type === 'internship'
+      ? 'Location: add your company headquarters under Employer Profile to auto-fill this line, or edit manually (internship base / hybrid details).'
+      : 'Location: add your company headquarters under Employer Profile to auto-fill this line, or edit manually to match where this role is based.';
 
   return { role, qualifications, skills, compensation, location };
 }
@@ -88,6 +90,7 @@ export default function EmployerJobsPage() {
   const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs', fetcher, { revalidateOnFocus: true });
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
   const { data: drivesData } = useSWR('/api/employer/drives', fetcher, { revalidateOnFocus: true });
+  const { data: profileData } = useSWR('/api/employer/profile', fetcher, { revalidateOnFocus: true });
 
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
@@ -136,15 +139,20 @@ export default function EmployerJobsPage() {
     [jobsList],
   );
 
-  const autoSections = useMemo(() => buildAutoSections(form), [form]);
+  const profileHeadquarters = profileData?.profile?.headquarters;
+
+  const autoSections = useMemo(
+    () => buildAutoSections({ ...form, headquarters: profileHeadquarters }),
+    [form, profileHeadquarters],
+  );
 
   useEffect(() => {
     if (!showForm) return;
     setForm((prev) => ({
       ...prev,
-      description: composeJobDescription(buildAutoSections(prev)),
+      description: composeJobDescription(buildAutoSections({ ...prev, headquarters: profileHeadquarters })),
     }));
-  }, [showForm, form.title, form.keywords, form.type, form.salaryMin, form.salaryMax, form.cgpa, form.vacancies]);
+  }, [showForm, form.title, form.keywords, form.type, form.salaryMin, form.salaryMax, form.cgpa, form.vacancies, profileHeadquarters]);
 
   const openCreate = () => {
     setEditingJob(null);

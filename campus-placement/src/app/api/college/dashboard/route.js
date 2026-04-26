@@ -11,7 +11,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId;
+    const tenantId = session.user.tenant_id ?? session.user.tenantId;
 
     // Fetch placement stats
     const statsQuery = await query(`
@@ -57,8 +57,8 @@ export async function GET(request) {
         placementRate: total > 0 ? Math.round((placed / total) * 100) : 0,
         activeEmployers: parseInt(s.activeEmployers || 0),
         activeDrives: parseInt(s.activeDrives || 0),
-        avgPackage: parseInt(s.avgPackage || 0),
-        highestPackage: parseInt(s.highestPackage || 0),
+        avgPackage: s.avgPackage != null ? Number(s.avgPackage) : 0,
+        highestPackage: s.highestPackage != null ? Number(s.highestPackage) : 0,
       },
       departmentStats: deptQuery.rows.map(d => ({
         dept: d.dept,

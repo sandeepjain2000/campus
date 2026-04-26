@@ -11,7 +11,7 @@ export default function DataEntryUsersPage() {
     email: '',
     firstName: '',
     lastName: '',
-    password: 'ChangeMe@123',
+    password: '',
     role: 'student',
     isVerified: false,
     isActive: true,
@@ -57,7 +57,7 @@ export default function DataEntryUsersPage() {
       email: '',
       firstName: '',
       lastName: '',
-      password: 'ChangeMe@123',
+      password: '',
       role: 'student',
       isVerified: false,
       isActive: true,
@@ -180,7 +180,15 @@ export default function DataEntryUsersPage() {
               {mode === 'add' ? (
                 <div className="form-group">
                   <label className="form-label">Password</label>
-                  <input className="form-input" value={form.password} onChange={onChange('password')} required />
+                  <input
+                    className="form-input"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Choose initial password"
+                    value={form.password}
+                    onChange={onChange('password')}
+                    required
+                  />
                 </div>
               ) : <div />}
               <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.8rem' }}>

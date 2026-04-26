@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -32,13 +33,12 @@ export default function CollegeEmployersPage() {
   const { data: employers, error, isLoading, mutate } = useSWR('/api/college/employers', fetcher);
   const [processingId, setProcessingId] = useState(null);
   const [pocModal, setPocModal] = useState(null);
+  const [revokeTarget, setRevokeTarget] = useState(null);
   const { addToast } = useToast();
 
   const list = employers || [];
 
   const handleRevoke = async (employerId) => {
-    if (!confirm('Block this employer? They will no longer have campus access.')) return;
-
     setProcessingId(employerId);
     try {
       const res = await fetch('/api/college/employers/revoke', {
@@ -70,7 +70,7 @@ export default function CollegeEmployersPage() {
       <div className="animate-fadeIn" style={{ padding: '2rem', color: 'var(--danger-600)' }}>
         <p>{error.message || 'Could not load employers.'}</p>
         <p className="text-sm text-secondary" style={{ marginTop: '0.5rem' }}>
-          Check database connectivity and that you are signed in as a college admin.
+          Confirm you are signed in as a college admin, then try again or contact support if this continues.
         </p>
       </div>
     );
@@ -178,7 +178,7 @@ export default function CollegeEmployersPage() {
                             type="button"
                             className="btn btn-ghost btn-sm"
                             style={{ color: 'var(--danger-500)' }}
-                            onClick={() => handleRevoke(emp.employer_id)}
+                            onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })}
                             disabled={processingId === emp.employer_id}
                           >
                             {processingId === emp.employer_id ? 'Blocking...' : 'Block'}
@@ -268,6 +268,25 @@ export default function CollegeEmployersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(revokeTarget)}
+        title="Block employer access?"
+        message={
+          revokeTarget
+            ? `${revokeTarget.name} will lose access to this campus until re-approved.`
+            : ''
+        }
+        confirmLabel="Block employer"
+        onCancel={() => setRevokeTarget(null)}
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          const targetId = revokeTarget.id;
+          setRevokeTarget(null);
+          await handleRevoke(targetId);
+        }}
+        loading={Boolean(revokeTarget && processingId === revokeTarget.id)}
+      />
     </div>
   );
 }

@@ -116,11 +116,17 @@ export default function AdminOverviewPage() {
             </h3>
           </div>
           <div style={{ padding: '1rem 1.5rem 1.25rem' }}>
+            <span className="badge badge-amber" style={{ marginBottom: '0.75rem' }}>Coming soon</span>
             <div className="text-sm text-secondary" style={{ lineHeight: 1.6 }}>
               Real-time platform telemetry is not configured in this build yet.
               Connect monitoring sources before surfacing uptime/session/storage metrics.
             </div>
-            <span className="badge badge-gray" style={{ marginTop: '0.75rem' }}>No telemetry source configured</span>
+            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="badge badge-gray">No telemetry source configured</span>
+              <Link href="/dashboard/admin/settings" className="btn btn-ghost btn-sm">
+                Configure platform settings
+              </Link>
+            </div>
           </div>
         </div>
       </div>

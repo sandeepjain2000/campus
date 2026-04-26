@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { tenant_id } = session.user;
+    const tenantId = session.user.tenant_id ?? session.user.tenantId;
 
     const result = await query(
       `SELECT
@@ -47,7 +47,7 @@ export async function GET() {
             ELSE 4
           END,
           ea.created_at DESC`,
-      [tenant_id],
+      [tenantId],
     );
 
     return NextResponse.json(result.rows);

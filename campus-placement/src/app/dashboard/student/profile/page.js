@@ -5,11 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getInitials } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
-import {
-  defaultStudentProfile,
-  loadStudentProfile,
-  saveStudentProfile,
-} from '@/lib/studentProfileStorage';
+import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -24,64 +20,137 @@ function newLinkId() {
   return `l-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/** Omit local-only / large fields from API save payload. */
+function profilePutBody(p) {
+  return {
+    department: p.department,
+    branch: p.branch,
+    batchYear: p.batchYear,
+    graduationYear: p.graduationYear,
+    cgpa: p.cgpa,
+    tenthPercentage: p.tenthPercentage,
+    twelfthPercentage: p.twelfthPercentage,
+    gender: p.gender,
+    bio: p.bio,
+    skills: p.skills,
+    expectedSalaryMin: p.expectedSalaryMin,
+    expectedSalaryMax: p.expectedSalaryMax,
+    preferredLocations: p.preferredLocations,
+    willingToRelocate: p.willingToRelocate,
+    profileLinks: p.profileLinks,
+    phones: p.phones,
+    emails: p.emails,
+  };
+}
+
 export default function StudentProfilePage() {
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const { addToast } = useToast();
   const email = session?.user?.email || '';
   const [editing, setEditing] = useState(false);
   const [newSkill, setNewSkill] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [profile, setProfile] = useState(() => defaultStudentProfile(session?.user));
 
-  useEffect(() => {
-    if (!email) return;
-    setProfile(loadStudentProfile(email, session?.user));
-  }, [email, session?.user]);
-
-  const persist = useCallback(
-    (next) => {
-      setProfile(next);
-      if (email) saveStudentProfile(email, next);
+  const loadProfileFromApi = useCallback(
+    async (opts) => {
+      const silent = Boolean(opts?.silent);
+      if (!email) {
+        setProfile(defaultStudentProfile(session?.user));
+        if (!silent) setProfileLoading(false);
+        return;
+      }
+      if (!silent) setProfileLoading(true);
+      try {
+        const res = await fetch('/api/student/profile');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          addToast(data.hint ? `${data.error || 'Error'}: ${data.hint}` : data.error || 'Could not load profile', 'warning');
+          setProfile(defaultStudentProfile(session?.user));
+          return;
+        }
+        if (data.profile) setProfile(data.profile);
+      } catch {
+        addToast('Could not load profile (network).', 'warning');
+        setProfile(defaultStudentProfile(session?.user));
+      } finally {
+        if (!silent) setProfileLoading(false);
+      }
     },
-    [email]
+    [addToast, email, session?.user]
   );
 
-  const handleSave = () => {
-    saveStudentProfile(email, profile);
-    setEditing(false);
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (session?.user?.role !== 'student') {
+      setProfileLoading(false);
+      return;
+    }
+    loadProfileFromApi();
+  }, [status, session?.user?.role, loadProfileFromApi]);
+
+  const persist = useCallback((next) => {
+    setProfile(next);
+  }, []);
+
+  const handleSave = async () => {
+    setProfileSaving(true);
+    try {
+      const res = await fetch('/api/student/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profilePutBody(profile)),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(data.hint ? `${data.error || 'Save failed'}: ${data.hint}` : data.error || 'Save failed', 'warning');
+        return;
+      }
+      if (data.profile) setProfile(data.profile);
+      setEditing(false);
+      addToast('Profile saved.', 'success');
+    } catch {
+      addToast('Save failed (network).', 'warning');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const handleAddSkill = (e) => {
     e.preventDefault();
-    if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
-      persist({ ...profile, skills: [...profile.skills, newSkill.trim()] });
+    const skills = profile.skills || [];
+    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
+      persist({ ...profile, skills: [...skills, newSkill.trim()] });
     }
     setNewSkill('');
   };
 
   const handleRemoveSkill = (skillToRemove) => {
-    persist({ ...profile, skills: profile.skills.filter((s) => s !== skillToRemove) });
+    const skills = profile.skills || [];
+    persist({ ...profile, skills: skills.filter((s) => s !== skillToRemove) });
   };
 
   const addProfileLink = () => {
+    const prevLinks = profile.profileLinks || [];
     persist({
       ...profile,
-      profileLinks: [
-        ...profile.profileLinks,
-        { id: newLinkId(), kind: 'website', url: '', title: '', description: '' },
-      ],
+      profileLinks: [...prevLinks, { id: newLinkId(), kind: 'website', url: '', title: '', description: '' }],
     });
   };
 
   const updateLink = (id, patch) => {
+    const prevLinks = profile.profileLinks || [];
     persist({
       ...profile,
-      profileLinks: profile.profileLinks.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+      profileLinks: prevLinks.map((l) => (l.id === id ? { ...l, ...patch } : l)),
     });
   };
 
   const removeLink = (id) => {
-    persist({ ...profile, profileLinks: profile.profileLinks.filter((l) => l.id !== id) });
+    const prevLinks = profile.profileLinks || [];
+    persist({ ...profile, profileLinks: prevLinks.filter((l) => l.id !== id) });
   };
 
   const addPhone = () => {
@@ -134,21 +203,17 @@ export default function StudentProfilePage() {
           addToast('Image too large for offline storage. Use a smaller file (~900KB) or configure S3.', 'warning');
           return;
         }
-        setProfile((prev) => {
-          const next = {
-            ...prev,
-            avatarDataUrl: typeof dataUrl === 'string' ? dataUrl : '',
-            avatarUrl: '',
-            avatarName: file.name,
-          };
-          if (email) saveStudentProfile(email, next);
-          return next;
-        });
+        setProfile((prev) => ({
+          ...prev,
+          avatarDataUrl: typeof dataUrl === 'string' ? dataUrl : '',
+          avatarUrl: '',
+          avatarName: file.name,
+        }));
         addToast('Photo saved in this browser only (S3 not configured).', 'info');
       };
       reader.readAsDataURL(file);
     },
-    [addToast, email],
+    [addToast],
   );
 
   const onAvatarChange = async (e) => {
@@ -209,16 +274,12 @@ export default function StudentProfilePage() {
         return;
       }
 
-      setProfile((prev) => {
-        const next = {
-          ...prev,
-          avatarUrl: presign.fileUrl,
-          avatarDataUrl: '',
-          avatarName: file.name,
-        };
-        if (email) saveStudentProfile(email, next);
-        return next;
-      });
+      setProfile((prev) => ({
+        ...prev,
+        avatarUrl: presign.fileUrl,
+        avatarDataUrl: '',
+        avatarName: file.name,
+      }));
       await update({ avatar: presign.fileUrl });
       addToast('Photo saved to cloud storage.', 'info');
     } catch {
@@ -248,6 +309,20 @@ export default function StudentProfilePage() {
     .filter(Boolean);
 
   const avatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
+  const skillsList = profile.skills || [];
+  const linksList = profile.profileLinks || [];
+  const cgpaNum = profile.cgpa === '' || profile.cgpa == null ? NaN : Number(profile.cgpa);
+  const hasSalary =
+    (profile.expectedSalaryMin != null && Number(profile.expectedSalaryMin) > 0) ||
+    (profile.expectedSalaryMax != null && Number(profile.expectedSalaryMax) > 0);
+
+  if (profileLoading) {
+    return (
+      <div className="animate-fadeIn">
+        <p className="text-secondary">Loading profile…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadeIn">
@@ -262,11 +337,15 @@ export default function StudentProfilePage() {
         <div className="profile-info" style={{ position: 'relative', zIndex: 1 }}>
           <h2>{session?.user?.name}</h2>
           <p>
-            {profile.branch} | Batch {profile.batchYear}
+            {[profile.branch, profile.batchYear !== '' && profile.batchYear != null ? `Batch ${profile.batchYear}` : '']
+              .filter(Boolean)
+              .join(' | ') || '—'}
           </p>
           <div className="profile-meta">
-            <div className="profile-meta-item">🎓 {profile.rollNumber}</div>
-            <div className="profile-meta-item">📊 CGPA: {profile.cgpa}</div>
+            <div className="profile-meta-item">🎓 {profile.rollNumber || '—'}</div>
+            <div className="profile-meta-item">
+              📊 CGPA: {Number.isFinite(cgpaNum) ? `${cgpaNum}` : '—'}
+            </div>
             {displayEmails
               .filter((x) => x.value)
               .map((x, i) => (
@@ -301,10 +380,11 @@ export default function StudentProfilePage() {
             </>
           )}
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => {
               if (editing) {
-                setProfile(loadStudentProfile(email, session?.user));
+                void loadProfileFromApi({ silent: true });
                 setEditing(false);
               } else setEditing(true);
             }}
@@ -345,7 +425,7 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">Roll number</div>
               <div className="drive-info-value" title="Assigned by your college">
-                {profile.rollNumber}
+                {profile.rollNumber || '—'}
                 <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
                   Set by placement office — not editable
                 </span>
@@ -360,12 +440,22 @@ export default function StudentProfilePage() {
                   step="0.01"
                   min="0"
                   max="10"
-                  value={profile.cgpa}
-                  onChange={(e) => persist({ ...profile, cgpa: parseFloat(e.target.value) || 0 })}
+                  value={profile.cgpa === '' ? '' : profile.cgpa}
+                  onChange={(e) =>
+                    persist({
+                      ...profile,
+                      cgpa: e.target.value === '' ? '' : parseFloat(e.target.value),
+                    })
+                  }
                 />
               ) : (
-                <div className="drive-info-value" style={{ color: profile.cgpa >= 8 ? 'var(--success-600)' : 'var(--text-primary)' }}>
-                  {profile.cgpa} / 10
+                <div
+                  className="drive-info-value"
+                  style={{
+                    color: Number.isFinite(cgpaNum) && cgpaNum >= 8 ? 'var(--success-600)' : 'var(--text-primary)',
+                  }}
+                >
+                  {Number.isFinite(cgpaNum) ? `${cgpaNum} / 10` : '—'}
                 </div>
               )}
             </div>
@@ -376,11 +466,18 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
-                  value={profile.tenthPercentage}
-                  onChange={(e) => persist({ ...profile, tenthPercentage: parseFloat(e.target.value) || 0 })}
+                  value={profile.tenthPercentage === '' ? '' : profile.tenthPercentage}
+                  onChange={(e) =>
+                    persist({
+                      ...profile,
+                      tenthPercentage: e.target.value === '' ? '' : parseFloat(e.target.value),
+                    })
+                  }
                 />
               ) : (
-                <div className="drive-info-value">{profile.tenthPercentage}%</div>
+                <div className="drive-info-value">
+                  {profile.tenthPercentage === '' || profile.tenthPercentage == null ? '—' : `${profile.tenthPercentage}%`}
+                </div>
               )}
             </div>
             <div className="drive-info-item">
@@ -390,11 +487,18 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
-                  value={profile.twelfthPercentage}
-                  onChange={(e) => persist({ ...profile, twelfthPercentage: parseFloat(e.target.value) || 0 })}
+                  value={profile.twelfthPercentage === '' ? '' : profile.twelfthPercentage}
+                  onChange={(e) =>
+                    persist({
+                      ...profile,
+                      twelfthPercentage: e.target.value === '' ? '' : parseFloat(e.target.value),
+                    })
+                  }
                 />
               ) : (
-                <div className="drive-info-value">{profile.twelfthPercentage}%</div>
+                <div className="drive-info-value">
+                  {profile.twelfthPercentage === '' || profile.twelfthPercentage == null ? '—' : `${profile.twelfthPercentage}%`}
+                </div>
               )}
             </div>
             <div className="drive-info-item">
@@ -403,24 +507,32 @@ export default function StudentProfilePage() {
                 <input
                   className="form-input"
                   type="number"
-                  value={profile.graduationYear}
-                  onChange={(e) => persist({ ...profile, graduationYear: parseInt(e.target.value, 10) || 0 })}
+                  value={profile.graduationYear === '' ? '' : profile.graduationYear}
+                  onChange={(e) =>
+                    persist({
+                      ...profile,
+                      graduationYear: e.target.value === '' ? '' : parseInt(e.target.value, 10),
+                    })
+                  }
                 />
               ) : (
-                <div className="drive-info-value">{profile.graduationYear}</div>
+                <div className="drive-info-value">
+                  {profile.graduationYear === '' || profile.graduationYear == null ? '—' : profile.graduationYear}
+                </div>
               )}
             </div>
             <div className="drive-info-item">
               <div className="drive-info-label">Gender</div>
               {editing ? (
-                <select className="form-select" value={profile.gender} onChange={(e) => persist({ ...profile, gender: e.target.value })}>
+                <select className="form-select" value={profile.gender || ''} onChange={(e) => persist({ ...profile, gender: e.target.value })}>
+                  <option value="">—</option>
                   <option>Male</option>
                   <option>Female</option>
                   <option>Other</option>
                   <option>Prefer not to say</option>
                 </select>
               ) : (
-                <div className="drive-info-value">{profile.gender}</div>
+                <div className="drive-info-value">{profile.gender || '—'}</div>
               )}
             </div>
           </div>
@@ -518,7 +630,7 @@ export default function StudentProfilePage() {
             <h3 className="card-title">💡 Skills</h3>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {profile.skills.map((skill, i) => (
+            {skillsList.map((skill, i) => (
               <span
                 key={i}
                 className="badge badge-indigo"
@@ -566,20 +678,37 @@ export default function StudentProfilePage() {
                     className="form-input"
                     type="number"
                     placeholder="Min"
-                    value={profile.expectedSalaryMin}
-                    onChange={(e) => persist({ ...profile, expectedSalaryMin: parseFloat(e.target.value) || 0 })}
+                    value={profile.expectedSalaryMin === '' || profile.expectedSalaryMin == null ? '' : profile.expectedSalaryMin}
+                    onChange={(e) =>
+                      persist({
+                        ...profile,
+                        expectedSalaryMin: e.target.value === '' ? '' : parseFloat(e.target.value),
+                      })
+                    }
                   />
                   <input
                     className="form-input"
                     type="number"
                     placeholder="Max"
-                    value={profile.expectedSalaryMax}
-                    onChange={(e) => persist({ ...profile, expectedSalaryMax: parseFloat(e.target.value) || 0 })}
+                    value={profile.expectedSalaryMax === '' || profile.expectedSalaryMax == null ? '' : profile.expectedSalaryMax}
+                    onChange={(e) =>
+                      persist({
+                        ...profile,
+                        expectedSalaryMax: e.target.value === '' ? '' : parseFloat(e.target.value),
+                      })
+                    }
                   />
                 </div>
               ) : (
                 <div className="drive-info-value">
-                  ₹{(profile.expectedSalaryMin / 100000).toFixed(1)}L – ₹{(profile.expectedSalaryMax / 100000).toFixed(1)}L PA
+                  {hasSalary ? (
+                    <>
+                      ₹{(Number(profile.expectedSalaryMin) / 100000).toFixed(1)}L – ₹
+                      {(Number(profile.expectedSalaryMax) / 100000).toFixed(1)}L PA
+                    </>
+                  ) : (
+                    '—'
+                  )}
                 </div>
               )}
             </div>
@@ -630,8 +759,10 @@ export default function StudentProfilePage() {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {profile.profileLinks.length === 0 && <p className="text-sm text-secondary">No links yet. Add LinkedIn, GitHub, a general site, or a project link.</p>}
-            {profile.profileLinks.map((link) => (
+            {linksList.length === 0 && (
+              <p className="text-sm text-secondary">No links yet. Add LinkedIn, GitHub, a general site, or a project link.</p>
+            )}
+            {linksList.map((link) => (
               <div key={link.id} className="card" style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
                 {editing ? (
                   <>
@@ -712,21 +843,22 @@ export default function StudentProfilePage() {
               <button
                 type="button"
                 className="btn btn-secondary"
+                disabled={profileSaving}
                 onClick={() => {
-                  setProfile(loadStudentProfile(email, session?.user));
+                  void loadProfileFromApi({ silent: true });
                   setEditing(false);
                 }}
               >
                 Cancel
               </button>
-              <button type="button" className="btn btn-primary" onClick={handleSave}>
-                Save changes
+              <button type="button" className="btn btn-primary" disabled={profileSaving} onClick={() => void handleSave()}>
+                {profileSaving ? 'Saving…' : 'Save changes'}
               </button>
             </div>
           </div>
         ) : (
           <p className="text-sm" style={{ lineHeight: 1.7 }}>
-            {profile.bio}
+            {profile.bio || '—'}
           </p>
         )}
       </div>

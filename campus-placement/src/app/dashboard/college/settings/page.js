@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import EntityLogo from '@/components/EntityLogo';
 import {
   IconTwitter,
   IconFacebook,
@@ -21,16 +22,19 @@ function LabelWithIcon({ Icon, children }) {
 
 export default function CollegeSettingsPage() {
   const [saving, setSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({
     website: '',
+    logoUrl: '',
     websiteApi: '',
+    placementSeasonLabel: '',
     social: { twitter: '', facebook: '', instagram: '', linkedin: '' },
     institution: { collegeName: '', email: '', phone: '' },
     address: { address: '', city: '', state: '', pincode: '' },
-    accreditation: { body: '', naacGrade: 'A++', nirfRank: '' },
-    placementOfficer: { name: '', email: '', designation: 'Training & Placement Officer' },
+    accreditation: { body: '', naacGrade: '', nirfRank: '' },
+    placementOfficer: { name: '', email: '', designation: '' },
   });
 
   useEffect(() => {
@@ -44,12 +48,14 @@ export default function CollegeSettingsPage() {
         if (!mounted) return;
         setForm({
           website: json.website || '',
+          logoUrl: json.logoUrl || '',
           websiteApi: json.websiteApi || '',
+          placementSeasonLabel: json.placementSeasonLabel || '',
           social: json.social || { twitter: '', facebook: '', instagram: '', linkedin: '' },
           institution: json.institution || { collegeName: '', email: '', phone: '' },
           address: json.address || { address: '', city: '', state: '', pincode: '' },
-          accreditation: json.accreditation || { body: '', naacGrade: 'A++', nirfRank: '' },
-          placementOfficer: json.placementOfficer || { name: '', email: '', designation: 'Training & Placement Officer' },
+          accreditation: json.accreditation || { body: '', naacGrade: '', nirfRank: '' },
+          placementOfficer: json.placementOfficer || { name: '', email: '', designation: '' },
         });
       } catch (e) {
         if (!mounted) return;
@@ -87,6 +93,47 @@ export default function CollegeSettingsPage() {
     }
   };
 
+  const onLogoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage('Logo image too large (max 2MB).');
+      return;
+    }
+    setLogoUploading(true);
+    setMessage('');
+    try {
+      const presignRes = await fetch('/api/college/settings/logo/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream', fileSize: file.size }),
+      });
+      const presign = await presignRes.json();
+      if (!presignRes.ok) throw new Error(presign?.error || 'Failed to start logo upload');
+
+      const ph = {};
+      if (presign.contentType) ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
+      const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
+      if (!putRes.ok) throw new Error('Failed while uploading logo file');
+
+      const completeRes = await fetch('/api/college/settings/logo/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_url: presign.fileUrl }),
+      });
+      const complete = await completeRes.json();
+      if (!completeRes.ok) throw new Error(complete?.error || 'Failed to save uploaded logo');
+
+      setForm((prev) => ({ ...prev, logoUrl: presign.fileUrl }));
+      setMessage('Logo uploaded successfully.');
+    } catch (e2) {
+      setMessage(e2.message || 'Logo upload failed');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   return (
     <div className="animate-fadeIn college-settings-page">
       <div className="page-header">
@@ -112,6 +159,13 @@ export default function CollegeSettingsPage() {
             <h3 className="card-title">🌐 Website &amp; social profile URLs</h3>
             <span className="badge badge-green">Live</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <EntityLogo name={form.institution.collegeName || 'College'} logoUrl={form.logoUrl} website={form.website} size="lg" shape="rounded" />
+            <label className={`btn btn-secondary btn-sm${logoUploading ? ' disabled' : ''}`} style={{ cursor: logoUploading ? 'wait' : 'pointer', margin: 0 }}>
+              {logoUploading ? 'Uploading logo…' : 'Upload college logo'}
+              <input type="file" accept="image/*" hidden disabled={logoUploading} onChange={onLogoChange} />
+            </label>
+          </div>
           <p className="text-sm text-secondary" style={{ marginTop: 0 }}>
             Public website, optional API root for integrations, and official college accounts on X (Twitter), Facebook, Instagram, and LinkedIn.
           </p>
@@ -119,6 +173,10 @@ export default function CollegeSettingsPage() {
             <div className="form-group college-settings-inline">
               <label className="form-label">Public website URL</label>
               <input className="form-input" type="url" placeholder="https://www.college.edu" value={form.website} onChange={(e) => setRoot('website', e.target.value)} />
+            </div>
+            <div className="form-group college-settings-inline">
+              <label className="form-label">Logo URL (optional)</label>
+              <input className="form-input" type="url" placeholder="https://.../logo.png" value={form.logoUrl} onChange={(e) => setRoot('logoUrl', e.target.value)} />
             </div>
             <div className="form-group college-settings-inline">
               <label className="form-label">Website API base URL</label>
@@ -151,6 +209,18 @@ export default function CollegeSettingsPage() {
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">🏫 Institution Details</h3>
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">Placement season (display)</label>
+            <input
+              className="form-input"
+              placeholder="e.g. 2025-26"
+              value={form.placementSeasonLabel}
+              onChange={(e) => setRoot('placementSeasonLabel', e.target.value)}
+            />
+            <p className="text-xs text-tertiary" style={{ margin: 0 }}>
+              Shown on the college dashboard and top bar. Leave blank to use the session year only.
+            </p>
           </div>
           <div className="form-group college-settings-inline">
             <label className="form-label">College Name</label>
@@ -199,6 +269,7 @@ export default function CollegeSettingsPage() {
           <div className="form-group college-settings-inline">
             <label className="form-label">NAAC Grade</label>
             <select className="form-select" value={form.accreditation.naacGrade} onChange={(e) => setNested('accreditation', 'naacGrade', e.target.value)}>
+              <option value="">— Not specified —</option>
               <option>A++</option>
               <option>A+</option>
               <option>A</option>
@@ -227,7 +298,12 @@ export default function CollegeSettingsPage() {
           </div>
           <div className="form-group college-settings-inline">
             <label className="form-label">Designation</label>
-            <input className="form-input" value={form.placementOfficer.designation} onChange={(e) => setNested('placementOfficer', 'designation', e.target.value)} />
+            <input
+              className="form-input"
+              placeholder="e.g. Training &amp; Placement Officer"
+              value={form.placementOfficer.designation}
+              onChange={(e) => setNested('placementOfficer', 'designation', e.target.value)}
+            />
           </div>
         </div>
       </div>

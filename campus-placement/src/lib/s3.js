@@ -119,3 +119,40 @@ export async function createStudentAvatarPresign({ userId, fileName, contentType
     contentType: signContentType ? resolvedType : null,
   };
 }
+
+async function createImagePresign({ keyPrefix, fileName, contentType }) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+  const bucket = process.env.S3_BUCKET_NAME;
+  const region = process.env.AWS_REGION;
+  const safe = sanitizeFilename(fileName);
+  const key = `${keyPrefix}/${randomUUID()}-${safe}`;
+  const resolvedType = contentType || 'application/octet-stream';
+  const client = getClient();
+  const signContentType = process.env.S3_PRESIGN_AVATAR_CONTENT_TYPE === '1';
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ...(signContentType ? { ContentType: resolvedType } : {}),
+  });
+  const expiresIn = parseInt(process.env.S3_PRESIGN_EXPIRES_SECONDS || '900', 10);
+  const uploadUrl = await getSignedUrl(client, command, { expiresIn });
+  const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
+  return {
+    uploadUrl,
+    fileUrl,
+    key,
+    bucket,
+    expiresIn,
+    contentType: signContentType ? resolvedType : null,
+  };
+}
+
+export async function createEmployerLogoPresign({ userId, fileName, contentType }) {
+  return createImagePresign({ keyPrefix: `employers/${userId}/logo`, fileName, contentType });
+}
+
+export async function createTenantLogoPresign({ tenantId, fileName, contentType }) {
+  return createImagePresign({ keyPrefix: `tenants/${tenantId}/logo`, fileName, contentType });
+}

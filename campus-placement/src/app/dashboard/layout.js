@@ -1,7 +1,8 @@
 'use client';
 import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import useSWR, { mutate as swrMutate } from 'swr';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { useTheme } from '@/components/ThemeProvider';
@@ -18,7 +19,16 @@ import {
 } from '@/config/dashboardMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import DevScreenTag from '@/components/DevScreenTag';
+import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import { Moon, Sun, Menu, Mail, Home } from 'lucide-react';
+import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
+
+const settingsFetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load settings');
+  return json;
+};
 
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession();
@@ -27,6 +37,39 @@ export default function DashboardLayout({ children }) {
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [employerCampusLabel, setEmployerCampusLabel] = useState(null);
+  const [academicYearOverride, setAcademicYearOverride] = useState(null);
+  const academicYearOptions = getAcademicYearOptions(getCurrentAcademicYear(), 3);
+
+  const { data: collegeSettings } = useSWR(
+    session?.user?.role === 'college_admin' ? '/api/college/settings' : null,
+    settingsFetcher,
+  );
+
+  const academicYear = useMemo(() => {
+    if (academicYearOverride != null && academicYearOverride !== '') return academicYearOverride;
+    if (session?.user?.role === 'college_admin') {
+      const server = collegeSettings?.placementSeasonLabel?.trim();
+      if (server) return server;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('activeAcademicYear');
+        if (saved) return saved;
+      } catch {
+        /* ignore */
+      }
+    }
+    return getCurrentAcademicYear();
+  }, [academicYearOverride, collegeSettings?.placementSeasonLabel, session?.user?.role]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('activeAcademicYear', academicYear);
+      window.dispatchEvent(new Event('placementhub-academic-year'));
+    } catch {
+      /* ignore */
+    }
+  }, [academicYear]);
 
   useEffect(() => {
     if (session?.user?.role !== 'employer') return;
@@ -78,8 +121,33 @@ export default function DashboardLayout({ children }) {
   const activeSection = menu.sections.find((s) => s.id === sectionId) || menu.sections[0];
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
   const isHub = isRoleDashboardHome(pathname, role);
+
+  const studentVerifyBanner =
+    role === 'student' && session.user.studentPlacementVerified === false ? (
+      <div
+        className="card"
+        style={{
+          margin: isHub ? '1rem auto 0' : '0 0 1rem',
+          maxWidth: isHub ? '56rem' : undefined,
+          padding: '0.75rem 1rem',
+          background: 'var(--amber-50, #fffbeb)',
+          border: '1px solid var(--amber-200, #fde68a)',
+          color: 'var(--amber-950, #451a03)',
+          fontSize: '0.875rem',
+        }}
+      >
+        Your college has not verified your student profile yet. You can use the portal, but some placement steps may stay blocked until an administrator
+        approves you from the <strong>Students</strong> screen.
+      </div>
+    ) : null;
+
   if (isHub) {
-    return <>{children}</>;
+    return (
+      <>
+        {studentVerifyBanner}
+        {children}
+      </>
+    );
   }
 
   return (
@@ -124,6 +192,7 @@ export default function DashboardLayout({ children }) {
             {(role === 'employer' || role === 'college_admin') ? (
               <EntityLogo
                 name={session.user.tenantName || session.user.name}
+                logoUrl={session.user.brandLogoUrl || null}
                 size="sm"
                 shape="rounded"
               />
@@ -186,13 +255,18 @@ export default function DashboardLayout({ children }) {
                 <div className="avatar avatar-sm" style={{ width: '32px', height: '32px', fontSize: '0.875rem', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <EntityLogo
                     name={role === 'super_admin' ? 'PlacementHub' : (session.user.tenantName || session.user.name)}
+                    logoUrl={role === 'super_admin' ? session.user.avatar || null : session.user.brandLogoUrl || null}
                     size="sm"
                     shape="rounded"
                   />
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {role === 'super_admin' ? 'PlacementHub SuperAdmin' : session.user.tenantName || session.user.name}
+                    {role === 'super_admin'
+                      ? 'PlacementHub SuperAdmin'
+                      : (collegeSettings?.institution?.collegeName || '').trim() ||
+                        session.user.tenantName ||
+                        session.user.name}
                   </h2>
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
                     {role === 'employer' ? 'Corporate Partner' : role === 'student' ? 'Student Portal' : 'College Administration'}
@@ -208,11 +282,27 @@ export default function DashboardLayout({ children }) {
                     <select
                       className="form-input"
                       style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                      defaultValue="2025-26"
+                      value={academicYear}
+                      onChange={async (e) => {
+                        const v = e.target.value;
+                        setAcademicYearOverride(v);
+                        try {
+                          sessionStorage.setItem('activeAcademicYear', v);
+                          window.dispatchEvent(new Event('placementhub-academic-year'));
+                          const res = await fetch('/api/college/settings/placement-season', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ placementSeasonLabel: v }),
+                          });
+                          if (res.ok) await swrMutate('/api/college/settings');
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
                     >
-                      <option>2024-25</option>
-                      <option>2025-26</option>
-                      <option>2026-27</option>
+                      {academicYearOptions.map((opt) => (
+                        <option key={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
                 </>
@@ -279,9 +369,11 @@ export default function DashboardLayout({ children }) {
         </header>
 
         <main id="main-content" className="page-content">
+          {studentVerifyBanner}
           {children}
         </main>
         <SessionAdBanner />
+        <DocumentationHelpWidget />
       </div>
 
       {mobileOpen && (

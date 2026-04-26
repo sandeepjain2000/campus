@@ -22,12 +22,15 @@ export default function EmployerOverviewPage() {
   };
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('activeCampus');
-    if (!stored) {
-      router.replace('/dashboard/employer/select-campus');
-    } else {
-      setActiveCampus(JSON.parse(stored));
-    }
+    const t = window.setTimeout(() => {
+      const stored = sessionStorage.getItem('activeCampus');
+      if (!stored) {
+        router.replace('/dashboard/employer/select-campus');
+      } else {
+        setActiveCampus(JSON.parse(stored));
+      }
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [router]);
 
   const { data, error, isLoading } = useSWR(

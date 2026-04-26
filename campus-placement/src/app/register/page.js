@@ -27,6 +27,7 @@ export default function RegisterPage() {
     collegeFullName: '',
     city: '',
     state: '',
+    campusBindingToken: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,11 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push('/login?registered=true');
+      if (data.pendingPlatformApproval) {
+        router.push('/login?registered=pending-platform');
+      } else {
+        router.push('/login?registered=true');
+      }
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -172,19 +177,27 @@ export default function RegisterPage() {
               {formData.role === 'student' && (
                 <>
                   <div className="form-group">
+                    <label className="form-label">Campus enrollment key <span className="required">*</span></label>
+                    <input
+                      className="form-input font-mono"
+                      placeholder="Provided by your placement office"
+                      autoComplete="off"
+                      value={formData.campusBindingToken}
+                      onChange={(e) => setFormData({ ...formData, campusBindingToken: e.target.value })}
+                    />
+                    <span className="form-hint">
+                      Long random code from your college — not your roll number. Ask the placement cell if you do not have it.
+                    </span>
+                  </div>
+                  <div className="form-group">
                     <label className="form-label">Department <span className="required">*</span></label>
-                    <select className="form-select" value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}>
-                      <option value="">Select Department</option>
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="Electronics">Electronics & Communication</option>
-                      <option value="Mechanical">Mechanical Engineering</option>
-                      <option value="Electrical">Electrical Engineering</option>
-                      <option value="Civil">Civil Engineering</option>
-                      <option value="Information Technology">Information Technology</option>
-                      <option value="MBA">MBA</option>
-                      <option value="MCA">MCA</option>
-                    </select>
+                    <input
+                      className="form-input"
+                      placeholder="Enter your department (e.g. Aerospace, Chemical, Pharmacy)"
+                      value={formData.department}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    />
+                    <span className="form-hint">Department names vary by institution, so this is entered as free text.</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div className="form-group">
@@ -253,7 +266,12 @@ export default function RegisterPage() {
                 <button 
                   className="btn btn-primary" 
                   style={{ flex: 2 }}
-                  disabled={!formData.firstName || !formData.email}
+                  disabled={
+                    !formData.firstName ||
+                    !formData.email ||
+                    (formData.role === 'student' &&
+                      formData.campusBindingToken.trim().replace(/\s+/g, '').length < 32)
+                  }
                   onClick={() => setStep(3)}
                 >
                   Continue →

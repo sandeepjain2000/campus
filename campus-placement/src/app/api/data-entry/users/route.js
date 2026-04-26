@@ -1,51 +1,31 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { hash } from 'bcryptjs';
-import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 
 const ALLOWED_ROLES = new Set(['student', 'college_admin', 'employer']);
 
-async function assertAccess() {
-  const session = await getServerSession(authOptions);
-  return session || null;
-}
-
-async function resolveTenantId(session) {
-  if (session?.user?.tenantId) return session.user.tenantId;
-  const fallback = await query(`SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1`);
-  return fallback.rows[0]?.id || null;
-}
-
 export async function GET(request) {
   try {
-    const session = await assertAccess();
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
     const role = request.nextUrl.searchParams.get('role');
-    const whereRole = role && ALLOWED_ROLES.has(role) ? 'AND role = $2' : '';
-    let users;
-    const tenantId = await resolveTenantId(session);
-    if (tenantId) {
-      const params = whereRole ? [tenantId, role] : [tenantId];
-      users = await query(
-        `SELECT id, email, role, first_name, last_name, is_verified, is_active, created_at
-         FROM users
-         WHERE tenant_id = $1 ${whereRole}
-         ORDER BY created_at DESC
-         LIMIT 300`,
-        params
-      );
-    } else {
-      const params = role && ALLOWED_ROLES.has(role) ? [role] : [];
-      const roleClause = params.length > 0 ? 'WHERE role = $1' : '';
-      users = await query(
-        `SELECT id, email, role, first_name, last_name, is_verified, is_active, created_at
-         FROM users
-         ${roleClause}
-         ORDER BY created_at DESC
-         LIMIT 300`,
-        params
-      );
+    const tenantId = resolveDataEntryTenantId(gate.session, request.nextUrl.searchParams.get('tenantId'));
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
     }
+
+    const whereRole = role && ALLOWED_ROLES.has(role) ? 'AND role = $2' : '';
+    const params = whereRole ? [tenantId, role] : [tenantId];
+    const users = await query(
+      `SELECT id, email, role, first_name, last_name, is_verified, is_active, created_at
+       FROM users
+       WHERE tenant_id = $1 ${whereRole}
+       ORDER BY created_at DESC
+       LIMIT 300`,
+      params
+    );
     return NextResponse.json({ users: users.rows });
   } catch (error) {
     return NextResponse.json({ error: error.message || 'Failed to load users' }, { status: 500 });
@@ -54,7 +34,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const session = await assertAccess();
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
 
     const body = await request.json();
     const email = String(body?.email || '').trim().toLowerCase();
@@ -63,9 +44,9 @@ export async function POST(request) {
     const password = String(body?.password || '').trim();
     const role = String(body?.role || 'student').trim();
     const isVerified = Boolean(body?.isVerified);
-    const tenantId = await resolveTenantId(session);
+    const tenantId = resolveDataEntryTenantId(gate.session, body?.tenantId);
 
-    if (!tenantId) return NextResponse.json({ error: 'Missing tenant context for create' }, { status: 400 });
+    if (!tenantId) return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
     if (!email || !firstName || !password) {
       return NextResponse.json({ error: 'email, firstName, and password are required' }, { status: 400 });
     }
@@ -92,10 +73,13 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
-    const session = await assertAccess();
-    const tenantId = await resolveTenantId(session);
-    if (!tenantId) return NextResponse.json({ error: 'No tenant available for update' }, { status: 400 });
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
     const body = await request.json();
+    const tenantId = resolveDataEntryTenantId(gate.session, body?.tenantId);
+    if (!tenantId) return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
+
     const id = String(body?.id || '').trim();
     const firstName = String(body?.firstName || '').trim();
     const lastName = String(body?.lastName || '').trim();
@@ -121,10 +105,12 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
-    const session = await assertAccess();
-    const tenantId = await resolveTenantId(session);
-    if (!tenantId) return NextResponse.json({ error: 'No tenant available for delete' }, { status: 400 });
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
     const body = await request.json();
+    const tenantId = resolveDataEntryTenantId(gate.session, body?.tenantId);
+    if (!tenantId) return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
     const id = String(body?.id || '').trim();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
     await query(`DELETE FROM users WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);

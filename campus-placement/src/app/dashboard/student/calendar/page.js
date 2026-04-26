@@ -13,7 +13,7 @@ const fetcher = async (url) => {
 };
 
 export default function StudentPlacementCalendarPage() {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8));
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const { data } = useSWR('/api/student/calendar', fetcher);
   const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
 
@@ -66,7 +66,12 @@ export default function StudentPlacementCalendarPage() {
                 return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth() && d.getDate() === day;
               })
               : [];
-            const isToday = day === 13;
+            const today = new Date();
+            const isToday =
+              !!day &&
+              today.getFullYear() === currentMonth.getFullYear() &&
+              today.getMonth() === currentMonth.getMonth() &&
+              today.getDate() === day;
             return (
               <div key={i} className={`calendar-cell ${!day ? 'other-month' : ''} ${isToday ? 'today' : ''}`}>
                 {day && (

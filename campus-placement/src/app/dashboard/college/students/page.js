@@ -54,29 +54,44 @@ export default function CollegeStudentsPage() {
   const [detailStudent, setDetailStudent] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadStudents = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/college/students');
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to load students');
-        if (!mounted) return;
-        setStudents(Array.isArray(json) ? json : []);
-      } catch (error) {
-        if (!mounted) return;
-        addToast(error.message || 'Failed to load students', 'error');
-        setStudents([]);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-    loadStudents();
-    return () => {
-      mounted = false;
-    };
+  const reloadStudents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/college/students');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to load students');
+      setStudents(Array.isArray(json) ? json : []);
+    } catch (error) {
+      addToast(error.message || 'Failed to load students', 'error');
+      setStudents([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [addToast]);
+
+  useEffect(() => {
+    reloadStudents();
+  }, [reloadStudents]);
+
+  const setStudentVerified = useCallback(
+    async (profileId, approve) => {
+      try {
+        const res = await fetch('/api/college/students/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentProfileId: profileId, approve }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Update failed');
+        addToast(approve ? 'Student verified.' : 'Verification cleared.', 'success');
+        setStudents((prev) => prev.map((s) => (s.id === profileId ? { ...s, verified: approve } : s)));
+        setDetailStudent((d) => (d && d.id === profileId ? { ...d, verified: approve } : d));
+      } catch (e) {
+        addToast(e.message || 'Failed', 'error');
+      }
+    },
+    [addToast],
+  );
 
   const filtered = useMemo(() => students.filter((s) => {
     if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.roll.toLowerCase().includes(search.toLowerCase())) return false;
@@ -286,13 +301,25 @@ export default function CollegeStudentsPage() {
                 <td style={{ color: 'var(--text-tertiary)' }}>{index + 1}</td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <img
-                      src={s.photo}
-                      alt={`${s.name} profile`}
-                      width={32}
-                      height={32}
-                      style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }}
-                    />
+                    {s.photo ? (
+                      <img
+                        src={s.photo}
+                        alt={`${s.name} profile`}
+                        width={32}
+                        height={32}
+                        style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: 'var(--gray-200)',
+                          border: '1px solid var(--border-default)',
+                        }}
+                      />
+                    )}
                     <div>
                       <div className="font-semibold">{s.name}</div>
                       <div className="text-xs text-tertiary">{s.skills.slice(0, 2).join(', ')}</div>
@@ -333,13 +360,25 @@ export default function CollegeStudentsPage() {
             </div>
             <div className="modal-body">
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                <img
-                  src={detailStudent.photo}
-                  alt=""
-                  width={72}
-                  height={72}
-                  style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }}
-                />
+                {detailStudent.photo ? (
+                  <img
+                    src={detailStudent.photo}
+                    alt=""
+                    width={72}
+                    height={72}
+                    style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: '50%',
+                      background: 'var(--gray-200)',
+                      border: '1px solid var(--border-default)',
+                    }}
+                  />
+                )}
                 <div>
                   <div className="text-lg font-semibold">{detailStudent.name}</div>
                   <div className="text-sm text-secondary font-mono">{detailStudent.roll}</div>
@@ -377,7 +416,24 @@ export default function CollegeStudentsPage() {
                 <dd style={{ wordBreak: 'break-all' }}>{detailStudent.photo}</dd>
               </dl>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              {detailStudent.verified ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setStudentVerified(detailStudent.id, false)}
+                >
+                  Clear verification
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-success btn-sm"
+                  onClick={() => setStudentVerified(detailStudent.id, true)}
+                >
+                  Approve / verify student
+                </button>
+              )}
               <button type="button" className="btn btn-secondary" onClick={() => setDetailStudent(null)}>Close</button>
             </div>
           </div>

@@ -1,17 +1,97 @@
 'use client';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { Rocket, GraduationCap, Building2, School, BarChart3, CalendarDays, ShieldCheck, ArrowRight, Mail, Database } from 'lucide-react';
+import {
+  Rocket,
+  GraduationCap,
+  Building2,
+  School,
+  BarChart3,
+  CalendarDays,
+  ShieldCheck,
+  ArrowRight,
+  Mail,
+  Database,
+  Download,
+} from 'lucide-react';
+import EntityLogo from '@/components/EntityLogo';
+import { DEMO_LOGINS } from '@/lib/demoLogins';
+import { appendClientDebugLog, downloadClientDebugLog } from '@/lib/clientDebugLog';
 
 export default function LandingPage() {
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '?';
+  const buildTimeIso = process.env.NEXT_PUBLIC_BUILD_TIME || '';
+  const gitSha = process.env.NEXT_PUBLIC_APP_GIT_SHA || '';
+  const deployId = process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID || '';
+  const vercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV || '';
+
+  const buildLabel = buildTimeIso
+    ? `${buildTimeIso.slice(0, 16).replace('T', ' ')} UTC`
+    : '—';
+
+  useEffect(() => {
+    appendClientDebugLog({
+      source: 'landing',
+      action: 'view',
+      version: appVersion,
+      buildTime: buildTimeIso || null,
+      gitSha: gitSha || null,
+    });
+  }, [appVersion, buildTimeIso, gitSha]);
+
   return (
     <div style={{ background: '#FFFFFF', color: '#111827', minHeight: '100vh' }}>
       {/* Top Navbar */}
-      <nav style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100, borderBottom: '1px solid var(--border-default)', background: '#FFFFFF' }}>
-        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '36px', height: '36px', background: 'var(--primary-600)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>P</div>
-          PlacementHub
+      <nav style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 100, borderBottom: '1px solid var(--border-default)', background: '#FFFFFF' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '0.35rem',
+            maxWidth: 'min(380px, 46vw)',
+          }}
+        >
+          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '36px', height: '36px', background: 'var(--primary-600)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>P</div>
+            PlacementHub
+          </div>
+          <div
+            title="Build baked in at deploy time (NEXT_PUBLIC_* from next.config)"
+            style={{
+              fontSize: '0.625rem',
+              lineHeight: 1.4,
+              color: '#6B7280',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            }}
+          >
+            v{appVersion}
+            {gitSha ? ` · ${gitSha}` : ''}
+            {vercelEnv ? ` · ${vercelEnv}` : ''}
+            <br />
+            build {buildLabel}
+            {deployId ? ` · deploy ${deployId.slice(0, 10)}…` : ''}
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{
+              fontSize: '0.7rem',
+              padding: '0.25rem 0.55rem',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              borderRadius: '0.375rem',
+              border: '1px solid var(--border-default)',
+            }}
+            onClick={() => downloadClientDebugLog()}
+          >
+            <Download size={13} aria-hidden />
+            Save debug log
+          </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, paddingTop: '0.15rem' }}>
           <Link href="/data-entry" className="btn btn-ghost" style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
             <Database size={16} /> Data entry
           </Link>
@@ -60,6 +140,79 @@ export default function LandingPage() {
               <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827' }}>₹12L</div>
               <div style={{ color: '#6B7280', fontWeight: 500 }}>Avg. Package</div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Demo accounts — always visible on the landing page for try-the-app flows */}
+      <section
+        style={{
+          padding: '3rem 2rem 4rem',
+          background: 'linear-gradient(180deg, #FFFBEB 0%, #FEF9C3 100%)',
+          borderTop: '1px solid #FDE68A',
+          borderBottom: '1px solid #FDE68A',
+        }}
+      >
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#78350F', marginBottom: '0.5rem', textAlign: 'center' }}>
+            Demo accounts
+          </h2>
+          <p style={{ color: '#92400E', textAlign: 'center', fontSize: '0.95rem', maxWidth: '560px', margin: '0 auto 1.75rem', lineHeight: 1.5 }}>
+            Use these seeded roles after sign-in. Password comes from your database seed (same as local dev). Click a card to open Sign in with email filled.
+          </p>
+          <div
+            className="role-select-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '0.75rem',
+            }}
+          >
+            {DEMO_LOGINS.map((demo) =>
+              demo.isDummy ? (
+                <div
+                  key={demo.email}
+                  className="role-card"
+                  style={{
+                    textAlign: 'left',
+                    opacity: 0.85,
+                    cursor: 'default',
+                    background: '#FFFBEB',
+                    borderStyle: 'dashed',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                    <EntityLogo name={demo.name} size="xs" shape="rounded" />
+                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#78350F' }}>{demo.label}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#A16207' }}>Coming soon</div>
+                </div>
+              ) : (
+                <Link
+                  key={demo.email}
+                  href={`/login?email=${encodeURIComponent(demo.email)}`}
+                  className="role-card"
+                  style={{
+                    textAlign: 'left',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    display: 'block',
+                    transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                    <EntityLogo name={demo.name} size="xs" shape="rounded" />
+                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)' }}>{demo.label}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)', wordBreak: 'break-all' }}>
+                    📧 {demo.email}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', marginTop: '0.35rem', color: 'var(--primary-600)', fontWeight: 600 }}>
+                    Sign in →
+                  </div>
+                </Link>
+              ),
+            )}
           </div>
         </div>
       </section>

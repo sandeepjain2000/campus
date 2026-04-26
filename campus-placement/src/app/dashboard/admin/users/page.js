@@ -1,10 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getRoleDisplayName } from '@/lib/utils';
-import { useToast } from '@/components/ToastProvider';
 
 export default function AdminUsersPage() {
-  const { addToast } = useToast();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,10 +30,6 @@ export default function AdminUsersPage() {
     };
   }, []);
 
-  const showNotReady = (label) => {
-    addToast(`${label} is not available yet in this build.`, 'info');
-  };
-
   return (
     <div className="animate-fadeIn">
       <div className="page-header"><div className="page-header-left"><h1>👥 Manage Users</h1><p>All users across the platform</p></div></div>
@@ -48,7 +42,7 @@ export default function AdminUsersPage() {
               <td className="text-sm">{u.email}</td>
               <td><span className={`badge badge-${u.role === 'super_admin' ? 'red' : u.role === 'college_admin' ? 'indigo' : u.role === 'employer' ? 'green' : 'blue'}`}>{getRoleDisplayName(u.role)}</span></td>
               <td><span className={`badge ${u.active ? 'badge-green' : 'badge-gray'} badge-dot`}>{u.active ? 'Active' : 'Inactive'}</span></td>
-              <td><button className="btn btn-ghost btn-sm" onClick={() => showNotReady('Edit user')}>Edit</button></td>
+              <td><button className="btn btn-ghost btn-sm" disabled title="Coming soon">Edit</button></td>
             </tr>
           ))}
           {!isLoading && users.length === 0 ? (

@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import PageError from '@/components/PageError';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const fetcher = (url) => fetch(url).then((res) => {
   if (!res.ok) throw new Error('Failed to load documents');
@@ -25,6 +26,7 @@ export default function StudentDocumentsPage() {
   const [view, setView] = useState('cards');
   const [docType, setDocType] = useState('resume');
   const [uploading, setUploading] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   const documents = data?.documents || [];
 
@@ -106,7 +108,6 @@ export default function StudentDocumentsPage() {
   }, [addToast, docType, mutate]);
 
   const removeDoc = async (id) => {
-    if (!confirm('Remove this document record from your profile?')) return;
     const res = await fetch(`/api/student/documents?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -190,7 +191,14 @@ export default function StudentDocumentsPage() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <a className="btn btn-ghost btn-sm" style={{ flex: 1 }} href={doc.file_url} target="_blank" rel="noopener noreferrer">Open</a>
-                  <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)' }} onClick={() => removeDoc(doc.id)}>Remove</button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ color: 'var(--danger-500)' }}
+                    onClick={() => setRemoveTarget({ id: doc.id, name: doc.document_name })}
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             );
@@ -224,7 +232,14 @@ export default function StudentDocumentsPage() {
                       <td>{doc.is_verified ? 'Yes' : 'Pending'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         <a className="btn btn-ghost btn-sm" href={doc.file_url} target="_blank" rel="noopener noreferrer">Open</a>
-                        <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)' }} onClick={() => removeDoc(doc.id)}>Remove</button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--danger-500)' }}
+                          onClick={() => setRemoveTarget({ id: doc.id, name: doc.document_name })}
+                        >
+                          Remove
+                        </button>
                       </td>
                     </tr>
                   );
@@ -243,6 +258,24 @@ export default function StudentDocumentsPage() {
       {!isLoading && view === 'cards' && documents.length === 0 && !showUpload && (
         <p className="text-sm text-secondary" style={{ marginTop: '1rem' }}>No documents yet.</p>
       )}
+
+      <ConfirmDialog
+        open={Boolean(removeTarget)}
+        title="Remove document?"
+        message={
+          removeTarget
+            ? `"${removeTarget.name}" will be removed from your profile list.`
+            : ''
+        }
+        confirmLabel="Remove document"
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={async () => {
+          if (!removeTarget) return;
+          const targetId = removeTarget.id;
+          setRemoveTarget(null);
+          await removeDoc(targetId);
+        }}
+      />
     </div>
   );
 }

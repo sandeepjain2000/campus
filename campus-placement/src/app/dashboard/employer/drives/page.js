@@ -12,7 +12,7 @@ const emptyForm = {
   title: '',
   driveType: 'on_campus',
   driveDate: '',
-  venue: 'TBD',
+  venue: '',
   description: '',
 };
 
@@ -130,7 +130,7 @@ export default function EmployerDrivesPage() {
               </div>
               <div className="drive-info-item">
                 <div className="drive-info-label">Venue</div>
-                <div className="drive-info-value">{drive.venue}</div>
+                <div className="drive-info-value">{drive.venue?.trim() ? drive.venue : '—'}</div>
               </div>
               <div className="drive-info-item">
                 <div className="drive-info-label">Registered</div>
@@ -158,7 +158,7 @@ export default function EmployerDrivesPage() {
             </div>
             <div className="modal-body">
               <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
-                Submits a drive in <strong>requested</strong> status and creates one notification per college admin (sequential writes), after the drive row is inserted.
+                Submits a drive in <strong>requested</strong> status and sends a notification to each college admin after the drive is saved.
               </p>
               <div className="form-group">
                 <label className="form-label">Title</label>
@@ -179,7 +179,12 @@ export default function EmployerDrivesPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Venue</label>
-                <input className="form-input" value={form.venue} onChange={(e) => setForm((p) => ({ ...p, venue: e.target.value }))} />
+                <input
+                  className="form-input"
+                  value={form.venue}
+                  onChange={(e) => setForm((p) => ({ ...p, venue: e.target.value }))}
+                  placeholder="Venue (optional — add when known)"
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Notes for placement office</label>

@@ -1,6 +1,8 @@
 -- ============================================
 -- Campus Placement SaaS - Seed Data
 -- ============================================
+-- Logos: public/logos/seed-*.svg (served as /logos/...) — referenced from tenants.logo_url
+-- and employer_profiles.logo_url so UI does not rely on name-based logo guessing.
 
 -- Default password for all seeded users: 'Admin@123'
 -- bcrypt hash: $2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82
@@ -47,10 +49,83 @@ INSERT INTO tenants (id, name, slug, type, city, state, email, accreditation, na
 ('a1000000-0000-0000-0000-000000000002', 'National Institute of Technology, Trichy', 'nit-trichy', 'college', 'Tiruchirappalli', 'Tamil Nadu', 'placement@nitt.edu', 'AICTE', 'A+', 1964),
 ('a1000000-0000-0000-0000-000000000003', 'Birla Institute of Technology, Pilani', 'bits-pilani', 'college', 'Pilani', 'Rajasthan', 'placement@bits.edu', 'AICTE', 'A+', 1964);
 
+-- 1b. College public profile + logos + settings (replaces former hard-coded EntityLogo / defaults)
+UPDATE tenants SET
+  website = 'https://www.iitm.ac.in',
+  logo_url = '/logos/seed-iitm.svg',
+  phone = '+91-44-2257-8000',
+  address = 'IIT Madras Campus, Sardar Patel Road',
+  pincode = '600036',
+  settings = $cfg${
+    "placementSeasonLabel": "2025-26",
+    "websiteApi": "",
+    "placementOfficer": {
+      "name": "Dr. Rajesh Kumar",
+      "email": "placement@iitm.edu",
+      "designation": "Training & Placement Officer"
+    },
+    "social": {
+      "twitter": "https://twitter.com/iitmadras",
+      "facebook": "https://www.facebook.com/iitmadras",
+      "instagram": "https://www.instagram.com/iitmadras/",
+      "linkedin": "https://www.linkedin.com/school/indian-institute-of-technology-madras/"
+    }
+  }$cfg$::jsonb
+WHERE id = 'a1000000-0000-0000-0000-000000000001';
+
+UPDATE tenants SET
+  website = 'https://www.nitt.edu',
+  logo_url = '/logos/seed-nitt.svg',
+  phone = '+91-431-250-3000',
+  address = 'Tanjavur Main Road, National Highway 67',
+  pincode = '620015',
+  settings = $cfg${
+    "placementSeasonLabel": "2025-26",
+    "websiteApi": "",
+    "placementOfficer": {
+      "name": "Dr. Priya Sharma",
+      "email": "placement@nitt.edu",
+      "designation": "Training & Placement Officer"
+    },
+    "social": {
+      "twitter": "https://twitter.com/nitttrichy",
+      "facebook": "https://www.facebook.com/nitttrichy",
+      "instagram": "",
+      "linkedin": "https://www.linkedin.com/school/national-institute-of-technology-tiruchirappalli/"
+    }
+  }$cfg$::jsonb
+WHERE id = 'a1000000-0000-0000-0000-000000000002';
+
+UPDATE tenants SET
+  website = 'https://www.bits-pilani.ac.in',
+  logo_url = '/logos/seed-bits.svg',
+  phone = '+91-1596-242-192',
+  address = 'Vidya Vihar, Pilani Campus',
+  pincode = '333031',
+  settings = $cfg${
+    "placementSeasonLabel": "2025-26",
+    "websiteApi": "",
+    "placementOfficer": {
+      "name": "Dr. Suresh Rao",
+      "email": "placement@bits.edu",
+      "designation": "Training & Placement Officer"
+    },
+    "social": {
+      "twitter": "https://twitter.com/bitspilaniindia",
+      "facebook": "https://www.facebook.com/bitspilani",
+      "instagram": "",
+      "linkedin": "https://www.linkedin.com/school/birla-institute-of-technology-and-science-pilani/"
+    }
+  }$cfg$::jsonb
+WHERE id = 'a1000000-0000-0000-0000-000000000003';
+
 -- 2. Create Users
 -- Super Admin
 INSERT INTO users (id, email, password_hash, role, first_name, last_name, is_active, is_verified) VALUES
 ('b1000000-0000-0000-0000-000000000001', 'admin@placementhub.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'super_admin', 'Platform', 'Admin', true, true);
+
+-- Super Admin brand mark (sidebar / topbar when using avatar pipeline)
+UPDATE users SET avatar_url = '/logos/seed-placementhub.svg' WHERE id = 'b1000000-0000-0000-0000-000000000001';
 
 -- College Admins
 INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_name, is_active, is_verified) VALUES
@@ -83,13 +158,13 @@ INSERT INTO college_settings (tenant_id, max_offers_per_student, offer_acceptanc
 ('a1000000-0000-0000-0000-000000000002', 1, 5, 6.5, '2026-08-01', '2027-05-31'),
 ('a1000000-0000-0000-0000-000000000003', 2, 7, 6.0, '2026-08-01', '2027-05-31');
 
--- 4. Employer Profiles
-INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry, company_type, company_size, website, description, headquarters, locations) VALUES
-('c1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004', 'TechCorp Solutions', 'techcorp', 'Information Technology', 'mnc', '10000+', 'https://techcorp.com', 'Leading global technology solutions provider specializing in AI, cloud computing, and enterprise software.', 'Bangalore, India', ARRAY['Bangalore', 'Hyderabad', 'Mumbai', 'Pune']),
-('c1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000005', 'GlobalSoft Technologies', 'globalsoft', 'Information Technology', 'mnc', '5000-10000', 'https://globalsoft.com', 'Enterprise software development and consulting company with operations in 20+ countries.', 'Pune, India', ARRAY['Pune', 'Chennai', 'Noida']),
-('c1000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000006', 'Infosys Limited', 'infosys', 'Information Technology', 'mnc', '10000+', 'https://infosys.com', 'Global leader in next-generation digital services and consulting.', 'Bangalore, India', ARRAY['Bangalore', 'Mysuru', 'Pune', 'Hyderabad', 'Chennai']),
-('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 'https://nitt.edu', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
-('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 'https://bits-alumni.org', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']);
+-- 4. Employer Profiles (logo_url seeds — used by auth + employer profile UI; not name-guessed)
+INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry, company_type, company_size, website, logo_url, description, headquarters, locations) VALUES
+('c1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004', 'TechCorp Solutions', 'techcorp', 'Information Technology', 'mnc', '10000+', 'https://techcorp.com', '/logos/seed-techcorp.svg', 'Leading global technology solutions provider specializing in AI, cloud computing, and enterprise software.', 'Bangalore, India', ARRAY['Bangalore', 'Hyderabad', 'Mumbai', 'Pune']),
+('c1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000005', 'GlobalSoft Technologies', 'globalsoft', 'Information Technology', 'mnc', '5000-10000', 'https://globalsoft.com', '/logos/seed-globalsoft.svg', 'Enterprise software development and consulting company with operations in 20+ countries.', 'Pune, India', ARRAY['Pune', 'Chennai', 'Noida']),
+('c1000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000006', 'Infosys Limited', 'infosys', 'Information Technology', 'mnc', '10000+', 'https://infosys.com', '/logos/seed-infosys.svg', 'Global leader in next-generation digital services and consulting.', 'Bangalore, India', ARRAY['Bangalore', 'Mysuru', 'Pune', 'Hyderabad', 'Chennai']),
+('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 'https://nitt.edu', '/logos/seed-nitt.svg', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
+('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 'https://bits-alumni.org', '/logos/seed-bits.svg', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']);
 
 -- 4b. Employer campus approvals: none in seed — employers request tie-ups from the app.
 

@@ -1,22 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await getServerSession(authOptions);
-    const tenantId = session?.user?.tenantId
-      || (await query(`SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1`)).rows[0]?.id
-      || null;
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
+    const tenantId = resolveDataEntryTenantId(gate.session, request.nextUrl.searchParams.get('tenantId'));
     if (!tenantId) {
-      return NextResponse.json({
-        tenantUsers: [],
-        studentUsers: [],
-        studentProfiles: [],
-        drives: [],
-        employers: [],
-      });
+      return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
     }
 
     const [tenantUsersRes, studentUsersRes, studentsRes, drivesRes, employersRes] = await Promise.all([

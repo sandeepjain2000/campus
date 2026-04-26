@@ -57,9 +57,11 @@ export async function POST(request) {
       description = '',
       driveType = 'on_campus',
       driveDate = null,
-      venue = 'TBD',
+      venue: venueIn,
       jobId = null,
     } = body;
+    const venue =
+      typeof venueIn === 'string' && venueIn.trim().length > 0 ? venueIn.trim() : null;
 
     if (!tenantId || !title?.trim()) {
       return NextResponse.json({ error: 'tenantId and title are required' }, { status: 400 });
@@ -103,7 +105,7 @@ export async function POST(request) {
            NULL, NULL, $8, 'requested', 100, 0
          )
          RETURNING id, title, drive_date, tenant_id`,
-        [tenantId, emp.id, jobId || null, title.trim(), description || '', driveType, driveDate || null, venue || 'TBD'],
+        [tenantId, emp.id, jobId || null, title.trim(), description || '', driveType, driveDate || null, venue],
       );
 
       const row = ins.rows[0];
@@ -136,7 +138,7 @@ export async function POST(request) {
           type: driveType,
           status: 'requested',
           registered: 0,
-          venue: venue || 'TBD',
+          venue,
         },
       };
     });

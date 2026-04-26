@@ -1,26 +1,24 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 
 const ALLOWED_STATUS = new Set(['pending', 'accepted', 'rejected', 'expired', 'revoked']);
 
-async function assertAccess() {
-  const session = await getServerSession(authOptions);
-  return session || null;
+function tenantFromRequest(gateSession, request, body) {
+  if (body && typeof body === 'object' && 'tenantId' in body) {
+    return resolveDataEntryTenantId(gateSession, body.tenantId);
+  }
+  return resolveDataEntryTenantId(gateSession, request.nextUrl.searchParams.get('tenantId'));
 }
 
-async function resolveTenantId(session) {
-  if (session?.user?.tenantId) return session.user.tenantId;
-  const fallback = await query(`SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1`);
-  return fallback.rows[0]?.id || null;
-}
-
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await assertAccess();
-    const tenantId = await resolveTenantId(session);
-    if (!tenantId) return NextResponse.json({ offers: [] });
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
+    const tenantId = resolveDataEntryTenantId(gate.session, request.nextUrl.searchParams.get('tenantId'));
+    if (!tenantId) return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
+
     const result = await query(
       `SELECT o.id, o.student_id, o.drive_id, o.employer_id, o.job_title, o.location, o.salary, o.status, o.joining_date,
               u.first_name, u.last_name, u.email, d.title AS drive_title, e.company_name
@@ -42,9 +40,13 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    await assertAccess();
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
 
     const body = await request.json();
+    const tenantId = tenantFromRequest(gate.session, request, body);
+    if (!tenantId) return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
+
     const studentId = String(body?.studentId || '').trim();
     const driveId = String(body?.driveId || '').trim() || null;
     const employerId = String(body?.employerId || '').trim() || null;
@@ -59,6 +61,14 @@ export async function POST(request) {
     }
     if (!ALLOWED_STATUS.has(status)) {
       return NextResponse.json({ error: 'Invalid offer status' }, { status: 400 });
+    }
+
+    const studentOk = await query(
+      `SELECT 1 FROM student_profiles WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
+      [studentId, tenantId]
+    );
+    if (!studentOk.rows.length) {
+      return NextResponse.json({ error: 'Student profile not in this tenant' }, { status: 400 });
     }
 
     const created = await query(
@@ -87,10 +97,13 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
-    const session = await assertAccess();
-    const tenantId = await resolveTenantId(session);
-    if (!tenantId) return NextResponse.json({ error: 'No tenant available for update' }, { status: 400 });
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
     const body = await request.json();
+    const tenantId = tenantFromRequest(gate.session, request, body);
+    if (!tenantId) return NextResponse.json({ error: 'No tenant available for update' }, { status: 400 });
+
     const id = String(body?.id || '').trim();
     const driveId = String(body?.driveId || '').trim() || null;
     const employerId = String(body?.employerId || '').trim() || null;
@@ -119,10 +132,13 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
-    const session = await assertAccess();
-    const tenantId = await resolveTenantId(session);
-    if (!tenantId) return NextResponse.json({ error: 'No tenant available for delete' }, { status: 400 });
+    const gate = await requireDataEntrySession();
+    if (!gate.ok) return gate.response;
+
     const body = await request.json();
+    const tenantId = tenantFromRequest(gate.session, request, body);
+    if (!tenantId) return NextResponse.json({ error: 'No tenant available for delete' }, { status: 400 });
+
     const id = String(body?.id || '').trim();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
     await query(

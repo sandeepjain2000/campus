@@ -69,7 +69,7 @@ export default function CollegeInternshipResultsPage() {
       <div className="animate-fadeIn" style={{ padding: '2rem', color: 'var(--danger-600)' }}>
         <p>{error.message || 'Could not load internship results.'}</p>
         <p className="text-sm text-secondary" style={{ marginTop: '0.5rem' }}>
-          Check college admin access and database connectivity, then reload.
+          Confirm college admin access, then reload or contact support if this continues.
         </p>
       </div>
     );

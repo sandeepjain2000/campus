@@ -14,6 +14,9 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: pkg.version || '0.1.0',
     NEXT_PUBLIC_APP_GIT_SHA: gitShort,
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || '',
+    NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID: process.env.VERCEL_DEPLOYMENT_ID || '',
   },
   // Parent folder also has a package-lock.json; without this, Turbopack picks the wrong
   // workspace root and can crawl huge sibling folders (very slow / appears to hang).

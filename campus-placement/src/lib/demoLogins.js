@@ -1,0 +1,25 @@
+/** Seed / demo accounts for try-the-app flows (password is set in your DB seed). */
+export const DEMO_LOGINS = [
+  { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu', icon: '🎓', name: 'IIT Madras' },
+  { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu', icon: '🎓', name: 'NIT Trichy' },
+  { label: 'Student (BITS)', email: 'rohan.mehta@bits.edu', icon: '🎓', name: 'BITS Pilani' },
+  { label: 'Employer (TechCorp)', email: 'hr@techcorp.com', icon: '🏢', name: 'TechCorp Solutions' },
+  { label: 'Employer (Infosys)', email: 'hr@infosys.com', icon: '🏢', name: 'Infosys Limited' },
+  { label: 'Admin (IITM)', email: 'admin@iitm.edu', icon: '🏫', name: 'IIT Madras' },
+  { label: 'Admin (NITT)', email: 'admin@nitt.edu', icon: '🏫', name: 'NIT Trichy' },
+  { label: 'Super Admin', email: 'admin@placementhub.com', icon: '⚙️', name: 'PlacementHub' },
+  {
+    label: 'Placement Committee',
+    email: 'committee@iitm.edu',
+    icon: '🤝',
+    isDummy: true,
+    name: 'IIT Madras',
+  },
+];
+
+export function isDemoLoginsEnabled() {
+  return (
+    process.env.NODE_ENV === 'development' ||
+    process.env.NEXT_PUBLIC_SHOW_DEMO_LOGINS === 'true'
+  );
+}

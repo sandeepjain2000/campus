@@ -12,6 +12,7 @@ async function getEmployerByUser(userId) {
        ep.company_type,
        ep.company_size,
        ep.founded_year,
+       ep.logo_url,
        ep.website,
        ep.headquarters,
        ep.locations,
@@ -62,6 +63,7 @@ export async function PATCH(request) {
     const contactPhone = String(body?.contactPhone || '').trim();
     const headquarters = String(body?.headquarters || '').trim();
     const website = String(body?.website || '').trim();
+    const logoUrl = String(body?.logoUrl || '').trim();
     const locations = Array.isArray(body?.locations)
       ? body.locations.map((x) => String(x || '').trim()).filter(Boolean)
       : String(body?.locations || '')
@@ -77,9 +79,10 @@ export async function PATCH(request) {
            contact_phone = $4,
            headquarters = $5,
            website = $6,
-           locations = $7,
+           logo_url = $7,
+           locations = $8,
            updated_at = NOW()
-       WHERE id = $8`,
+       WHERE id = $9`,
       [
         description || null,
         contactPerson || null,
@@ -87,6 +90,7 @@ export async function PATCH(request) {
         contactPhone || null,
         headquarters || null,
         website || null,
+        logoUrl || null,
         locations,
         profile.id,
       ]

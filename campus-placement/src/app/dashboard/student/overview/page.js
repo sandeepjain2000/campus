@@ -6,13 +6,20 @@ import { FileEdit, CheckCircle, Award, Target, Calendar, IndianRupee, Globe, Bui
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to load dashboard');
+  }
+  return res.json();
+};
 
 export default function StudentOverviewPage() {
   const { data: session } = useSession();
-  const { data, error, isLoading } = useSWR('/api/student/dashboard', fetcher);
+  const { data, error, isLoading, mutate } = useSWR('/api/student/dashboard', fetcher);
 
-  if (error) return <PageError error={error} />;
+  if (error) return <PageError error={error} reset={() => mutate()} />;
 
   if (isLoading || !data) {
     return (

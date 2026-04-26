@@ -2,7 +2,6 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { getInitials, timeAgo } from '@/lib/utils';
-import { useToast } from '@/components/ToastProvider';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -12,7 +11,6 @@ const fetcher = async (url) => {
 };
 
 export default function AlertsEmailPage() {
-  const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/notifications', fetcher);
   const emails = useMemo(
     () =>
@@ -30,10 +28,6 @@ export default function AlertsEmailPage() {
   );
   const [openEmailId, setOpenEmailId] = useState(null);
   const [mailbox, setMailbox] = useState('inbox');
-
-  const showNotReady = (label) => {
-    addToast(`${label} is not available yet in this build.`, 'info');
-  };
 
   const handleOpen = async (id) => {
     setOpenEmailId(openEmailId === id ? null : id);
@@ -72,7 +66,7 @@ export default function AlertsEmailPage() {
           <h1>📨 Inbox & Alerts</h1>
           <p>System notifications, event coordination, and alerts.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => showNotReady('Compose alert')}>Compose Alert</button>
+        <button className="btn btn-primary" disabled title="Coming soon">Compose Alert</button>
       </div>
 
       <div className="card" style={{ flex: 1, padding: 0, display: 'flex', overflow: 'hidden' }}>
@@ -82,13 +76,13 @@ export default function AlertsEmailPage() {
           <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: mailbox === 'inbox' ? 'var(--primary-100)' : undefined, color: mailbox === 'inbox' ? 'var(--primary-700)' : 'var(--text-secondary)', fontWeight: mailbox === 'inbox' ? 600 : 400 }} onClick={() => setMailbox('inbox')}>
             📥 Inbox <span className="badge badge-accent" style={{ marginLeft: 'auto' }}>{Number(data?.unreadCount || 0)}</span>
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => { setMailbox('starred'); showNotReady('Starred'); }}>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} disabled title="Coming soon">
             ⭐ Starred
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => { setMailbox('sent'); showNotReady('Sent mailbox'); }}>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} disabled title="Coming soon">
             📤 Sent
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} onClick={() => { setMailbox('trash'); showNotReady('Trash'); }}>
+          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} disabled title="Coming soon">
             🗑️ Trash
           </button>
         </div>
@@ -134,14 +128,24 @@ export default function AlertsEmailPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{email.subject}</h2>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => showNotReady('Reply')}>Reply</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => showNotReady('Forward')}>Forward</button>
+                      <button className="btn btn-ghost btn-sm" disabled title="Coming soon">Reply</button>
+                      <button className="btn btn-ghost btn-sm" disabled title="Coming soon">Forward</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div className="avatar">{getInitials(email.sender)}</div>
                     <div>
-                      <div style={{ fontWeight: 600 }}>{email.sender} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>&lt;alerts@placementhub.edu&gt;</span></div>
+                      <div style={{ fontWeight: 600 }}>
+                        {email.sender}
+                        {data?.notificationSenderEmail ? (
+                          <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                            {' '}
+                            &lt;{data.notificationSenderEmail}&gt;
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> (in-app notification)</span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>to me, ccf-admin</div>
                     </div>
                     <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>{email.time}</div>

@@ -101,6 +101,11 @@ export async function GET() {
     }));
 
     return NextResponse.json({
+      totalStudents,
+      totalPlaced: placedStudents,
+      avgCTC: avgPackage,
+      highestCTC: highestPackage,
+      placementPercentage: placementRate,
       summary: {
         placementRate,
         avgPackage,

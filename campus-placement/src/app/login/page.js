@@ -6,6 +6,7 @@ import Link from 'next/link';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
+import { DEMO_LOGINS, isDemoLoginsEnabled } from '@/lib/demoLogins';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +15,32 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [filledFrom, setFilledFrom] = useState(''); // tracks which card was clicked
+  const [registeredBanner, setRegisteredBanner] = useState('');
   const toast = useToast();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const email = new URLSearchParams(window.location.search).get('email');
+    if (email) {
+      const match = DEMO_LOGINS.find((d) => d.email === email && !d.isDummy);
+      if (match) {
+        setFormData((prev) => ({ ...prev, email: match.email }));
+        setFilledFrom(match.email);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search).get('registered');
+    if (q === 'pending-platform') {
+      setRegisteredBanner(
+        'Registration received. Your account will be activated after platform approval — watch your inbox for email confirmation.',
+      );
+    } else if (q === 'true') {
+      setRegisteredBanner('Account created. You can sign in below.');
+    }
+  }, []);
 
   useEffect(() => {
     if (status !== 'authenticated' || !session?.user?.role) return;
@@ -37,17 +63,7 @@ export default function LoginPage() {
     );
   }
 
-  const demoLogins = [
-    { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu', icon: '🎓', name: 'IIT Madras' },
-    { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu', icon: '🎓', name: 'NIT Trichy' },
-    { label: 'Student (BITS)', email: 'rohan.mehta@bits.edu', icon: '🎓', name: 'BITS Pilani' },
-    { label: 'Employer (TechCorp)', email: 'hr@techcorp.com', icon: '🏢', name: 'TechCorp Solutions' },
-    { label: 'Employer (Infosys)', email: 'hr@infosys.com', icon: '🏢', name: 'Infosys Limited' },
-    { label: 'Admin (IITM)', email: 'admin@iitm.edu', icon: '🏫', name: 'IIT Madras' },
-    { label: 'Admin (NITT)', email: 'admin@nitt.edu', icon: '🏫', name: 'NIT Trichy' },
-    { label: 'Super Admin', email: 'admin@placementhub.com', icon: '⚙️', name: 'PlacementHub' },
-    { label: 'Placement Committee', email: 'committee@iitm.edu', icon: '🤝', isDummy: true, name: 'IIT Madras' },
-  ];
+  const showDemoLogins = isDemoLoginsEnabled();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,7 +76,7 @@ export default function LoginPage() {
         redirect: false,
       });
       if (result?.error) {
-        setError('Invalid email or password. Please try again.');
+        setError(result.error);
       } else {
         const res = await fetch('/api/auth/session');
         const sess = await res.json();
@@ -102,6 +118,22 @@ export default function LoginPage() {
 
           <h1 className="auth-title">Welcome back</h1>
           <p className="auth-subtitle">Sign in to your account to continue</p>
+
+          {registeredBanner && !error && (
+            <div
+              style={{
+                padding: '0.75rem 1rem',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: 'var(--radius-lg)',
+                color: '#166534',
+                fontSize: '0.875rem',
+                marginBottom: '1rem',
+              }}
+            >
+              {registeredBanner}
+            </div>
+          )}
 
           {error && (
             <div style={{
@@ -173,61 +205,66 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="auth-divider">or use a quick account</div>
-
-          {/* Quick-fill helper */}
-          <div style={{
-            background: 'linear-gradient(135deg, #fef9c3, #fef3c7)',
-            border: '1px solid #fde68a',
-            borderRadius: 'var(--radius-lg)',
-            padding: '0.6rem 0.9rem',
-            fontSize: '0.75rem',
-            color: '#92400e',
-            marginBottom: '0.75rem',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.4rem',
-          }}>
-            <span>💡</span>
-            <span>
-              <strong>Quick fill:</strong> Click any card below to auto-fill email into the login form, enter password, then click <strong>Sign In</strong>.
-            </span>
-          </div>
-
-          <div className="role-select-grid">
-            {demoLogins.map((demo) => {
-              const isSelected = filledFrom === demo.email;
-              return (
-                <button
-                  key={demo.email}
-                  className="role-card"
-                  onClick={() => handleDemoCardClick(demo)}
-                  style={{
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    outline: isSelected ? '2px solid var(--primary-500)' : 'none',
-                    background: isSelected ? 'var(--primary-50)' : undefined,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                    <EntityLogo name={demo.name} size="xs" shape="rounded" />
-                    <span className="role-card-name" style={{ fontWeight: 700, fontSize: '0.8rem' }}>
-                      {demo.label}
-                      {isSelected && <span style={{ color: 'var(--primary-500)', marginLeft: '0.3rem' }}>✓</span>}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem', marginTop: '0.25rem' }}>
-                    <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)', wordBreak: 'break-all' }}>
-                      📧 {demo.email}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)' }}>
-                      🔑 Auto-fills email
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {showDemoLogins ? (
+            <>
+              <div className="auth-divider">or use a quick account</div>
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #fef9c3, #fef3c7)',
+                  border: '1px solid #fde68a',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '0.6rem 0.9rem',
+                  fontSize: '0.75rem',
+                  color: '#92400e',
+                  marginBottom: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.4rem',
+                }}
+              >
+                <span>💡</span>
+                <span>
+                  <strong>Demo / staging:</strong> Quick-fill seed accounts. Set{' '}
+                  <code className="font-mono">NEXT_PUBLIC_SHOW_DEMO_LOGINS=true</code> to show this in production (not recommended).
+                </span>
+              </div>
+              <div className="role-select-grid">
+                {DEMO_LOGINS.map((demo) => {
+                  const isSelected = filledFrom === demo.email;
+                  return (
+                    <button
+                      key={demo.email}
+                      type="button"
+                      className="role-card"
+                      onClick={() => handleDemoCardClick(demo)}
+                      style={{
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        outline: isSelected ? '2px solid var(--primary-500)' : 'none',
+                        background: isSelected ? 'var(--primary-50)' : undefined,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                        <EntityLogo name={demo.name} size="xs" shape="rounded" />
+                        <span className="role-card-name" style={{ fontWeight: 700, fontSize: '0.8rem' }}>
+                          {demo.label}
+                          {isSelected && <span style={{ color: 'var(--primary-500)', marginLeft: '0.3rem' }}>✓</span>}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem', marginTop: '0.25rem' }}>
+                        <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)', wordBreak: 'break-all' }}>
+                          📧 {demo.email}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)' }}>
+                          🔑 Auto-fills email
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
 
           <div className="auth-footer">
             Don&apos;t have an account? <Link href="/register">Sign up</Link>

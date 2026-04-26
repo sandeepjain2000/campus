@@ -1,8 +1,10 @@
+import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { hash } from 'bcryptjs';
+import { parseCsvLine } from '@/lib/csvParse';
 
 export async function POST(req) {
   try {
@@ -24,17 +26,15 @@ export async function POST(req) {
     }
 
     const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim() !== '');
+    const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
     if (lines.length < 2) {
       return NextResponse.json({ error: 'File is empty or missing headers' }, { status: 400 });
     }
 
-    // Basic CSV parse (Header: Name,Email,RollNumber,Department,CGPA)
-    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+    const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
     const expectedHeaders = ['name', 'email', 'rollnumber', 'department', 'cgpa'];
-    
-    // Check if essential headers exist
-    if (!expectedHeaders.every(h => headers.includes(h))) {
+
+    if (!expectedHeaders.every((h) => headers.includes(h))) {
       return NextResponse.json({ error: `Missing required headers. Expected: ${expectedHeaders.join(', ')}` }, { status: 400 });
     }
 
@@ -46,11 +46,11 @@ export async function POST(req) {
 
     let processedCount = 0;
     const errors = [];
-    const defaultPasswordHash = await hash('ChangeMe@123', 10);
+    /** @type {{ email: string, temporaryPassword: string }[]} */
+    const newUserCredentials = [];
 
-    // Skip header row
     for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(',').map(p => p.trim());
+      const parts = parseCsvLine(lines[i]);
       if (parts.length < expectedHeaders.length) continue;
 
       const name = parts[nameIdx];
@@ -68,10 +68,7 @@ export async function POST(req) {
         const lastName = rest.join(' ') || null;
         const normalizedEmail = email.toLowerCase();
 
-        const existingUser = await query(
-          `SELECT id, tenant_id FROM users WHERE email = $1 LIMIT 1`,
-          [normalizedEmail],
-        );
+        const existingUser = await query(`SELECT id, tenant_id FROM users WHERE email = $1 LIMIT 1`, [normalizedEmail]);
 
         let userId = existingUser.rows[0]?.id || null;
         if (existingUser.rows[0] && existingUser.rows[0].tenant_id !== tenantId) {
@@ -79,20 +76,23 @@ export async function POST(req) {
         }
 
         if (!userId) {
+          const oneTimePassword = randomBytes(15).toString('base64url');
+          const passwordHash = await hash(oneTimePassword, 10);
           const insertedUser = await query(
             `INSERT INTO users (
                tenant_id, email, password_hash, role, first_name, last_name, is_verified, is_active
              ) VALUES ($1, $2, $3, 'student', $4, $5, true, true)
              RETURNING id`,
-            [tenantId, normalizedEmail, defaultPasswordHash, firstName || 'Student', lastName],
+            [tenantId, normalizedEmail, passwordHash, firstName || 'Student', lastName]
           );
           userId = insertedUser.rows[0]?.id;
+          newUserCredentials.push({ email: normalizedEmail, temporaryPassword: oneTimePassword });
         } else {
           await query(
             `UPDATE users
              SET first_name = $1, last_name = $2, role = 'student', is_active = true, updated_at = NOW()
              WHERE id = $3`,
-            [firstName || 'Student', lastName, userId],
+            [firstName || 'Student', lastName, userId]
           );
         }
 
@@ -106,7 +106,7 @@ export async function POST(req) {
              department = EXCLUDED.department,
              cgpa = EXCLUDED.cgpa,
              updated_at = NOW()`,
-          [userId, tenantId, rollNumber, department, cgpa],
+          [userId, tenantId, rollNumber, department, cgpa]
         );
 
         processedCount++;
@@ -119,10 +119,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Failed to process any records', details: errors }, { status: 400 });
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: `Successfully processed ${processedCount} student(s)`,
-      errors: errors.length > 0 ? errors : undefined 
+      newUserCredentials: newUserCredentials.length > 0 ? newUserCredentials : undefined,
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
     console.error('Bulk upload error:', error);

@@ -3,6 +3,24 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+function calculateProfileCompletion(profile) {
+  if (!profile) return 0;
+  const checks = [
+    profile.prn,
+    profile.roll_number,
+    profile.phone,
+    profile.course,
+    profile.branch,
+    profile.current_semester,
+    profile.cgpa,
+    profile.tenth_percentage,
+    profile.twelfth_percentage,
+    profile.resume_url,
+  ];
+  const filled = checks.filter((v) => v != null && String(v).trim() !== '').length;
+  return Math.round((filled / checks.length) * 100);
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -63,13 +81,34 @@ export async function GET(request) {
       LIMIT 3
     `, [userId]);
 
+    const profileQuery = await query(
+      `
+      SELECT
+        prn,
+        roll_number,
+        phone,
+        course,
+        branch,
+        current_semester,
+        cgpa,
+        tenth_percentage,
+        twelfth_percentage,
+        resume_url
+      FROM student_profiles
+      WHERE user_id = $1
+      LIMIT 1
+      `,
+      [userId]
+    );
+    const profileCompletion = calculateProfileCompletion(profileQuery.rows[0]);
+
     return NextResponse.json({
       stats: {
         totalApplications: parseInt(statsQuery.rows[0].totalApplications || 0),
         shortlisted: parseInt(statsQuery.rows[0].shortlisted || 0),
         offersReceived: parseInt(statsQuery.rows[0].offersReceived || 0),
         upcomingDrives: drivesQuery.rows.length,
-        profileCompletion: 80, // Dynamic calculation later
+        profileCompletion,
       },
       recentDrives: drivesQuery.rows.map(d => ({
         ...d,

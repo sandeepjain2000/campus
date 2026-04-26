@@ -97,7 +97,10 @@ export default function StudentDrivesPage() {
 
   const monthOptions = useMemo(() => {
     const opts = [];
-    for (let y = 2026; y <= 2027; y++) {
+    const nowDate = new Date();
+    const startYear = nowDate.getFullYear() - 1;
+    const endYear = nowDate.getFullYear() + 2;
+    for (let y = startYear; y <= endYear; y++) {
       for (let m = 0; m < 12; m++) {
         const key = `${y}-${String(m + 1).padStart(2, '0')}`;
         const label = new Date(y, m).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });

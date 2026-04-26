@@ -26,7 +26,7 @@ export default function CollegeCalendarPage() {
       startDate: e.start_date ? new Date(e.start_date) : null,
       endDate: e.end_date ? new Date(e.end_date) : null,
     })),
-    [data?.events]
+    [data]
   );
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();

@@ -13,26 +13,34 @@ const fetcher = async (url) => {
 
 export default function EmployerProfilePage() {
   const [editing, setEditing] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const { addToast } = useToast();
   const { data, error, mutate } = useSWR('/api/employer/profile', fetcher);
   const [form, setForm] = useState(null);
   const profile = useMemo(() => {
     const p = data?.profile || {};
+    const str = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '—');
+    const numOrNull = (v) => {
+      if (v == null || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
     return {
-      companyName: p.company_name || '—',
-      industry: p.industry || '—',
-      companyType: p.company_type || '—',
-      companySize: p.company_size || '—',
-      founded: p.founded_year || '—',
-      website: p.website || '',
-      headquarters: p.headquarters || '—',
+      companyName: str(p.company_name),
+      industry: str(p.industry),
+      companyType: str(p.company_type),
+      companySize: str(p.company_size),
+      founded: str(p.founded_year),
+      logoUrl: p.logo_url != null && String(p.logo_url).trim() !== '' ? String(p.logo_url).trim() : '',
+      website: p.website != null && String(p.website).trim() !== '' ? String(p.website).trim() : '',
+      headquarters: str(p.headquarters),
       locations: Array.isArray(p.locations) ? p.locations : [],
-      description: p.description || '—',
-      contactPerson: p.contact_person || '—',
-      contactEmail: p.contact_email || '—',
-      contactPhone: p.contact_phone || '—',
-      totalHires: p.total_hires || 0,
-      reliabilityScore: p.reliability_score || 0,
+      description: str(p.description),
+      contactPerson: str(p.contact_person),
+      contactEmail: str(p.contact_email),
+      contactPhone: str(p.contact_phone),
+      totalHires: numOrNull(p.total_hires),
+      reliabilityScore: numOrNull(p.reliability_score),
     };
   }, [data?.profile]);
 
@@ -44,6 +52,7 @@ export default function EmployerProfilePage() {
         contactEmail: profile.contactEmail === '—' ? '' : profile.contactEmail,
         contactPhone: profile.contactPhone === '—' ? '' : profile.contactPhone,
         headquarters: profile.headquarters === '—' ? '' : profile.headquarters,
+        logoUrl: profile.logoUrl || '',
         website: profile.website || '',
         locations: profile.locations.join(', '),
       });
@@ -69,6 +78,53 @@ export default function EmployerProfilePage() {
     }
   };
 
+  const onLogoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('Image too large (max 2MB).', 'warning');
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const presignRes = await fetch('/api/employer/profile/logo/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream', fileSize: file.size }),
+      });
+      const presign = await presignRes.json();
+      if (!presignRes.ok) {
+        addToast(presign.error || 'Failed to start logo upload', 'error');
+        return;
+      }
+      const ph = {};
+      if (presign.contentType) ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
+      const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
+      if (!putRes.ok) {
+        addToast('Logo upload failed while sending file to storage.', 'error');
+        return;
+      }
+      const completeRes = await fetch('/api/employer/profile/logo/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_url: presign.fileUrl }),
+      });
+      const complete = await completeRes.json();
+      if (!completeRes.ok) {
+        addToast(complete.error || 'Logo uploaded but could not be saved.', 'error');
+        return;
+      }
+      if (form) setForm((p) => ({ ...p, logoUrl: presign.fileUrl }));
+      await mutate();
+      addToast('Company logo uploaded.', 'success');
+    } catch {
+      addToast('Upload failed (network).', 'error');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   return (
     <div className="animate-fadeIn">
       {error ? <div className="card text-secondary" style={{ marginBottom: '1rem' }}>{error.message}</div> : null}
@@ -76,6 +132,7 @@ export default function EmployerProfilePage() {
         <div className="profile-avatar" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <EntityLogo
             name={profile.companyName}
+            logoUrl={profile.logoUrl}
             website={profile.website}
             size="xl"
             shape="rounded"
@@ -86,9 +143,19 @@ export default function EmployerProfilePage() {
           <p>{profile.industry} • {profile.companyType} • Founded {profile.founded}</p>
           <div className="profile-meta">
             <div className="profile-meta-item">📍 {profile.headquarters}</div>
-            <div className="profile-meta-item">👥 {profile.companySize} employees</div>
-            <div className="profile-meta-item">⭐ {profile.reliabilityScore}/5 Rating</div>
-            <div className="profile-meta-item">🎓 {profile.totalHires} Total Hires</div>
+            <div className="profile-meta-item">
+              {profile.companySize === '—' ? '👥 Company size —' : `👥 ${profile.companySize} employees`}
+            </div>
+            <div className="profile-meta-item">
+              ⭐{' '}
+              {profile.reliabilityScore != null
+                ? `${profile.reliabilityScore}/5 rating`
+                : 'Not rated yet'}
+            </div>
+            <div className="profile-meta-item">
+              🎓{' '}
+              {profile.totalHires != null ? `${profile.totalHires} total hires` : 'Hires not recorded'}
+            </div>
           </div>
         </div>
         <button className="btn btn-secondary" onClick={toggleEdit} style={{ position: 'relative', zIndex: 1 }}>
@@ -104,7 +171,18 @@ export default function EmployerProfilePage() {
             <div className="drive-info-item"><div className="drive-info-label">Type</div><div className="drive-info-value">{profile.companyType}</div></div>
             <div className="drive-info-item"><div className="drive-info-label">Size</div><div className="drive-info-value">{profile.companySize}</div></div>
             <div className="drive-info-item"><div className="drive-info-label">Founded</div><div className="drive-info-value">{profile.founded}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Website</div><div className="drive-info-value"><a href={profile.website}>{profile.website}</a></div></div>
+            <div className="drive-info-item">
+              <div className="drive-info-label">Website</div>
+              <div className="drive-info-value">
+                {profile.website ? (
+                  <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer">
+                    {profile.website}
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -135,6 +213,13 @@ export default function EmployerProfilePage() {
               <input className="form-input" value={form.contactEmail} onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))} placeholder="Contact email" />
               <input className="form-input" value={form.contactPhone} onChange={(e) => setForm((p) => ({ ...p, contactPhone: e.target.value }))} placeholder="Contact phone" />
               <input className="form-input" value={form.headquarters} onChange={(e) => setForm((p) => ({ ...p, headquarters: e.target.value }))} placeholder="Headquarters" />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label className={`btn btn-secondary btn-sm${logoUploading ? ' disabled' : ''}`} style={{ cursor: logoUploading ? 'wait' : 'pointer', margin: 0 }}>
+                  {logoUploading ? 'Uploading logo…' : 'Upload logo'}
+                  <input type="file" accept="image/*" hidden disabled={logoUploading} onChange={onLogoChange} />
+                </label>
+                <input className="form-input" value={form.logoUrl} onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))} placeholder="Or paste logo image URL" />
+              </div>
               <input className="form-input" value={form.website} onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))} placeholder="Website" />
               <input className="form-input" value={form.locations} onChange={(e) => setForm((p) => ({ ...p, locations: e.target.value }))} placeholder="Locations (comma separated)" />
               <div>

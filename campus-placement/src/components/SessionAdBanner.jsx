@@ -7,6 +7,12 @@ import { X } from 'lucide-react';
 const DISMISS_KEY = 'placementhub_session_ad_dismissed';
 const ROTATION_MS = 15 * 60 * 1000;
 
+function showSessionAds() {
+  return (
+    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_SESSION_ADS === 'true'
+  );
+}
+
 const ADS = [
   {
     id: 'prep',
@@ -34,16 +40,16 @@ const ADS = [
   },
 ];
 
-export default function SessionAdBanner() {
-  const [mounted, setMounted] = useState(false);
+function SessionAdBannerInner() {
   const [visible, setVisible] = useState(false);
   const [adIndex, setAdIndex] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
     if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem(DISMISS_KEY) === '1') return;
-    setVisible(true);
+    const dismissed = sessionStorage.getItem(DISMISS_KEY) === '1';
+    if (dismissed) return;
+    const t = window.setTimeout(() => setVisible(true), 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -59,7 +65,7 @@ export default function SessionAdBanner() {
     setVisible(false);
   }, []);
 
-  if (!mounted || !visible) return null;
+  if (!visible) return null;
 
   const ad = ADS[adIndex];
 
@@ -101,4 +107,9 @@ export default function SessionAdBanner() {
       </aside>
     </>
   );
+}
+
+export default function SessionAdBanner() {
+  if (!showSessionAds()) return null;
+  return <SessionAdBannerInner />;
 }

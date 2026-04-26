@@ -26,9 +26,19 @@ export async function GET() {
       [session.user.id],
     );
 
+    const settingsRes = await query(
+      `SELECT
+         COALESCE(NULLIF(TRIM(settings->'adminSettings'->>'fromEmail'), ''), NULLIF(TRIM(settings->'adminSettings'->>'supportEmail'), '')) AS sender
+       FROM tenants
+       ORDER BY created_at ASC
+       LIMIT 1`
+    );
+    const notificationSenderEmail = settingsRes.rows[0]?.sender || null;
+
     return NextResponse.json({
       notifications: res.rows,
       unreadCount: unread.rows[0]?.c ?? 0,
+      notificationSenderEmail,
     });
   } catch (e) {
     console.error('GET /api/notifications', e);

@@ -1,11 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { Users, CheckCircle, Building2, Target, BarChart2, Activity, Zap, ClipboardList, GraduationCap, FileText, Download, Plus } from 'lucide-react';
 import { DashboardSocialWireframeDock, SocialWireframeModal } from '@/components/wireframe/SocialWireframeToolkit';
 import { useToast } from '@/components/ToastProvider';
+import { getCurrentAcademicYear } from '@/lib/academicYear';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -16,11 +17,34 @@ const fetcher = async (url) => {
   return json;
 };
 
+/** Salary in DB is annual INR (see seed offers); display as ₹X LPA */
+function rupeesToLpaLabel(rupees) {
+  const n = Number(rupees);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const lpa = n / 100_000;
+  const digits = lpa >= 100 ? 0 : lpa >= 10 ? 1 : 2;
+  return `₹${lpa.toFixed(digits)} LPA`;
+}
+
 export default function CollegeOverviewPage() {
   const { data: session } = useSession();
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/college/dashboard', fetcher);
+  const { data: settingsData } = useSWR('/api/college/settings', fetcher);
+  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [socialModalPlatform, setSocialModalPlatform] = useState(null);
+  const showNotReady = (label) => addToast(`${label} is not available yet in this build.`, 'info');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncYear = () => {
+      const saved = window.sessionStorage.getItem('activeAcademicYear');
+      if (saved) setAcademicYear(saved);
+    };
+    syncYear();
+    window.addEventListener('placementhub-academic-year', syncYear);
+    return () => window.removeEventListener('placementhub-academic-year', syncYear);
+  }, []);
 
   const exportOverview = () => {
     const payload = {
@@ -107,6 +131,9 @@ export default function CollegeOverviewPage() {
     documentsCount: 0,
   };
 
+  const avgPackageLabel = rupeesToLpaLabel(stats.avgPackage);
+  const highestPackageLabel = rupeesToLpaLabel(stats.highestPackage);
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -115,7 +142,10 @@ export default function CollegeOverviewPage() {
             <Building2 className="text-secondary" /> College Dashboard
           </h1>
           <p className="text-secondary">
-            {session?.user?.tenantName || 'Indian Institute of Technology, Mumbai'} • Placement Season 2026-27
+            {(settingsData?.institution?.collegeName || '').trim() ||
+              session?.user?.tenantName?.trim() ||
+              'Your institution'}{' '}
+            • Placement Season {(settingsData?.placementSeasonLabel || '').trim() || academicYear}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -149,7 +179,13 @@ export default function CollegeOverviewPage() {
           </div>
           <div className="stats-card-value">{stats.placedStudents}</div>
           <div className="stats-card-label">Students Placed</div>
-          <div className="stats-card-change up">↑ {stats.placementRate}% placed</div>
+          {stats.placementRate > 0 ? (
+            <div className="stats-card-change up">↑ {stats.placementRate}% placed</div>
+          ) : (
+            <div className="text-xs text-tertiary" style={{ marginTop: '0.5rem' }}>
+              {stats.placementRate}% placed — add placement data to track trend
+            </div>
+          )}
         </div>
         <div className="stats-card amber">
           <div className="stats-card-icon amber">
@@ -187,16 +223,24 @@ export default function CollegeOverviewPage() {
         </div>
         <div className="stats-card" style={{ textAlign: 'center' }}>
           <div className="stats-card-label">Average Package</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-600)' }}>₹12.4 LPA</div>
-          <div className="stats-card-change up" style={{ justifyContent: 'center' }}>
-            ↑ 8.5% vs last year
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-600)' }}>
+            {avgPackageLabel ?? '—'}
+          </div>
+          <div className="text-xs text-secondary" style={{ marginTop: '0.5rem', lineHeight: 1.4 }}>
+            {avgPackageLabel
+              ? 'Mean CTC from accepted offers for your students (INR → LPA).'
+              : 'No accepted offers with salary recorded yet.'}
           </div>
         </div>
         <div className="stats-card" style={{ textAlign: 'center' }}>
           <div className="stats-card-label">Highest Package</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--success-600)' }}>₹45 LPA</div>
-          <div className="stats-card-change up" style={{ justifyContent: 'center' }}>
-            ↑ 12% vs last year
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--success-600)' }}>
+            {highestPackageLabel ?? '—'}
+          </div>
+          <div className="text-xs text-secondary" style={{ marginTop: '0.5rem', lineHeight: 1.4 }}>
+            {highestPackageLabel
+              ? 'Top accepted-offer CTC for your campus (INR → LPA).'
+              : 'No accepted offers with salary recorded yet.'}
           </div>
         </div>
       </div>

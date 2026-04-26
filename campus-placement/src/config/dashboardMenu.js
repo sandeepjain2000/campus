@@ -2,7 +2,7 @@ import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
-  CalendarDays, PartyPopper, SlidersHorizontal, Handshake,
+  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -128,6 +128,7 @@ export const menuConfig = {
         items: [
           { label: 'Company Profile', href: '/dashboard/employer/profile', icon: Building2 },
           { label: 'Sponsorships', href: '/dashboard/employer/sponsorships', icon: Gem },
+          { label: 'Campus guest needs', href: '/dashboard/employer/campus-guest-needs', icon: Mic },
         ],
       },
       {
@@ -194,6 +195,7 @@ export const menuConfig = {
         title: '👨‍🎓 Students & Applications',
         items: [
           { label: 'Students', href: '/dashboard/college/students', icon: Users },
+          { label: 'Enrollment key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
           { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
           { label: 'Offers', href: '/dashboard/college/offers', icon: Send },
         ],
@@ -220,6 +222,7 @@ export const menuConfig = {
         items: [
           { label: 'Calendar', href: '/dashboard/college/calendar', icon: CalendarDays },
           { label: 'Events', href: '/dashboard/college/events', icon: PartyPopper },
+          { label: 'Guest faculty & lectures', href: '/dashboard/college/guest-engagements', icon: Mic },
         ],
       },
       {
@@ -254,6 +257,7 @@ export const menuConfig = {
         title: 'Platform',
         items: [
           { label: 'Colleges', href: '/dashboard/admin/colleges', icon: Building },
+          { label: 'Pending registrations', href: '/dashboard/admin/pending-registrations', icon: Inbox },
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },

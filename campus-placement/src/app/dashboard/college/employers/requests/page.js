@@ -82,13 +82,13 @@ export default function EmployerRequestsPage() {
                         <span className="font-semibold">{req.company_name}</span>
                       </div>
                     </td>
-                    <td>{req.industry || 'N/A'}</td>
+                    <td>{req.industry || '—'}</td>
                     <td>
                       {req.website ? (
                         <a href={req.website} target="_blank" rel="noreferrer" className="text-secondary hover:text-primary">
                           {req.website.replace(/^https?:\/\//, '')}
                         </a>
-                      ) : 'N/A'}
+                      ) : '—'}
                     </td>
                     <td>{formatDate(req.created_at)}</td>
                     <td>

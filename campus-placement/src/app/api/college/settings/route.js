@@ -19,7 +19,7 @@ export async function GET() {
 
     const res = await query(
       `SELECT
-        name, website, email, phone, address, city, state, pincode,
+        name, website, logo_url, email, phone, address, city, state, pincode,
         accreditation, naac_grade, nirf_rank, settings
        FROM tenants
        WHERE id = $1::uuid`,
@@ -34,7 +34,9 @@ export async function GET() {
 
     return NextResponse.json({
       website: t.website || '',
+      logoUrl: t.logo_url || '',
       websiteApi: settings.websiteApi || '',
+      placementSeasonLabel: settings.placementSeasonLabel || '',
       social: {
         twitter: settings.social?.twitter || '',
         facebook: settings.social?.facebook || '',
@@ -60,7 +62,7 @@ export async function GET() {
       placementOfficer: {
         name: settings.placementOfficer?.name || session.user.name || '',
         email: settings.placementOfficer?.email || session.user.email || '',
-        designation: settings.placementOfficer?.designation || 'Training & Placement Officer',
+        designation: settings.placementOfficer?.designation || '',
       },
     });
   } catch (error) {
@@ -81,6 +83,7 @@ export async function POST(request) {
 
     const body = await request.json();
     const website = body?.website || '';
+    const logoUrl = body?.logoUrl || '';
     const websiteApi = body?.websiteApi || '';
     const social = body?.social || {};
     const institution = body?.institution || {};
@@ -93,6 +96,7 @@ export async function POST(request) {
     const mergedSettings = {
       ...existingSettings,
       websiteApi,
+      placementSeasonLabel: String(body?.placementSeasonLabel ?? existingSettings.placementSeasonLabel ?? '').trim(),
       social: {
         ...(existingSettings.social || {}),
         twitter: social.twitter || '',
@@ -113,21 +117,23 @@ export async function POST(request) {
        SET
          name = $1,
          website = $2,
-         email = $3,
-         phone = $4,
-         address = $5,
-         city = $6,
-         state = $7,
-         pincode = $8,
-         accreditation = $9,
-         naac_grade = $10,
-         nirf_rank = $11,
-         settings = $12::jsonb,
+         logo_url = $3,
+         email = $4,
+         phone = $5,
+         address = $6,
+         city = $7,
+         state = $8,
+         pincode = $9,
+         accreditation = $10,
+         naac_grade = $11,
+         nirf_rank = $12,
+         settings = $13::jsonb,
          updated_at = NOW()
-       WHERE id = $13::uuid`,
+       WHERE id = $14::uuid`,
       [
         institution.collegeName || '',
         website || '',
+        logoUrl || '',
         institution.email || '',
         institution.phone || '',
         address.address || '',

@@ -173,6 +173,7 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  scroll-padding-top: var(--topbar-height);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -242,6 +243,7 @@ h6 { font-size: 1rem; }
 .btn:focus-visible { 
   outline: 2px solid var(--border-focus); 
   outline-offset: 2px; 
+  border-radius: inherit;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
@@ -369,6 +371,7 @@ h6 { font-size: 1rem; }
     max-width: none;
     width: 100%;
   }
+
 }
 
 .form-input,
@@ -396,9 +399,10 @@ h6 { font-size: 1rem; }
 .form-input:focus-visible,
 .form-select:focus-visible,
 .form-textarea:focus-visible {
-  outline: none;
+  outline: 2px solid var(--border-focus);
+  outline-offset: 0;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
 }
 
 .form-input::placeholder {
@@ -755,7 +759,7 @@ h6 { font-size: 1rem; }
   }
 }
 
-/* Wireframe panels (dummy UI — not live data) */
+/* Dashed info strip (settings, sponsorships, hub — legacy class name) */
 .wireframe-banner {
   display: flex;
   align-items: flex-start;
@@ -861,6 +865,97 @@ h6 { font-size: 1rem; }
   border-radius: 4px;
   background: var(--bg-tertiary);
   margin-bottom: 0.35rem;
+}
+
+/* College Infrastructure — calendar & channel distribution (data-backed, not skeleton shells) */
+.infra-context-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
+}
+
+.infra-context-note strong {
+  color: var(--text-primary);
+}
+
+.infra-panel {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+.infra-panel-inner {
+  background: var(--bg-primary);
+  border-radius: calc(var(--radius-lg) - 1px);
+  margin: 1px;
+  padding: 0.75rem;
+  min-height: 120px;
+}
+
+.infra-calendar-cell {
+  min-height: 4.5rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem;
+  font-size: 0.7rem;
+  background: var(--bg-primary);
+  color: var(--text-tertiary);
+}
+
+.infra-calendar-cell--muted {
+  background: var(--bg-tertiary);
+  opacity: 0.55;
+}
+
+.infra-calendar-chip {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  background: var(--primary-100);
+  color: var(--primary-800);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.infra-announcement-card {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.infra-channel-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background: var(--bg-primary);
+}
+
+.infra-url-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  word-break: break-all;
 }
 
 /* Social wireframe modal — high-contrast skeletons + portal overlay */
@@ -3431,6 +3526,15 @@ h2.dashboard-nav-hub-category-title {
 
 .animate-fadeIn { animation: fadeIn 0.5s ease; }
 .animate-slideUp { animation: slideUp 0.5s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ============================================
    Utility Classes

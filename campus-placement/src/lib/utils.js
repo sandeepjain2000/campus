@@ -213,43 +213,10 @@ export function cn(...classes) {
 }
 
 /**
- * Known entity names → Clearbit-compatible domain map.
- * Used for logo resolution when no website field is available.
- */
-const KNOWN_ENTITY_DOMAINS = {
-  // Companies
-  'google': 'google.com',
-  'microsoft india': 'microsoft.com',
-  'microsoft': 'microsoft.com',
-  'amazon': 'amazon.com',
-  'tcs': 'tcs.com',
-  'wipro': 'wipro.com',
-  'infosys limited': 'infosys.com',
-  'infosys': 'infosys.com',
-  'techcorp solutions': 'techcorp.com',
-  'techcorp': 'techcorp.com',
-  'globalsoft technologies': 'globalsoft.com',
-  'dataverse analytics': 'dataverse.io',
-  'cloudnine systems': 'cloudnine.in',
-  'fintech startupx': 'fintechx.io',
-  'automobile corp': 'automobile.com',
-  // Colleges
-  'iit madras': 'iitm.ac.in',
-  'iit mumbai': 'iitb.ac.in',
-  'iit bombay': 'iitb.ac.in',
-  'nit trichy': 'nitt.edu',
-  'bits pilani': 'bits-pilani.ac.in',
-  'bits': 'bits-pilani.ac.in',
-  'iit kharagpur': 'iitkgp.ac.in',
-  'vit vellore': 'vit.ac.in',
-  'srm chennai': 'srmist.edu.in',
-  // Platform
-  'placementhub': 'placementhub.io',
-};
-
-/**
  * Build a Clearbit logo URL for an entity.
- * Priority: explicit website URL → name-based lookup → null (fallback avatar).
+ * Priority: explicit website URL → null (fallback avatar).
+ * We intentionally avoid static name->domain mappings because they do not scale
+ * across real multi-tenant entities and become stale quickly.
  * @param {string} name     - Entity display name
  * @param {string} [website] - Optional website URL
  * @returns {string|null}
@@ -262,14 +229,6 @@ export function getEntityLogoUrl(name = '', website = null) {
       ).hostname.replace(/^www\./, '');
       return `https://logo.clearbit.com/${domain}`;
     } catch { /* ignore malformed URLs */ }
-  }
-  if (name) {
-    const normalized = name.toLowerCase().trim();
-    for (const [key, domain] of Object.entries(KNOWN_ENTITY_DOMAINS)) {
-      if (normalized.includes(key) || key.includes(normalized)) {
-        return `https://logo.clearbit.com/${domain}`;
-      }
-    }
   }
   return null;
 }

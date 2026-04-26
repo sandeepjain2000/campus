@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { formatDate } from '@/lib/utils';
+import { getCurrentAcademicYear } from '@/lib/academicYear';
 const fetcher = async (url) => {
   const res = await fetch(url);
   const json = await res.json();
@@ -21,10 +22,30 @@ export default function CollegeReportsPage() {
   const summary = data?.summary || { placementRate: 0, avgPackage: 0, highestPackage: 0, companiesVisited: 0 };
   const [studentReportSearch, setStudentReportSearch] = useState('');
   const [studentReportCompany, setStudentReportCompany] = useState('');
+  const [currentAcademicYear, setCurrentAcademicYear] = useState(getCurrentAcademicYear());
+
+  const previousAcademicYear = useMemo(() => {
+    const startYear = Number(currentAcademicYear.split('-')[0]);
+    if (!Number.isFinite(startYear)) return '';
+    const prevStart = startYear - 1;
+    const prevEnd = String((prevStart + 1) % 100).padStart(2, '0');
+    return `${prevStart}-${prevEnd}`;
+  }, [currentAcademicYear]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncYear = () => {
+      const saved = window.sessionStorage.getItem('activeAcademicYear');
+      if (saved) setCurrentAcademicYear(saved);
+    };
+    syncYear();
+    window.addEventListener('placementhub-academic-year', syncYear);
+    return () => window.removeEventListener('placementhub-academic-year', syncYear);
+  }, []);
 
   const studentEventCompanies = useMemo(
     () => Array.from(new Set(STUDENT_COMPANY_EVENTS.map((r) => r.company))).sort(),
-    [],
+    [STUDENT_COMPANY_EVENTS],
   );
 
   const filteredStudentEvents = useMemo(() => {
@@ -40,7 +61,7 @@ export default function CollegeReportsPage() {
         r.outcome.toLowerCase().includes(q)
       );
     });
-  }, [studentReportSearch, studentReportCompany]);
+  }, [STUDENT_COMPANY_EVENTS, studentReportSearch, studentReportCompany]);
 
   const reportExports = useMemo(
     () => [
@@ -90,7 +111,7 @@ export default function CollegeReportsPage() {
         filename: 'reports_yoy_comparison',
         rowCount: YOY.length,
         getRows: () => ({
-          headers: ['Metric', 'Year_2024_25', 'Year_2025_26', 'Change'],
+          headers: ['Metric', `Year_${previousAcademicYear.replace('-', '_')}`, `Year_${currentAcademicYear.replace('-', '_')}`, 'Change'],
           rows: YOY.map((r) => [r.metric, r.prev, r.curr, r.change]),
         }),
       },
@@ -114,7 +135,7 @@ export default function CollegeReportsPage() {
         }),
       },
     ],
-    []
+    [DEPT_PLACEMENT, SALARY_DIST, TOP_RECRUITERS, YOY, STUDENT_COMPANY_EVENTS, previousAcademicYear, currentAcademicYear]
   );
 
   return (
@@ -248,7 +269,7 @@ export default function CollegeReportsPage() {
           <div className="card-header"><h3 className="card-title">📊 Year-over-Year Comparison</h3></div>
           <div className="table-container" style={{ border: 'none' }}>
             <table className="data-table">
-              <thead><tr><th>Metric</th><th>2024-25</th><th>2025-26</th><th>Change</th></tr></thead>
+              <thead><tr><th>Metric</th><th>{previousAcademicYear}</th><th>{currentAcademicYear}</th><th>Change</th></tr></thead>
               <tbody>
                 {YOY.map(r => (
                   <tr key={r.metric}><td className="font-semibold">{r.metric}</td><td>{r.prev}</td><td className="font-bold">{r.curr}</td>

@@ -9,17 +9,9 @@ function defaultPayload() {
   return { batches: [] };
 }
 
-async function resolveTenantId(session) {
+function resolveTenantId(session) {
   const id = session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
-  if (id) return id;
-  const fallback = await query(
-    `SELECT id
-     FROM tenants
-     WHERE type = 'college'
-     ORDER BY created_at ASC
-     LIMIT 1`
-  );
-  return fallback.rows[0]?.id || null;
+  return id && String(id).trim() ? String(id).trim() : null;
 }
 
 async function loadPayload(tenantId) {
@@ -74,8 +66,10 @@ export async function GET() {
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = await resolveTenantId(session);
-    if (!tenantId) return NextResponse.json(defaultPayload());
+    const tenantId = resolveTenantId(session);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 403 });
+    }
     const payload = await loadPayload(tenantId);
     return NextResponse.json(payload);
   } catch (error) {
@@ -90,7 +84,7 @@ export async function POST(request) {
     if (!session?.user || !['college_admin', 'super_admin'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = await resolveTenantId(session);
+    const tenantId = resolveTenantId(session);
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
     const body = await request.json();
@@ -132,7 +126,7 @@ export async function PATCH(request) {
     if (!session?.user || !['employer', 'super_admin', 'college_admin'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = await resolveTenantId(session);
+    const tenantId = resolveTenantId(session);
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
     const body = await request.json();
