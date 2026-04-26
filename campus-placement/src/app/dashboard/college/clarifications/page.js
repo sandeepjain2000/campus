@@ -13,6 +13,7 @@ const employersFetcher = async (url) => {
   const res = await fetch(url);
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || 'Failed to load employers');
+  if (Array.isArray(data?.employers)) return data.employers;
   return Array.isArray(data) ? data : [];
 };
 

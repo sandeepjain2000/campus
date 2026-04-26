@@ -213,27 +213,6 @@ export function cn(...classes) {
 }
 
 /**
- * Build a Clearbit logo URL for an entity.
- * Priority: explicit website URL → null (fallback avatar).
- * We intentionally avoid static name->domain mappings because they do not scale
- * across real multi-tenant entities and become stale quickly.
- * @param {string} name     - Entity display name
- * @param {string} [website] - Optional website URL
- * @returns {string|null}
- */
-export function getEntityLogoUrl(name = '', website = null) {
-  if (website) {
-    try {
-      const domain = new URL(
-        website.startsWith('http') ? website : `https://${website}`
-      ).hostname.replace(/^www\./, '');
-      return `https://logo.clearbit.com/${domain}`;
-    } catch { /* ignore malformed URLs */ }
-  }
-  return null;
-}
-
-/**
  * Get a deterministic gradient background for a given entity name.
  * The same name always produces the same gradient.
  * @param {string} name

@@ -5,7 +5,7 @@ import EntityLogo from '@/components/EntityLogo';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
-import { SOCIAL_PLATFORM_ORDER } from '@/components/wireframe/SocialWireframeToolkit';
+import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
 
 export default function CollegeDrivesPage() {
   const { addToast } = useToast();
@@ -16,6 +16,8 @@ export default function CollegeDrivesPage() {
   const [downloading, setDownloading] = useState(null);
   const [view, setView] = useState('list');
   const [expandedId, setExpandedId] = useState(null);
+  const [facebookPageShare, setFacebookPageShare] = useState(false);
+  const [postingFacebookId, setPostingFacebookId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +29,7 @@ export default function CollegeDrivesPage() {
         if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
         if (!mounted) return;
         setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
+        setFacebookPageShare(Boolean(json.integrations?.facebookPageShare));
         setDrives(
           (json.drives || []).map((d) => ({
             ...d,
@@ -36,7 +39,7 @@ export default function CollegeDrivesPage() {
             staffIds: [],
             jobPostingTitle: '',
             jobPostingUrl: '',
-            socialShared: [],
+            socialShared: Array.isArray(d.social_shared) ? d.social_shared : [],
           })),
         );
       } catch (error) {
@@ -168,17 +171,49 @@ export default function CollegeDrivesPage() {
     addToast('Use employer drive creation flow for now.', 'warning');
   };
 
-  const toggleDriveSocialShare = (driveId, platformId) => {
-    setDrives((prev) =>
-      prev.map((d) => {
-        if (d.id !== driveId) return d;
-        const list = d.socialShared || [];
-        const has = list.includes(platformId);
-        const socialShared = has ? list.filter((p) => p !== platformId) : [...list, platformId];
-        return { ...d, socialShared };
-      }),
-    );
-    addToast('Share flag updated locally (nothing is posted).', 'info');
+  const postDriveToFacebookPage = async (drive) => {
+    setPostingFacebookId(drive.id);
+    try {
+      const res = await fetch(`/api/college/drives/${drive.id}/facebook-post`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(json.error || 'Facebook post failed.', 'error');
+        return;
+      }
+      addToast(`Posted to Facebook Page (id: ${json.postId}).`, 'success');
+    } catch (e) {
+      addToast(e.message || 'Network error.', 'error');
+    } finally {
+      setPostingFacebookId(null);
+    }
+  };
+
+  const toggleDriveSocialShare = async (driveId, platformId) => {
+    const drive = drives.find((d) => d.id === driveId);
+    if (!drive) return;
+    const list = drive.socialShared || [];
+    const has = list.includes(platformId);
+    const socialShared = has ? list.filter((p) => p !== platformId) : [...list, platformId];
+
+    setDrives((prev) => prev.map((d) => (d.id === driveId ? { ...d, socialShared } : d)));
+
+    try {
+      const res = await fetch(`/api/college/drives/${driveId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ socialShared }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDrives((prev) => prev.map((d) => (d.id === driveId ? { ...d, socialShared: list } : d)));
+        addToast(json.error || 'Could not save share flags.', 'error');
+        return;
+      }
+      addToast('Share flags saved for this drive.', 'success');
+    } catch (e) {
+      setDrives((prev) => prev.map((d) => (d.id === driveId ? { ...d, socialShared: list } : d)));
+      addToast(e.message || 'Network error while saving.', 'error');
+    }
   };
 
   return (
@@ -186,7 +221,12 @@ export default function CollegeDrivesPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>🎯 Placement Drives</h1>
-          <p>Schedule and manage all placement drives. Social share flags are preview-only (compact, on the right of each card).</p>
+          <p>
+            Schedule and manage placement drives. Channel toggles are saved on each drive.
+            {facebookPageShare
+              ? ' Facebook Page posting is enabled (server test — posts to the Page configured in env).'
+              : ' Add FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN to enable live Facebook Page posts.'}
+          </p>
         </div>
         <div className="page-header-actions">
           <ExportCsvSplitButton filenameBase="college_placement_drives" currentCount={drives.length} fullCount={drives.length} getRows={getDrivesCsv} />
@@ -287,8 +327,21 @@ export default function CollegeDrivesPage() {
                       );
                     })}
                   </div>
-                  <span className="text-xs text-tertiary" style={{ textAlign: 'right', lineHeight: 1.35, maxWidth: '10rem' }}>
-                    No live posting · green = saved in session
+                  {facebookPageShare && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', alignSelf: 'flex-end' }}
+                      disabled={postingFacebookId === drive.id}
+                      onClick={() => postDriveToFacebookPage(drive)}
+                    >
+                      {postingFacebookId === drive.id ? 'Posting…' : 'Post to FB Page'}
+                    </button>
+                  )}
+                  <span className="text-xs text-tertiary" style={{ textAlign: 'right', lineHeight: 1.35, maxWidth: '12rem' }}>
+                    {facebookPageShare
+                      ? 'Green = channels you plan to use. “Post to FB Page” sends one real post (test).'
+                      : 'No live posting · green = saved on the drive'}
                   </span>
                 </div>
               </div>

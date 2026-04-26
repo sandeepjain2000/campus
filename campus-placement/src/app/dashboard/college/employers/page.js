@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
@@ -12,18 +12,35 @@ const fetcher = async (url) => {
   const res = await fetch(url);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to load');
-  if (!Array.isArray(data)) throw new Error(data.error || 'Invalid response');
-  return data;
+  if (data?.employers && Array.isArray(data.employers)) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return { employers: data, staffDirectory: [] };
+  }
+  throw new Error(data.error || 'Invalid response');
 };
 
 export default function CollegeEmployersPage() {
-  const { data: employers, error, isLoading, mutate } = useSWR('/api/college/employers', fetcher);
+  const { data, error, isLoading, mutate } = useSWR('/api/college/employers', fetcher);
   const [processingId, setProcessingId] = useState(null);
   const [pocModal, setPocModal] = useState(null);
+  const [pocStaffSelection, setPocStaffSelection] = useState([]);
+  const [pocSaving, setPocSaving] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState(null);
   const { addToast } = useToast();
 
-  const list = employers || [];
+  const list = data?.employers || [];
+  const staffDirectory = data?.staffDirectory || [];
+
+  useEffect(() => {
+    if (!pocModal) {
+      setPocStaffSelection([]);
+      return;
+    }
+    const ids = pocModal.coordination_poc_user_ids;
+    setPocStaffSelection(Array.isArray(ids) ? ids.map((id) => String(id)) : []);
+  }, [pocModal]);
 
   const handleRevoke = async (employerId) => {
     setProcessingId(employerId);
@@ -88,13 +105,14 @@ export default function CollegeEmployersPage() {
               <th>Drives</th>
               <th>Rating</th>
               <th>Status</th>
+              <th>Campus POC</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {list.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '3rem' }}>
+                <td colSpan="10" style={{ textAlign: 'center', padding: '3rem' }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
                   <div style={{ color: 'var(--text-secondary)' }}>No employer tie-ups yet.</div>
                   <div className="text-sm text-tertiary" style={{ marginTop: '0.5rem' }}>
@@ -106,6 +124,9 @@ export default function CollegeEmployersPage() {
               list.map((emp, index) => {
                 const rating = emp.reliability_score != null ? Number(emp.reliability_score) : null;
                 const stars = rating != null && !Number.isNaN(rating) ? Math.min(5, Math.max(0, Math.round(rating))) : 0;
+                const pocNames = (emp.coordination_poc_user_ids || [])
+                  .map((uid) => staffDirectory.find((s) => String(s.id) === String(uid))?.name)
+                  .filter(Boolean);
                 return (
                   <tr key={emp.approval_id}>
                     <td style={{ color: 'var(--text-tertiary)' }}>{index + 1}</td>
@@ -133,6 +154,9 @@ export default function CollegeEmployersPage() {
                     </td>
                     <td>
                       <span className={`badge badge-${getStatusColor(emp.status)} badge-dot`}>{formatStatus(emp.status)}</span>
+                    </td>
+                    <td className="text-sm text-secondary" style={{ maxWidth: '14rem' }}>
+                      {pocNames.length ? pocNames.join(', ') : '—'}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
@@ -213,43 +237,68 @@ export default function CollegeEmployersPage() {
               Nominate coordination POCs
             </h3>
             <p className="text-sm text-secondary" style={{ marginBottom: '1.5rem' }}>
-              Assign college staff to coordinate with <strong>{pocModal.name}</strong>. (Wireframe — not saved yet.)
+              Assign active college staff who will coordinate with <strong>{pocModal.name}</strong>. This is saved to your campus records.
             </p>
 
             <div className="form-group">
-              <label className="form-label">College staff nominees</label>
-              <select className="form-select" multiple style={{ height: '80px' }}>
-                <option value="s1">Dr. Sharma (Computer Science)</option>
-                <option value="s2">Prof. Reddy (Electronics)</option>
-                <option value="s3">Ms. Iyer (Placement Officer)</option>
-              </select>
+              <label className="form-label">College staff</label>
+              {staffDirectory.length === 0 ? (
+                <p className="text-sm text-secondary">No placement coordinators found. Add college admin accounts for your team first.</p>
+              ) : (
+                <select
+                  className="form-select"
+                  multiple
+                  style={{ height: `${Math.min(220, 36 + staffDirectory.length * 28)}px` }}
+                  value={pocStaffSelection}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    setPocStaffSelection(selected);
+                  }}
+                >
+                  {staffDirectory.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — {s.role}
+                    </option>
+                  ))}
+                </select>
+              )}
               <p className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-                Hold Ctrl/Cmd to select multiple staff.
+                Hold Ctrl/Cmd (or long-press on mobile browsers that support it) to select multiple staff.
               </p>
             </div>
 
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="form-label">Placement committee student nominees</label>
-              <select className="form-select" multiple style={{ height: '80px' }}>
-                <option value="c1">Rohan Patel (CSE Year 4)</option>
-                <option value="c2">Amit Kumar (ME Year 4)</option>
-                <option value="c3">Sneha Iyer (IT Year 3)</option>
-              </select>
-            </div>
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setPocModal(null)}>
+              <button type="button" className="btn btn-ghost" onClick={() => setPocModal(null)} disabled={pocSaving}>
                 Cancel
               </button>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => {
-                  addToast('POCs assignment is not available yet in this build.', 'info');
-                  setPocModal(null);
+                disabled={pocSaving || staffDirectory.length === 0}
+                onClick={async () => {
+                  setPocSaving(true);
+                  try {
+                    const res = await fetch(`/api/college/employers/${pocModal.employer_id}/poc`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ staffUserIds: pocStaffSelection }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      addToast(json.error || 'Could not save POC assignment.', 'error');
+                      return;
+                    }
+                    await mutate();
+                    addToast('Campus POCs saved.', 'success');
+                    setPocModal(null);
+                  } catch {
+                    addToast('Network error while saving.', 'error');
+                  } finally {
+                    setPocSaving(false);
+                  }
                 }}
               >
-                Save nominations
+                {pocSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

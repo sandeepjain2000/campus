@@ -1,21 +1,20 @@
 'use client';
 import { useState } from 'react';
-import { getEntityLogoUrl, getInitials } from '@/lib/utils';
+import { getInitials } from '@/lib/utils';
 
 /**
- * Entity logo: prefers explicit logoUrl, then a URL derived from the website (when provided).
- * Otherwise shows initials — no hard-coded institution or brand image guessing.
+ * Entity logo: uses explicit logoUrl when provided (uploaded / saved URL).
+ * Otherwise shows initials — no third-party logo guessing.
  */
 export default function EntityLogo({
   name = '',
   logoUrl = null,
-  website = null,
+  website: _website = null,
   size = 'md',
   shape = 'rounded',
   className = '',
 }) {
-  const derivedFromWebsite = getEntityLogoUrl(name, website);
-  const candidates = [logoUrl, derivedFromWebsite].filter(Boolean);
+  const candidates = [logoUrl].filter(Boolean);
 
   const [idx, setIdx] = useState(0);
 

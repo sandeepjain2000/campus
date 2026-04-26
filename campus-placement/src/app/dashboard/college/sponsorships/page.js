@@ -18,13 +18,22 @@ const categoryMeta = {
   'Alumni Mentorship': { icon: <Palette size={24} />, color: '#a855f7' },
 };
 
+const settingsFetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load settings');
+  return json;
+};
+
 export default function CollegeSponsorshipsPage() {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('All Categories');
   const { data, error } = useSWR('/api/college/sponsorships', fetcher);
+  const { data: settingsData } = useSWR('/api/college/settings', settingsFetcher);
 
-  const sponsorshipLevels = useMemo(() => (Array.isArray(data?.categories) ? data.categories : []), [data?.categories]);
+  const sponsorshipLevels = useMemo(() => (Array.isArray(data?.categories) ? data.categories : []), [data]);
   const collegeName = data?.collegeName || 'Your Institution';
+  const placementEmail = String(settingsData?.placementOfficer?.email || '').trim();
 
   const downloadGuide = () => {
     const lines = sponsorshipLevels.flatMap((level) => [
@@ -46,8 +55,12 @@ export default function CollegeSponsorshipsPage() {
   };
 
   const scheduleMeeting = () => {
-    window.location.href = `mailto:placement@iitm.edu?subject=${encodeURIComponent(
-      `Sponsorship discussion with ${collegeName}`
+    if (!placementEmail) {
+      addToast('Add a placement officer email in Settings, then try again.', 'warning');
+      return;
+    }
+    window.location.href = `mailto:${encodeURIComponent(placementEmail)}?subject=${encodeURIComponent(
+      `Sponsorship discussion with ${collegeName}`,
     )}`;
   };
 

@@ -9,7 +9,7 @@ import {
   IconFacebook,
   IconInstagram,
   IconLinkedIn,
-} from '@/components/wireframe/SocialWireframeToolkit';
+} from '@/components/SocialIcons';
 
 function LabelWithIcon({ Icon, children }) {
   return (

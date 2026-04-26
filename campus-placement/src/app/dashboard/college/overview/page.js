@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import Link from 'next/link';
-import { Users, CheckCircle, Building2, Target, BarChart2, Activity, Zap, ClipboardList, GraduationCap, FileText, Download, Plus } from 'lucide-react';
-import { DashboardSocialWireframeDock, SocialWireframeModal } from '@/components/wireframe/SocialWireframeToolkit';
+import { Users, CheckCircle, Building2, Target, BarChart2, Activity, Zap, ClipboardList, GraduationCap, FileText, Download, Plus, Pencil, MapPin } from 'lucide-react';
+import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
 import { useToast } from '@/components/ToastProvider';
 import { getCurrentAcademicYear } from '@/lib/academicYear';
 
@@ -32,7 +32,6 @@ export default function CollegeOverviewPage() {
   const { data, error, isLoading, mutate } = useSWR('/api/college/dashboard', fetcher);
   const { data: settingsData } = useSWR('/api/college/settings', fetcher);
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
-  const [socialModalPlatform, setSocialModalPlatform] = useState(null);
   const showNotReady = (label) => addToast(`${label} is not available yet in this build.`, 'info');
 
   useEffect(() => {
@@ -134,6 +133,14 @@ export default function CollegeOverviewPage() {
   const avgPackageLabel = rupeesToLpaLabel(stats.avgPackage);
   const highestPackageLabel = rupeesToLpaLabel(stats.highestPackage);
 
+  const social = settingsData?.social || {};
+  const hasSocialLink = SOCIAL_PLATFORM_ORDER.some(({ id }) => String(social[id] || '').trim());
+  const addr = settingsData?.address || {};
+  const addrLine = [addr.address, [addr.city, addr.state].filter(Boolean).join(', '), addr.pincode].filter(Boolean).join(' · ');
+  const acc = settingsData?.accreditation || {};
+  const po = settingsData?.placementOfficer || {};
+  const poLine = [po.name, po.designation].filter((x) => String(x || '').trim()).join(' · ');
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -141,12 +148,21 @@ export default function CollegeOverviewPage() {
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Building2 className="text-secondary" /> College Dashboard
           </h1>
-          <p className="text-secondary">
-            {(settingsData?.institution?.collegeName || '').trim() ||
-              session?.user?.tenantName?.trim() ||
-              'Your institution'}{' '}
-            • Placement Season {(settingsData?.placementSeasonLabel || '').trim() || academicYear}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <p className="text-secondary" style={{ margin: 0 }}>
+              {(settingsData?.institution?.collegeName || '').trim() ||
+                session?.user?.tenantName?.trim() ||
+                'Your institution'}{' '}
+              • Placement Season {(settingsData?.placementSeasonLabel || '').trim() || academicYear}
+            </p>
+            <Link
+              href="/dashboard/college/settings"
+              className="text-xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, color: 'var(--text-link)' }}
+            >
+              <Pencil size={12} aria-hidden /> Edit in Settings
+            </Link>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" className="btn btn-secondary" onClick={exportOverview}>
@@ -158,12 +174,96 @@ export default function CollegeOverviewPage() {
         </div>
       </div>
 
-      <DashboardSocialWireframeDock onOpen={setSocialModalPlatform} />
-      <SocialWireframeModal
-        platform={socialModalPlatform}
-        contextTitle="the college dashboard"
-        onClose={() => setSocialModalPlatform(null)}
-      />
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <span className="text-sm font-semibold" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Building2 size={16} className="text-secondary" aria-hidden /> College social channels
+          </span>
+          {hasSocialLink ? (
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
+                const url = String(social[id] || '').trim();
+                if (!url) return null;
+                const href = url.startsWith('http') ? url : `https://${url}`;
+                return (
+                  <a
+                    key={id}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary btn-sm"
+                    title={label}
+                    aria-label={`${label} (opens in new tab)`}
+                  >
+                    <Icon size={16} />
+                  </a>
+                );
+              })}
+            </div>
+          ) : (
+            <Link href="/dashboard/college/settings" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-link)' }}>
+              Add social links in Settings →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-2" style={{ marginBottom: '1.5rem' }}>
+        <div className="card">
+          <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={18} className="text-secondary" /> About the institution
+            </h3>
+          </div>
+          <dl style={{ display: 'grid', gap: '0.65rem', margin: 0, fontSize: '0.875rem' }}>
+            <div>
+              <dt className="text-tertiary" style={{ fontSize: '0.75rem' }}>NAAC grade</dt>
+              <dd style={{ margin: 0, fontWeight: 600 }}>{String(acc.naacGrade || '').trim() || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-tertiary" style={{ fontSize: '0.75rem' }}>NIRF rank</dt>
+              <dd style={{ margin: 0, fontWeight: 600 }}>{acc.nirfRank != null && acc.nirfRank !== '' ? acc.nirfRank : '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-tertiary" style={{ fontSize: '0.75rem' }}>Accreditation</dt>
+              <dd style={{ margin: 0, fontWeight: 600 }}>{String(acc.body || '').trim() || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-tertiary" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <MapPin size={12} aria-hidden /> Address
+              </dt>
+              <dd style={{ margin: 0, fontWeight: 500, lineHeight: 1.45 }}>{addrLine || '—'}</dd>
+            </div>
+          </dl>
+          <p className="text-xs text-tertiary" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+            Update these fields in{' '}
+            <Link href="/dashboard/college/settings" style={{ fontWeight: 600, color: 'var(--text-link)' }}>
+              Settings
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="card">
+          <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Users size={18} className="text-secondary" /> Placement team
+            </h3>
+          </div>
+          <div style={{ fontSize: '0.875rem', lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 600 }}>{poLine || '—'}</div>
+            {String(po.email || '').trim() ? (
+              <a href={`mailto:${encodeURIComponent(po.email.trim())}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                {po.email.trim()}
+              </a>
+            ) : (
+              <span className="text-tertiary">No placement officer email on file.</span>
+            )}
+          </div>
+          <p className="text-xs text-tertiary" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+            Shown to your team here; employers see your public profile when you publish it.
+          </p>
+        </div>
+      </div>
 
       <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
         <div className="stats-card">

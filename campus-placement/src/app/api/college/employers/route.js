@@ -20,6 +20,7 @@ export async function GET() {
           ea.id AS approval_id,
           ea.status,
           ea.created_at,
+          ea.coordination_poc_user_ids,
           ep.id AS employer_id,
           ep.company_name AS name,
           ep.industry,
@@ -50,7 +51,27 @@ export async function GET() {
       [tenantId],
     );
 
-    return NextResponse.json(result.rows);
+    const staff = await query(
+      `SELECT id, first_name, last_name, role
+       FROM users
+       WHERE tenant_id = $1::uuid
+         AND role = 'college_admin'
+         AND is_active = true
+       ORDER BY first_name ASC, last_name ASC`,
+      [tenantId],
+    );
+
+    return NextResponse.json({
+      employers: result.rows.map((row) => ({
+        ...row,
+        coordination_poc_user_ids: row.coordination_poc_user_ids || [],
+      })),
+      staffDirectory: staff.rows.map((s) => ({
+        id: s.id,
+        name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+        role: s.role === 'college_admin' ? 'Placement Coordinator' : s.role,
+      })),
+    });
   } catch (error) {
     console.error('College employers list error:', error);
     return NextResponse.json({ error: 'Failed to load employers' }, { status: 500 });

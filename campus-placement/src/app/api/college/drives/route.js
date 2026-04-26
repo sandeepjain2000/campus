@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { isFacebookPageShareConfigured } from '@/lib/facebookPageShare';
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
@@ -29,7 +30,8 @@ export async function GET() {
         d.status,
         d.registered_count AS registered,
         d.selected_count AS selected,
-        d.venue
+        d.venue,
+        COALESCE(d.social_shared, '{}') AS social_shared
       FROM placement_drives d
       LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
       WHERE d.tenant_id = $1
@@ -54,6 +56,10 @@ export async function GET() {
         name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
         role: s.role === 'college_admin' ? 'Placement Coordinator' : s.role,
       })),
+      integrations: {
+        /** True when FACEBOOK_PAGE_ID + FACEBOOK_PAGE_ACCESS_TOKEN are set (enables “Post to FB Page” on the UI). */
+        facebookPageShare: isFacebookPageShareConfigured(),
+      },
     });
   } catch (error) {
     console.error('Failed to load college drives:', error);

@@ -257,6 +257,7 @@ CREATE TABLE placement_drives (
     requires_ppt BOOLEAN DEFAULT false,
     ppt_completed BOOLEAN DEFAULT false,
     notes TEXT,
+    social_shared TEXT[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -451,6 +452,7 @@ CREATE TABLE employer_approvals (
     approved_by UUID REFERENCES users(id),
     approved_at TIMESTAMP,
     rejection_reason TEXT,
+    coordination_poc_user_ids UUID[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(tenant_id, employer_id)
 );
