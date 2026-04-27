@@ -16,7 +16,7 @@ Each run:
   2. Marks bounced addresses as 'Failure' in crm.db.
   3. Forwards genuine human replies to sandeepjain200019@gmail.com.
   4. Sends an auto-reply to the human respondent.
-  5. Sends fresh outreach emails to N institutes (default 2, override with --count N).
+  5. Sends fresh outreach emails to N institutes (default 20, override with --count N).
 
 Logic per institute:
   - Try emails in order: placement → registrar → vc (placements and tpo are never sent — high bounce)
@@ -25,7 +25,7 @@ Logic per institute:
   - On next run, if that address bounced ('Failure'), move to the next address
 
 Usage:
-    python send_placement_campaigns.py             # sends to 2 institutes
+    python send_placement_campaigns.py             # sends to 20 institutes
     python send_placement_campaigns.py --count 5  # sends to 5 institutes
     python send_placement_campaigns.py --check-only  # only check bounces/responses
 """
@@ -746,8 +746,8 @@ def load_template(institute_name: str = "", domain: str = "") -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Campus Placement CRM – Email Campaign")
-    parser.add_argument("--count",      type=int, default=2,
-                        help="Number of institutes to email this run (default: 2)")
+    parser.add_argument("--count",      type=int, default=20,
+                        help="Number of institutes to email this run (default: 20)")
     parser.add_argument("--check-only", action="store_true",
                         help="Only check bounces/responses; do not send new emails")
     args = parser.parse_args()
