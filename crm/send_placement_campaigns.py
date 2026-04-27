@@ -344,11 +344,17 @@ def _gmail_raw_uid_search(mail: imaplib.IMAP4_SSL, raw_query: str) -> set:
 
 def _campus_inbox_unprocessed_uids(mail: imaplib.IMAP4_SSL) -> set:
     """
-    Every message still in INBOX from the last ~30 days that does not yet have
-    PROCESSED-CAMPUS. Next run omits these via -label:PROCESSED-CAMPUS (read cost).
+    INBOX messages from the last ~30 days that do not yet have PROCESSED-CAMPUS.
+
+    Uses two X-GM-RAW searches and set difference. A single query with
+    ``-label:PROCESSED-CAMPUS`` often triggers Gmail IMAP ``BAD Could not parse
+    command`` because the hyphen is parsed as IMAP syntax, not Gmail text.
     """
-    q = f"newer_than:30d in:inbox -label:{GMAIL_LABEL_PROCESSED}"
-    return _gmail_raw_uid_search(mail, q)
+    in_inbox = _gmail_raw_uid_search(mail, "newer_than:30d in:inbox")
+    labeled = _gmail_raw_uid_search(
+        mail, f"newer_than:30d label:{GMAIL_LABEL_PROCESSED}"
+    )
+    return in_inbox - labeled
 
 
 def _imap_uid_copy_to_label(mail: imaplib.IMAP4_SSL, uid: bytes, label: str) -> bool:
