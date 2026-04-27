@@ -94,6 +94,9 @@ CAMPUS_GMAIL_LABELS = (
 # INBOX sweep window (X-GM-RAW ``newer_than:Nd`` and IMAP ``SINCE`` fallback).
 INBOX_LOOKBACK_DAYS = 30
 
+# Pass 1: UIDs per one ``UID FETCH`` (cuts IMAP round-trips vs one UID at a time).
+HEADER_FETCH_BATCH = 40
+
 # Local parts (before @) excluded from outreach — not stored in DB; filtered at send time.
 SKIP_SEND_LOCAL_PARTS = ("placements", "tpo")
 
@@ -467,6 +470,29 @@ def _tag_campus_message(
         if not _imap_uid_copy_to_label(mail, uid, mbox):
             log.warning(f"  Could not add label {mbox!r} to UID {uid!r}")
 
+
+def _imap_uid_header_fetch_map(data) -> dict:
+    """Parse ``UID FETCH`` header response: uid bytes → raw RFC822 header bytes."""
+    out = {}
+    if not data:
+        return out
+    for part in data:
+        if not isinstance(part, tuple) or len(part) < 2:
+            continue
+        meta, lit = part[0], part[1]
+        if not isinstance(meta, bytes) or not isinstance(lit, bytes):
+            continue
+        m = re.search(rb"\bUID (\d+)\b", meta)
+        if m:
+            uid_b = m.group(1)
+        else:
+            m2 = re.match(rb"^(\d+) \(", meta)
+            if not m2:
+                continue
+            uid_b = m2.group(1)
+        out[uid_b] = lit
+    return out
+
 # ═══════════════════════════════════════════════════
 # BOUNCE / RESPONSE DETECTION
 # ═══════════════════════════════════════════════════
@@ -654,26 +680,61 @@ def check_inbox(
         reconnects = 0
         tagged_non_campus_headers = 0
 
-        # ── PASS 1: Headers only (tiny payload, very fast) ──────────
+        # ── PASS 1: Headers only (batched UID FETCH) ────────────────
         HDRFETCH = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT AUTO-SUBMITTED X-FAILED-RECIPIENTS)])"
         relevant_uids: list = []
-        log.info(f"  Pass 1: scanning headers of {len(ids_list)} email(s)...")
+        log.info(
+            f"  Pass 1: scanning headers of {len(ids_list)} email(s) "
+            f"(batch size {HEADER_FETCH_BATCH})..."
+        )
 
-        i = 0
-        while i < len(ids_list):
-            uid = ids_list[i]
+        def _single_uid_header(uid_b: bytes):
+            typ, hdr_data = mail.uid("FETCH", uid_b, HDRFETCH)
+            if typ != "OK" or not hdr_data or not isinstance(hdr_data[0], tuple):
+                return None
+            raw = hdr_data[0][1]
+            return raw if isinstance(raw, bytes) else None
+
+        bstart = 0
+        while bstart < len(ids_list):
+            batch = ids_list[bstart : bstart + HEADER_FETCH_BATCH]
             try:
-                if i > 0 and i % 100 == 0:
-                    try: mail.noop()
-                    except Exception: pass
-                    log.info(f"    ...{i}/{len(ids_list)} headers done")
+                log.info(
+                    f"    … {min(bstart + HEADER_FETCH_BATCH, len(ids_list))}/"
+                    f"{len(ids_list)} headers"
+                )
+                chunk = b",".join(batch)
+                typ, hdr_data = mail.uid("FETCH", chunk, HDRFETCH)
+                hmap = _imap_uid_header_fetch_map(hdr_data) if typ == "OK" and hdr_data else {}
+            except (ssl.SSLError, OSError, imaplib.IMAP4.abort) as e:
+                if reconnects >= 3:
+                    log.warning(f"  Reconnect limit (pass1); skipping batch @ {bstart}: {e}")
+                    bstart += HEADER_FETCH_BATCH
+                    reconnects = 0
+                    continue
+                reconnects += 1
+                log.warning(f"  Reconnecting ({reconnects}/3)...")
+                time.sleep(2 * reconnects)
+                try:
+                    mail = _imap_connect(gmail_address, app_password)
+                    ensure_gmail_labels(mail)
+                except Exception:
+                    break
+                continue
+            except Exception as e:
+                log.warning(f"  Batch header FETCH error @ {bstart}: {e}")
+                hmap = {}
 
-                _, hdr_data = mail.uid("FETCH", uid, HDRFETCH)
-                if not hdr_data or not isinstance(hdr_data[0], tuple):
-                    i += 1; continue
-                raw_hdr = hdr_data[0][1]
-                if not isinstance(raw_hdr, bytes):
-                    i += 1; continue
+            for uid in batch:
+                raw_hdr = hmap.get(uid)
+                if raw_hdr is None:
+                    try:
+                        raw_hdr = _single_uid_header(uid)
+                    except Exception as e:
+                        log.warning(f"  Header read error {uid!r}: {e}")
+                        continue
+                if raw_hdr is None:
+                    continue
 
                 h        = email.message_from_bytes(raw_hdr)
                 sender   = (h.get("From", "") or "").lower()
@@ -696,22 +757,8 @@ def check_inbox(
                     _tag_campus_message(mail, uid, GMAIL_LABEL_NON_CAMPUS)
                     tagged_non_campus_headers += 1
 
-                i += 1
-
-            except (ssl.SSLError, OSError, imaplib.IMAP4.abort) as e:
-                if reconnects >= 3:
-                    log.warning(f"  Reconnect limit (pass1); skipping {uid!r}")
-                    i += 1; continue
-                reconnects += 1
-                log.warning(f"  Reconnecting ({reconnects}/3)...")
-                time.sleep(2 * reconnects)
-                try:
-                    mail = _imap_connect(gmail_address, app_password)
-                    ensure_gmail_labels(mail)
-                except Exception: break
-            except Exception as e:
-                log.warning(f"  Header read error {uid!r}: {e}")
-                i += 1
+            bstart += HEADER_FETCH_BATCH
+            reconnects = 0
 
         log.info(
             f"  Pass 1 done — full fetch for {len(relevant_uids)} UID(s); "
