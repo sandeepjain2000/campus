@@ -9,7 +9,8 @@ send_placement_campaigns.py
 Campus Placement CRM – Email Campaign Runner
 
 Each run:
-  1. Checks all Gmail inboxes for bounce / human-response emails.
+  1. Checks all Gmail inboxes for bounce / human-response emails (Gmail labels only —
+     no IMAP \\Seen; creates PROCESSED-CAMPUS, BOUNCE-CAMPUS, etc. if missing).
   2. Marks bounced addresses as 'Failure' in crm.db.
   3. Forwards genuine human replies to sandeepjain200019@gmail.com.
   4. Sends an auto-reply to the human respondent.
@@ -66,6 +67,22 @@ IMAP_HOST       = "imap.gmail.com"
 IMAP_PORT       = 993
 SMTP_HOST       = "smtp.gmail.com"
 SMTP_PORT       = 587
+
+# Gmail labels (IMAP mailboxes). Created at runtime if missing. Processing uses
+# X-GM-RAW "-label:PROCESSED-CAMPUS" instead of the \\Seen flag.
+GMAIL_LABEL_PROCESSED = "PROCESSED-CAMPUS"
+GMAIL_LABEL_BOUNCE = "BOUNCE-CAMPUS"
+GMAIL_LABEL_BOUNCE_UNMATCHED = "BOUNCE-CAMPUS-UNMATCHED"
+GMAIL_LABEL_REPLY = "REPLY-CAMPUS"
+GMAIL_LABEL_AUTOREPLY = "AUTOREPLY-CAMPUS"
+
+CAMPUS_GMAIL_LABELS = (
+    GMAIL_LABEL_PROCESSED,
+    GMAIL_LABEL_BOUNCE,
+    GMAIL_LABEL_BOUNCE_UNMATCHED,
+    GMAIL_LABEL_REPLY,
+    GMAIL_LABEL_AUTOREPLY,
+)
 
 # Local parts (before @) excluded from outreach — not stored in DB; filtered at send time.
 SKIP_SEND_LOCAL_PARTS = ("placements", "tpo")
@@ -285,12 +302,84 @@ def _imap_connect(address: str, password: str) -> imaplib.IMAP4_SSL:
     return mail
 
 
-def _imap_mark_seen(mail: imaplib.IMAP4_SSL, msg_id: bytes) -> None:
-    """Mark message read so UNSEEN searches skip it on later runs."""
+def ensure_gmail_labels(mail: imaplib.IMAP4_SSL) -> None:
+    """CREATE each label if it does not exist (Gmail exposes labels as IMAP folders)."""
+    for label in CAMPUS_GMAIL_LABELS:
+        try:
+            typ, dat = mail.create(label)
+            if typ == "OK":
+                log.info(f"  Created Gmail label {label!r}")
+                continue
+            blob = b" ".join(dat) if dat else b""
+            if b"ALREADYEXISTS" in blob or b"exists" in blob.lower():
+                continue
+            log.warning(f"  CREATE {label!r}: {typ} {dat}")
+        except imaplib.IMAP4.error as e:
+            err = str(e).upper()
+            if "ALREADYEXISTS" in err or "[ALREADYEXISTS]" in err:
+                continue
+            log.warning(f"  CREATE {label!r}: {e}")
+
+
+def _gmail_raw_uid_search(mail: imaplib.IMAP4_SSL, raw_query: str) -> set:
+    """UID SEARCH X-GM-RAW — returns UID bytes (Gmail only)."""
     try:
-        mail.store(msg_id, "+FLAGS", r"\Seen")
+        typ, data = mail.uid("SEARCH", "X-GM-RAW", raw_query)
+    except imaplib.IMAP4.error as e:
+        log.warning(f"  X-GM-RAW search failed: {e!r} (query: {raw_query[:80]}…)")
+        return set()
+    if typ != "OK" or not data or not data[0]:
+        return set()
+    blob = data[0]
+    if not isinstance(blob, bytes) or blob.strip() == b"":
+        return set()
+    return set(blob.split())
+
+
+def _campus_inbox_candidate_uids(mail: imaplib.IMAP4_SSL) -> set:
+    """
+    Messages from the last ~30 days that are not yet tagged PROCESSED-CAMPUS,
+    matching bounce / campaign-reply heuristics (Gmail web search syntax).
+    """
+    ns = f"newer_than:30d -label:{GMAIL_LABEL_PROCESSED}"
+    subj_head = EMAIL_SUBJECT.split(" - ")[0].strip().replace('"', r"\"")
+    fragments = [
+        f"{ns} from:mailer-daemon@googlemail.com",
+        f"{ns} from:mailer-daemon@google.com",
+        f"{ns} from:mailer-daemon",
+        f"{ns} from:postmaster",
+        f"{ns} subject:undeliverable",
+        f'{ns} subject:"mail delivery failed"',
+        f'{ns} subject:"delivery status"',
+        f'{ns} subject:"failure notice"',
+        f'{ns} subject:"{subj_head}"',
+    ]
+    uids: set = set()
+    for frag in fragments:
+        uids |= _gmail_raw_uid_search(mail, frag)
+    return uids
+
+
+def _imap_uid_copy_to_label(mail: imaplib.IMAP4_SSL, uid: bytes, label: str) -> bool:
+    """Add a Gmail label by copying the message into that IMAP mailbox."""
+    try:
+        typ, _ = mail.uid("COPY", uid, label)
+        return typ == "OK"
     except Exception as e:
-        log.warning(f"  Could not mark message {msg_id!r} as \\Seen: {e}")
+        log.warning(f"  UID COPY {uid!r} → {label!r}: {e}")
+        return False
+
+
+def _tag_campus_message(
+    mail: imaplib.IMAP4_SSL,
+    uid: bytes,
+    *outcome_labels: str,
+) -> None:
+    """Apply PROCESSED-CAMPUS plus optional outcome labels (BOUNCE-CAMPUS, …)."""
+    chain = (GMAIL_LABEL_PROCESSED,) + outcome_labels
+    for mbox in chain:
+        if not _imap_uid_copy_to_label(mail, uid, mbox):
+            log.warning(f"  Could not add label {mbox!r} to UID {uid!r}")
 
 # ═══════════════════════════════════════════════════
 # BOUNCE / RESPONSE DETECTION
@@ -452,10 +541,10 @@ def check_inbox(
       - Human replies  → mark Success, forward, autoreply
     Returns counts dict.
 
-    Uses UNSEEN in IMAP SEARCH (like check_bounces.py) so already-handled mail is
-    skipped. Full bodies are fetched with BODY.PEEK[] (does not set \\Seen); we
-    set \\Seen only after we process a bounce that matches our campaign or after
-    we handle a human reply — avoids re-downloading the same messages every run.
+    Gmail-only: creates label mailboxes if missing, finds candidates with
+    UID SEARCH X-GM-RAW (newer_than:30d -label:PROCESSED-CAMPUS), never uses
+    IMAP \\Seen. After handling, UID COPY adds PROCESSED-CAMPUS plus an outcome
+    label (BOUNCE-CAMPUS, REPLY-CAMPUS, …).
     """
     counts = {"bounces": 0, "responses": 0}
 
@@ -466,51 +555,29 @@ def check_inbox(
     try:
         log.info(f"  Connecting to {gmail_address} …")
         mail = _imap_connect(gmail_address, app_password)
+        ensure_gmail_labels(mail)
 
-        # Only look at emails from the last 30 days (IMAP SINCE filter)
-        from datetime import timedelta
-        since_date = (datetime.now() - timedelta(days=30)).strftime("%d-%b-%Y")
+        message_uids = _campus_inbox_candidate_uids(mail)
+        log.info(f"  Found {len(message_uids)} candidate UID(s) (Gmail raw search)")
 
-        # UNSEEN: same idea as check_bounces.py — processed messages get \\Seen and drop out
-        search_terms = [
-            f'(UNSEEN SINCE {since_date} FROM "mailer-daemon")',
-            f'(UNSEEN SINCE {since_date} FROM "postmaster")',
-            f'(UNSEEN SINCE {since_date} SUBJECT "delivery status")',
-            f'(UNSEEN SINCE {since_date} SUBJECT "undeliverable")',
-            f'(UNSEEN SINCE {since_date} SUBJECT "mail delivery failed")',
-            f'(UNSEEN SINCE {since_date} SUBJECT "failure notice")',
-            f'(UNSEEN SINCE {since_date} SUBJECT "Re: {EMAIL_SUBJECT[:30]}")',
-        ]
-
-        message_ids: set = set()
-        for term in search_terms:
-            try:
-                _, ids = mail.search(None, term)
-                if ids and ids[0]:
-                    message_ids.update(ids[0].split())
-            except Exception:
-                pass
-
-        log.info(f"  Found {len(message_ids)} candidate email(s)")
-
-        ids_list   = list(message_ids)
+        ids_list   = sorted(message_uids, key=lambda u: int(u))
         reconnects = 0
 
         # ── PASS 1: Headers only (tiny payload, very fast) ──────────
         HDRFETCH = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT AUTO-SUBMITTED X-FAILED-RECIPIENTS)])"
-        relevant_ids = []
+        relevant_uids: list = []
         log.info(f"  Pass 1: scanning headers of {len(ids_list)} email(s)...")
 
         i = 0
         while i < len(ids_list):
-            msg_id = ids_list[i]
+            uid = ids_list[i]
             try:
                 if i > 0 and i % 100 == 0:
                     try: mail.noop()
                     except Exception: pass
                     log.info(f"    ...{i}/{len(ids_list)} headers done")
 
-                _, hdr_data = mail.fetch(msg_id, HDRFETCH)
+                _, hdr_data = mail.uid("FETCH", uid, HDRFETCH)
                 if not hdr_data or not isinstance(hdr_data[0], tuple):
                     i += 1; continue
                 raw_hdr = hdr_data[0][1]
@@ -533,33 +600,34 @@ def check_inbox(
                     or "placement" in subject
                 )
                 if is_bounce_hdr or is_reply_hdr:
-                    relevant_ids.append(msg_id)
+                    relevant_uids.append(uid)
 
                 i += 1
 
             except (ssl.SSLError, OSError, imaplib.IMAP4.abort) as e:
                 if reconnects >= 3:
-                    log.warning(f"  Reconnect limit (pass1); skipping {msg_id}")
+                    log.warning(f"  Reconnect limit (pass1); skipping {uid!r}")
                     i += 1; continue
                 reconnects += 1
                 log.warning(f"  Reconnecting ({reconnects}/3)...")
                 time.sleep(2 * reconnects)
-                try: mail = _imap_connect(gmail_address, app_password)
+                try:
+                    mail = _imap_connect(gmail_address, app_password)
+                    ensure_gmail_labels(mail)
                 except Exception: break
             except Exception as e:
-                log.warning(f"  Header read error {msg_id}: {e}")
+                log.warning(f"  Header read error {uid!r}: {e}")
                 i += 1
 
-        log.info(f"  Pass 1 done — {len(relevant_ids)}/{len(ids_list)} need full fetch.")
+        log.info(f"  Pass 1 done — {len(relevant_uids)}/{len(ids_list)} need full fetch.")
 
-        # ── PASS 2: Full RFC822 only for relevant emails ─────────────
+        # ── PASS 2: Full body only for relevant emails ─────────────
         reconnects = 0
         i = 0
-        while i < len(relevant_ids):
-            msg_id = relevant_ids[i]
+        while i < len(relevant_uids):
+            uid = relevant_uids[i]
             try:
-                # PEEK: do not set \\Seen on fetch; we set flags only after handling
-                _, data = mail.fetch(msg_id, "(BODY.PEEK[])")
+                _, data = mail.uid("FETCH", uid, "(BODY.PEEK[])")
                 if not data or not isinstance(data[0], tuple):
                     i += 1; continue
                 raw = data[0][1]
@@ -575,7 +643,9 @@ def check_inbox(
                             log.info(f"  [BOUNCE->FAILURE] {addr}")
                             counts["bounces"] += 1
                     if bounced_addrs:
-                        _imap_mark_seen(mail, msg_id)
+                        _tag_campus_message(mail, uid, GMAIL_LABEL_BOUNCE)
+                    else:
+                        _tag_campus_message(mail, uid, GMAIL_LABEL_BOUNCE_UNMATCHED)
                 else:
                     reply_from = extract_reply_from_address(msg)
                     subject    = (msg.get("Subject", "") or "").lower()
@@ -610,24 +680,25 @@ def check_inbox(
                                 if matched_addr:
                                     set_autoreply_sent(conn, matched_addr)
                             counts["responses"] += 1
-                            _imap_mark_seen(mail, msg_id)
+                            _tag_campus_message(mail, uid, GMAIL_LABEL_REPLY)
                     elif is_autoreply(msg) and is_campaign_reply:
-                        # Out-of-office etc. on our thread — stop re-fetching every run
-                        _imap_mark_seen(mail, msg_id)
+                        _tag_campus_message(mail, uid, GMAIL_LABEL_AUTOREPLY)
 
                 i += 1
 
             except (ssl.SSLError, OSError, imaplib.IMAP4.abort) as e:
                 if reconnects >= 3:
-                    log.warning(f"  Reconnect limit (pass2); skipping {msg_id}")
+                    log.warning(f"  Reconnect limit (pass2); skipping {uid!r}")
                     i += 1; continue
                 reconnects += 1
                 log.warning(f"  Reconnecting ({reconnects}/3)...")
                 time.sleep(2 * reconnects)
-                try: mail = _imap_connect(gmail_address, app_password)
+                try:
+                    mail = _imap_connect(gmail_address, app_password)
+                    ensure_gmail_labels(mail)
                 except Exception: break
             except Exception as e:
-                log.warning(f"  Could not read msg {msg_id}: {e}")
+                log.warning(f"  Could not read msg {uid!r}: {e}")
                 i += 1
 
         try:
