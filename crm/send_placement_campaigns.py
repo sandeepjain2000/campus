@@ -161,9 +161,12 @@ AUTOREPLY_INDICATORS = [
 # ═══════════════════════════════════════════════════
 # LOGGING
 # ═══════════════════════════════════════════════════
+# Shown on every line (stdout + log file) to distinguish this runner from others.
+SCRIPT_LOG_TAG = "CAMPUS"
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)-7s] %(message)s",
+    format=f"%(asctime)s [{SCRIPT_LOG_TAG}] [%(levelname)-7s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
         logging.StreamHandler(sys.stdout),
