@@ -97,6 +97,9 @@ INBOX_LOOKBACK_DAYS = 30
 # Pass 1: UIDs per one ``UID FETCH`` (cuts IMAP round-trips vs one UID at a time).
 HEADER_FETCH_BATCH = 40
 
+# Pass 2: log progress every N full-body fetches (always logs 1 and last).
+FULL_FETCH_PROGRESS_INTERVAL = 5
+
 # Local parts (before @) excluded from outreach — not stored in DB; filtered at send time.
 SKIP_SEND_LOCAL_PARTS = ("placements", "tpo")
 
@@ -768,9 +771,23 @@ def check_inbox(
         # ── PASS 2: Full body only for relevant emails ─────────────
         reconnects = 0
         i = 0
-        while i < len(relevant_uids):
+        total_p2 = len(relevant_uids)
+        if total_p2:
+            log.info(
+                f"  Pass 2: full body (BODY.PEEK[]) for {total_p2} UID(s) "
+                f"(progress every {FULL_FETCH_PROGRESS_INTERVAL})…"
+            )
+        while i < total_p2:
             uid = relevant_uids[i]
             try:
+                n = i + 1
+                if (
+                    n == 1
+                    or n == total_p2
+                    or (FULL_FETCH_PROGRESS_INTERVAL > 0 and n % FULL_FETCH_PROGRESS_INTERVAL == 0)
+                ):
+                    log.info(f"    … {n}/{total_p2} full fetch")
+
                 _, data = mail.uid("FETCH", uid, "(BODY.PEEK[])")
                 if not data or not isinstance(data[0], tuple):
                     i += 1; continue
@@ -850,6 +867,9 @@ def check_inbox(
             except Exception as e:
                 log.warning(f"  Could not read msg {uid!r}: {e}")
                 i += 1
+
+        if total_p2:
+            log.info(f"  Pass 2 done — {total_p2} full fetch(es) finished.")
 
         try:
             mail.logout()
