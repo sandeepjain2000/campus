@@ -9,8 +9,10 @@ send_placement_campaigns.py
 Campus Placement CRM – Email Campaign Runner
 
 Each run:
-  1. Checks all Gmail inboxes for bounce / human-response emails (Gmail labels only —
-     no IMAP \\Seen; creates PROCESSED-CAMPUS, BOUNCE-CAMPUS, etc. if missing).
+  1. Gmail INBOX (last ~30d) without label PROCESSED-CAMPUS: header-scan every message,
+     tag NON-CAMPUS when not campaign-related (skips full fetch). Candidate threads get
+     full fetch → BOUNCE / REPLY / AUTOREPLY labels. REPLY-CAMPUS mail is forwarded to
+     FORWARD_TO (sandeepjain200019@gmail.com). No IMAP \\Seen.
   2. Marks bounced addresses as 'Failure' in crm.db.
   3. Forwards genuine human replies to sandeepjain200019@gmail.com.
   4. Sends an auto-reply to the human respondent.
@@ -68,13 +70,16 @@ IMAP_PORT       = 993
 SMTP_HOST       = "smtp.gmail.com"
 SMTP_PORT       = 587
 
-# Gmail labels (IMAP mailboxes). Created at runtime if missing. Processing uses
-# X-GM-RAW "-label:PROCESSED-CAMPUS" instead of the \\Seen flag.
+# Gmail labels (IMAP mailboxes). Created at runtime if missing. INBOX mail without
+# PROCESSED-CAMPUS is scanned (X-GM-RAW); \\Seen is not used.
 GMAIL_LABEL_PROCESSED = "PROCESSED-CAMPUS"
 GMAIL_LABEL_BOUNCE = "BOUNCE-CAMPUS"
 GMAIL_LABEL_BOUNCE_UNMATCHED = "BOUNCE-CAMPUS-UNMATCHED"
 GMAIL_LABEL_REPLY = "REPLY-CAMPUS"
 GMAIL_LABEL_AUTOREPLY = "AUTOREPLY-CAMPUS"
+# Inbox mail that is not a campus bounce/reply candidate (header pass); still tagged so
+# the next run skips it (-label:PROCESSED-CAMPUS).
+GMAIL_LABEL_NON_CAMPUS = "NON-CAMPUS"
 
 CAMPUS_GMAIL_LABELS = (
     GMAIL_LABEL_PROCESSED,
@@ -82,6 +87,7 @@ CAMPUS_GMAIL_LABELS = (
     GMAIL_LABEL_BOUNCE_UNMATCHED,
     GMAIL_LABEL_REPLY,
     GMAIL_LABEL_AUTOREPLY,
+    GMAIL_LABEL_NON_CAMPUS,
 )
 
 # Local parts (before @) excluded from outreach — not stored in DB; filtered at send time.
@@ -336,28 +342,13 @@ def _gmail_raw_uid_search(mail: imaplib.IMAP4_SSL, raw_query: str) -> set:
     return set(blob.split())
 
 
-def _campus_inbox_candidate_uids(mail: imaplib.IMAP4_SSL) -> set:
+def _campus_inbox_unprocessed_uids(mail: imaplib.IMAP4_SSL) -> set:
     """
-    Messages from the last ~30 days that are not yet tagged PROCESSED-CAMPUS,
-    matching bounce / campaign-reply heuristics (Gmail web search syntax).
+    Every message still in INBOX from the last ~30 days that does not yet have
+    PROCESSED-CAMPUS. Next run omits these via -label:PROCESSED-CAMPUS (read cost).
     """
-    ns = f"newer_than:30d -label:{GMAIL_LABEL_PROCESSED}"
-    subj_head = EMAIL_SUBJECT.split(" - ")[0].strip().replace('"', r"\"")
-    fragments = [
-        f"{ns} from:mailer-daemon@googlemail.com",
-        f"{ns} from:mailer-daemon@google.com",
-        f"{ns} from:mailer-daemon",
-        f"{ns} from:postmaster",
-        f"{ns} subject:undeliverable",
-        f'{ns} subject:"mail delivery failed"',
-        f'{ns} subject:"delivery status"',
-        f'{ns} subject:"failure notice"',
-        f'{ns} subject:"{subj_head}"',
-    ]
-    uids: set = set()
-    for frag in fragments:
-        uids |= _gmail_raw_uid_search(mail, frag)
-    return uids
+    q = f"newer_than:30d in:inbox -label:{GMAIL_LABEL_PROCESSED}"
+    return _gmail_raw_uid_search(mail, q)
 
 
 def _imap_uid_copy_to_label(mail: imaplib.IMAP4_SSL, uid: bytes, label: str) -> bool:
@@ -541,10 +532,11 @@ def check_inbox(
       - Human replies  → mark Success, forward, autoreply
     Returns counts dict.
 
-    Gmail-only: creates label mailboxes if missing, finds candidates with
-    UID SEARCH X-GM-RAW (newer_than:30d -label:PROCESSED-CAMPUS), never uses
-    IMAP \\Seen. After handling, UID COPY adds PROCESSED-CAMPUS plus an outcome
-    label (BOUNCE-CAMPUS, REPLY-CAMPUS, …).
+    Gmail-only: labels are created if missing. Every INBOX message (last ~30d) without
+    PROCESSED-CAMPUS is examined; unrelated mail gets PROCESSED-CAMPUS + NON-CAMPUS
+    after a header-only pass. Candidates get a full fetch, then PROCESSED-CAMPUS plus
+    BOUNCE / REPLY / AUTOREPLY. REPLY-CAMPUS threads are forwarded to FORWARD_TO.
+    IMAP \\Seen is not used.
     """
     counts = {"bounces": 0, "responses": 0}
 
@@ -557,11 +549,15 @@ def check_inbox(
         mail = _imap_connect(gmail_address, app_password)
         ensure_gmail_labels(mail)
 
-        message_uids = _campus_inbox_candidate_uids(mail)
-        log.info(f"  Found {len(message_uids)} candidate UID(s) (Gmail raw search)")
+        message_uids = _campus_inbox_unprocessed_uids(mail)
+        log.info(
+            f"  INBOX without {GMAIL_LABEL_PROCESSED!r}: {len(message_uids)} UID(s) "
+            f"(newer_than:30d)"
+        )
 
         ids_list   = sorted(message_uids, key=lambda u: int(u))
         reconnects = 0
+        tagged_non_campus_headers = 0
 
         # ── PASS 1: Headers only (tiny payload, very fast) ──────────
         HDRFETCH = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT AUTO-SUBMITTED X-FAILED-RECIPIENTS)])"
@@ -601,6 +597,9 @@ def check_inbox(
                 )
                 if is_bounce_hdr or is_reply_hdr:
                     relevant_uids.append(uid)
+                else:
+                    _tag_campus_message(mail, uid, GMAIL_LABEL_NON_CAMPUS)
+                    tagged_non_campus_headers += 1
 
                 i += 1
 
@@ -619,7 +618,10 @@ def check_inbox(
                 log.warning(f"  Header read error {uid!r}: {e}")
                 i += 1
 
-        log.info(f"  Pass 1 done — {len(relevant_uids)}/{len(ids_list)} need full fetch.")
+        log.info(
+            f"  Pass 1 done — full fetch for {len(relevant_uids)} UID(s); "
+            f"tagged NON-CAMPUS from headers: {tagged_non_campus_headers}"
+        )
 
         # ── PASS 2: Full body only for relevant emails ─────────────
         reconnects = 0
@@ -669,9 +671,12 @@ def check_inbox(
                             log.info(f"  [HUMAN REPLY] from: {reply_from}")
                             if matched_addr:
                                 mark_success(conn, matched_addr)
+                            # REPLY-CAMPUS: forward original to personal inbox (FORWARD_TO)
                             fwd_ok = forward_email(first_sender, first_pass, msg, reply_from)
                             if fwd_ok:
-                                log.info(f"  [FORWARDED] to {FORWARD_TO}")
+                                log.info(
+                                    f"  [FORWARDED] REPLY-CAMPUS → {FORWARD_TO}"
+                                )
                                 if matched_addr:
                                     set_forwarded(conn, matched_addr)
                             ar_ok = send_autoreply(first_sender, first_pass, reply_from)
@@ -683,6 +688,9 @@ def check_inbox(
                             _tag_campus_message(mail, uid, GMAIL_LABEL_REPLY)
                     elif is_autoreply(msg) and is_campaign_reply:
                         _tag_campus_message(mail, uid, GMAIL_LABEL_AUTOREPLY)
+                    else:
+                        # Header suggested bounce/reply but body did not match — still label
+                        _tag_campus_message(mail, uid, GMAIL_LABEL_NON_CAMPUS)
 
                 i += 1
 
