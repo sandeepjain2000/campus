@@ -43,7 +43,8 @@ import sqlite3
 import ssl
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Optional, Set
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -89,6 +90,9 @@ CAMPUS_GMAIL_LABELS = (
     GMAIL_LABEL_AUTOREPLY,
     GMAIL_LABEL_NON_CAMPUS,
 )
+
+# INBOX sweep window (X-GM-RAW ``newer_than:Nd`` and IMAP ``SINCE`` fallback).
+INBOX_LOOKBACK_DAYS = 30
 
 # Local parts (before @) excluded from outreach — not stored in DB; filtered at send time.
 SKIP_SEND_LOCAL_PARTS = ("placements", "tpo")
@@ -327,34 +331,119 @@ def ensure_gmail_labels(mail: imaplib.IMAP4_SSL) -> None:
             log.warning(f"  CREATE {label!r}: {e}")
 
 
-def _gmail_raw_uid_search(mail: imaplib.IMAP4_SSL, raw_query: str) -> set:
-    """UID SEARCH X-GM-RAW — returns UID bytes (Gmail only)."""
+def _imap_since_str(days: int) -> str:
+    """IMAP SINCE date (English month, locale-independent)."""
+    dt = datetime.now() - timedelta(days=days)
+    mon = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
+    return f"{dt.day}-{mon[dt.month - 1]}-{dt.year}"
+
+
+def _gmail_raw_uid_search(mail: imaplib.IMAP4_SSL, raw_query: str) -> Optional[Set[bytes]]:
+    """
+    UID SEARCH X-GM-RAW — Gmail only.
+
+    Returns ``None`` if every variant fails (caller should use IMAP fallback).
+    Unquoted multi-word queries often produce ``BAD Could not parse command``;
+    we try CHARSET UTF-8 and quoted forms first.
+    """
+    dq = '"' + raw_query.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    variants = (
+        ("SEARCH", "CHARSET", "UTF-8", "X-GM-RAW", raw_query),
+        ("SEARCH", "X-GM-RAW", dq),
+        ("SEARCH", "X-GM-RAW", raw_query),
+    )
+    last_err: Optional[Exception] = None
+    for args in variants:
+        try:
+            typ, data = mail.uid(*args)
+        except imaplib.IMAP4.error as e:
+            last_err = e
+            continue
+        if typ != "OK":
+            continue
+        if not data or not data[0]:
+            return set()
+        blob = data[0]
+        if not isinstance(blob, bytes) or blob.strip() == b"":
+            return set()
+        return set(blob.split())
+    if last_err is not None:
+        log.warning(
+            f"  X-GM-RAW search failed (all variants): {last_err!r} "
+            f"(query: {raw_query[:72]}…)"
+        )
+    return None
+
+
+def _fetch_xgm_labels_blob(mail: imaplib.IMAP4_SSL, uid: bytes) -> bytes:
+    """Raw bytes of FETCH X-GM-LABELS response for one UID."""
     try:
-        typ, data = mail.uid("SEARCH", "X-GM-RAW", raw_query)
+        typ, data = mail.uid("FETCH", uid, "(X-GM-LABELS)")
+    except Exception:
+        return b""
+    if typ != "OK" or not data:
+        return b""
+    chunks = []
+    for item in data:
+        if isinstance(item, tuple):
+            for part in item:
+                if isinstance(part, bytes):
+                    chunks.append(part)
+        elif isinstance(item, bytes):
+            chunks.append(item)
+    return b" ".join(chunks)
+
+
+def _inbox_uids_since_without_processed_label(
+    mail: imaplib.IMAP4_SSL,
+    days: int,
+    processed_label: str,
+) -> set:
+    """
+    Standard IMAP ``UID SEARCH SINCE`` on selected mailbox, then drop messages
+    whose X-GM-LABELS contain ``processed_label``. Used when X-GM-RAW is rejected.
+    """
+    since = _imap_since_str(days)
+    try:
+        typ, data = mail.uid("SEARCH", "SINCE", since)
     except imaplib.IMAP4.error as e:
-        log.warning(f"  X-GM-RAW search failed: {e!r} (query: {raw_query[:80]}…)")
+        log.warning(f"  IMAP SINCE search failed: {e!r}")
         return set()
     if typ != "OK" or not data or not data[0]:
         return set()
     blob = data[0]
     if not isinstance(blob, bytes) or blob.strip() == b"":
         return set()
-    return set(blob.split())
+    candidates = set(blob.split())
+    if not candidates:
+        return set()
+    needle = processed_label.encode("utf-8")
+    out: set = set()
+    for uid in sorted(candidates, key=lambda u: int(u)):
+        if needle not in _fetch_xgm_labels_blob(mail, uid):
+            out.add(uid)
+    return out
 
 
 def _campus_inbox_unprocessed_uids(mail: imaplib.IMAP4_SSL) -> set:
     """
-    INBOX messages from the last ~30 days that do not yet have PROCESSED-CAMPUS.
+    INBOX messages in the lookback window without PROCESSED-CAMPUS.
 
-    Uses two X-GM-RAW searches and set difference. A single query with
-    ``-label:PROCESSED-CAMPUS`` often triggers Gmail IMAP ``BAD Could not parse
-    command`` because the hyphen is parsed as IMAP syntax, not Gmail text.
+    Prefer two X-GM-RAW queries (difference of sets). If Gmail returns
+    ``BAD Could not parse command``, fall back to ``SINCE`` + ``X-GM-LABELS``
+    (same day window; not caused by ``newer_than`` itself).
     """
-    in_inbox = _gmail_raw_uid_search(mail, "newer_than:30d in:inbox")
-    labeled = _gmail_raw_uid_search(
-        mail, f"newer_than:30d label:{GMAIL_LABEL_PROCESSED}"
+    ns = f"newer_than:{INBOX_LOOKBACK_DAYS}d"
+    in_inbox = _gmail_raw_uid_search(mail, f"{ns} in:inbox")
+    labeled = _gmail_raw_uid_search(mail, f"{ns} label:{GMAIL_LABEL_PROCESSED}")
+    if in_inbox is not None and labeled is not None:
+        return in_inbox - labeled
+    log.info(
+        f"  Using IMAP SINCE + X-GM-LABELS fallback (last {INBOX_LOOKBACK_DAYS} days)…"
     )
-    return in_inbox - labeled
+    return _inbox_uids_since_without_processed_label(
+        mail, INBOX_LOOKBACK_DAYS, GMAIL_LABEL_PROCESSED
+    )
 
 
 def _imap_uid_copy_to_label(mail: imaplib.IMAP4_SSL, uid: bytes, label: str) -> bool:
@@ -558,7 +647,7 @@ def check_inbox(
         message_uids = _campus_inbox_unprocessed_uids(mail)
         log.info(
             f"  INBOX without {GMAIL_LABEL_PROCESSED!r}: {len(message_uids)} UID(s) "
-            f"(newer_than:30d)"
+            f"(newer_than:{INBOX_LOOKBACK_DAYS}d or SINCE fallback)"
         )
 
         ids_list   = sorted(message_uids, key=lambda u: int(u))
