@@ -1,6 +1,12 @@
-from docx import Document
-from docx.shared import Inches, Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+import sys
+
+try:
+    from docx import Document
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+except ImportError:
+    print("Error: python-docx package is required. Install it with: pip install python-docx")
+    raise SystemExit(1)
 
 def create_user_document():
     doc = Document()
@@ -94,9 +100,13 @@ def create_user_document():
         p.add_run(desc)
 
     # Save the document
-    file_path = 'Campus_Placement_System_User_Document.docx'
-    doc.save(file_path)
-    print(f"Document saved successfully as {file_path}")
+    file_path = sys.argv[1] if len(sys.argv) > 1 else 'Campus_Placement_System_User_Document.docx'
+    try:
+        doc.save(file_path)
+        print(f"Document saved successfully as {file_path}")
+    except OSError as e:
+        print(f"Error saving document to {file_path}: {e}")
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     create_user_document()

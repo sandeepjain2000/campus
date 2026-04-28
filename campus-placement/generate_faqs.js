@@ -163,6 +163,14 @@ function buildHTML() {
   return html;
 }
 
-const outPath = 'C:/Users/sandeep/Downloads/Claudes/CampusPlacement/Prompts/FAQs.html';
-fs.writeFileSync(outPath, buildHTML(), 'utf8');
-console.log('FAQs generated successfully at', outPath);
+const outPath = process.argv[2] || path.join(__dirname, 'prompts', 'FAQs.html');
+const outputDir = path.dirname(outPath);
+
+try {
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(outPath, buildHTML(), 'utf8');
+  console.log('FAQs generated successfully at', outPath);
+} catch (err) {
+  console.error(`Failed to write FAQs to ${outPath}: ${err.message}`);
+  process.exit(1);
+}

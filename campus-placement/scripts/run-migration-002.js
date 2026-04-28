@@ -4,6 +4,10 @@ const { Client } = require('pg');
 
 const root = path.join(__dirname, '..');
 const envPath = path.join(root, '.env.local');
+if (!fs.existsSync(envPath)) {
+  console.error('.env.local not found at', envPath);
+  process.exit(1);
+}
 const raw = fs.readFileSync(envPath, 'utf8');
 let databaseUrl = null;
 let supabaseUrl = null;
@@ -29,18 +33,45 @@ if (supabaseUrl && databaseUrl && supabaseUrl !== databaseUrl) {
 }
 
 const sqlPath = path.join(root, 'db', 'migrations', '002_platform_feedback.sql');
+if (!fs.existsSync(sqlPath)) {
+  console.error('Migration file not found:', sqlPath);
+  process.exit(1);
+}
 const sql = fs.readFileSync(sqlPath, 'utf8');
 
 (async () => {
+  const allowedEnvs = ['development', 'test', 'local'];
+  const currentEnv = (process.env.NODE_ENV || '').toLowerCase();
+  if (!allowedEnvs.includes(currentEnv)) {
+    throw new Error(
+      `Refusing to run migration. NODE_ENV must be one of ${allowedEnvs.join(', ')}. Current: ${process.env.NODE_ENV || '(unset)'}`
+    );
+  }
+  if (!process.argv.includes('--confirm-migration')) {
+    throw new Error('Pass --confirm-migration to apply SQL migration.');
+  }
+
   const client = new Client({
     connectionString: url,
-    ssl: { rejectUnauthorized: false },
+    ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
+      ? { rejectUnauthorized: false }
+      : { rejectUnauthorized: true },
   });
   await client.connect();
-  await client.query(sql);
-  console.log('Applied:', sqlPath);
-  await client.end();
+  try {
+    await client.query('BEGIN');
+    await client.query(sql);
+    await client.query('COMMIT');
+    console.log('Applied:', sqlPath);
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
+    throw err;
+  } finally {
+    await client.end();
+  }
 })().catch((err) => {
-  console.error(err.message || err);
+  console.error('Migration failed:', err);
   process.exit(1);
 });
