@@ -13,6 +13,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { role, firstName, lastName, email, password, phone } = body;
+    const allowedRoles = new Set(['college_admin', 'student', 'employer']);
 
     const validation = validateRegistration({
       email,
@@ -23,6 +24,10 @@ export async function POST(request) {
     });
     if (!validation.isValid) {
       return NextResponse.json({ error: Object.values(validation.errors)[0] }, { status: 400 });
+    }
+    // Defense-in-depth: keep a route-level role allowlist even if validator logic changes later.
+    if (!allowedRoles.has(role)) {
+      return NextResponse.json({ error: 'Valid role is required' }, { status: 400 });
     }
 
     const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -89,7 +94,7 @@ export async function POST(request) {
 
         const userResult = await client.query(
           `INSERT INTO users (tenant_id, email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, role`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, email, role`,
           [
             tenantId,
             email,

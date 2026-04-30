@@ -355,7 +355,7 @@
         <td class="loc">College Admin Topbar<br><code>dashboard/layout.js</code> · session select</td>
         <td class="issue-text">The academic session <code>&lt;select&gt;</code> uses <code>defaultValue="2025-26"</code> (uncontrolled) instead of <code>value</code> + <code>onChange</code> (controlled). In React, mixing controlled and uncontrolled patterns on the same element causes unpredictable behaviour — the selection will not persist through renders, will not reflect in state, and cannot be used to filter data downstream.</td>
         <td><span class="sev Medium">Medium</span></td>
-        <td class="fix-text">Lift the session selection into a state variable (or URL query param for persistence): <code>const [session, setSession] = useState('2025-26')</code>. Pass <code>value={session} onChange={(e) => setSession(e.target.value)}</code>. Persist the selected session to localStorage so it survives page navigation. Propagate the selected year to all data fetching calls via context or URL param.</td>
+        <td class="fix-text">Lift the session selection into a state variable (or URL query param for persistence): <code>const [session, setSession] = useState('2025-26')</code>. Pass <code>value=&#123;session&#125; onChange=&#123;(e) =&gt; setSession(e.target.value)&#125;</code>. Persist the selected session to localStorage so it survives page navigation. Propagate the selected year to all data fetching calls via context or URL param.</td>
       </tr>
     </tbody>
   </table>
@@ -384,7 +384,7 @@
         <td class="loc">All SWR Pages<br><code>student/page.js</code> + 40 other pages</td>
         <td class="issue-text">Every SWR-fetching page uses <code>if (isLoading || !data) { return skeleton }</code>. When SWR's <code>error</code> is truthy (network failure, 500 response, auth expiry), the condition <code>!data</code> is also true — the skeleton renders indefinitely with no error feedback. There is no way for users to know the fetch failed or to retry.</td>
         <td><span class="sev High">High</span></td>
-        <td class="fix-text">Split the loading guard: <code>if (error) return &lt;PageError onRetry={() => mutate()} /&gt;</code> first, then <code>if (isLoading || !data) return &lt;Skeleton /&gt;</code>. Create a shared <code>&lt;PageError&gt;</code> component showing the specific error type: network failure shows "Check your connection + Retry", auth error redirects to login, server errors show "Something went wrong + Contact support". Add this to all 41 data-fetching pages.</td>
+        <td class="fix-text">Split the loading guard: <code>if (error) return &lt;PageError onRetry=&#123;() =&gt; mutate()&#125; /&gt;</code> first, then <code>if (isLoading || !data) return &lt;Skeleton /&gt;</code>. Create a shared <code>&lt;PageError&gt;</code> component showing the specific error type: network failure shows "Check your connection + Retry", auth error redirects to login, server errors show "Something went wrong + Contact support". Add this to all 41 data-fetching pages.</td>
       </tr>
       <tr>
         <td class="cat">Hardcoded Data</td>
@@ -555,7 +555,7 @@
         <td class="loc">Topbar · Employer Role<br><code>dashboard/layout.js</code> · activeCampus</td>
         <td class="issue-text"><code>JSON.parse(sessionStorage.getItem('activeCampus'))</code> is called directly in the render function with no try/catch. If <code>sessionStorage</code> is unavailable (SSR context), contains a corrupted value, or returns <code>null</code>, this throws an uncaught exception that crashes the entire layout — making every employer-role page inaccessible. The code also calls <code>typeof window !== 'undefined'</code> but the JSON.parse still runs server-side in some edge cases.</td>
         <td><span class="sev High">High</span></td>
-        <td class="fix-text">Wrap in a safe accessor: <code>const getActiveCampus = () => { try { const raw = sessionStorage?.getItem('activeCampus'); return raw ? JSON.parse(raw) : null; } catch { return null; } }</code>. Call this in a <code>useMemo</code> with <code>typeof window !== 'undefined'</code> as a guard. Additionally, migrate active campus state to a React context or URL param rather than sessionStorage — it's more reliable and survives tab clones.</td>
+        <td class="fix-text">Wrap in a safe accessor: <code>const getActiveCampus = () =&gt; &#123; try &#123; const raw = sessionStorage?.getItem('activeCampus'); return raw ? JSON.parse(raw) : null; &#125; catch &#123; return null; &#125; &#125;</code>. Call this in a <code>useMemo</code> with <code>typeof window !== 'undefined'</code> as a guard. Additionally, migrate active campus state to a React context or URL param rather than sessionStorage — it's more reliable and survives tab clones.</td>
       </tr>
       <tr>
         <td class="cat">Error Message</td>

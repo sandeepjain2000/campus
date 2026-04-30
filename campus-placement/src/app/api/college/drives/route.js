@@ -34,7 +34,7 @@ export async function GET() {
         COALESCE(d.social_shared, '{}') AS social_shared
       FROM placement_drives d
       LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-      WHERE d.tenant_id = $1
+      WHERE d.tenant_id = $1::uuid
       ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC`,
       [tenantId]
     );
@@ -42,7 +42,7 @@ export async function GET() {
     const staff = await query(
       `SELECT id, first_name, last_name, role
        FROM users
-       WHERE tenant_id = $1
+       WHERE tenant_id = $1::uuid
          AND role = 'college_admin'
          AND is_active = true
        ORDER BY first_name ASC, last_name ASC`,

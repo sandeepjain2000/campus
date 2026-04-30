@@ -216,7 +216,7 @@
         <td class="loc">Login · Register · Forms<br>Email/phone inputs</td>
         <td class="issue-text">Email fields do not auto-trim pasted whitespace. Pasting <code>" sandeep@college.edu "</code> (with leading/trailing spaces) passes silently through the UI, hits the API, fails with a non-obvious error, and the user cannot see the spaces in the input field. This is the most common cause of "login not working" support tickets.</td>
         <td><span class="sev Medium">Medium</span></td>
-        <td class="fix-text">Add an <code>onPaste</code> handler to all email inputs: <code>onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData('text').trim(); setEmail(text); }}</code>. Alternatively, add <code>.trim()</code> in the <code>onChange</code> handler. Apply to registration, login, and all admin user-creation forms.</td>
+        <td class="fix-text">Add an <code>onPaste</code> handler to all email inputs: <code>onPaste=&#123;(e) =&gt; &#123; e.preventDefault(); const text = e.clipboardData.getData('text').trim(); setEmail(text); &#125;&#125;</code>. Alternatively, add <code>.trim()</code> in the <code>onChange</code> handler. Apply to registration, login, and all admin user-creation forms.</td>
       </tr>
     </tbody>
   </table>
@@ -242,7 +242,7 @@
         <td class="loc">Tables with view toggle<br>college/drives, employer/jobs</td>
         <td class="issue-text">College drives and employer interviews have a list/calendar view toggle (<code>setView('list' | 'calendar')</code>). This preference resets to <code>'list'</code> on every page load. A user who prefers the calendar view must switch it every single visit. No interaction preference (view mode, expanded sections, panel width) persists across sessions.</td>
         <td><span class="sev High">High</span></td>
-        <td class="fix-text">Persist view preference to <code>localStorage</code> with a page-scoped key: <code>localStorage.setItem('drives.view', view)</code>. On mount: <code>const [view, setView] = useState(() => localStorage.getItem('drives.view') || 'list')</code>. Apply to: drives (list/calendar), interviews (list/calendar), reports (chart/table). Extend to collapsed sidebar sections.</td>
+        <td class="fix-text">Persist view preference to <code>localStorage</code> with a page-scoped key: <code>localStorage.setItem('drives.view', view)</code>. On mount: <code>const [view, setView] = useState(() =&gt; localStorage.getItem('drives.view') || 'list')</code>. Apply to: drives (list/calendar), interviews (list/calendar), reports (chart/table). Extend to collapsed sidebar sections.</td>
       </tr>
       <tr>
         <td class="cat">Disabled State Clarity</td>
@@ -329,7 +329,7 @@
         <td class="loc">Inline forms (add job, add event)<br>Search results, load more</td>
         <td class="issue-text">When inline create forms open (the job creation form on employer/jobs, the event form on college/calendar), focus is not moved to the first field. Keyboard users must Tab through the entire page to reach the newly injected form content. When the form closes, focus is not returned to the trigger button.</td>
         <td><span class="sev High">High</span></td>
-        <td class="fix-text">On form open: <code>useEffect(() => { if (showForm) firstFieldRef.current?.focus(); }, [showForm])</code>. On form close: <code>triggerButtonRef.current?.focus()</code>. For dynamically loaded content (load more, search results), move focus to the first new item: <code>firstNewItemRef.current?.focus()</code> after the DOM update settles.</td>
+        <td class="fix-text">On form open: <code>useEffect(() =&gt; &#123; if (showForm) firstFieldRef.current?.focus(); &#125;, [showForm])</code>. On form close: <code>triggerButtonRef.current?.focus()</code>. For dynamically loaded content (load more, search results), move focus to the first new item: <code>firstNewItemRef.current?.focus()</code> after the DOM update settles.</td>
       </tr>
       <tr>
         <td class="cat">Announcement Granularity</td>
@@ -481,7 +481,7 @@
         <td class="loc">Multi-step forms<br>File upload (student/documents)</td>
         <td class="issue-text">Only two loading states exist: skeleton (full-page) and spinner-in-button (inline). No blocking overlay exists for flows where the user must not interact during processing — e.g., file upload to S3 (student documents), bulk status updates (once implemented), or multi-step API chains. The drives page has one <code>modal-overlay</code> class defined — but it is not used for loading states.</td>
         <td><span class="sev High">High</span></td>
-        <td class="fix-text">Add a third loading tier: <code>&lt;FullPageOverlay /&gt;</code> — a semi-transparent backdrop with a centered spinner and message like "Uploading document…" or "Saving changes…". Use it for: file uploads (documents), any operation taking >1 second. The existing <code>modal-overlay</code> CSS class is the right foundation — wrap it in a component with a <code>message</code> prop.</td>
+        <td class="fix-text">Add a third loading tier: <code>&lt;FullPageOverlay /&gt;</code> — a semi-transparent backdrop with a centered spinner and message like "Uploading document..." or "Saving changes...". Use it for: file uploads (documents), any operation taking &gt;1 second. The existing <code>modal-overlay</code> CSS class is the right foundation — wrap it in a component with a <code>message</code> prop.</td>
       </tr>
       <tr>
         <td class="cat">Keyboard Interaction Cues</td>
@@ -495,7 +495,7 @@
         <td class="loc">Form fields<br>All helper texts</td>
         <td class="issue-text">Helper text and field hints appear immediately on mount alongside labels — not on focus/interaction. Critical guidance (e.g., "CTC range must overlap minimum wage — format: ₹500,000") is shown to all users at all times, creating visual clutter for experienced users. Supplementary info should appear at different speeds than critical warnings.</td>
         <td><span class="sev Low">Low</span></td>
-        <td class="fix-text">Show field-level hints only when the field is focused: <code>const [focused, setFocused] = useState(false)</code>. For critical validation feedback, show immediately on blur (<200ms). For supplementary tips ("You can add multiple branches separated by comma"), show on a 500ms delay after focus — so fast typists never see them, but pausing users do.</td>
+        <td class="fix-text">Show field-level hints only when the field is focused: <code>const [focused, setFocused] = useState(false)</code>. For critical validation feedback, show immediately on blur (&lt;200ms). For supplementary tips ("You can add multiple branches separated by comma"), show on a 500ms delay after focus — so fast typists never see them, but pausing users do.</td>
       </tr>
     </tbody>
   </table>
