@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { writeAuditLog } from '@/lib/auditLog';
 import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
 
 /** Roles allowed to use /data-entry APIs and pages. */
@@ -28,7 +29,17 @@ export function resolveDataEntryTenantId(session, requestedTenantId) {
   const sessionTenant = getSessionTenantId(session.user);
   if (session.user.role === 'super_admin') {
     const req = requestedTenantId != null ? String(requestedTenantId).trim() : '';
-    if (req && isUuid(req)) return req;
+    if (req && isUuid(req)) {
+      void writeAuditLog({
+        userId: session.user.id,
+        tenantId: req,
+        action: 'DATA_ENTRY_TENANT_ACCESS',
+        entityType: 'tenant',
+        entityId: req,
+        newValues: { explicitTenantContext: true },
+      });
+      return req;
+    }
     return sessionTenant;
   }
   return sessionTenant;

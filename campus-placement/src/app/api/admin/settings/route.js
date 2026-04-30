@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { adminSettingsAuditSummary, validateAdminSettingsNormalized } from '@/lib/adminSettingsValidate';
+import { getRequestClientIp, writeAuditLog } from '@/lib/auditLog';
 import { query } from '@/lib/db';
+import { isUuid } from '@/lib/tenantContext';
 
 /** Respect explicit empty strings (e.g. clear platform name); only fall back when key absent or null. */
 function pickString(payload, key, defaultVal) {
@@ -32,7 +35,9 @@ const DEFAULTS = {
 
 function resolveSettingsTenantId(session) {
   const id = session?.user?.tenantId ?? session?.user?.tenant_id ?? null;
-  return id && String(id).trim() ? String(id).trim() : null;
+  const s = id && String(id).trim() ? String(id).trim() : null;
+  if (!s) return null;
+  return isUuid(s) ? s : null;
 }
 
 export async function GET() {
@@ -42,7 +47,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = await resolveSettingsTenantId(session);
+    const tenantId = resolveSettingsTenantId(session);
     if (!tenantId) return NextResponse.json(DEFAULTS);
 
     const res = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
@@ -62,7 +67,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = await resolveSettingsTenantId(session);
+    const tenantId = resolveSettingsTenantId(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'No tenant available to persist settings' }, { status: 400 });
     }
@@ -85,6 +90,11 @@ export async function POST(request) {
       maxUploadSizeMb: Number(payload?.maxUploadSizeMb || DEFAULTS.maxUploadSizeMb),
     };
 
+    const validation = validateAdminSettingsNormalized(normalized);
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
     const existing = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
     const currentSettings = existing.rows[0]?.settings || {};
     const merged = { ...currentSettings, adminSettings: normalized };
@@ -94,6 +104,17 @@ export async function POST(request) {
        WHERE id = $2::uuid`,
       [JSON.stringify(merged), tenantId]
     );
+
+    void writeAuditLog({
+      userId: session.user.id,
+      tenantId,
+      action: 'UPDATE_ADMIN_SETTINGS',
+      entityType: 'tenants',
+      entityId: tenantId,
+      oldValues: { hadAdminSettings: Boolean(currentSettings?.adminSettings) },
+      newValues: adminSettingsAuditSummary(normalized),
+      ipAddress: getRequestClientIp(request),
+    });
 
     return NextResponse.json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {

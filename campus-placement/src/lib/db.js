@@ -65,7 +65,11 @@ export async function query(text, params) {
     }
     return res;
   } catch (error) {
-    console.error('Database query error:', { text: text.substring(0, 80), error: error.message });
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Database query error:', { text: text.substring(0, 80), error: error.message });
+    } else {
+      console.error('Database query error:', error.message);
+    }
     throw error;
   }
 }
