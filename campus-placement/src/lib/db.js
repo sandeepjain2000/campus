@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { getPgSslOption } from '@/lib/pgSsl';
 
 // Parse DATABASE_URL manually so that percent-encoded special characters
 // in the password (e.g. %2B → +, %21 → !) are correctly decoded before
@@ -19,16 +20,18 @@ function buildPoolConfig() {
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
-      ssl: { rejectUnauthorized: false },
+      ssl: getPgSslOption(url.hostname),
     };
   } catch {
+    const m = String(rawUrl).match(/@([^/?:]+)/);
+    const hostHint = m ? m[1] : '';
     // Fallback to connectionString if URL parsing fails
     return {
       connectionString: rawUrl,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
-      ssl: { rejectUnauthorized: false },
+      ssl: getPgSslOption(hostHint),
     };
   }
 }

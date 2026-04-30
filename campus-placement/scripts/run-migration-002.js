@@ -51,11 +51,28 @@ const sql = fs.readFileSync(sqlPath, 'utf8');
     throw new Error('Pass --confirm-migration to apply SQL migration.');
   }
 
+  const hostHint = (() => {
+    const m = String(url).match(/@([^/?:]+)/);
+    return m ? m[1] : '';
+  })();
+  const h = hostHint.toLowerCase();
+  const local = h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  let ssl = false;
+  if (!local) {
+    const insecure =
+      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'false' ||
+      process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false';
+    if (insecure) ssl = { rejectUnauthorized: false };
+    else {
+      ssl = { rejectUnauthorized: true };
+      const caPath = process.env.DATABASE_SSL_CA?.trim();
+      if (caPath) ssl.ca = fs.readFileSync(caPath, 'utf8');
+    }
+  }
+
   const client = new Client({
     connectionString: url,
-    ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
-      ? { rejectUnauthorized: false }
-      : { rejectUnauthorized: true },
+    ssl,
   });
   await client.connect();
   try {
