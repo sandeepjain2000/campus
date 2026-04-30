@@ -46,7 +46,6 @@ next-env.d.ts
 # scratch/utility scripts
 fix_emojis.js
 test-db.js
-run-sql.js
 update_seed.js
 
 .vercel
