@@ -19,6 +19,7 @@ import {
 } from '@/config/dashboardMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import DevScreenTag from '@/components/DevScreenTag';
+import ScreenSearchBar from '@/components/ScreenSearchBar';
 import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import { Moon, Sun, Menu, Mail, Home } from 'lucide-react';
 import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
@@ -333,6 +334,7 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <div className="topbar-right" style={{ flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+            <ScreenSearchBar />
             <DevScreenTag />
             {role === 'student' && (
               <Link

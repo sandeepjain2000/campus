@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Database, UserPlus, GraduationCap, Target, BadgeIndianRupee, ArrowRight } from 'lucide-react';
+import { Database, UserPlus, GraduationCap, Target, ArrowRight } from 'lucide-react';
 
 const SCREENS = [
   {
@@ -22,12 +22,6 @@ const SCREENS = [
     description: 'Create real drives that appear in college metrics.',
     icon: Target,
   },
-  {
-    href: '/data-entry/offers',
-    title: 'Offers',
-    description: 'Add accepted offers and salary numbers for dashboard packages.',
-    icon: BadgeIndianRupee,
-  },
 ];
 
 export default function DataEntryHubPage() {
@@ -41,7 +35,8 @@ export default function DataEntryHubPage() {
             </h1>
           </div>
           <p className="text-secondary" style={{ marginTop: 0 }}>
-            Use these standalone screens to insert live data into database tables via UI.
+            Use these standalone screens to insert live data into database tables via UI. <strong>Offer acceptance</strong> is not managed here — students respond on{' '}
+            <strong>Dashboard → My Offers</strong>; employers and colleges use their dashboard <strong>Offers</strong> screens to view status.
           </p>
         </div>
 

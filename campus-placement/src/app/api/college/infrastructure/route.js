@@ -230,11 +230,15 @@ export async function DELETE(request) {
     const id = String(body?.id || '').trim();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
-    await query(
+    const del = await query(
       `DELETE FROM college_calendar
-       WHERE id = $1::uuid AND tenant_id = $2::uuid AND event_type = 'placement_drive'`,
+       WHERE id = $1::uuid AND tenant_id = $2::uuid AND event_type = 'placement_drive'
+       RETURNING id`,
       [id, tenantId]
     );
+    if (!del.rows?.length) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete booking:', error);

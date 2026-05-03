@@ -73,6 +73,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     console.error('POST /api/employer/jobs/visibility', e);
-    return NextResponse.json({ error: e.message || 'Failed to sync visibility' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to sync visibility' }, { status: 500 });
   }
 }

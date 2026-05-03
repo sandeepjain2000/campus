@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isFacebookPageShareConfigured } from '@/lib/facebookPageShare';
+import { emailPlacementDriveApproved } from '@/lib/placementDriveEmail';
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
@@ -94,7 +95,7 @@ export async function PATCH(request) {
        WHERE id = $3::uuid
          AND tenant_id = $4::uuid
          AND status = 'requested'
-       RETURNING id, status`,
+       RETURNING id, status, title, drive_date, drive_type, tenant_id, employer_id`,
       [nextStatus, session.user.id, driveId, tenantId]
     );
 
@@ -102,7 +103,31 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Requested drive not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, drive: updated.rows[0] });
+    const row = updated.rows[0];
+    if (row.status === 'approved') {
+      const meta = await query(
+        `SELECT t.name AS college_name, ep.company_name
+         FROM placement_drives d
+         JOIN tenants t ON t.id = d.tenant_id
+         JOIN employer_profiles ep ON ep.id = d.employer_id
+         WHERE d.id = $1::uuid`,
+        [row.id],
+      );
+      const m = meta.rows[0];
+      const dateLabel = row.drive_date
+        ? new Date(row.drive_date).toLocaleDateString(undefined, { dateStyle: 'medium' })
+        : 'date TBD';
+      void emailPlacementDriveApproved({
+        companyName: m?.company_name || 'Employer',
+        driveTitle: row.title || 'Untitled',
+        collegeName: m?.college_name || 'College',
+        driveDateLabel: dateLabel,
+        driveType: row.drive_type,
+        driveId: row.id,
+      }).catch((err) => console.error('[mail] placement drive approved', err));
+    }
+
+    return NextResponse.json({ success: true, drive: { id: row.id, status: row.status } });
   } catch (error) {
     console.error('Failed to update drive status:', error);
     return NextResponse.json({ error: 'Failed to update drive status' }, { status: 500 });

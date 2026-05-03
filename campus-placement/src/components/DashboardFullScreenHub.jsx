@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { Sun, Moon, Search, Bell } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import EntityLogo from '@/components/EntityLogo';
 import { menuConfig, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
+import { getDevScreenId } from '@/config/devScreenIds';
 import { getNotificationIconTitle } from '@/lib/appVersion';
 import { getRoleDisplayName } from '@/lib/utils';
 import DevScreenTag from '@/components/DevScreenTag';
@@ -27,7 +28,7 @@ function getQuickActions(role, employerHasCampus) {
   if (role === 'employer') {
     return [
       {
-        label: employerHasCampus ? 'Change campus' : 'Campus tie-ups',
+        label: employerHasCampus ? 'Change campus' : 'Campus Partnerships',
         href: '/dashboard/employer/select-campus',
       },
       { label: 'Job postings', href: '/dashboard/employer/jobs' },
@@ -53,7 +54,7 @@ function getQuickActions(role, employerHasCampus) {
       { label: 'Students', href: '/dashboard/college/students' },
       { label: 'Placement drives', href: '/dashboard/college/drives' },
       { label: 'Employers', href: '/dashboard/college/employers' },
-      { label: 'Employer tie-up requests', href: '/dashboard/college/employers/requests' },
+      { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests' },
       { label: 'Settings', href: '/dashboard/college/settings' },
       { label: 'Alerts', href: '/dashboard/alerts' },
     ];
@@ -90,6 +91,7 @@ export default function DashboardFullScreenHub({ role, session }) {
     if (typeof window === 'undefined' || role !== 'employer') return true;
     return Boolean(sessionStorage.getItem('activeCampus'));
   });
+  const [hubSearch, setHubSearch] = useState('');
 
   useEffect(() => {
     if (role !== 'employer') {
@@ -117,6 +119,28 @@ export default function DashboardFullScreenHub({ role, session }) {
 
   const hubTitle = getHubPageTitle(session, role, menu);
   const quickActions = getQuickActions(role, employerHasCampus);
+  const hubFilter = useMemo(() => {
+    const q = hubSearch.trim().toLowerCase();
+    if (!q) return null;
+    const match = (s) => String(s ?? '').toLowerCase().includes(q);
+    const qa = quickActions.filter(
+      (a) => match(a.label) || match(a.href) || match(getDevScreenId(a.href)),
+    );
+    const sections = menu.sections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter(
+          (item) =>
+            match(item.label) ||
+            match(item.href) ||
+            match(section.title) ||
+            match(getDevScreenId(item.href)),
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+    return { quickActions: qa, sections };
+  }, [hubSearch, menu.sections, quickActions]);
+
   const logoName =
     role === 'super_admin' ? 'PlacementHub' : session?.user?.tenantName || session?.user?.name || 'PlacementHub';
   const notificationTitle = getNotificationIconTitle();
@@ -153,10 +177,11 @@ export default function DashboardFullScreenHub({ role, session }) {
               id="hub-search"
               type="search"
               className="dashboard-nav-hub-search form-input"
-              placeholder="Search…"
-              readOnly
-              aria-label="Search (not wired yet)"
-              title="Search is not wired yet in this build"
+              placeholder="Search screens (e.g. drives, S-11)…"
+              value={hubSearch}
+              onChange={(e) => setHubSearch(e.target.value)}
+              aria-label="Search dashboard destinations"
+              title="Filter links by name, path, or screen tag (e.g. S-11)"
               style={{ paddingLeft: '2.25rem' }}
             />
           </div>
@@ -212,7 +237,7 @@ export default function DashboardFullScreenHub({ role, session }) {
               below; pages that need a campus will prompt you.
             </p>
             <Link href="/dashboard/employer/select-campus" className="btn btn-primary btn-sm" style={{ marginTop: '0.75rem', display: 'inline-flex' }}>
-              Campus tie-ups →
+              Campus Partnerships →
             </Link>
           </div>
         )}
@@ -222,9 +247,9 @@ export default function DashboardFullScreenHub({ role, session }) {
           the top bar to return here.
         </p>
 
-        {quickActions.length > 0 && (
+        {(hubFilter ? hubFilter.quickActions : quickActions).length > 0 && (
           <div className="dashboard-nav-hub-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {quickActions.map((a) => (
+            {(hubFilter ? hubFilter.quickActions : quickActions).map((a) => (
               <Link key={`${a.label}-${a.href}`} href={a.href} className="dashboard-nav-hub-quick">
                 {a.label}
               </Link>
@@ -232,8 +257,14 @@ export default function DashboardFullScreenHub({ role, session }) {
           </div>
         )}
 
+        {hubFilter && hubFilter.sections.length === 0 && hubFilter.quickActions.length === 0 && (
+          <p className="text-secondary" style={{ marginTop: '0.75rem' }}>
+            No destinations match “{hubSearch.trim()}”. Try a shorter phrase or a screen tag like <code>S-11</code>.
+          </p>
+        )}
+
         <div className="dashboard-nav-hub-grid">
-          {menu.sections.map((section) => (
+          {(hubFilter ? hubFilter.sections : menu.sections).map((section) => (
             <div key={section.id} className="dashboard-nav-hub-column">
               <h2 className="dashboard-nav-hub-category-title">{section.title}</h2>
               <ul className="dashboard-nav-hub-list">
@@ -248,6 +279,11 @@ export default function DashboardFullScreenHub({ role, session }) {
                         <item.icon size={16} strokeWidth={1.75} />
                       </span>
                       {item.label}
+                      {hubSearch.trim() ? (
+                        <span className="text-xs text-tertiary" style={{ marginLeft: '0.35rem' }}>
+                          ({getDevScreenId(item.href) || '—'})
+                        </span>
+                      ) : null}
                     </Link>
                   </li>
                 ))}

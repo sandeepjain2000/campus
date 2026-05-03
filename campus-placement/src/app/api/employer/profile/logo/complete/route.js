@@ -24,6 +24,6 @@ export async function POST(req) {
     return NextResponse.json({ success: true, logo_url: fileUrl });
   } catch (e) {
     console.error('POST /api/employer/profile/logo/complete', e);
-    return NextResponse.json({ error: e.message || 'Failed to save logo' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save logo' }, { status: 500 });
   }
 }

@@ -139,11 +139,11 @@ export default function EmployerInterviewsPage() {
 
       <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--primary-500)' }}>
         <p className="text-sm text-secondary" style={{ margin: 0 }}>
-          Round-level scores and pipeline outcomes (Aptitude, GD, Interviews) live in the separate{' '}
+          Round results from your CSV uploads are edited under Assessment uploads;{' '}
           <Link href="/dashboard/employer/hiring-assessment" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
             Hiring Assessment
           </Link>{' '}
-          module for dashboards and reporting.
+          is a read-only campus summary and export of that same data.
         </p>
       </div>
 

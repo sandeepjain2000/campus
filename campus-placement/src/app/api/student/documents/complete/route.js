@@ -41,6 +41,6 @@ export async function POST(req) {
     return NextResponse.json({ document: ins.rows[0] }, { status: 201 });
   } catch (e) {
     console.error('POST /api/student/documents/complete', e);
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }

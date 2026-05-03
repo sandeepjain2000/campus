@@ -75,6 +75,6 @@ export async function POST(req) {
     return NextResponse.json(out);
   } catch (e) {
     console.error('POST /api/student/documents/presign', e);
-    return NextResponse.json({ error: e.message || 'Presign failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Presign failed' }, { status: 500 });
   }
 }

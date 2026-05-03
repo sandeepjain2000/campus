@@ -250,7 +250,8 @@ export async function POST(request) {
   } catch (e) {
     console.error('POST /api/employer/jobs', e);
     const status = e.statusCode === 400 ? 400 : 500;
-    return NextResponse.json({ error: e.message || 'Failed to create job' }, { status });
+    const safeMsg = status >= 500 ? 'Failed to create job' : (e.message || 'Failed to create job');
+    return NextResponse.json({ error: safeMsg }, { status });
   }
 }
 
@@ -334,6 +335,6 @@ export async function PATCH(request) {
     return NextResponse.json({ ok: true, job: updated.rows[0] });
   } catch (e) {
     console.error('PATCH /api/employer/jobs', e);
-    return NextResponse.json({ error: e.message || 'Failed to update job' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update job' }, { status: 500 });
   }
 }

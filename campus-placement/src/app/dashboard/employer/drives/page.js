@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -93,9 +94,30 @@ export default function EmployerDrivesPage() {
             )}
           </p>
         </div>
-        <button className="btn btn-primary" type="button" onClick={() => setShowModal(true)}>
-          + Request New Drive
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <ExportCsvSplitButton
+            mode="dual"
+            filenameBase="employer_placement_drives"
+            currentCount={drives.length}
+            fullCount={drives.length}
+            getRows={() => ({
+              headers: ['id', 'college', 'title', 'date', 'drive_type', 'status', 'venue', 'registered_count'],
+              rows: drives.map((d) => [
+                d.id,
+                d.college ?? '',
+                d.role ?? d.title ?? '',
+                d.date ?? '',
+                d.type ?? '',
+                d.status ?? '',
+                d.venue ?? '',
+                String(d.registered ?? ''),
+              ]),
+            })}
+          />
+          <button className="btn btn-primary" type="button" onClick={() => setShowModal(true)}>
+            + Request New Drive
+          </button>
+        </div>
       </div>
 
       {isLoading && <p className="text-sm text-secondary">Loading drives…</p>}

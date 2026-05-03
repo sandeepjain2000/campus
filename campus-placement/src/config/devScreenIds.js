@@ -31,6 +31,7 @@ const ROUTES_SORTED = [
   '/dashboard/college/internship-results',
   '/dashboard/college/internships',
   '/dashboard/college/offers',
+  '/dashboard/college/offers-upload',
   '/dashboard/college/overview',
   '/dashboard/college/reports',
   '/dashboard/college/rules',
@@ -48,6 +49,7 @@ const ROUTES_SORTED = [
   '/dashboard/employer/internships',
   '/dashboard/employer/jobs',
   '/dashboard/employer/offers',
+  '/dashboard/employer/offers-upload',
   '/dashboard/employer/overview',
   '/dashboard/employer/profile',
   '/dashboard/employer/projects',
@@ -73,6 +75,11 @@ const ROUTES_SORTED = [
   '/data-entry/student-profiles',
   '/data-entry/placement-drives',
   '/data-entry/offers',
+  '/dashboard/employer/assessment-uploads',
+  '/dashboard/employer/assessment-summary',
+  '/dashboard/college/audit-reports',
+  '/dashboard/admin/audit-reports',
+  '/dashboard/my-exports',
 ];
 
 /** @type {Record<string, string>} */
@@ -93,5 +100,10 @@ export function getDevScreenId(pathname) {
   for (const key of keys) {
     if (p === key || p.startsWith(`${key}/`)) return DEV_SCREEN_BY_PATH[key];
   }
-  return null;
+  const slug = p
+    .replace(/^\//, '')
+    .replace(/[^a-zA-Z0-9/-]+/g, '-')
+    .replace(/\//g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug ? `PATH-${slug}` : 'PATH-root';
 }

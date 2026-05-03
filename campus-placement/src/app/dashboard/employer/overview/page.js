@@ -80,6 +80,17 @@ export default function EmployerOverviewPage() {
         </Link>
       </div>
 
+      <div className="directive-panel" style={{ marginBottom: '1.25rem' }} role="region" aria-label="Assessment map link">
+        <p className="directive-panel__title">Assessment &amp; hiring results</p>
+        <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
+          Round results are maintained under Assessment uploads; Hiring Assessment is a read-only campus summary of the same data.{' '}
+          <Link href="/dashboard/employer/assessment-summary" style={{ fontWeight: 600 }}>
+            Open the Assessment map
+          </Link>{' '}
+          for a one-page guide.
+        </p>
+      </div>
+
       <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
         <div className="stats-card">
           <div className="stats-card-icon indigo">

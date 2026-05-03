@@ -28,7 +28,7 @@ export async function GET(request) {
     );
     return NextResponse.json({ users: users.rows });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to load users' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load users' }, { status: 500 });
   }
 }
 
@@ -67,7 +67,7 @@ export async function POST(request) {
     return NextResponse.json({ user: created.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Failed to create user from data-entry:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create user' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
 }
 
@@ -99,7 +99,7 @@ export async function PUT(request) {
     if (!updated.rows[0]) return NextResponse.json({ error: 'User not found in your tenant' }, { status: 404 });
     return NextResponse.json({ user: updated.rows[0] });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to update user' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
   }
 }
 
@@ -113,9 +113,15 @@ export async function DELETE(request) {
     if (!tenantId) return NextResponse.json({ error: 'Tenant context required' }, { status: 400 });
     const id = String(body?.id || '').trim();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
-    await query(`DELETE FROM users WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
+    const del = await query(
+      `DELETE FROM users WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [id, tenantId]
+    );
+    if (!del.rows?.length) {
+      return NextResponse.json({ error: 'User not found in your tenant' }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to delete user' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
   }
 }

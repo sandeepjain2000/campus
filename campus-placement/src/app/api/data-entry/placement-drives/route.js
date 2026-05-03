@@ -29,7 +29,7 @@ export async function GET(request) {
     );
     return NextResponse.json({ placementDrives: result.rows });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to load placement drives' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load placement drives' }, { status: 500 });
   }
 }
 
@@ -79,7 +79,7 @@ export async function POST(request) {
     return NextResponse.json({ placementDrive: created.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Failed to create placement drive from data-entry:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create placement drive' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create placement drive' }, { status: 500 });
   }
 }
 
@@ -113,7 +113,7 @@ export async function PUT(request) {
     if (!updated.rows[0]) return NextResponse.json({ error: 'Placement drive not found' }, { status: 404 });
     return NextResponse.json({ placementDrive: updated.rows[0] });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to update placement drive' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update placement drive' }, { status: 500 });
   }
 }
 
@@ -128,9 +128,15 @@ export async function DELETE(request) {
 
     const id = String(body?.id || '').trim();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
-    await query(`DELETE FROM placement_drives WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
+    const del = await query(
+      `DELETE FROM placement_drives WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [id, tenantId]
+    );
+    if (!del.rows?.length) {
+      return NextResponse.json({ error: 'Placement drive not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to delete placement drive' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete placement drive' }, { status: 500 });
   }
 }

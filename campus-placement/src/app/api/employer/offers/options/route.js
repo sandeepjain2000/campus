@@ -58,6 +58,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Failed to load offer options:', error);
-    return NextResponse.json({ error: error.message || 'Failed to load options' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load options' }, { status: 500 });
   }
 }

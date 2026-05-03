@@ -83,7 +83,7 @@ export async function GET(req, { params }) {
   } catch (error) {
     console.error('Report Generation Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate drive report' },
+      { error: 'Failed to generate drive report' },
       { status: 500 },
     );
   }

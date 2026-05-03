@@ -59,7 +59,10 @@ export default function StudentOffersPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>🎉 My Offers</h1>
-          <p>Review and respond to placement offers</p>
+          <p>
+            This is the only place you <strong>accept or decline</strong> an offer; your choice updates the record your employer and college see on their Offers
+            screens.
+          </p>
         </div>
       </div>
 
@@ -87,9 +90,19 @@ export default function StudentOffersPage() {
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{offer.company}</h3>
                   <p className="text-sm text-secondary">{offer.role}</p>
                 </div>
-                <span className={`badge badge-${effectiveStatus === 'accepted' ? 'green' : effectiveStatus === 'pending' ? 'amber' : 'red'} badge-dot`}
-                  style={{ padding: '0.375rem 1rem', fontSize: '0.8125rem' }}>
-                  {effectiveStatus === 'accepted' ? '✅ Accepted' : effectiveStatus === 'pending' ? '⏳ Pending' : effectiveStatus === 'expired' ? '⏱️ Expired' : '❌ Declined'}
+                <span
+                  className={`badge badge-${effectiveStatus === 'accepted' ? 'green' : effectiveStatus === 'pending' ? 'amber' : effectiveStatus === 'expired' ? 'gray' : effectiveStatus === 'revoked' ? 'red' : 'red'} badge-dot`}
+                  style={{ padding: '0.375rem 1rem', fontSize: '0.8125rem' }}
+                >
+                  {effectiveStatus === 'accepted'
+                    ? '✅ Accepted'
+                    : effectiveStatus === 'pending'
+                      ? '⏳ Pending'
+                      : effectiveStatus === 'expired'
+                        ? '⏱️ Expired'
+                        : effectiveStatus === 'revoked'
+                          ? '⛔ Revoked'
+                          : '❌ Declined'}
                 </span>
               </div>
 
@@ -137,6 +150,35 @@ export default function StudentOffersPage() {
                   borderRadius: 'var(--radius-lg)', fontSize: '0.875rem', color: 'var(--success-700)' 
                 }}>
                   ✅ You accepted this offer on {formatDate(offer.acceptedAt)}. Congratulations! 🎊
+                </div>
+              )}
+
+              {effectiveStatus === 'rejected' && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.875rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  You declined this offer.
+                </div>
+              )}
+
+              {effectiveStatus === 'revoked' && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: 'var(--danger-50)',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.875rem',
+                    color: 'var(--danger-700)',
+                  }}
+                >
+                  This offer was revoked by the employer.
                 </div>
               )}
             </div>

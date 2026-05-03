@@ -143,13 +143,21 @@ export default function DataEntryOffersPage() {
         <div className="page-header">
           <div className="page-header-left">
             <h1>Data Entry • Offers</h1>
-            <p>Create offer rows (accepted offers affect avg/highest package).</p>
+            <p>Super-admin backfill only — same <code>offers</code> table as dashboards, but not the primary &quot;offer management&quot; flow.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" className="btn btn-primary" onClick={openAdd}>+ Add Offer</button>
             <button type="button" className="btn btn-secondary" onClick={loadData}>Refresh</button>
             <Link href="/data-entry" className="btn btn-secondary">Back to list</Link>
           </div>
+        </div>
+
+        <div className="directive-panel" style={{ marginBottom: '1rem' }} role="note">
+          <p className="directive-panel__title">Offer acceptance</p>
+          <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
+            Students record <strong>accept / decline</strong> on <strong>Dashboard → My Offers</strong>. Employers create offers from <strong>Dashboard → Offers</strong>.
+            Use this screen only for exceptional data entry; prefer the dashboard flows for normal operations.
+          </p>
         </div>
 
         {showForm && (

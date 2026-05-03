@@ -40,7 +40,7 @@ export async function GET() {
         { status: 503 },
       );
     }
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
 
@@ -79,6 +79,6 @@ export async function POST(req) {
         { status: 503 },
       );
     }
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }

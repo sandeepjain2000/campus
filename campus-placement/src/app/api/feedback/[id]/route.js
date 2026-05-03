@@ -56,7 +56,7 @@ export async function GET(req, { params }) {
     return NextResponse.json({ item: itemRes.rows[0], replies });
   } catch (e) {
     console.error('GET /api/feedback/[id]', e);
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
 
@@ -89,7 +89,7 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ item: res.rows[0] });
   } catch (e) {
     console.error('PATCH /api/feedback/[id]', e);
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
 
@@ -141,6 +141,6 @@ export async function POST(req, { params }) {
     }
   } catch (e) {
     console.error('POST /api/feedback/[id]', e);
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }

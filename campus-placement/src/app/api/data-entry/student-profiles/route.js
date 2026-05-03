@@ -31,7 +31,8 @@ export async function GET(request) {
     );
     return NextResponse.json({ studentProfiles: result.rows });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to load student profiles' }, { status: 500 });
+    console.error('Failed to load student profiles:', error);
+    return NextResponse.json({ error: 'Failed to load student profiles' }, { status: 500 });
   }
 }
 
@@ -89,7 +90,7 @@ export async function POST(request) {
     return NextResponse.json({ studentProfile: created.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Failed to create student profile from data-entry:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create student profile' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create student profile' }, { status: 500 });
   }
 }
 
@@ -122,7 +123,8 @@ export async function PUT(request) {
     if (!updated.rows[0]) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
     return NextResponse.json({ studentProfile: updated.rows[0] });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to update student profile' }, { status: 500 });
+    console.error('Failed to update student profile:', error);
+    return NextResponse.json({ error: 'Failed to update student profile' }, { status: 500 });
   }
 }
 
@@ -137,9 +139,16 @@ export async function DELETE(request) {
 
     const id = String(body?.id || '').trim();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
-    await query(`DELETE FROM student_profiles WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
+    const del = await query(
+      `DELETE FROM student_profiles WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [id, tenantId]
+    );
+    if (!del.rows?.length) {
+      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Failed to delete student profile' }, { status: 500 });
+    console.error('Failed to delete student profile:', error);
+    return NextResponse.json({ error: 'Failed to delete student profile' }, { status: 500 });
   }
 }

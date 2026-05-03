@@ -225,7 +225,7 @@ export default function SelectCampusPage() {
               🏫
             </div>
             <div>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Campus tie-ups</h1>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Campus Partnerships</h1>
               <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
                 Welcome, {session?.user?.tenantName || session?.user?.name}.{' '}
                 <strong>Only your company starts a tie-up:</strong> request below; the college approves or declines.

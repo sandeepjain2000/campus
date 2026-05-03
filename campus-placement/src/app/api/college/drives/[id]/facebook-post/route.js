@@ -93,7 +93,7 @@ export async function POST(_request, { params }) {
   } catch (error) {
     console.error('Facebook post error:', error);
     return NextResponse.json(
-      { error: error?.message || 'Failed to post to Facebook' },
+      { error: 'Failed to post to Facebook' },
       { status: 500 },
     );
   }

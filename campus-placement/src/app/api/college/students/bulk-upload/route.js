@@ -127,6 +127,6 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error('Bulk upload error:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

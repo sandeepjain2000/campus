@@ -372,16 +372,19 @@ CREATE TABLE offers (
     joining_date DATE,
     location VARCHAR(255),
     offer_letter_url TEXT,
+    reported_company_name VARCHAR(255),
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'expired', 'revoked')),
     deadline TIMESTAMP,
     accepted_at TIMESTAMP,
     rejected_at TIMESTAMP,
     rejection_reason TEXT,
+    is_latest SMALLINT NOT NULL DEFAULT 1 CHECK (is_latest IN (0, 1)),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_offers_student ON offers(student_id);
+CREATE INDEX idx_offers_student_is_latest ON offers(student_id) WHERE is_latest = 1;
 CREATE INDEX idx_offers_employer ON offers(employer_id);
 CREATE INDEX idx_offers_status ON offers(status);
 

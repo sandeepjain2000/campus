@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
+import { emailPlacementDriveRequested } from '@/lib/placementDriveEmail';
 
 async function getEmployerId(userId) {
   const r = await query(`SELECT id, company_name FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
@@ -143,10 +144,26 @@ export async function POST(request) {
       };
     });
 
+    if (result?.ok && result?.drive) {
+      const d = result.drive;
+      const dateLabel = d.date
+        ? new Date(d.date).toLocaleDateString(undefined, { dateStyle: 'medium' })
+        : 'date TBD';
+      void emailPlacementDriveRequested({
+        companyName: emp.company_name,
+        driveTitle: d.role || d.title || 'Untitled',
+        collegeName: d.college,
+        driveDateLabel: dateLabel,
+        driveType: d.type,
+        driveId: d.id,
+      }).catch((err) => console.error('[mail] placement drive requested', err));
+    }
+
     return NextResponse.json(result);
   } catch (e) {
     console.error('POST /api/employer/drives', e);
     const code = e.statusCode || 500;
-    return NextResponse.json({ error: e.message || 'Failed to create drive' }, { status: code });
+    const safeMsg = code >= 500 ? 'Failed to create drive' : (e.message || 'Failed to create drive');
+    return NextResponse.json({ error: safeMsg }, { status: code });
   }
 }

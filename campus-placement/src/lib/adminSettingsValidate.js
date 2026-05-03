@@ -20,6 +20,18 @@ export function validateAdminSettingsNormalized(n) {
     return { ok: false, error: 'Invalid supportEmail' };
   }
 
+  const sysInbox = String(n.systemNotificationInboxEmail ?? '').trim();
+  if (sysInbox.length > 320) return { ok: false, error: 'systemNotificationInboxEmail too long' };
+  if (sysInbox && !EMAIL_RE.test(sysInbox)) {
+    return { ok: false, error: 'Invalid systemNotificationInboxEmail' };
+  }
+
+  const webmailUrl = String(n.systemNotificationWebmailUrl ?? '').trim();
+  if (webmailUrl.length > 2048) return { ok: false, error: 'systemNotificationWebmailUrl too long' };
+
+  const senderLabel = String(n.systemNotificationSenderName ?? '').trim();
+  if (senderLabel.length > 120) return { ok: false, error: 'systemNotificationSenderName too long' };
+
   if (String(n.timezone || '').length > 120) {
     return { ok: false, error: 'timezone must be at most 120 characters' };
   }
@@ -89,5 +101,7 @@ export function adminSettingsAuditSummary(n) {
     fromEmailSet: Boolean(String(n.fromEmail || '').trim()),
     storageProvider: n.storageProvider,
     maxUploadSizeMb: n.maxUploadSizeMb,
+    systemInboxConfigured: Boolean(String(n.systemNotificationInboxEmail || '').trim()),
+    webmailUrlSet: Boolean(String(n.systemNotificationWebmailUrl || '').trim()),
   };
 }

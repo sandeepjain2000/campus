@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 
@@ -19,6 +19,41 @@ function getClient() {
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     },
   });
+}
+
+export async function putObjectText({ key, body, contentType = 'text/plain; charset=utf-8' }) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+  const client = getClient();
+  const bucket = process.env.S3_BUCKET_NAME;
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  );
+  return {
+    bucket,
+    key,
+    fileUrl: buildS3ObjectPublicUrl(bucket, process.env.AWS_REGION, key),
+  };
+}
+
+export async function createDownloadUrlForKey(key, expiresInSeconds = 60 * 60 * 24 * 7) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+  const client = getClient();
+  const bucket = process.env.S3_BUCKET_NAME;
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  });
+  const downloadUrl = await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+  return { bucket, key, downloadUrl, expiresIn: expiresInSeconds };
 }
 
 function sanitizeFilename(name) {

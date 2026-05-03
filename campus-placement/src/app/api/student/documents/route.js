@@ -27,7 +27,7 @@ export async function GET() {
     return NextResponse.json({ documents: res.rows });
   } catch (e) {
     console.error('GET /api/student/documents', e);
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
 
@@ -59,6 +59,6 @@ export async function DELETE(req) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('DELETE /api/student/documents', e);
-    return NextResponse.json({ error: 'Database unavailable', detail: e.message }, { status: 503 });
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }

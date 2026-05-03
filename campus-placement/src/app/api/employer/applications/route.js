@@ -182,6 +182,6 @@ export async function GET(request) {
     });
   } catch (e) {
     console.error('GET /api/employer/applications', e);
-    return NextResponse.json({ error: e.message || 'Failed to load applications' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load applications' }, { status: 500 });
   }
 }

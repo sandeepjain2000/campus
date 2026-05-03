@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { adminSettingsAuditSummary, validateAdminSettingsNormalized } from '@/lib/adminSettingsValidate';
 import { getRequestClientIp, writeAuditLog } from '@/lib/auditLog';
 import { query } from '@/lib/db';
-import { isUuid } from '@/lib/tenantContext';
+import { invalidatePlatformSettingsCache, PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
 
 /** Respect explicit empty strings (e.g. clear platform name); only fall back when key absent or null. */
 function pickString(payload, key, defaultVal) {
@@ -16,28 +16,25 @@ function pickString(payload, key, defaultVal) {
   return String(v);
 }
 
-const DEFAULTS = {
-  platformName: 'PlacementHub',
-  supportEmail: 'support@placementhub.com',
-  timezone: 'Asia/Kolkata',
-  requireEmailVerification: true,
-  enableTwoFactorAuth: false,
-  sessionTimeoutValue: 24,
-  sessionTimeoutUnit: 'hours',
-  rememberDeviceValue: 14,
-  rememberDeviceUnit: 'days',
-  smtpHost: '',
-  smtpPort: 587,
-  fromEmail: '',
-  storageProvider: 'Local Filesystem',
-  maxUploadSizeMb: 5,
-};
+async function loadPlatformSettingsRow() {
+  try {
+    const res = await query(`SELECT settings FROM platform_settings WHERE id = 1`);
+    const stored = res.rows[0]?.settings;
+    const obj = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+    return { ...PLATFORM_SETTINGS_DEFAULTS, ...obj };
+  } catch {
+    return { ...PLATFORM_SETTINGS_DEFAULTS };
+  }
+}
 
-function resolveSettingsTenantId(session) {
-  const id = session?.user?.tenantId ?? session?.user?.tenant_id ?? null;
-  const s = id && String(id).trim() ? String(id).trim() : null;
-  if (!s) return null;
-  return isUuid(s) ? s : null;
+async function savePlatformSettingsRow(normalized) {
+  await query(
+    `INSERT INTO platform_settings (id, settings, updated_at)
+     VALUES (1, $1::jsonb, NOW())
+     ON CONFLICT (id) DO UPDATE SET settings = EXCLUDED.settings, updated_at = NOW()`,
+    [JSON.stringify(normalized)],
+  );
+  invalidatePlatformSettingsCache();
 }
 
 export async function GET() {
@@ -47,13 +44,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = resolveSettingsTenantId(session);
-    if (!tenantId) return NextResponse.json(DEFAULTS);
-
-    const res = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
-    const settings = res.rows[0]?.settings || {};
-    const adminSettings = settings.adminSettings || {};
-    return NextResponse.json({ ...DEFAULTS, ...adminSettings });
+    const merged = await loadPlatformSettingsRow();
+    return NextResponse.json(merged);
   } catch (error) {
     console.error('Failed to load admin settings:', error);
     return NextResponse.json({ error: 'Failed to load admin settings' }, { status: 500 });
@@ -67,27 +59,37 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = resolveSettingsTenantId(session);
-    if (!tenantId) {
-      return NextResponse.json({ error: 'No tenant available to persist settings' }, { status: 400 });
-    }
-
     const payload = await request.json();
     const normalized = {
-      platformName: pickString(payload, 'platformName', DEFAULTS.platformName),
-      supportEmail: pickString(payload, 'supportEmail', DEFAULTS.supportEmail),
-      timezone: pickString(payload, 'timezone', DEFAULTS.timezone),
+      platformName: pickString(payload, 'platformName', PLATFORM_SETTINGS_DEFAULTS.platformName),
+      supportEmail: pickString(payload, 'supportEmail', PLATFORM_SETTINGS_DEFAULTS.supportEmail),
+      systemNotificationInboxEmail: pickString(
+        payload,
+        'systemNotificationInboxEmail',
+        PLATFORM_SETTINGS_DEFAULTS.systemNotificationInboxEmail,
+      ),
+      systemNotificationWebmailUrl: pickString(
+        payload,
+        'systemNotificationWebmailUrl',
+        PLATFORM_SETTINGS_DEFAULTS.systemNotificationWebmailUrl,
+      ),
+      systemNotificationSenderName: pickString(
+        payload,
+        'systemNotificationSenderName',
+        PLATFORM_SETTINGS_DEFAULTS.systemNotificationSenderName,
+      ),
+      timezone: pickString(payload, 'timezone', PLATFORM_SETTINGS_DEFAULTS.timezone),
       requireEmailVerification: Boolean(payload?.requireEmailVerification),
       enableTwoFactorAuth: Boolean(payload?.enableTwoFactorAuth),
-      sessionTimeoutValue: Number(payload?.sessionTimeoutValue || DEFAULTS.sessionTimeoutValue),
-      sessionTimeoutUnit: String(payload?.sessionTimeoutUnit || DEFAULTS.sessionTimeoutUnit),
-      rememberDeviceValue: Number(payload?.rememberDeviceValue || DEFAULTS.rememberDeviceValue),
-      rememberDeviceUnit: String(payload?.rememberDeviceUnit || DEFAULTS.rememberDeviceUnit),
+      sessionTimeoutValue: Number(payload?.sessionTimeoutValue || PLATFORM_SETTINGS_DEFAULTS.sessionTimeoutValue),
+      sessionTimeoutUnit: String(payload?.sessionTimeoutUnit || PLATFORM_SETTINGS_DEFAULTS.sessionTimeoutUnit),
+      rememberDeviceValue: Number(payload?.rememberDeviceValue || PLATFORM_SETTINGS_DEFAULTS.rememberDeviceValue),
+      rememberDeviceUnit: String(payload?.rememberDeviceUnit || PLATFORM_SETTINGS_DEFAULTS.rememberDeviceUnit),
       smtpHost: String(payload?.smtpHost || ''),
-      smtpPort: Number(payload?.smtpPort || DEFAULTS.smtpPort),
+      smtpPort: Number(payload?.smtpPort || PLATFORM_SETTINGS_DEFAULTS.smtpPort),
       fromEmail: String(payload?.fromEmail || ''),
-      storageProvider: String(payload?.storageProvider ?? DEFAULTS.storageProvider),
-      maxUploadSizeMb: Number(payload?.maxUploadSizeMb || DEFAULTS.maxUploadSizeMb),
+      storageProvider: String(payload?.storageProvider ?? PLATFORM_SETTINGS_DEFAULTS.storageProvider),
+      maxUploadSizeMb: Number(payload?.maxUploadSizeMb || PLATFORM_SETTINGS_DEFAULTS.maxUploadSizeMb),
     };
 
     const validation = validateAdminSettingsNormalized(normalized);
@@ -95,23 +97,16 @@ export async function POST(request) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const existing = await query(`SELECT settings FROM tenants WHERE id = $1::uuid`, [tenantId]);
-    const currentSettings = existing.rows[0]?.settings || {};
-    const merged = { ...currentSettings, adminSettings: normalized };
-    await query(
-      `UPDATE tenants
-       SET settings = $1::jsonb, updated_at = NOW()
-       WHERE id = $2::uuid`,
-      [JSON.stringify(merged), tenantId]
-    );
+    const existing = await loadPlatformSettingsRow();
+    await savePlatformSettingsRow(normalized);
 
     void writeAuditLog({
       userId: session.user.id,
-      tenantId,
+      tenantId: null,
       action: 'UPDATE_ADMIN_SETTINGS',
-      entityType: 'tenants',
-      entityId: tenantId,
-      oldValues: { hadAdminSettings: Boolean(currentSettings?.adminSettings) },
+      entityType: 'platform_settings',
+      entityId: null,
+      oldValues: { hadSettings: Boolean(existing && Object.keys(existing).length) },
       newValues: adminSettingsAuditSummary(normalized),
       ipAddress: getRequestClientIp(request),
     });

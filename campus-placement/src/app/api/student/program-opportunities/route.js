@@ -88,7 +88,6 @@ export async function GET(request) {
     });
   } catch (e) {
     console.error('GET /api/student/program-opportunities', e);
-    const msg = e?.message || 'Failed to load opportunities';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load opportunities' }, { status: 500 });
   }
 }

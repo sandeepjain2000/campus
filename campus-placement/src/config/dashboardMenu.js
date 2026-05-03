@@ -2,7 +2,7 @@ import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
-  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic,
+  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, FileUp,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -71,6 +71,7 @@ export const menuConfig = {
         items: [
           { label: 'Dashboard', href: '/dashboard/student/overview', icon: LayoutDashboard },
           { label: 'My Profile', href: '/dashboard/student/profile', icon: User },
+          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
@@ -114,10 +115,11 @@ export const menuConfig = {
         items: [
           { label: 'Dashboard', href: '/dashboard/employer/overview', icon: LayoutDashboard },
           {
-            label: 'Campus tie-ups',
+            label: 'Campus Partnerships',
             href: '/dashboard/employer/select-campus',
             icon: Handshake,
           },
+          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
           { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
         ],
@@ -153,8 +155,11 @@ export const menuConfig = {
         id: 'employer-pipeline',
         title: '📥 Candidate Pipeline',
         items: [
+          { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
           { label: 'Applications', href: '/dashboard/employer/applications', icon: ClipboardList },
+          { label: 'Assessment uploads', href: '/dashboard/employer/assessment-uploads', icon: FileText },
           { label: 'Offers', href: '/dashboard/employer/offers', icon: Send },
+          { label: 'Upload offers (CSV)', href: '/dashboard/employer/offers-upload', icon: FileUp },
         ],
       },
       {
@@ -175,6 +180,7 @@ export const menuConfig = {
         title: '🧭 Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/college/overview', icon: LayoutDashboard },
+          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
@@ -183,7 +189,7 @@ export const menuConfig = {
         title: '🏢 Company & Opportunities',
         items: [
           { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
-          { label: 'Employer tie-up requests', href: '/dashboard/college/employers/requests', icon: Inbox },
+          { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests', icon: Inbox },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
@@ -198,6 +204,7 @@ export const menuConfig = {
           { label: 'Enrollment key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
           { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
           { label: 'Offers', href: '/dashboard/college/offers', icon: Send },
+          { label: 'Upload offers (CSV)', href: '/dashboard/college/offers-upload', icon: FileUp },
         ],
       },
       {
@@ -239,6 +246,7 @@ export const menuConfig = {
         title: '📊 Insights',
         items: [
           { label: 'Reports', href: '/dashboard/college/reports', icon: TrendingUp },
+          { label: 'Audit reports', href: '/dashboard/college/audit-reports', icon: FileText },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
@@ -250,7 +258,10 @@ export const menuConfig = {
       {
         id: 'admin-overview',
         title: 'Overview',
-        items: [{ label: 'Dashboard', href: '/dashboard/admin/overview', icon: LayoutDashboard }],
+        items: [
+          { label: 'Dashboard', href: '/dashboard/admin/overview', icon: LayoutDashboard },
+          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
+        ],
       },
       {
         id: 'admin-platform',
@@ -261,6 +272,7 @@ export const menuConfig = {
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },
+          { label: 'Audit reports', href: '/dashboard/admin/audit-reports', icon: FileText },
           { label: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
         ],
       },

@@ -33,6 +33,9 @@ export default function AdminSettingsPage() {
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState(587);
   const [fromEmail, setFromEmail] = useState('');
+  const [systemNotificationInboxEmail, setSystemNotificationInboxEmail] = useState('');
+  const [systemNotificationWebmailUrl, setSystemNotificationWebmailUrl] = useState('');
+  const [systemNotificationSenderName, setSystemNotificationSenderName] = useState('');
   const [storageProvider, setStorageProvider] = useState('');
   const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5);
 
@@ -71,6 +74,9 @@ export default function AdminSettingsPage() {
         setSmtpHost(json.smtpHost ?? '');
         setSmtpPort(Number(json.smtpPort ?? 587));
         setFromEmail(json.fromEmail ?? '');
+        setSystemNotificationInboxEmail(json.systemNotificationInboxEmail ?? '');
+        setSystemNotificationWebmailUrl(json.systemNotificationWebmailUrl ?? '');
+        setSystemNotificationSenderName(json.systemNotificationSenderName ?? '');
         setStorageProvider(json.storageProvider ?? '');
         setMaxUploadSizeMb(Number(json.maxUploadSizeMb ?? 5));
       } catch (e) {
@@ -100,6 +106,9 @@ export default function AdminSettingsPage() {
         smtpHost,
         smtpPort,
         fromEmail,
+        systemNotificationInboxEmail,
+        systemNotificationWebmailUrl,
+        systemNotificationSenderName,
         storageProvider,
         maxUploadSizeMb,
       };
@@ -206,6 +215,38 @@ export default function AdminSettingsPage() {
         </div>
         <div className="card">
           <div className="card-header"><h3 className="card-title">📧 Email Configuration</h3></div>
+          <p className="text-xs text-tertiary" style={{ marginBottom: '0.75rem' }}>
+            Outbound mail uses your SMTP environment. The system notification inbox is where operational emails are delivered (links, drive events, etc.); leave blank to fall back to support email only.
+          </p>
+          <div className="form-group">
+            <label className="form-label">System notification inbox</label>
+            <input
+              className="form-input"
+              type="email"
+              placeholder="placementhub@yopmail.com"
+              value={systemNotificationInboxEmail}
+              onChange={(e) => setSystemNotificationInboxEmail(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Webmail / inbox URL (for staff)</label>
+            <input
+              className="form-input"
+              type="url"
+              placeholder="https://yopmail.com/wm"
+              value={systemNotificationWebmailUrl}
+              onChange={(e) => setSystemNotificationWebmailUrl(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Sender display name</label>
+            <input
+              className="form-input"
+              placeholder="placementhub"
+              value={systemNotificationSenderName}
+              onChange={(e) => setSystemNotificationSenderName(e.target.value)}
+            />
+          </div>
           <div className="form-group"><label className="form-label">SMTP Host</label><input className="form-input" placeholder="smtp.gmail.com" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} /></div>
           <div className="form-group"><label className="form-label">SMTP Port</label><input className="form-input" type="number" value={smtpPort} onChange={(e) => setSmtpPort(Number(e.target.value || 587))} /></div>
           <div className="form-group"><label className="form-label">From Email</label><input className="form-input" placeholder="noreply@placementhub.com" value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} /></div>
