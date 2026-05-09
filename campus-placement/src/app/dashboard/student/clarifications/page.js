@@ -99,6 +99,12 @@ export default function StudentClarificationsPage() {
   const [search, setSearch] = useState('');
   const [openBatchIds, setOpenBatchIds] = useState(new Set());
 
+  const formatDate = (d) => {
+    if (!d) return '';
+    try { return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    catch { return String(d).slice(0, 10); }
+  };
+
   const refresh = useCallback(async () => {
     try {
       const payload = await loadClarifications();
@@ -244,7 +250,7 @@ export default function StudentClarificationsPage() {
                       {batch.company}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-                      Posted by {batch.postedBy} · {batch.postedAt}
+                      {formatDate(batch.postedAt)}
                     </div>
                   </div>
 

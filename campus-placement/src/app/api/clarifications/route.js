@@ -36,28 +36,33 @@ async function loadPayload(tenantId) {
 
   if (res.rows.length === 0) return defaultPayload();
 
-  const batchesById = new Map();
+  // Group by company name (case-insensitive) so all batches for same company merge into one card
+  const companiesMap = new Map();
   for (const row of res.rows) {
-    if (!batchesById.has(row.batch_id)) {
-      batchesById.set(row.batch_id, {
+    const key = row.company.trim().toLowerCase();
+    if (!companiesMap.has(key)) {
+      companiesMap.set(key, {
         id: row.batch_id,
-        company: row.company,
+        company: row.company.trim(),
         postedBy: row.posted_by,
         postedAt: row.posted_at,
         questions: [],
       });
     }
     if (row.question_id) {
-      batchesById.get(row.batch_id).questions.push({
-        id: row.question_id,
-        text: row.question_text,
-        answer: row.answer_text || '',
-        answeredBy: row.answered_by || '',
-      });
+      const entry = companiesMap.get(key);
+      if (!entry.questions.some(q => q.id === row.question_id)) {
+        entry.questions.push({
+          id: row.question_id,
+          text: row.question_text,
+          answer: row.answer_text || '',
+          answeredBy: row.answered_by || '',
+        });
+      }
     }
   }
 
-  return { batches: Array.from(batchesById.values()) };
+  return { batches: Array.from(companiesMap.values()) };
 }
 
 export async function GET() {
