@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
-import { signIn, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { signIn, signOut, useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
@@ -27,6 +27,8 @@ function getGroupKey(demo) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forceLogin = searchParams.get('force') === '1';
   const { status, data: session } = useSession();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -35,6 +37,7 @@ export default function LoginPage() {
   const [registeredBanner, setRegisteredBanner] = useState('');
   const [showCredentials, setShowCredentials] = useState(false);
   const [showAllAccounts, setShowAllAccounts] = useState(false);
+  const signingOut = useRef(false);
   const toast = useToast();
   const uniqueDemoLogins = useMemo(() => {
     const seen = new Set();
@@ -82,12 +85,23 @@ export default function LoginPage() {
     }
   }, []);
 
+  // If ?force=1, sign out existing session so the user can switch accounts
   useEffect(() => {
+    if (forceLogin && status === 'authenticated' && !signingOut.current) {
+      signingOut.current = true;
+      signOut({ redirect: false }).then(() => {
+        signingOut.current = false;
+      });
+    }
+  }, [forceLogin, status]);
+
+  useEffect(() => {
+    if (forceLogin) return; // don't auto-redirect when force login
     if (status !== 'authenticated' || !session?.user?.role) return;
     router.replace(getDashboardPath(session.user.role));
-  }, [status, session, router]);
+  }, [status, session, router, forceLogin]);
 
-  if (status === 'loading' || status === 'authenticated') {
+  if (!forceLogin && (status === 'loading' || status === 'authenticated')) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="skeleton" style={{ width: 220, height: 28 }} />

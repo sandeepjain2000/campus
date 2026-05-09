@@ -400,7 +400,7 @@ export default function DashboardLayout({ children }) {
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={() => signOut({ callbackUrl: '/login?force=1' })}
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Sign Out

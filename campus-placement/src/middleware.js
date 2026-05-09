@@ -46,12 +46,15 @@ export default async function proxy(request) {
     return NextResponse.next();
   }
 
-  // ── /login — bounce already-authenticated users ───────────────────────────
+  // ── /login — bounce already-authenticated users (unless ?force=1) ──────────
   if (pathname === '/login') {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (token?.role) {
-      const dest = ROLE_HOME_PATHS[token.role] || '/dashboard';
-      return NextResponse.redirect(new URL(dest, request.url));
+    const force = request.nextUrl.searchParams.get('force');
+    if (!force) {
+      const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+      if (token?.role) {
+        const dest = ROLE_HOME_PATHS[token.role] || '/dashboard';
+        return NextResponse.redirect(new URL(dest, request.url));
+      }
     }
     return NextResponse.next();
   }
