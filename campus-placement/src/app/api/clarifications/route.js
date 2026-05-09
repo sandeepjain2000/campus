@@ -81,7 +81,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !['college_admin', 'super_admin'].includes(session.user.role)) {
+    if (!session?.user || !['college_admin', 'super_admin', 'student'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const tenantId = resolveTenantId(session);
