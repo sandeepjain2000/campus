@@ -92,7 +92,7 @@ function demoAddressFallback(sp) {
 /**
  * @param {{ sp: object, skills: { skill_name: string }[], accountEmail: string, userPhone: string | null, avatarUrl: string | null }}
  */
-export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl }) {
+export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl, communicationEmail }) {
   const aux =
     sp.aux_profile && typeof sp.aux_profile === 'object' && !Array.isArray(sp.aux_profile)
       ? sp.aux_profile
@@ -163,6 +163,7 @@ export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl }
     twelfthPercentage: sp.twelfth_percentage != null ? Number(sp.twelfth_percentage) : '',
     gender: capitalizeGender(sp.gender),
     collegeEmail: accountEmail || '',
+    communicationEmail: communicationEmail || '',
     personalEmail: typeof aux.personalEmail === 'string' ? aux.personalEmail : '',
     phones,
     emails,
@@ -263,6 +264,7 @@ export function payloadToDbParts(body) {
     : [];
 
   const primaryPhone = aux.phones.find((p) => p.value)?.value || '';
+  const commEmail = String(body.communicationEmail || '').trim() || null;
 
   return {
     department: dept || null,
@@ -290,5 +292,6 @@ export function payloadToDbParts(body) {
     },
     skills,
     user_phone: primaryPhone || null,
+    user_communication_email: commEmail,
   };
 }

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
+    communication_email VARCHAR(255),
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'college_admin', 'employer', 'student')),
     first_name VARCHAR(100) NOT NULL,

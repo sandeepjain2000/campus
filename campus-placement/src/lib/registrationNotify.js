@@ -15,7 +15,7 @@ function appOrigin() {
  */
 async function superAdminNotifyRecipients() {
   const r = await query(
-    `SELECT email FROM users WHERE role = 'super_admin' AND is_active = true`
+    `SELECT COALESCE(NULLIF(communication_email, ''), email) AS email FROM users WHERE role = 'super_admin' AND is_active = true`
   );
   const fromDb = r.rows.map((x) => x.email).filter(Boolean);
   const fromEnv = (process.env.SUPERADMIN_NOTIFY_EMAILS || '')
@@ -35,7 +35,7 @@ async function superAdminNotifyRecipients() {
 
 async function collegeAdminEmails(tenantId) {
   const r = await query(
-    `SELECT email FROM users
+    `SELECT COALESCE(NULLIF(communication_email, ''), email) AS email FROM users
      WHERE tenant_id = $1::uuid AND role = 'college_admin' AND is_active = true`,
     [tenantId]
   );

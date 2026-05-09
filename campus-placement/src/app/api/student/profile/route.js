@@ -41,7 +41,7 @@ export async function GET() {
     await ensureStudentProfileRow(session.user.id);
 
     const row = await query(
-      `SELECT sp.*, u.email AS account_email, u.phone AS user_phone, u.avatar_url
+      `SELECT sp.*, u.email AS account_email, u.communication_email, u.phone AS user_phone, u.avatar_url
        FROM student_profiles sp
        INNER JOIN users u ON u.id = sp.user_id
        WHERE sp.user_id = $1::uuid`,
@@ -62,6 +62,7 @@ export async function GET() {
       sp,
       skills: skills.rows,
       accountEmail: sp.account_email,
+      communicationEmail: sp.communication_email,
       userPhone: sp.user_phone,
       avatarUrl: sp.avatar_url,
     });
@@ -82,7 +83,7 @@ export async function PUT(request) {
 
     const body = await request.json().catch(() => ({}));
     const accountEmail = session.user.email || '';
-    const parts = payloadToDbParts({ ...body, emails: body.emails, phones: body.phones });
+    const parts = payloadToDbParts({ ...body, emails: body.emails, phones: body.phones, communicationEmail: body.communicationEmail });
 
     if (parts.cgpa != null && (parts.cgpa < 0 || parts.cgpa > 10)) {
       return NextResponse.json({ error: 'CGPA must be between 0 and 10' }, { status: 400 });
@@ -187,8 +188,9 @@ export async function PUT(request) {
         );
       }
 
-      await client.query(`UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2::uuid`, [
+      await client.query(`UPDATE users SET phone = $1, communication_email = $2, updated_at = NOW() WHERE id = $3::uuid`, [
         parts.user_phone,
+        parts.user_communication_email,
         session.user.id,
       ]);
 
@@ -202,7 +204,7 @@ export async function PUT(request) {
     });
 
     const refreshed = await query(
-      `SELECT sp.*, u.email AS account_email, u.phone AS user_phone, u.avatar_url
+      `SELECT sp.*, u.email AS account_email, u.communication_email, u.phone AS user_phone, u.avatar_url
        FROM student_profiles sp
        INNER JOIN users u ON u.id = sp.user_id
        WHERE sp.user_id = $1::uuid`,
@@ -217,6 +219,7 @@ export async function PUT(request) {
       sp,
       skills: skills.rows,
       accountEmail: sp.account_email,
+      communicationEmail: sp.communication_email,
       userPhone: sp.user_phone,
       avatarUrl: sp.avatar_url,
     });

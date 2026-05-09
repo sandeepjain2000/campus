@@ -68,10 +68,11 @@ export async function POST(request) {
         );
 
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, email, role`,
+          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, role`,
           [
             tenantId,
+            email,
             email,
             passwordHash,
             role,
@@ -100,10 +101,11 @@ export async function POST(request) {
         tenantId = bind.rows[0].ref_scope_id;
 
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, email, role`,
+          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, role`,
           [
             tenantId,
+            email,
             email,
             passwordHash,
             role,
@@ -145,9 +147,9 @@ export async function POST(request) {
 
       if (role === 'employer') {
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, email, role`,
-          [email, passwordHash, role, firstName, lastName || '', phone || '', false, false]
+          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
+           VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, email, role`,
+          [email, email, passwordHash, role, firstName, lastName || '', phone || '', false, false]
         );
 
         const user = userResult.rows[0];

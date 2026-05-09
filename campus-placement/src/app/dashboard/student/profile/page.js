@@ -58,6 +58,7 @@ function profilePutBody(p) {
     profileLinks: p.profileLinks,
     phones: p.phones,
     emails: p.emails,
+    communicationEmail: p.communicationEmail,
     address: p.address,
   };
 }
@@ -568,9 +569,33 @@ export default function StudentProfilePage() {
             <h3 className="card-title">📇 Contact</h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <div className="drive-info-label" style={{ marginBottom: '0.5rem' }}>
+                Communication Email
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {editing ? (
+                  <input
+                    className="form-input"
+                    style={{ flex: 1 }}
+                    type="email"
+                    placeholder="email@example.com"
+                    value={profile.communicationEmail || ''}
+                    onChange={(e) => persist({ ...profile, communicationEmail: e.target.value })}
+                  />
+                ) : (
+                  <div className="text-sm">
+                    {profile.communicationEmail || '—'}
+                    <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
+                      All platform notifications and alerts will be sent to this address.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
             <div>
               <div className="drive-info-label" style={{ marginBottom: '0.5rem' }}>
-                Email addresses
+                Other Email addresses
               </div>
               {displayEmails.map((row, i) => (
                 <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
