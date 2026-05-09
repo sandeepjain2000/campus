@@ -25,7 +25,7 @@ function roundLabel(item) {
   return 'Pending review';
 }
 
-const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons'];
+const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons', 'drives'];
 
 import { use } from 'react';
 
@@ -41,7 +41,7 @@ export default function StudentApplicationsPage({ params }) {
   const [filter, setFilter] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
-  const apiEndpoint = type === 'jobs' ? '/api/student/applications' : '/api/student/program-applications';
+  const apiEndpoint = ['jobs', 'drives'].includes(type) ? '/api/student/applications' : '/api/student/program-applications';
   const { data, error, isLoading, mutate } = useSWR(apiEndpoint, fetcher);
   const allApplications = (data?.items || []).map(item => ({
     ...item,
@@ -51,6 +51,8 @@ export default function StudentApplicationsPage({ params }) {
   }));
 
   const appTypeOf = (app) => {
+    if (type === 'drives' && app.drive_id) return 'drive';
+
     const kind = String(app?.jobType || '').toLowerCase();
     if (kind === 'internship') return 'internship';
     if (kind === 'short_project') return 'project';
@@ -65,7 +67,8 @@ export default function StudentApplicationsPage({ params }) {
     internships: 'internship',
     projects: 'project',
     mentorship: 'mentorship',
-    hackathons: 'hackathon'
+    hackathons: 'hackathon',
+    drives: 'drive'
   }[type];
 
   const typeApplications = useMemo(() => {

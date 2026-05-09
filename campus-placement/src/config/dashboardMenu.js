@@ -91,6 +91,7 @@ export const menuConfig = {
         id: 'student-applications',
         title: 'My Applications',
         items: [
+          { label: 'My Drives', href: '/dashboard/student/applications/drives', icon: Target },
           { label: 'Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
           { label: 'Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
           { label: 'Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
