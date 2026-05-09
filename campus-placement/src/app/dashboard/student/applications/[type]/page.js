@@ -41,7 +41,7 @@ export default function StudentApplicationsPage({ params }) {
   const [filter, setFilter] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
-  const apiEndpoint = ['jobs', 'drives'].includes(type) ? '/api/student/applications' : '/api/student/program-applications';
+  const apiEndpoint = type === 'drives' ? '/api/student/applications' : '/api/student/program-applications';
   const { data, error, isLoading, mutate } = useSWR(apiEndpoint, fetcher);
   const allApplications = (data?.items || []).map(item => ({
     ...item,
