@@ -17,59 +17,69 @@ export default function CollegeEventsPage() {
   const events = Array.isArray(data?.events) ? data.events : [];
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <PartyPopper size={22} aria-hidden /> Events
-          </h1>
-          <p className="text-secondary" style={{ margin: '0.25rem 0 0', fontSize: '0.9375rem' }}>
-            Talks, pre-placement sessions, and other tenant calendar events.
-          </p>
-        </div>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', zIndex: 1 }}>
+          <PartyPopper size={28} /> Campus Events
+        </h1>
+        <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0, position: 'relative', zIndex: 1 }}>
+          Talks, pre-placement sessions, and other campus calendar events.
+        </p>
       </div>
 
-      <div className="card" style={{ marginTop: '1.25rem' }}>
-        {isLoading ? (
-          <p className="text-secondary" style={{ margin: 0 }}>Loading events...</p>
-        ) : null}
-        {error ? (
-          <p style={{ margin: 0, color: 'var(--danger-600)' }}>{error.message || 'Could not load events.'}</p>
-        ) : null}
-        {!isLoading && !error && events.length === 0 ? (
-          <p style={{ margin: 0, lineHeight: 1.6, color: 'var(--text-secondary)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-            <CalendarDays size={18} style={{ flexShrink: 0, marginTop: '0.15rem' }} aria-hidden />
-            <span>
-              No calendar events found. Create one from{' '}
-              <Link href="/dashboard/college/calendar">Calendar</Link>.
-            </span>
-          </p>
-        ) : null}
-        {!isLoading && !error && events.length > 0 ? (
-          <div className="table-container" style={{ border: 'none' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Date</th>
-                  <th>Blocking</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev) => (
-                  <tr key={ev.id}>
-                    <td className="font-semibold">{ev.title || '—'}</td>
-                    <td>{ev.event_type || 'event'}</td>
-                    <td>{ev.start_date ? formatDate(ev.start_date) : '—'}</td>
-                    <td>{ev.is_blocking ? 'Yes' : 'No'}</td>
+      {isLoading && <div className="skeleton skeleton-card" style={{ height: 200 }} />}
+      {error && (
+        <div className="card" style={{ padding: '1.5rem', background: 'var(--danger-50)', border: '1px solid var(--danger-200)', marginBottom: '1rem' }}>
+          <p style={{ margin: 0, color: 'var(--danger-700)', fontWeight: 600 }}>{error.message || 'Could not load events.'}</p>
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+          {events.length === 0 ? (
+            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+              <CalendarDays size={48} style={{ margin: '0 auto 1rem', opacity: 0.25 }} />
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No events scheduled</div>
+              <p style={{ color: 'var(--text-secondary)', margin: '0 0 1.25rem' }}>Create events from the{' '}
+                <Link href="/dashboard/college/calendar" style={{ fontWeight: 600, color: 'var(--primary-600)' }}>Calendar</Link>.
+              </p>
+            </div>
+          ) : (
+            <div className="table-container" style={{ border: 'none' }}>
+              <table className="data-table">
+                <thead>
+                  <tr style={{ background: 'var(--bg-secondary)' }}>
+                    <th style={{ paddingLeft: '1.5rem' }}>Title</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th style={{ paddingRight: '1.5rem' }}>Blocking</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </div>
+                </thead>
+                <tbody>
+                  {events.map((ev) => (
+                    <tr key={ev.id}>
+                      <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>{ev.title || '—'}</td>
+                      <td><span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>{ev.event_type || 'event'}</span></td>
+                      <td style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{ev.start_date ? formatDate(ev.start_date) : '—'}</td>
+                      <td style={{ paddingRight: '1.5rem' }}>
+                        {ev.is_blocking
+                          ? <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Blocking</span>
+                          : <span className="badge badge-gray" style={{ fontSize: '0.75rem' }}>Non-blocking</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

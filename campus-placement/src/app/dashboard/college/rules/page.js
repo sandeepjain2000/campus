@@ -40,11 +40,21 @@ export default function CollegeRulesPage() {
   }
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left"><h1>⚙️ Placement Rules</h1><p>Configure placement policies and eligibility rules</p></div>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : '💾 Save Changes'}
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>⚙️ Placement Rules</h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Configure placement policies, eligibility criteria and season settings.</p>
+        </div>
+        <button className="btn" onClick={handleSave} disabled={saving} style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}>
+          {saving ? 'Saving…' : '💾 Save Changes'}
         </button>
       </div>
 

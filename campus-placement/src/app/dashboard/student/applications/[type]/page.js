@@ -5,6 +5,9 @@ import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import PageError from '@/components/PageError';
 import { useToast } from '@/components/ToastProvider';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { ClipboardList } from 'lucide-react';
+import { notFound } from 'next/navigation';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -22,12 +25,59 @@ function roundLabel(item) {
   return 'Pending review';
 }
 
-export default function StudentApplicationsPage() {
+const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons'];
+
+export default function StudentApplicationsPage({ params }) {
+  const { type } = params;
+
+  if (!VALID_TYPES.includes(type)) {
+    notFound();
+  }
+
   const { addToast } = useToast();
   const [filter, setFilter] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
   const { data, error, isLoading, mutate } = useSWR('/api/student/applications', fetcher);
-  const applications = data?.items || [];
+  const allApplications = data?.items || [];
+
+  const appTypeOf = (app) => {
+    const kind = String(app?.jobType || '').toLowerCase();
+    if (kind === 'internship') return 'internship';
+    if (kind === 'short_project') return 'project';
+    if (kind === 'mentorship') return 'mentorship';
+    if (kind === 'hackathon') return 'hackathon';
+    if (kind === 'guest_faculty') return 'guest';
+    return 'job';
+  };
+
+  const typeMatcher = {
+    jobs: 'job',
+    internships: 'internship',
+    projects: 'project',
+    mentorship: 'mentorship',
+    hackathons: 'hackathon'
+  }[type];
+
+  const typeApplications = useMemo(() => {
+    return allApplications.filter(a => appTypeOf(a) === typeMatcher);
+  }, [allApplications, typeMatcher]);
+
+  const filtered = useMemo(
+    () =>
+      typeApplications.filter((a) => {
+        if (filter && a.status !== filter) return false;
+        return true;
+      }),
+    [typeApplications, filter],
+  );
+
+  const statusCounts = {
+    all: typeApplications.length,
+    applied: typeApplications.filter((a) => a.status === 'applied').length,
+    shortlisted: typeApplications.filter((a) => a.status === 'shortlisted').length,
+    selected: typeApplications.filter((a) => a.status === 'selected').length,
+    rejected: typeApplications.filter((a) => a.status === 'rejected').length,
+  };
 
   const handleWithdraw = async (applicationId) => {
     setWithdrawingId(applicationId);
@@ -48,27 +98,40 @@ export default function StudentApplicationsPage() {
     }
   };
 
-  const filtered = useMemo(
-    () => applications.filter((a) => !filter || a.status === filter),
-    [applications, filter],
-  );
-
-  const statusCounts = {
-    all: applications.length,
-    applied: applications.filter((a) => a.status === 'applied').length,
-    shortlisted: applications.filter((a) => a.status === 'shortlisted').length,
-    selected: applications.filter((a) => a.status === 'selected').length,
-    rejected: applications.filter((a) => a.status === 'rejected').length,
+  const buildCsvRows = (scope) => {
+    const dataset = scope === 'full' ? typeApplications : filtered;
+    const headers = ['Company', 'Role', 'Status', 'Current Stage', 'Drive Date', 'Applied Date'];
+    const rows = dataset.map((app) => [
+      app.company,
+      app.role,
+      app.status,
+      roundLabel(app),
+      formatDate(app.driveDate),
+      formatDate(app.appliedAt)
+    ]);
+    return { headers, rows };
   };
 
   if (error) return <PageError error={error} />;
+
+  const pageTitle = type.charAt(0).toUpperCase() + type.slice(1);
 
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
-          <h1>📝 My Applications</h1>
-          <p>Track the status of all your placement applications</p>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <ClipboardList size={28} /> My {pageTitle} Applications
+          </h1>
+          <p>Track the status of your {type} applications</p>
+        </div>
+        <div className="page-header-actions">
+          <ExportCsvSplitButton
+            filenameBase={`${type}_applications`}
+            currentCount={filtered.length}
+            fullCount={typeApplications.length}
+            getRows={buildCsvRows}
+          />
         </div>
       </div>
 
@@ -82,7 +145,7 @@ export default function StudentApplicationsPage() {
       </div>
 
       {/* Application Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
         {isLoading && (
           <div className="card">
             <div className="text-sm text-secondary">Loading applications…</div>
@@ -134,8 +197,37 @@ export default function StudentApplicationsPage() {
           </div>
         ))}
         {!isLoading && filtered.length === 0 && (
-          <div className="card">
-            <div className="text-sm text-secondary">No applications found for this filter.</div>
+          <div className="empty-state-container" style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)' }}>
+            <div style={{ background: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+              <span style={{ fontSize: '1.75rem' }}>📝</span>
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+              {filter === '' ? `No ${type} applications yet` : `No ${filter} applications`}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
+              {filter === '' 
+                ? "You haven't applied to any placement drives yet. Start exploring active drives and apply to kickstart your career!" 
+                : `You don't have any applications in the '${filter}' stage at the moment.`}
+            </p>
+            {filter === '' && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <a href="/dashboard/student/drives" className="btn btn-primary">
+                  Browse Active Drives
+                </a>
+              </div>
+            )}
+            {filter !== '' && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setFilter('');
+                    }}
+                  >
+                    View All
+                  </button>
+              </div>
+            )}
           </div>
         )}
       </div>

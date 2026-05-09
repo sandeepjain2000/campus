@@ -8,6 +8,26 @@ import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessment
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
 
+function summarizeCsvErrors(errors) {
+  const list = Array.isArray(errors) ? errors : [];
+  if (!list.length) return '';
+  const groups = new Map();
+  for (const e of list) {
+    const msg = String(e?.message || 'Unknown error').trim();
+    const line = Number(e?.line || 0);
+    if (!groups.has(msg)) groups.set(msg, []);
+    groups.get(msg).push(line);
+  }
+  const top = [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 3)
+    .map(([msg, lines]) => {
+      const preview = lines.slice(0, 3).filter((n) => Number.isFinite(n) && n > 0).join(', ');
+      return `${msg} (${lines.length} row${lines.length > 1 ? 's' : ''}${preview ? `, lines: ${preview}` : ''})`;
+    });
+  return top.join(' | ');
+}
+
 export default function CollegeOffersUploadPage() {
   const { addToast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -38,7 +58,7 @@ export default function CollegeOffersUploadPage() {
         accepted ? 'success' : 'warning',
       );
       if (errors?.length) {
-        addToast(errors.slice(0, 5).map((x) => `Line ${x.line}: ${x.message}`).join(' · '), 'error');
+        addToast(summarizeCsvErrors(errors), 'error');
       }
     } catch (err) {
       addToast(err.message || 'Upload failed', 'error');
@@ -48,25 +68,27 @@ export default function CollegeOffersUploadPage() {
   };
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileUp size={24} aria-hidden /> Upload offers (CSV)
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <FileUp size={28} /> Upload Offers (CSV)
           </h1>
-          <p className="text-secondary" style={{ margin: '0.25rem 0 0', fontSize: '0.9375rem' }}>
-            College placement office: bulk-import offers for students on your master list. For the full table and manual edits, open{' '}
-            <Link href="/dashboard/college/offers" className="link-inline" style={{ fontWeight: 600 }}>
-              Offers
-            </Link>
-            .
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+            Bulk-import offers for students on your master list. For the full table and manual edits, open{' '}
+            <Link href="/dashboard/college/offers" style={{ color: 'white', fontWeight: 700, textDecoration: 'underline' }}>Offers</Link>.
           </p>
         </div>
-        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <Link href="/dashboard/college/offers" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Send size={16} aria-hidden /> View all offers
-          </Link>
-        </div>
+        <Link href="/dashboard/college/offers" className="btn" style={{ position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Send size={16} /> View All Offers
+        </Link>
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
@@ -81,7 +103,7 @@ export default function CollegeOffersUploadPage() {
             Blank template
           </button>
           <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-            Offers CSV (all students)
+            Download Template (All students)
           </button>
         </div>
         <p className="text-xs text-tertiary" style={{ margin: '0.75rem 0 0', lineHeight: 1.5 }}>

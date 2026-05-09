@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { formatStatus } from '@/lib/utils';
 
 const KIND_LABEL = {
   guest_faculty: 'Guest faculty',
@@ -14,6 +15,9 @@ export default function CollegeGuestEngagementsPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({
     kind: 'guest_lecture',
     title: '',
@@ -91,14 +95,33 @@ export default function CollegeGuestEngagementsPage() {
     }
   };
 
+  const filteredListings = listings.filter((L) => {
+    if (kindFilter && L.kind !== kindFilter) return false;
+    if (statusFilter && L.status !== statusFilter) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      String(L.title || '').toLowerCase().includes(q) ||
+      String(L.summary || '').toLowerCase().includes(q) ||
+      String(L.requirements || '').toLowerCase().includes(q)
+    );
+  });
+
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>Guest faculty & lectures</h1>
-          <p>Published posts are visible to employer partners across the platform.</p>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>Guest Faculty & Lectures</h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Published posts are visible to employer partners across the platform.</p>
         </div>
-        <Link href="/dashboard/college/overview" className="btn btn-secondary btn-sm">
+        <Link href="/dashboard/college/overview" className="btn" style={{ position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' }}>
           Overview
         </Link>
       </div>
@@ -168,6 +191,26 @@ export default function CollegeGuestEngagementsPage() {
       </div>
 
       <div className="table-container">
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+          <input
+            className="form-input"
+            style={{ width: 260 }}
+            placeholder="Filter by title/summary..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select className="form-input" style={{ width: 220 }} value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
+            <option value="">All types</option>
+            <option value="guest_lecture">{KIND_LABEL.guest_lecture}</option>
+            <option value="guest_faculty">{KIND_LABEL.guest_faculty}</option>
+          </select>
+          <select className="form-input" style={{ width: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
         <table className="data-table">
           <thead>
             <tr>
@@ -186,13 +229,13 @@ export default function CollegeGuestEngagementsPage() {
                 </td>
               </tr>
             ) : (
-              listings.map((L) => (
+              filteredListings.map((L) => (
                 <tr key={L.id}>
                   <td className="font-semibold">{L.title}</td>
                   <td>{KIND_LABEL[L.kind] || L.kind}</td>
                   <td>
                     <span className={`badge badge-${L.status === 'published' ? 'green' : L.status === 'draft' ? 'amber' : 'gray'}`}>
-                      {L.status}
+                      {formatStatus(L.status)}
                     </span>
                   </td>
                   <td className="text-sm text-secondary">
@@ -218,7 +261,7 @@ export default function CollegeGuestEngagementsPage() {
                 </tr>
               ))
             )}
-            {!loading && listings.length === 0 ? (
+            {!loading && filteredListings.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center text-secondary">
                   No listings yet.

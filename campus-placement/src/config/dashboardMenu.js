@@ -2,7 +2,7 @@ import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
-  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, FileUp,
+  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, FileUp, Rocket,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -70,7 +70,7 @@ export const menuConfig = {
         title: 'Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/student/overview', icon: LayoutDashboard },
-          { label: 'My Profile', href: '/dashboard/student/profile', icon: User },
+          { label: 'Getting Started', href: '/dashboard/student/getting-started', icon: Rocket },
           { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
@@ -80,12 +80,20 @@ export const menuConfig = {
         title: 'Placements',
         items: [
           { label: 'Browse Drives', href: '/dashboard/student/drives', icon: Target },
-          { label: 'Internships', href: '/dashboard/student/internships', icon: GraduationCap },
-          { label: 'Projects', href: '/dashboard/student/projects', icon: FolderDot },
           { label: 'Placement calendar', href: '/dashboard/student/calendar', icon: CalendarDays },
-          { label: 'My Applications', href: '/dashboard/student/applications', icon: FileEdit },
           { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
           { label: 'My Offers', href: '/dashboard/student/offers', icon: Award },
+        ],
+      },
+      {
+        id: 'student-applications',
+        title: 'My Applications',
+        items: [
+          { label: 'Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
+          { label: 'Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
+          { label: 'Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
+          { label: 'Mentorship', href: '/dashboard/student/applications/mentorship', icon: Users },
+          { label: 'Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
         ],
       },
       {
@@ -94,14 +102,15 @@ export const menuConfig = {
         items: [
           { label: 'Clarifications', href: '/dashboard/student/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/student/discussions', icon: MessageSquare },
+          { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
       {
         id: 'student-profile',
-        title: 'Profile',
+        title: 'Documents & Profile',
         items: [
+          { label: 'My Profile', href: '/dashboard/student/profile', icon: User },
           { label: 'Documents', href: '/dashboard/student/documents', icon: FileText },
-          { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
     ],
@@ -114,6 +123,7 @@ export const menuConfig = {
         title: '🧭 Core / Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/employer/overview', icon: LayoutDashboard },
+          { label: 'Getting Started', href: '/dashboard/employer/getting-started', icon: Rocket },
           {
             label: 'Campus Partnerships',
             href: '/dashboard/employer/select-campus',
@@ -121,7 +131,6 @@ export const menuConfig = {
           },
           { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
-          { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
         ],
       },
       {
@@ -149,6 +158,7 @@ export const menuConfig = {
           { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Hiring Assessment', href: '/dashboard/employer/hiring-assessment', icon: ListChecks },
           { label: 'Interview Scheduling', href: '/dashboard/employer/interviews', icon: Calendar },
+          { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
         ],
       },
       {
@@ -156,8 +166,8 @@ export const menuConfig = {
         title: '📥 Candidate Pipeline',
         items: [
           { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
-          { label: 'Applications', href: '/dashboard/employer/applications', icon: ClipboardList },
           { label: 'Assessment uploads', href: '/dashboard/employer/assessment-uploads', icon: FileText },
+          { label: 'Applications', href: '/dashboard/employer/applications', icon: ClipboardList },
           { label: 'Offers', href: '/dashboard/employer/offers', icon: Send },
           { label: 'Upload offers (CSV)', href: '/dashboard/employer/offers-upload', icon: FileUp },
         ],
@@ -180,20 +190,27 @@ export const menuConfig = {
         title: '🧭 Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/college/overview', icon: LayoutDashboard },
+          { label: 'Getting Started', href: '/dashboard/college/getting-started', icon: Rocket },
           { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
       {
-        id: 'college-company',
-        title: '🏢 Company & Opportunities',
+        id: 'college-employers',
+        title: '🏢 Employers & Partnerships',
         items: [
           { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
           { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests', icon: Inbox },
+          { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
+        ],
+      },
+      {
+        id: 'college-programs',
+        title: '🎓 Programs & Drives',
+        items: [
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
-          { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
         ],
       },
       {
@@ -221,6 +238,7 @@ export const menuConfig = {
         items: [
           { label: 'Clarifications (publish)', href: '/dashboard/college/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
+          { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
       {
@@ -247,7 +265,6 @@ export const menuConfig = {
         items: [
           { label: 'Reports', href: '/dashboard/college/reports', icon: TrendingUp },
           { label: 'Audit reports', href: '/dashboard/college/audit-reports', icon: FileText },
-          { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
     ],
@@ -260,17 +277,24 @@ export const menuConfig = {
         title: 'Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/admin/overview', icon: LayoutDashboard },
+          { label: 'Getting Started', href: '/dashboard/admin/getting-started', icon: Rocket },
           { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
         ],
       },
       {
-        id: 'admin-platform',
-        title: 'Platform',
+        id: 'admin-directory',
+        title: 'Platform Directory',
         items: [
           { label: 'Colleges', href: '/dashboard/admin/colleges', icon: Building },
-          { label: 'Pending registrations', href: '/dashboard/admin/pending-registrations', icon: Inbox },
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
+        ],
+      },
+      {
+        id: 'admin-operations',
+        title: 'Operations & Risk',
+        items: [
+          { label: 'Pending registrations', href: '/dashboard/admin/pending-registrations', icon: Inbox },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },
           { label: 'Audit reports', href: '/dashboard/admin/audit-reports', icon: FileText },
           { label: 'Settings', href: '/dashboard/admin/settings', icon: Settings },

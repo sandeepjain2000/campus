@@ -5,6 +5,8 @@ import useSWR from 'swr';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { formatDate } from '@/lib/utils';
 import { getCurrentAcademicYear } from '@/lib/academicYear';
+import { BarChart2, TrendingUp, DollarSign, Building2, Trophy, Search } from 'lucide-react';
+
 const fetcher = async (url) => {
   const res = await fetch(url);
   const json = await res.json();
@@ -34,248 +36,207 @@ export default function CollegeReportsPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const syncYear = () => {
-      const saved = window.sessionStorage.getItem('activeAcademicYear');
-      if (saved) setCurrentAcademicYear(saved);
-    };
+    const syncYear = () => { const saved = window.sessionStorage.getItem('activeAcademicYear'); if (saved) setCurrentAcademicYear(saved); };
     syncYear();
     window.addEventListener('placementhub-academic-year', syncYear);
     return () => window.removeEventListener('placementhub-academic-year', syncYear);
   }, []);
 
-  const studentEventCompanies = useMemo(
-    () => Array.from(new Set(STUDENT_COMPANY_EVENTS.map((r) => r.company))).sort(),
-    [STUDENT_COMPANY_EVENTS],
-  );
-
+  const studentEventCompanies = useMemo(() => Array.from(new Set(STUDENT_COMPANY_EVENTS.map((r) => r.company))).sort(), [STUDENT_COMPANY_EVENTS]);
   const filteredStudentEvents = useMemo(() => {
     const q = studentReportSearch.trim().toLowerCase();
     return STUDENT_COMPANY_EVENTS.filter((r) => {
       if (studentReportCompany && r.company !== studentReportCompany) return false;
       if (!q) return true;
-      return (
-        r.student.toLowerCase().includes(q) ||
-        r.roll.toLowerCase().includes(q) ||
-        r.company.toLowerCase().includes(q) ||
-        r.eventType.toLowerCase().includes(q) ||
-        r.outcome.toLowerCase().includes(q)
-      );
+      return r.student.toLowerCase().includes(q) || r.roll.toLowerCase().includes(q) || r.company.toLowerCase().includes(q) || r.eventType.toLowerCase().includes(q) || r.outcome.toLowerCase().includes(q);
     });
   }, [STUDENT_COMPANY_EVENTS, studentReportSearch, studentReportCompany]);
 
-  const reportExports = useMemo(
-    () => [
-      {
-        id: 'dept',
-        label: 'Department-wise placement',
-        filename: 'reports_department_placement',
-        rowCount: DEPT_PLACEMENT.length,
-        getRows: () => ({
-          headers: ['Department', 'Placement_pct', 'Placed', 'Total'],
-          rows: DEPT_PLACEMENT.map((d) => [
-            d.dept,
-            String(d.pct),
-            String(d.placed),
-            String(d.total),
-          ]),
-        }),
-      },
-      {
-        id: 'salary',
-        label: 'Salary distribution',
-        filename: 'reports_salary_distribution',
-        rowCount: SALARY_DIST.length,
-        getRows: () => ({
-          headers: ['Range', 'Students', 'Pct'],
-          rows: SALARY_DIST.map((d) => [d.range, String(d.count), String(d.pct)]),
-        }),
-      },
-      {
-        id: 'recruiters',
-        label: 'Top recruiters',
-        filename: 'reports_top_recruiters',
-        rowCount: TOP_RECRUITERS.length,
-        getRows: () => ({
-          headers: ['Rank', 'Company', 'Hires', 'Avg_CTC'],
-          rows: TOP_RECRUITERS.map((c, i) => [
-            String(i + 1),
-            c.name,
-            String(c.hires),
-            c.ctc,
-          ]),
-        }),
-      },
-      {
-        id: 'yoy',
-        label: 'Year-over-year comparison',
-        filename: 'reports_yoy_comparison',
-        rowCount: YOY.length,
-        getRows: () => ({
-          headers: ['Metric', `Year_${previousAcademicYear.replace('-', '_')}`, `Year_${currentAcademicYear.replace('-', '_')}`, 'Change'],
-          rows: YOY.map((r) => [r.metric, r.prev, r.curr, r.change]),
-        }),
-      },
-      {
-        id: 'student_events',
-        label: 'Student–company events & outcomes',
-        filename: 'reports_student_company_events',
-        rowCount: STUDENT_COMPANY_EVENTS.length,
-        getRows: () => ({
-          headers: ['Student', 'Roll', 'Dept', 'Company', 'Event', 'Event_date', 'Attended', 'Outcome'],
-          rows: STUDENT_COMPANY_EVENTS.map((r) => [
-            r.student,
-            r.roll,
-            r.dept,
-            r.company,
-            r.eventType,
-            r.eventDate,
-            r.attended,
-            r.outcome,
-          ]),
-        }),
-      },
-    ],
-    [DEPT_PLACEMENT, SALARY_DIST, TOP_RECRUITERS, YOY, STUDENT_COMPANY_EVENTS, previousAcademicYear, currentAcademicYear]
-  );
+  const reportExports = useMemo(() => [
+    { id: 'dept', label: 'Department-wise placement', filename: 'reports_department_placement', rowCount: DEPT_PLACEMENT.length, getRows: () => ({ headers: ['Department', 'Placement_pct', 'Placed', 'Total'], rows: DEPT_PLACEMENT.map((d) => [d.dept, String(d.pct), String(d.placed), String(d.total)]) }) },
+    { id: 'salary', label: 'Salary distribution', filename: 'reports_salary_distribution', rowCount: SALARY_DIST.length, getRows: () => ({ headers: ['Range', 'Students', 'Pct'], rows: SALARY_DIST.map((d) => [d.range, String(d.count), String(d.pct)]) }) },
+    { id: 'recruiters', label: 'Top recruiters', filename: 'reports_top_recruiters', rowCount: TOP_RECRUITERS.length, getRows: () => ({ headers: ['Rank', 'Company', 'Hires', 'Avg_CTC'], rows: TOP_RECRUITERS.map((c, i) => [String(i + 1), c.name, String(c.hires), c.ctc]) }) },
+    { id: 'yoy', label: 'Year-over-year comparison', filename: 'reports_yoy_comparison', rowCount: YOY.length, getRows: () => ({ headers: ['Metric', `Year_${previousAcademicYear.replace('-', '_')}`, `Year_${currentAcademicYear.replace('-', '_')}`, 'Change'], rows: YOY.map((r) => [r.metric, r.prev, r.curr, r.change]) }) },
+    { id: 'student_events', label: 'Student–company events & outcomes', filename: 'reports_student_company_events', rowCount: STUDENT_COMPANY_EVENTS.length, getRows: () => ({ headers: ['Student', 'Roll', 'Dept', 'Company', 'Event', 'Event_date', 'Attended', 'Outcome'], rows: STUDENT_COMPANY_EVENTS.map((r) => [r.student, r.roll, r.dept, r.company, r.eventType, r.eventDate, r.attended, r.outcome]) }) },
+  ], [DEPT_PLACEMENT, SALARY_DIST, TOP_RECRUITERS, YOY, STUDENT_COMPANY_EVENTS, previousAcademicYear, currentAcademicYear]);
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>📈 Reports & Analytics</h1>
-          <p>Comprehensive placement analytics and reports</p>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <BarChart2 size={28} /> Reports & Analytics
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+            Placement season {currentAcademicYear} · Comprehensive analytics and exportable reports
+          </p>
         </div>
-        <div className="page-header-actions">
+        <div style={{ position: 'relative', zIndex: 1 }}>
           <ExportCsvSplitButton mode="multi" exportMenus={reportExports} />
         </div>
       </div>
 
-      {isLoading ? <div className="card"><p className="text-secondary">Loading reports...</p></div> : null}
-      {error ? <div className="card"><p style={{ color: 'var(--danger-600)' }}>{error.message || 'Could not load reports.'}</p></div> : null}
+      {isLoading && (
+        <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
+          {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />)}
+        </div>
+      )}
+      {error && <div className="card" style={{ padding: '1.5rem', background: 'var(--danger-50)', border: '1px solid var(--danger-200)', marginBottom: '1.5rem' }}><p style={{ margin: 0, color: 'var(--danger-700)', fontWeight: 600 }}>{error.message}</p></div>}
 
-      {/* Summary Cards */}
-      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-        <div className="stats-card"><div className="stats-card-icon green">📊</div><div className="stats-card-value">{summary.placementRate}%</div><div className="stats-card-label">Placement Rate</div></div>
-        <div className="stats-card green"><div className="stats-card-icon green">💰</div><div className="stats-card-value">{summary.avgPackage ? `₹${(summary.avgPackage / 100000).toFixed(1)}L` : '—'}</div><div className="stats-card-label">Average Package</div></div>
-        <div className="stats-card amber"><div className="stats-card-icon amber">📈</div><div className="stats-card-value">{summary.highestPackage ? `₹${(summary.highestPackage / 100000).toFixed(1)}L` : '—'}</div><div className="stats-card-label">Highest Package</div></div>
-        <div className="stats-card blue"><div className="stats-card-icon blue">🏢</div><div className="stats-card-value">{summary.companiesVisited || 0}</div><div className="stats-card-label">Companies Visited</div></div>
+      {/* Summary KPI Cards */}
+      <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
+        {[
+          { label: 'Placement Rate', value: `${summary.placementRate}%`, icon: TrendingUp, color: 'var(--success-600)', bg: 'rgba(5,150,105,0.08)' },
+          { label: 'Average Package', value: summary.avgPackage ? `₹${(summary.avgPackage / 100000).toFixed(1)}L` : '—', icon: DollarSign, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
+          { label: 'Highest Package', value: summary.highestPackage ? `₹${(summary.highestPackage / 100000).toFixed(1)}L` : '—', icon: TrendingUp, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+          { label: 'Companies Visited', value: summary.companiesVisited || 0, icon: Building2, color: 'var(--info-600)', bg: 'rgba(2,132,199,0.08)' },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="card" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: bg, color }}><Icon size={22} strokeWidth={2} /></div>
+            </div>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>{label}</div>
+          </div>
+        ))}
       </div>
 
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div className="card-header">
-          <h3 className="card-title">👤 Student-level: company events & results</h3>
-          <p className="text-sm text-secondary" style={{ margin: '0.25rem 0 0', fontWeight: 400 }}>
-            Who attended which company touchpoints (talks, tests, interviews) and the recorded outcome for that step.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
-          <input
-            className="form-input"
-            placeholder="Search student, roll, company, event, outcome…"
-            value={studentReportSearch}
-            onChange={(e) => setStudentReportSearch(e.target.value)}
-            style={{ maxWidth: 320 }}
-          />
-          <select className="form-select" style={{ width: 'auto', minWidth: 200 }} value={studentReportCompany} onChange={(e) => setStudentReportCompany(e.target.value)}>
-            <option value="">All companies</option>
-            {studentEventCompanies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <span className="text-sm text-secondary">{filteredStudentEvents.length} rows</span>
+      {/* Student-level Events */}
+      <div className="card" style={{ marginBottom: '2rem', border: '1px solid var(--border-default)', padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: 'var(--bg-secondary)' }}>
+          <div>
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Student-Level Events & Outcomes</h3>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Who attended which company touchpoints and the recorded outcome.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+              <input className="form-input" placeholder="Search…" value={studentReportSearch} onChange={e => setStudentReportSearch(e.target.value)} style={{ paddingLeft: '2.25rem', paddingTop: '0.5rem', paddingBottom: '0.5rem' }} />
+            </div>
+            <select className="form-select" style={{ width: 'auto' }} value={studentReportCompany} onChange={e => setStudentReportCompany(e.target.value)}>
+              <option value="">All companies</option>
+              {studentEventCompanies.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{filteredStudentEvents.length} rows</span>
+          </div>
         </div>
         <div className="table-container" style={{ border: 'none' }}>
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Roll</th>
-                <th>Dept</th>
-                <th>Company</th>
-                <th>Event</th>
-                <th>Date</th>
-                <th>Attended</th>
-                <th>Outcome</th>
-              </tr>
-            </thead>
+            <thead><tr style={{ background: 'var(--bg-secondary)' }}><th style={{ paddingLeft: '1.5rem' }}>Student</th><th>Roll</th><th>Dept</th><th>Company</th><th>Event</th><th>Date</th><th>Attended</th><th style={{ paddingRight: '1.5rem' }}>Outcome</th></tr></thead>
             <tbody>
               {filteredStudentEvents.map((r, idx) => (
                 <tr key={`${r.roll}-${r.company}-${r.eventType}-${idx}`}>
-                  <td className="font-semibold">{r.student}</td>
-                  <td className="text-sm font-mono">{r.roll}</td>
-                  <td>{r.dept}</td>
-                  <td>{r.company}</td>
-                  <td>{r.eventType}</td>
-                  <td>{formatDate(r.eventDate)}</td>
-                  <td>
-                    <span className={`badge ${r.attended === 'Yes' ? 'badge-success' : r.attended === 'No' ? 'badge-gray' : 'badge-indigo'}`}>{r.attended}</span>
-                  </td>
-                  <td className="text-sm">{r.outcome}</td>
+                  <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>{r.student}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{r.roll}</td>
+                  <td style={{ fontSize: '0.9rem' }}>{r.dept}</td>
+                  <td style={{ fontWeight: 500 }}>{r.company}</td>
+                  <td><span className="badge badge-gray" style={{ fontSize: '0.75rem' }}>{r.eventType}</span></td>
+                  <td style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{formatDate(r.eventDate)}</td>
+                  <td><span className={`badge ${r.attended === 'Yes' ? 'badge-green' : r.attended === 'No' ? 'badge-gray' : 'badge-indigo'}`} style={{ fontSize: '0.75rem' }}>{r.attended}</span></td>
+                  <td style={{ paddingRight: '1.5rem', fontSize: '0.9rem' }}>{r.outcome}</td>
                 </tr>
               ))}
+              {filteredStudentEvents.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-tertiary)' }}>No data found.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div className="grid grid-2">
-        {/* Branch-wise Placement Chart */}
-        <div className="card">
-          <div className="card-header"><h3 className="card-title">Department-wise Placement Rate</h3></div>
-          {DEPT_PLACEMENT.map(d => (
-            <div key={d.dept} style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                <span className="text-sm font-semibold">{d.dept}</span>
-                <span className="text-sm">{d.placed}/{d.total} ({d.pct}%)</span>
+      {/* Analytics Grid */}
+      <div className="grid grid-2" style={{ gap: '1.5rem' }}>
+        {/* Dept Placement */}
+        <div className="card" style={{ border: '1px solid var(--border-default)' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>Department-wise Placement Rate</h3>
+          </div>
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {DEPT_PLACEMENT.map(d => (
+              <div key={d.dept}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{d.dept}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: d.pct >= 80 ? 'var(--success-600)' : d.pct >= 50 ? 'var(--warning-600)' : 'var(--danger-600)' }}>{d.placed}/{d.total} ({d.pct}%)</span>
+                </div>
+                <div style={{ height: 8, background: 'var(--gray-200)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${d.pct}%`, background: d.pct >= 80 ? 'var(--success-500)' : d.pct >= 50 ? 'var(--warning-500)' : 'var(--danger-500)', borderRadius: 999 }} />
+                </div>
               </div>
-              <div className="progress-bar"><div className={`progress-fill ${d.pct >= 80 ? 'green' : d.pct >= 50 ? '' : 'red'}`} style={{ width: `${d.pct}%` }} /></div>
-            </div>
-          ))}
+            ))}
+            {DEPT_PLACEMENT.length === 0 && <p className="text-secondary text-sm" style={{ margin: 0 }}>No department data yet.</p>}
+          </div>
         </div>
 
-        {/* Salary Distribution */}
-        <div className="card">
-          <div className="card-header"><h3 className="card-title">Salary Distribution</h3></div>
-          {SALARY_DIST.map(d => (
-            <div key={d.range} style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                <span className="text-sm font-semibold">{d.range}</span>
-                <span className="text-sm">{d.count} students ({d.pct}%)</span>
+        {/* Salary Dist */}
+        <div className="card" style={{ border: '1px solid var(--border-default)' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>Salary Distribution</h3>
+          </div>
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {SALARY_DIST.map(d => (
+              <div key={d.range}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{d.range}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{d.count} students ({d.pct}%)</span>
+                </div>
+                <div style={{ height: 8, background: 'var(--gray-200)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, d.pct * 2.5)}%`, background: 'linear-gradient(90deg, var(--primary-500), var(--primary-600))', borderRadius: 999 }} />
+                </div>
               </div>
-              <div className="progress-bar"><div className="progress-fill" style={{ width: `${d.pct * 2.5}%` }} /></div>
-            </div>
-          ))}
+            ))}
+            {SALARY_DIST.length === 0 && <p className="text-secondary text-sm" style={{ margin: 0 }}>No salary data yet.</p>}
+          </div>
         </div>
 
         {/* Top Recruiters */}
-        <div className="card">
-          <div className="card-header"><h3 className="card-title">🏆 Top Recruiters</h3></div>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Trophy size={18} style={{ color: 'var(--warning-500)' }} />
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>Top Recruiters</h3>
+          </div>
           <div className="table-container" style={{ border: 'none' }}>
             <table className="data-table">
-              <thead><tr><th>#</th><th>Company</th><th>Hires</th><th>Avg CTC</th></tr></thead>
+              <thead><tr style={{ background: 'var(--bg-secondary)' }}><th style={{ width: 40, paddingLeft: '1.5rem' }}>#</th><th>Company</th><th style={{ textAlign: 'right' }}>Hires</th><th style={{ textAlign: 'right', paddingRight: '1.5rem' }}>Avg CTC</th></tr></thead>
               <tbody>
                 {TOP_RECRUITERS.map((c, i) => (
-                  <tr key={c.name}><td className="font-bold">{i+1}</td><td className="font-semibold">{c.name}</td><td>{c.hires}</td><td className="font-bold">{c.ctc}</td></tr>
+                  <tr key={c.name}>
+                    <td style={{ paddingLeft: '1.5rem', fontWeight: 700, color: i === 0 ? 'var(--warning-600)' : 'var(--text-tertiary)' }}>{i + 1}</td>
+                    <td style={{ fontWeight: 600 }}>{c.name}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{c.hires}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '1.5rem', fontWeight: 700, color: 'var(--success-600)' }}>{c.ctc}</td>
+                  </tr>
                 ))}
+                {TOP_RECRUITERS.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>No data yet.</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Year-over-Year */}
-        <div className="card">
-          <div className="card-header"><h3 className="card-title">📊 Year-over-Year Comparison</h3></div>
+        {/* YoY */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>Year-over-Year Comparison</h3>
+          </div>
           <div className="table-container" style={{ border: 'none' }}>
             <table className="data-table">
-              <thead><tr><th>Metric</th><th>{previousAcademicYear}</th><th>{currentAcademicYear}</th><th>Change</th></tr></thead>
+              <thead><tr style={{ background: 'var(--bg-secondary)' }}><th style={{ paddingLeft: '1.5rem' }}>Metric</th><th>{previousAcademicYear}</th><th>{currentAcademicYear}</th><th style={{ paddingRight: '1.5rem' }}>Change</th></tr></thead>
               <tbody>
                 {YOY.map(r => (
-                  <tr key={r.metric}><td className="font-semibold">{r.metric}</td><td>{r.prev}</td><td className="font-bold">{r.curr}</td>
-                    <td><span className={`stats-card-change ${r.up ? 'up' : 'down'}`}>{r.up ? '↑' : '↓'} {r.change}</span></td>
+                  <tr key={r.metric}>
+                    <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>{r.metric}</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>{r.prev}</td>
+                    <td style={{ fontWeight: 700 }}>{r.curr}</td>
+                    <td style={{ paddingRight: '1.5rem' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: r.up ? 'var(--success-600)' : 'var(--danger-600)' }}>{r.up ? '↑' : '↓'} {r.change}</span>
+                    </td>
                   </tr>
                 ))}
+                {YOY.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>No data yet.</td></tr>}
               </tbody>
             </table>
           </div>

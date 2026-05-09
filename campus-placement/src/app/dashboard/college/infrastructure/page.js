@@ -265,13 +265,20 @@ export default function CollegeInfrastructurePage() {
         </div>
       </div>
 
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>🏛️ Infrastructure & Logistics</h1>
-          <p>Book rooms, labs, and auditoriums. Tag each booking with announcement destinations for your own planning.</p>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>🏛️ Infrastructure & Logistics</h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Book rooms, labs, and auditoriums. Tag each booking with announcement destinations.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel Creation' : '+ New Booking'}
+        <button type="button" className="btn" onClick={() => setShowForm(!showForm)} style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}>
+          {showForm ? 'Cancel' : '+ New Booking'}
         </button>
       </div>
 

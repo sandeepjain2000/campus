@@ -202,51 +202,43 @@ export default function CollegeOffersPage() {
   }, []);
 
   return (
-    <div className="animate-fadeIn">
-      {error ? (
-        <div
-          className="card"
-          style={{
-            marginBottom: '1rem',
-            borderColor: 'var(--danger-300)',
-            background: 'var(--danger-50)',
-            color: 'var(--danger-800)',
-          }}
-        >
-          <p style={{ margin: 0, fontWeight: 600 }}>Could not load offers from the server</p>
-          <p className="text-sm" style={{ margin: '0.5rem 0 0', opacity: 0.95 }}>
-            {error.message || 'Unknown error'}. You can still try CSV import below; if this persists, confirm migration{' '}
-            <code style={{ fontSize: '0.85em' }}>018_college_offers_reported_company.sql</code> is applied and reload.
-          </p>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {error && (
+        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--danger-300)', background: 'var(--danger-50)', padding: '1.25rem' }}>
+          <p style={{ margin: 0, fontWeight: 600, color: 'var(--danger-700)' }}>Could not load offers</p>
+          <p className="text-sm" style={{ margin: '0.5rem 0 0', color: 'var(--danger-600)' }}>{error.message || 'Unknown error'}</p>
         </div>
-      ) : null}
+      )}
 
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Send size={22} aria-hidden /> Offers
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Send size={28} /> Placement Offers
           </h1>
-          <p className="text-secondary" style={{ margin: '0.25rem 0 0', fontSize: '0.9375rem' }}>
-            Record placement offers for your campus (including email / off-platform rollouts). Add rows manually or import CSV.{' '}
-            <Link href="/dashboard/college/offers-upload" className="link-inline" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
-              <FileUp size={14} style={{ verticalAlign: '-0.125em', marginRight: '0.2rem' }} aria-hidden />
-              Full-screen CSV upload
-            </Link>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+            Record offers — on-platform or via email. Import CSV or add manually.
           </p>
         </div>
-        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={downloadCollegeOffersTemplate}>
-            Blank CSV template
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn" onClick={downloadCollegeOffersTemplate} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <FileUp size={16} /> Template
           </button>
-          <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-            Offers CSV (all students)
+          <button type="button" className="btn" onClick={downloadAssessmentStarter} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <FileUp size={16} /> All Students
           </button>
-          <label className="btn btn-secondary" style={{ cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
+          <label className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
             {uploading ? 'Importing…' : 'Upload CSV'}
             <input type="file" accept=".csv,text/csv" hidden disabled={uploading} onChange={onUploadCsv} />
           </label>
-          <button type="button" className="btn btn-primary" onClick={() => { resetForm(); setShowAdd(true); setEditId(null); }}>
-            + Add offer
+          <button type="button" className="btn" onClick={() => { resetForm(); setShowAdd(true); setEditId(null); }} style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            + Add Offer
           </button>
         </div>
       </div>
@@ -263,7 +255,7 @@ export default function CollegeOffersPage() {
             Blank template
           </button>
           <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-            All students → offers CSV
+            Download Template (All students)
           </button>
           <label className="btn btn-primary" style={{ cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
             {uploading ? 'Importing…' : 'Choose CSV file to import'}
@@ -291,27 +283,22 @@ export default function CollegeOffersPage() {
         </p>
       </div>
 
-      <div className="grid grid-4" style={{ marginBottom: '1rem' }}>
-        <div className="stats-card">
-          <div className="stats-card-label">Total Offers</div>
-          <div className="stats-card-value">{summary.total}</div>
-        </div>
-        <div className="stats-card green">
-          <div className="stats-card-label">Accepted</div>
-          <div className="stats-card-value">{summary.accepted}</div>
-        </div>
-        <div className="stats-card amber">
-          <div className="stats-card-label">Pending</div>
-          <div className="stats-card-value">{summary.pending}</div>
-        </div>
-        <div className="stats-card rose">
-          <div className="stats-card-label">Rejected / declined</div>
-          <div className="stats-card-value">{summary.rejected ?? 0}</div>
-        </div>
+      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
+        {[
+          { label: 'Total Offers', value: summary.total, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
+          { label: 'Accepted', value: summary.accepted, color: 'var(--success-600)', bg: 'rgba(5,150,105,0.08)' },
+          { label: 'Pending', value: summary.pending, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+          { label: 'Rejected / Declined', value: summary.rejected ?? 0, color: 'var(--danger-600)', bg: 'rgba(220,38,38,0.08)' },
+        ].map(({ label, value, color, bg }) => (
+          <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color, lineHeight: 1, marginBottom: '0.5rem' }}>{value}</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</div>
+          </div>
+        ))}
       </div>
-      <div className="stats-card blue" style={{ marginBottom: '1rem', padding: '1rem' }}>
-        <div className="stats-card-label">Avg accepted salary (INR)</div>
-        <div className="stats-card-value">{summary.avgSalary ? formatCurrency(summary.avgSalary) : '—'}</div>
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Avg Accepted Salary (INR)</div>
+        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--success-600)' }}>{summary.avgSalary ? formatCurrency(summary.avgSalary) : '—'}</div>
       </div>
 
       {(showAdd || editId) && (

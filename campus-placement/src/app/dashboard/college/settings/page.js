@@ -24,9 +24,12 @@ function LabelWithIcon({ Icon, children }) {
 
 export default function CollegeSettingsPage() {
   const [saving, setSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [form, setForm] = useState({
     website: '',
     logoUrl: '',
@@ -36,6 +39,15 @@ export default function CollegeSettingsPage() {
     institution: { collegeName: '', email: '', phone: '' },
     address: { address: '', city: '', state: '', pincode: '' },
     accreditation: { body: '', naacGrade: '', nirfRank: '' },
+    institutionShowcase: {
+      nbaAccreditedPrograms: '',
+      nirfCategoryRanks: '',
+      notableAlumni: '',
+      patentCount: '',
+      startupCount: '',
+      incubationCells: '',
+      researchCenters: '',
+    },
     placementOfficer: { name: '', email: '', designation: '' },
   });
 
@@ -57,6 +69,15 @@ export default function CollegeSettingsPage() {
           institution: json.institution || { collegeName: '', email: '', phone: '' },
           address: json.address || { address: '', city: '', state: '', pincode: '' },
           accreditation: json.accreditation || { body: '', naacGrade: '', nirfRank: '' },
+          institutionShowcase: json.institutionShowcase || {
+            nbaAccreditedPrograms: '',
+            nirfCategoryRanks: '',
+            notableAlumni: '',
+            patentCount: '',
+            startupCount: '',
+            incubationCells: '',
+            researchCenters: '',
+          },
           placementOfficer: json.placementOfficer || { name: '', email: '', designation: '' },
         });
       } catch (e) {
@@ -92,6 +113,43 @@ export default function CollegeSettingsPage() {
       setMessage(e.message || 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMessage('');
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordMessage('Please fill all password fields.');
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordMessage('New password must be at least 8 characters.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage('New password and confirmation do not match.');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to change password');
+      setPasswordMessage('Password updated successfully.');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      setPasswordMessage(err.message || 'Failed to change password');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -205,31 +263,35 @@ export default function CollegeSettingsPage() {
   };
 
   return (
-    <div className="animate-fadeIn college-settings-page">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>🔧 College Settings</h1>
-          <p>Manage your institution&apos;s profile and preferences</p>
+    <div className="animate-fadeIn college-settings-page" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>🔧 College Settings</h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Manage your institution&apos;s profile, branding, and preferences.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving || loading}>
-          {saving ? 'Saving...' : '💾 Save'}
+        <button type="button" className="btn" onClick={onSave} disabled={saving || loading} style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}>
+          {saving ? 'Saving…' : '💾 Save'}
         </button>
       </div>
 
-      {message ? (
+      {message && (
         <div
           className="wireframe-banner"
-          style={{
-            marginBottom: '1.5rem',
-            ...(message.includes('successfully') ? {} : { borderColor: 'var(--danger-200)', background: 'var(--danger-50)' }),
-          }}
+          style={{ marginBottom: '1.5rem', ...(message.includes('successfully') ? {} : { borderColor: 'var(--danger-200)', background: 'var(--danger-50)' }) }}
           role={message.includes('successfully') ? 'status' : 'alert'}
           aria-live="polite"
         >
           <span className="badge badge-gray" style={{ flexShrink: 0 }}>Status</span>
           <div>{message}</div>
         </div>
-      ) : null}
+      )}
 
       <div className="grid grid-2">
         <div className="card" style={{ gridColumn: '1 / -1' }}>
@@ -364,6 +426,79 @@ export default function CollegeSettingsPage() {
 
         <div className="card">
           <div className="card-header">
+            <h3 className="card-title">📊 Institution Showcase</h3>
+          </div>
+          <p className="text-sm text-secondary" style={{ marginTop: 0 }}>
+            These are commonly highlighted on college pages: rankings, alumni outcomes, innovation, startups, patents, and research centers.
+          </p>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">NBA Accredited Programs</label>
+            <input
+              className="form-input"
+              placeholder="e.g. CSE, ECE, Mechanical (Tier-1)"
+              value={form.institutionShowcase.nbaAccreditedPrograms}
+              onChange={(e) => setNested('institutionShowcase', 'nbaAccreditedPrograms', e.target.value)}
+            />
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">NIRF Category Ranks</label>
+            <input
+              className="form-input"
+              placeholder="e.g. Overall #1, Engineering #1, Innovation #2"
+              value={form.institutionShowcase.nirfCategoryRanks}
+              onChange={(e) => setNested('institutionShowcase', 'nirfCategoryRanks', e.target.value)}
+            />
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">Notable Alumni</label>
+            <textarea
+              className="form-textarea"
+              rows={3}
+              placeholder="Comma-separated names and achievements"
+              value={form.institutionShowcase.notableAlumni}
+              onChange={(e) => setNested('institutionShowcase', 'notableAlumni', e.target.value)}
+            />
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">Total Patents (latest)</label>
+            <input
+              className="form-input"
+              type="number"
+              value={form.institutionShowcase.patentCount}
+              onChange={(e) => setNested('institutionShowcase', 'patentCount', e.target.value)}
+            />
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">Startups Incubated</label>
+            <input
+              className="form-input"
+              type="number"
+              value={form.institutionShowcase.startupCount}
+              onChange={(e) => setNested('institutionShowcase', 'startupCount', e.target.value)}
+            />
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">Incubation Cells / Entrepreneurship Hubs</label>
+            <input
+              className="form-input"
+              placeholder="e.g. IITM Incubation Cell, Research Park"
+              value={form.institutionShowcase.incubationCells}
+              onChange={(e) => setNested('institutionShowcase', 'incubationCells', e.target.value)}
+            />
+          </div>
+          <div className="form-group college-settings-inline">
+            <label className="form-label">Research Centers of Excellence</label>
+            <input
+              className="form-input"
+              placeholder="e.g. AI, Energy, Semiconductor systems"
+              value={form.institutionShowcase.researchCenters}
+              onChange={(e) => setNested('institutionShowcase', 'researchCenters', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
             <h3 className="card-title">👤 Placement Officer</h3>
           </div>
           <div className="form-group college-settings-inline">
@@ -383,6 +518,57 @@ export default function CollegeSettingsPage() {
               onChange={(e) => setNested('placementOfficer', 'designation', e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header">
+            <h3 className="card-title">🔐 Password</h3>
+          </div>
+          <p className="text-sm text-secondary" style={{ marginTop: 0 }}>
+            Change your login password from settings.
+          </p>
+          <form onSubmit={onChangePassword} style={{ display: 'grid', gap: '0.9rem' }}>
+            <div className="grid grid-3" style={{ gap: '0.9rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Current password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">New password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Confirm new password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button type="submit" className="btn btn-secondary" disabled={passwordSaving}>
+                {passwordSaving ? 'Updating...' : 'Update password'}
+              </button>
+              {passwordMessage ? <span className="text-sm text-secondary">{passwordMessage}</span> : null}
+            </div>
+          </form>
         </div>
       </div>
     </div>

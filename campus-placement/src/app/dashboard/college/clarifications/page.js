@@ -130,15 +130,20 @@ export default function CollegeClarificationsPage() {
   };
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>❓ Clarifications for companies</h1>
-          <p>
-            Publish a <strong>single batch</strong> of up to {CLARIFICATION_RULES.maxQuestions} questions on behalf of students for one company. Companies
-            respond once per question — this is <strong>not</strong> an ongoing discussion board.
-          </p>
-        </div>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', position: 'relative', zIndex: 1 }}>
+          ❓ Clarifications
+        </h1>
+        <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0, position: 'relative', zIndex: 1 }}>
+          Publish up to {CLARIFICATION_RULES.maxQuestions} questions per batch for a company. Companies respond once — not an ongoing discussion.
+        </p>
       </div>
 
       <div className="grid grid-2">

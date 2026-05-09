@@ -50,37 +50,34 @@ export default function CollegeInternshipsPage() {
   }, [list]);
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <GraduationCap size={28} className="text-secondary" strokeWidth={1.5} /> Internships & programs
-          </h1>
-          <p className="text-secondary">
-            Published internships, short projects, and hackathons for which your campus was selected when the employer published. Tied to{' '}
-            <span className="font-mono text-xs">job_posting_visibility</span>, <span className="font-mono text-xs">job_postings</span>, and approved tie-ups.
-          </p>
-        </div>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', zIndex: 1 }}>
+          <GraduationCap size={28} /> Internships & Programs
+        </h1>
+        <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0, position: 'relative', zIndex: 1 }}>Published internships, short projects, and hackathons for which your campus was selected.</p>
       </div>
 
-      <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
-        <div className="stats-card">
-          <div className="stats-card-icon indigo"><GraduationCap size={24} strokeWidth={1.5} /></div>
-          <div className="stats-card-value">{isLoading ? '…' : stats.count}</div>
-          <div className="stats-card-label">Posted listings</div>
-        </div>
-        <div className="stats-card green">
-          <div className="stats-card-icon green"><IndianRupee size={24} strokeWidth={1.5} /></div>
-          <div className="stats-card-value">
-            {stats.avgStipend != null ? formatCurrency(stats.avgStipend) : '—'}
+      <div className="grid grid-3" style={{ marginBottom: '2rem' }}>
+        {[
+          { label: 'Posted Listings', value: isLoading ? '…' : stats.count, icon: GraduationCap, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
+          { label: 'Avg Monthly Stipend', value: stats.avgStipend != null ? formatCurrency(stats.avgStipend) : '—', icon: IndianRupee, color: 'var(--success-600)', bg: 'rgba(5,150,105,0.08)' },
+          { label: 'Total Openings', value: isLoading ? '…' : stats.openings, icon: Building2, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', background: bg, color }}><Icon size={20} strokeWidth={2} /></div>
+            </div>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>{label}</div>
           </div>
-          <div className="stats-card-label">Avg monthly stipend (est.)</div>
-        </div>
-        <div className="stats-card amber">
-          <div className="stats-card-icon amber"><Building2 size={24} strokeWidth={1.5} /></div>
-          <div className="stats-card-value">{isLoading ? '…' : stats.openings}</div>
-          <div className="stats-card-label">Total openings listed</div>
-        </div>
+        ))}
       </div>
 
       {error && (

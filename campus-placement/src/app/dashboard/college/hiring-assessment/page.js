@@ -8,6 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { pickRepresentativeAssessmentRows } from '@/lib/assessmentRowsDedupe';
 import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
+import { ClipboardList, Users, Upload, Download } from 'lucide-react';
 
 export default function CollegeHiringAssessmentPage() {
   const { addToast } = useToast();
@@ -102,45 +103,26 @@ export default function CollegeHiringAssessmentPage() {
   };
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>📋 Hiring Assessment (read-only)</h1>
-          <p className="text-secondary text-sm" style={{ maxWidth: 720 }}>
-            Data comes from <strong>employer assessment CSV uploads</strong> for your campus. Employers add or change rows only under their{' '}
-            <strong>Assessment uploads</strong> screen — this page is view, summary, and export only.
-          </p>
-          <div className="directive-panel" style={{ marginTop: '1rem' }} role="region" aria-label="College hiring assessment help">
-            <p className="directive-panel__title">How to use this page</p>
-            <ol className="directive-steps">
-              <li>
-                <strong>Total students</strong> and <strong>round-wise status</strong> (Passed, shortlisted, etc.) use one line per student, preferring the{' '}
-                <strong>newest upload</strong> when the same person appears in several files (from all employers for your campus).
-              </li>
-              <li>
-                The table shows <strong>one line per student</strong> (newest assessment batch wins for display; older uploads stay in the database).
-              </li>
-              <li>
-                Use <strong>Export</strong> for spreadsheets, <strong>Offers CSV (all students)</strong> for an import-ready file listing <strong>every</strong> campus
-                student (assessment data merged in where present), and{' '}
-                <Link href="/dashboard/college/reports" style={{ fontWeight: 600 }}>
-                  Reports
-                </Link>{' '}
-                for broader analytics.
-              </li>
-            </ol>
-          </div>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <ClipboardList size={28} /> Hiring Assessment
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Read-only view of employer CSV uploads for your campus. Export for spreadsheets.</p>
         </div>
-        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={downloadOffersImportStarter}>
-            Offers CSV (all students)
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn" onClick={downloadOffersImportStarter} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Download size={16} /> All Students Template
           </button>
-          <ExportCsvSplitButton
-            filenameBase="hiring_assessment_college_view"
-            currentCount={displayRows.length}
-            fullCount={displayRows.length}
-            getRows={getCsv}
-          />
+          <ExportCsvSplitButton filenameBase="hiring_assessment_college_view" currentCount={displayRows.length} fullCount={displayRows.length} getRows={getCsv} />
         </div>
       </div>
 
@@ -148,28 +130,21 @@ export default function CollegeHiringAssessmentPage() {
         <div className="skeleton skeleton-card" style={{ height: 200 }} />
       ) : (
         <>
-          <div className="grid grid-3" style={{ marginBottom: '1.25rem' }}>
-            <div className="stats-card">
-              <div className="stats-card-value">{summary.uniqueStudentCount ?? 0}</div>
-              <div className="stats-card-label">Total students</div>
-              <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-                Distinct students (profile) — all employers, this campus
-                {summary.totalResultRows > 0 ? (
-                  <>
-                    <br />
-                    {summary.totalResultRows} upload row{summary.totalResultRows === 1 ? '' : 's'} total
-                  </>
-                ) : null}
+          <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
+            {[
+              { label: 'Total Students', value: summary.uniqueStudentCount ?? 0, sub: summary.totalResultRows > 0 ? `${summary.totalResultRows} upload row(s)` : null, icon: Users, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
+              { label: 'Upload Batches', value: summary.uploadsCount, sub: null, icon: Upload, color: 'var(--info-600)', bg: 'rgba(2,132,199,0.08)' },
+              { label: 'Rounds with Data', value: summary.perRoundFilled.filter(n => n > 0).length, sub: null, icon: ClipboardList, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+            ].map(({ label, value, sub, icon: Icon, color, bg }) => (
+              <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <div style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', background: bg, color }}><Icon size={20} strokeWidth={2} /></div>
+                </div>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>{label}</div>
+                {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>{sub}</div>}
               </div>
-            </div>
-            <div className="stats-card">
-              <div className="stats-card-value">{summary.uploadsCount}</div>
-              <div className="stats-card-label">Upload batches</div>
-            </div>
-            <div className="stats-card">
-              <div className="stats-card-value">{summary.perRoundFilled.filter((n) => n > 0).length}</div>
-              <div className="stats-card-label">Rounds with data</div>
-            </div>
+            ))}
           </div>
 
           <HiringAssessmentRoundBreakdown

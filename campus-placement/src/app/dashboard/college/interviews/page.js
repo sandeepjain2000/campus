@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
+import { CalendarDays, Users, Building2, Plus, ChevronRight } from 'lucide-react';
 
 function formatTimeDisplay(t) {
   if (!t) return '';
@@ -107,15 +108,24 @@ export default function CollegeInterviewsPage() {
   );
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>🗓️ Interviews</h1>
-          <p>Scheduling (slots &amp; names) and published outcomes. Evaluator feedback is not shown to the college.</p>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <CalendarDays size={28} /> Interviews
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Slot scheduling, panel names, and published outcomes. Evaluator feedback stays with the employer.</p>
         </div>
-        <div className="page-header-actions">
-          <Link href="/dashboard/college/hiring-assessment" className="btn btn-secondary">
-            Hiring Assessment →
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Link href="/dashboard/college/hiring-assessment" className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            Hiring Assessment <ChevronRight size={14} />
           </Link>
           {section === 'schedule' ? (
             <ExportCsvSplitButton filenameBase="college_interview_schedule" currentCount={slots.length} fullCount={slots.length} getRows={getScheduleCsv} />
@@ -125,30 +135,29 @@ export default function CollegeInterviewsPage() {
         </div>
       </div>
 
-      <div className="tabs" style={{ marginBottom: '1rem' }}>
-        <button type="button" className={`tab ${section === 'schedule' ? 'active' : ''}`} onClick={() => setSection('schedule')}>
-          Scheduling
-        </button>
-        <button type="button" className={`tab ${section === 'results' ? 'active' : ''}`} onClick={() => setSection('results')}>
-          Results
-        </button>
+      {/* Pill Tabs */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '0.35rem', borderRadius: 'var(--radius-lg)', width: 'fit-content', border: '1px solid var(--border-default)' }}>
+        {[{ id: 'schedule', label: 'Scheduling' }, { id: 'results', label: 'Results' }].map(({ id, label }) => (
+          <button key={id} type="button" onClick={() => setSection(id)} style={{ padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-md)', border: 'none', background: section === id ? 'var(--primary-600)' : 'transparent', color: section === id ? 'white' : 'var(--text-secondary)', fontWeight: section === id ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.15s' }}>{label}</button>
+        ))}
       </div>
 
       {section === 'schedule' ? (
         <>
-          <div className="grid grid-3" style={{ marginBottom: '1rem' }}>
-            <div className="stats-card">
-              <div className="stats-card-value">{stats.total}</div>
-              <div className="stats-card-label">Total Slots</div>
-            </div>
-            <div className="stats-card">
-              <div className="stats-card-value">{stats.tpo}</div>
-              <div className="stats-card-label">Scheduled by TPO</div>
-            </div>
-            <div className="stats-card">
-              <div className="stats-card-value">{stats.company}</div>
-              <div className="stats-card-label">Scheduled by Company</div>
-            </div>
+          <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
+            {[
+              { label: 'Total Slots', value: stats.total, icon: CalendarDays, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
+              { label: 'Scheduled by TPO', value: stats.tpo, icon: Users, color: 'var(--info-600)', bg: 'rgba(2,132,199,0.08)' },
+              { label: 'Scheduled by Company', value: stats.company, icon: Building2, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+            ].map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <div style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', background: bg, color }}><Icon size={20} strokeWidth={2} /></div>
+                </div>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>{label}</div>
+              </div>
+            ))}
           </div>
 
           <div className="grid grid-2">
@@ -159,7 +168,7 @@ export default function CollegeInterviewsPage() {
               <form onSubmit={submit} style={{ display: 'grid', gap: '0.65rem' }}>
                 <input className="form-input" placeholder="Company" value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} />
                 <input className="form-input" placeholder="Round (e.g. Round 2 - HR)" value={form.round} onChange={(e) => setForm((p) => ({ ...p, round: e.target.value }))} />
-                <input className="form-input" type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
+                <input className="form-input" type="date" min={new Date().toISOString().split('T')[0]} value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div>
                     <label className="form-label" style={{ marginBottom: '0.35rem', display: 'block' }}>

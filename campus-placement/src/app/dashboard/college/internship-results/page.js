@@ -17,6 +17,7 @@ export default function CollegeInternshipResultsPage() {
   const { addToast } = useToast();
   const { data, error, isLoading } = useSWR('/api/college/internships', fetcher);
   const internships = Array.isArray(data?.internships) ? data.internships : [];
+  const showNotReady = (label) => addToast(`${label} is coming soon.`, 'info');
 
   const exportCsv = () => {
     const header = ['Role', 'Company', 'Salary Min', 'Salary Max', 'Type', 'Status'];
@@ -76,40 +77,45 @@ export default function CollegeInternshipResultsPage() {
   }
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <CalendarDays size={28} className="text-secondary" strokeWidth={1.5} /> Internship results
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
+      <div style={{
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
+      }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <CalendarDays size={28} /> Internship Results
           </h1>
-          <p className="text-secondary">Track live internship postings available to your campus.</p>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Track internship opportunities and outcomes available to your campus.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={exportCsv}>
-            <Download size={16} /> Export Report
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn" onClick={exportCsv} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Download size={16} /> Export CSV
           </button>
-          <Link href="/dashboard/college/offers" className="btn btn-primary">
-            <Plus size={16} /> Link New Offer
+          <Link href="/dashboard/college/internships" className="btn" style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+            <Plus size={16} /> Add Internship
           </Link>
         </div>
       </div>
 
       <div className="grid grid-3" style={{ marginBottom: '2rem' }}>
-        <div className="stats-card">
-          <div className="stats-card-icon indigo"><Users size={24} strokeWidth={1.5} /></div>
-          <div className="stats-card-value">{stats.totalInterns}</div>
-          <div className="stats-card-label">Total Interns</div>
-        </div>
-        <div className="stats-card green">
-          <div className="stats-card-icon green"><Clock size={24} strokeWidth={1.5} /></div>
-          <div className="stats-card-value">{stats.ongoing}</div>
-          <div className="stats-card-label">Ongoing</div>
-        </div>
-        <div className="stats-card amber">
-          <div className="stats-card-icon amber"><IndianRupee size={24} strokeWidth={1.5} /></div>
-          <div className="stats-card-value">{stats.avgStipendLabel}</div>
-          <div className="stats-card-label">Avg Stipend</div>
-        </div>
+        {[
+          { label: 'Total Listings', value: stats.totalInterns, icon: Users, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
+          { label: 'Published', value: stats.ongoing, icon: Clock, color: 'var(--success-600)', bg: 'rgba(5,150,105,0.08)' },
+          { label: 'Avg Stipend', value: stats.avgStipendLabel, icon: IndianRupee, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', background: bg, color }}><Icon size={20} strokeWidth={2} /></div>
+            </div>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>{label}</div>
+          </div>
+        ))}
       </div>
 
       <div className="table-container">
@@ -121,14 +127,14 @@ export default function CollegeInternshipResultsPage() {
               <th>Stipend (Monthly)</th>
               <th>Type</th>
               <th>Status</th>
-              <th>Action</th>
+              <th>Documents</th>
             </tr>
           </thead>
           <tbody>
             {internships.map((intern) => (
               <tr key={intern.id}>
                 <td className="font-semibold">{intern.title || '—'}</td>
-                <td className="text-primary">{intern.company_name || '—'}</td>
+                <td>{intern.company_name || '—'}</td>
                 <td>
                   {(Number(intern.salary_min) || Number(intern.salary_max))
                     ? `${Number(intern.salary_min) ? `₹${Math.round(Number(intern.salary_min) / 1000)}k` : '—'} - ${Number(intern.salary_max) ? `₹${Math.round(Number(intern.salary_max) / 1000)}k` : '—'}`
@@ -137,7 +143,7 @@ export default function CollegeInternshipResultsPage() {
                 <td>{intern.job_type || 'internship'}</td>
                 <td>
                   <span className={`badge ${intern.status === 'published' ? 'badge-success' : 'badge-primary'} badge-dot`}>
-                    {intern.status || 'draft'}
+                    {String(intern.status || 'draft').charAt(0).toUpperCase() + String(intern.status || 'draft').slice(1)}
                   </span>
                 </td>
                 <td>
