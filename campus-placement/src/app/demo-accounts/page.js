@@ -29,7 +29,7 @@ export default async function DemoAccountsPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', padding: '2rem 1rem' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -55,56 +55,204 @@ export default async function DemoAccountsPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {groups.map(group => {
-            const Icon = group.icon;
-            const groupUsers = users.filter(u => u.role === group.key);
-            
-            if (groupUsers.length === 0) return null;
-            
-            return (
-              <div key={group.key} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                <div style={{ background: group.bg, borderBottom: `1px solid ${group.border}`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
-                  <Icon size={16} />
-                  {group.label} ({groupUsers.length})
-                </div>
-                <div>
-                  {groupUsers.map((user, i) => (
-                    <Link
-                      key={user.email}
-                      href={`/login?email=${encodeURIComponent(user.email)}`}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '1rem 1.25rem',
-                        borderBottom: i < groupUsers.length - 1 ? '1px solid var(--border-default)' : 'none',
-                        textDecoration: 'none',
-                        transition: 'background-color 0.15s',
-                        cursor: 'pointer'
-                      }}
-                      className="hover-bg-secondary"
-                    >
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                          {user.first_name} {user.last_name}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+          
+          {/* Column 1: Students */}
+          <div>
+            {(() => {
+              const group = groups.find(g => g.key === 'student');
+              const Icon = group.icon;
+              const groupUsers = users.filter(u => u.role === group.key);
+              if (groupUsers.length === 0) return null;
+              
+              return (
+                <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ background: group.bg, borderBottom: `1px solid ${group.border}`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
+                    <Icon size={16} />
+                    {group.label} ({groupUsers.length})
+                  </div>
+                  <div>
+                    {groupUsers.map((user, i) => (
+                      <Link
+                        key={user.email}
+                        href={`/login?email=${encodeURIComponent(user.email)}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.875rem 1rem',
+                          borderBottom: i < groupUsers.length - 1 ? '1px solid var(--border-default)' : 'none',
+                          textDecoration: 'none',
+                          transition: 'background-color 0.15s',
+                          cursor: 'pointer'
+                        }}
+                        className="hover-bg-secondary"
+                      >
+                        <div style={{ minWidth: 0, paddingRight: '0.5rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.first_name} {user.last_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.college_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.email}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                          {group.key === 'student' && user.college_name && <span>{user.college_name}</span>}
-                          {group.key === 'employer' && user.company_name && <span>{user.company_name}</span>}
-                          {group.key === 'college_admin' && user.college_name && <span>{user.college_name}</span>}
-                          {group.key === 'super_admin' && <span>Platform Administrator</span>}
-                        </div>
-                      </div>
-                      <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
-                        {user.email}
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })()}
+          </div>
+
+          {/* Column 2: Employers */}
+          <div>
+            {(() => {
+              const group = groups.find(g => g.key === 'employer');
+              const Icon = group.icon;
+              const groupUsers = users.filter(u => u.role === group.key);
+              if (groupUsers.length === 0) return null;
+              
+              return (
+                <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ background: group.bg, borderBottom: `1px solid ${group.border}`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
+                    <Icon size={16} />
+                    {group.label} ({groupUsers.length})
+                  </div>
+                  <div>
+                    {groupUsers.map((user, i) => (
+                      <Link
+                        key={user.email}
+                        href={`/login?email=${encodeURIComponent(user.email)}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.875rem 1rem',
+                          borderBottom: i < groupUsers.length - 1 ? '1px solid var(--border-default)' : 'none',
+                          textDecoration: 'none',
+                          transition: 'background-color 0.15s',
+                          cursor: 'pointer'
+                        }}
+                        className="hover-bg-secondary"
+                      >
+                        <div style={{ minWidth: 0, paddingRight: '0.5rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.first_name} {user.last_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.company_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.email}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Column 3: Super Admins + College Admins */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {(() => {
+              const group = groups.find(g => g.key === 'super_admin');
+              const Icon = group.icon;
+              const groupUsers = users.filter(u => u.role === group.key);
+              if (groupUsers.length === 0) return null;
+              
+              return (
+                <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ background: group.bg, borderBottom: `1px solid ${group.border}`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
+                    <Icon size={16} />
+                    {group.label} ({groupUsers.length})
+                  </div>
+                  <div>
+                    {groupUsers.map((user, i) => (
+                      <Link
+                        key={user.email}
+                        href={`/login?email=${encodeURIComponent(user.email)}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.875rem 1rem',
+                          borderBottom: i < groupUsers.length - 1 ? '1px solid var(--border-default)' : 'none',
+                          textDecoration: 'none',
+                          transition: 'background-color 0.15s',
+                          cursor: 'pointer'
+                        }}
+                        className="hover-bg-secondary"
+                      >
+                        <div style={{ minWidth: 0, paddingRight: '0.5rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Platform Admin
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Platform Administrator
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.email}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const group = groups.find(g => g.key === 'college_admin');
+              const Icon = group.icon;
+              const groupUsers = users.filter(u => u.role === group.key);
+              if (groupUsers.length === 0) return null;
+              
+              return (
+                <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ background: group.bg, borderBottom: `1px solid ${group.border}`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
+                    <Icon size={16} />
+                    {group.label} ({groupUsers.length})
+                  </div>
+                  <div>
+                    {groupUsers.map((user, i) => (
+                      <Link
+                        key={user.email}
+                        href={`/login?email=${encodeURIComponent(user.email)}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.875rem 1rem',
+                          borderBottom: i < groupUsers.length - 1 ? '1px solid var(--border-default)' : 'none',
+                          textDecoration: 'none',
+                          transition: 'background-color 0.15s',
+                          cursor: 'pointer'
+                        }}
+                        className="hover-bg-secondary"
+                      >
+                        <div style={{ minWidth: 0, paddingRight: '0.5rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.first_name} {user.last_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.college_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user.email}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
       </div>
