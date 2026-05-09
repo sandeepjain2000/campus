@@ -1,0 +1,18 @@
+2026-04-28 01:04:07 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-28_01-04-07.log
+2026-04-28 01:04:07 [INFO   ] ================================================================
+2026-04-28 01:04:07 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-28 01:04:07 [INFO   ]   Run : 2026-04-28 01:04:07
+2026-04-28 01:04:07 [INFO   ]   Mode: Send up to 20 institute(s)
+2026-04-28 01:04:07 [INFO   ] ================================================================
+2026-04-28 01:04:07 [INFO   ]   Gmail accounts available: 32
+2026-04-28 01:04:07 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-28 01:04:07 [INFO   ]   Monitoring 65 'Sent' address(es)
+2026-04-28 01:04:07 [INFO   ]   Checking 31/32 accounts (only those that sent emails)
+2026-04-28 01:04:07 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-28 01:04:07 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-28 01:04:13 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 198 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:04:13 [INFO   ]   Pass 1: scanning headers of 198 email(s)...
+2026-04-28 01:04:56 [INFO   ]     ...100/198 headers done
+2026-04-28 01:05:43 [INFO   ]   Pass 1 done — full fetch for 193 UID(s); tagged NON-CAMPUS from headers: 5

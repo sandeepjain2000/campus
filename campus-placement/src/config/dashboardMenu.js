@@ -80,6 +80,8 @@ export const menuConfig = {
         title: 'Placements',
         items: [
           { label: 'Browse Drives', href: '/dashboard/student/drives', icon: Target },
+          { label: 'Browse Internships', href: '/dashboard/student/internships', icon: GraduationCap },
+          { label: 'Browse Projects', href: '/dashboard/student/projects', icon: FolderDot },
           { label: 'Placement calendar', href: '/dashboard/student/calendar', icon: CalendarDays },
           { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
           { label: 'My Offers', href: '/dashboard/student/offers', icon: Award },

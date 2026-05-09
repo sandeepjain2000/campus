@@ -1,0 +1,32 @@
+2026-04-25 22:38:10 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-25_22-38-10.log
+2026-04-25 22:38:10 [INFO   ] ================================================================
+2026-04-25 22:38:10 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-25 22:38:10 [INFO   ]   Run : 2026-04-25 22:38:10
+2026-04-25 22:38:10 [INFO   ]   Mode: Send up to 2 institute(s)
+2026-04-25 22:38:10 [INFO   ] ================================================================
+2026-04-25 22:38:10 [INFO   ]   Gmail accounts available: 32
+2026-04-25 22:38:10 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-25 22:38:10 [INFO   ]   Monitoring 0 'Sent' address(es)
+2026-04-25 22:38:10 [INFO   ]   No 'Sent' emails yet — skipping inbox check.
+2026-04-25 22:38:10 [INFO   ] 
+  Bounces found   : 0
+2026-04-25 22:38:10 [INFO   ]   Human responses : 0
+2026-04-25 22:38:10 [INFO   ] 
+[STEP 2] Sending to up to 2 institute(s)...
+2026-04-25 22:38:10 [INFO   ]   Institutes ready: 2
+2026-04-25 22:38:10 [INFO   ] 
+  [01] Sending to: placement@cuo.ac.in
+2026-04-25 22:38:10 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-25 22:38:16 [INFO   ]        [OK] Sent successfully
+2026-04-25 22:38:19 [INFO   ] 
+  [02] Sending to: placement@evisitors.nic.in
+2026-04-25 22:38:19 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-25 22:38:25 [INFO   ]        [OK] Sent successfully
+2026-04-25 22:38:28 [INFO   ] 
+================================================================
+2026-04-25 22:38:28 [INFO   ]   Emails sent      : 2
+2026-04-25 22:38:28 [INFO   ]   Send failures    : 0
+2026-04-25 22:38:28 [INFO   ]   Bounces detected : 0
+2026-04-25 22:38:28 [INFO   ]   Human responses  : 0
+2026-04-25 22:38:28 [INFO   ] ================================================================

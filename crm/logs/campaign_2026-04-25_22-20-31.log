@@ -1,0 +1,34 @@
+2026-04-25 22:20:31 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-25_22-20-31.log
+2026-04-25 22:20:31 [INFO   ] ================================================================
+2026-04-25 22:20:31 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-25 22:20:31 [INFO   ]   Run : 2026-04-25 22:20:31
+2026-04-25 22:20:31 [INFO   ]   Mode: Send up to 2 institute(s)
+2026-04-25 22:20:31 [INFO   ] ================================================================
+2026-04-25 22:20:31 [INFO   ]   Gmail accounts available: 32
+2026-04-25 22:20:31 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-25 22:20:31 [INFO   ]   Monitoring 0 'Sent' address(es)
+2026-04-25 22:20:31 [INFO   ] 
+  ▶ jain106sandeep@gmail.com
+2026-04-25 22:20:31 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-25 22:20:36 [INFO   ]   Found 369 candidate email(s)
+2026-04-25 22:24:22 [INFO   ] 
+  ▶ sj1799274@gmail.com
+2026-04-25 22:24:22 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-25 22:24:26 [INFO   ]   Found 198 candidate email(s)
+2026-04-25 22:26:01 [INFO   ] 
+  ▶ jain109sandeep@gmail.com
+2026-04-25 22:26:01 [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-04-25 22:26:06 [INFO   ]   Found 497 candidate email(s)
+2026-04-25 22:31:12 [INFO   ] 
+  ▶ jain111sandeep@gmail.com
+2026-04-25 22:31:12 [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-04-25 22:31:18 [INFO   ]   Found 285 candidate email(s)
+2026-04-25 22:34:02 [INFO   ] 
+  ▶ sandeep196605@gmail.com
+2026-04-25 22:34:02 [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-04-25 22:34:07 [INFO   ]   Found 308 candidate email(s)
+2026-04-25 22:37:16 [INFO   ] 
+  ▶ jain114sandeep@gmail.com
+2026-04-25 22:37:16 [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-04-25 22:37:21 [INFO   ]   Found 303 candidate email(s)

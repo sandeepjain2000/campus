@@ -1,0 +1,184 @@
+2026-04-27 00:48:44 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-27_00-48-44.log
+2026-04-27 00:48:45 [INFO   ] ================================================================
+2026-04-27 00:48:45 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-27 00:48:45 [INFO   ]   Run : 2026-04-27 00:48:45
+2026-04-27 00:48:45 [INFO   ]   Mode: Send up to 2 institute(s)
+2026-04-27 00:48:45 [INFO   ] ================================================================
+2026-04-27 00:48:45 [INFO   ]   Gmail accounts available: 32
+2026-04-27 00:48:45 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-27 00:48:45 [INFO   ]   Monitoring 23 'Sent' address(es)
+2026-04-27 00:48:45 [INFO   ]   Checking 20/32 accounts (only those that sent emails)
+2026-04-27 00:48:45 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-27 00:48:45 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-27 00:48:50 [INFO   ]   Found 174 candidate email(s)
+2026-04-27 00:48:50 [INFO   ]   Pass 1: scanning headers of 174 email(s)...
+2026-04-27 00:49:33 [INFO   ]     ...100/174 headers done
+2026-04-27 00:50:05 [INFO   ]   Pass 1 done — 174/174 need full fetch.
+2026-04-27 00:51:40 [INFO   ] 
+  > sj1799274@gmail.com
+2026-04-27 00:51:40 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-27 00:51:44 [INFO   ]   Found 143 candidate email(s)
+2026-04-27 00:51:44 [INFO   ]   Pass 1: scanning headers of 143 email(s)...
+2026-04-27 00:52:16 [INFO   ]     ...100/143 headers done
+2026-04-27 00:52:30 [INFO   ]   Pass 1 done — 143/143 need full fetch.
+2026-04-27 00:52:48 [INFO   ]   [BOUNCE->FAILURE] placements@amu.ac.in
+2026-04-27 00:53:21 [INFO   ] 
+  > jain109sandeep@gmail.com
+2026-04-27 00:53:21 [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-04-27 00:53:26 [INFO   ]   Found 174 candidate email(s)
+2026-04-27 00:53:26 [INFO   ]   Pass 1: scanning headers of 174 email(s)...
+2026-04-27 00:54:13 [INFO   ]     ...100/174 headers done
+2026-04-27 00:54:46 [INFO   ]   Pass 1 done — 174/174 need full fetch.
+2026-04-27 00:55:00 [INFO   ]   [BOUNCE->FAILURE] placements@bbau.ac.in
+2026-04-27 00:56:12 [INFO   ] 
+  > jain111sandeep@gmail.com
+2026-04-27 00:56:12 [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-04-27 00:56:16 [INFO   ]   Found 164 candidate email(s)
+2026-04-27 00:56:16 [INFO   ]   Pass 1: scanning headers of 164 email(s)...
+2026-04-27 00:56:53 [INFO   ]     ...100/164 headers done
+2026-04-27 00:57:17 [INFO   ]   Pass 1 done — 164/164 need full fetch.
+2026-04-27 00:57:19 [INFO   ]   [BOUNCE->FAILURE] placements@bhu.ac.in
+2026-04-27 00:58:39 [INFO   ] 
+  > sandeep196605@gmail.com
+2026-04-27 00:58:39 [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-04-27 00:58:44 [INFO   ]   Found 172 candidate email(s)
+2026-04-27 00:58:44 [INFO   ]   Pass 1: scanning headers of 172 email(s)...
+2026-04-27 00:59:32 [INFO   ]     ...100/172 headers done
+2026-04-27 01:00:06 [INFO   ]   Pass 1 done — 172/172 need full fetch.
+2026-04-27 01:01:09 [INFO   ]   [BOUNCE->FAILURE] placements@cuh.ac.in
+2026-04-27 01:01:38 [INFO   ] 
+  > jain114sandeep@gmail.com
+2026-04-27 01:01:38 [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-04-27 01:01:43 [INFO   ]   Found 177 candidate email(s)
+2026-04-27 01:01:43 [INFO   ]   Pass 1: scanning headers of 177 email(s)...
+2026-04-27 01:02:27 [INFO   ]     ...100/177 headers done
+2026-04-27 01:03:00 [INFO   ]   Pass 1 done — 177/177 need full fetch.
+2026-04-27 01:03:04 [INFO   ]   [BOUNCE->FAILURE] placements@cuhimachal.ac.in
+2026-04-27 01:04:25 [INFO   ] 
+  > jain105sandeep@gmail.com
+2026-04-27 01:04:25 [INFO   ]   Connecting to jain105sandeep@gmail.com …
+2026-04-27 01:04:29 [INFO   ]   Found 173 candidate email(s)
+2026-04-27 01:04:29 [INFO   ]   Pass 1: scanning headers of 173 email(s)...
+2026-04-27 01:04:59 [INFO   ]     ...100/173 headers done
+2026-04-27 01:05:21 [INFO   ]   Pass 1 done — 173/173 need full fetch.
+2026-04-27 01:05:25 [INFO   ]   [BOUNCE->FAILURE] placements@cuj.ac.in
+2026-04-27 01:06:33 [INFO   ] 
+  > jain107sandeep@gmail.com
+2026-04-27 01:06:33 [INFO   ]   Connecting to jain107sandeep@gmail.com …
+2026-04-27 01:06:37 [INFO   ]   Found 178 candidate email(s)
+2026-04-27 01:06:37 [INFO   ]   Pass 1: scanning headers of 178 email(s)...
+2026-04-27 01:07:10 [INFO   ]     ...100/178 headers done
+2026-04-27 01:07:35 [INFO   ]   Pass 1 done — 178/178 need full fetch.
+2026-04-27 01:08:45 [INFO   ] 
+  > sj7634811@gmail.com
+2026-04-27 01:08:45 [INFO   ]   Connecting to sj7634811@gmail.com …
+2026-04-27 01:08:48 [INFO   ]   Found 167 candidate email(s)
+2026-04-27 01:08:48 [INFO   ]   Pass 1: scanning headers of 167 email(s)...
+2026-04-27 01:09:18 [INFO   ]     ...100/167 headers done
+2026-04-27 01:09:37 [INFO   ]   Pass 1 done — 167/167 need full fetch.
+2026-04-27 01:10:05 [INFO   ]   [BOUNCE->FAILURE] placement@cukashmir.ac.in
+2026-04-27 01:10:37 [INFO   ] 
+  > jain115sandeep@gmail.com
+2026-04-27 01:10:37 [INFO   ]   Connecting to jain115sandeep@gmail.com …
+2026-04-27 01:10:42 [INFO   ]   Found 184 candidate email(s)
+2026-04-27 01:10:42 [INFO   ]   Pass 1: scanning headers of 184 email(s)...
+2026-04-27 01:11:25 [INFO   ]     ...100/184 headers done
+2026-04-27 01:12:00 [INFO   ]   Pass 1 done — 184/184 need full fetch.
+2026-04-27 01:13:21 [INFO   ]   [BOUNCE->FAILURE] placement@cup.ac.in
+2026-04-27 01:13:33 [INFO   ] 
+  > jain200sandeep@gmail.com
+2026-04-27 01:13:33 [INFO   ]   Connecting to jain200sandeep@gmail.com …
+2026-04-27 01:13:38 [INFO   ]   Found 165 candidate email(s)
+2026-04-27 01:13:38 [INFO   ]   Pass 1: scanning headers of 165 email(s)...
+2026-04-27 01:14:16 [INFO   ]     ...100/165 headers done
+2026-04-27 01:14:40 [INFO   ]   Pass 1 done — 165/165 need full fetch.
+2026-04-27 01:14:48 [INFO   ]   [BOUNCE->FAILURE] placement@curaj.ac.in
+2026-04-27 01:16:01 [INFO   ] 
+  > jain201sandeep@gmail.com
+2026-04-27 01:16:01 [INFO   ]   Connecting to jain201sandeep@gmail.com …
+2026-04-27 01:16:05 [INFO   ]   Found 167 candidate email(s)
+2026-04-27 01:16:05 [INFO   ]   Pass 1: scanning headers of 167 email(s)...
+2026-04-27 01:16:36 [INFO   ]     ...100/167 headers done
+2026-04-27 01:16:56 [INFO   ]   Pass 1 done — 167/167 need full fetch.
+2026-04-27 01:18:01 [INFO   ] 
+  > jain202sandeep@gmail.com
+2026-04-27 01:18:01 [INFO   ]   Connecting to jain202sandeep@gmail.com …
+2026-04-27 01:18:04 [INFO   ]   Found 162 candidate email(s)
+2026-04-27 01:18:04 [INFO   ]   Pass 1: scanning headers of 162 email(s)...
+2026-04-27 01:18:35 [INFO   ]     ...100/162 headers done
+2026-04-27 01:18:53 [INFO   ]   Pass 1 done — 162/162 need full fetch.
+2026-04-27 01:19:39 [INFO   ]   [BOUNCE->FAILURE] placement@sanskrit.nic.in
+2026-04-27 01:20:02 [INFO   ] 
+  > jain203sandeep@gmail.com
+2026-04-27 01:20:02 [INFO   ]   Connecting to jain203sandeep@gmail.com …
+2026-04-27 01:20:06 [INFO   ]   Found 165 candidate email(s)
+2026-04-27 01:20:06 [INFO   ]   Pass 1: scanning headers of 165 email(s)...
+2026-04-27 01:20:48 [INFO   ]     ...100/165 headers done
+2026-04-27 01:21:15 [INFO   ]   Pass 1 done — 165/165 need full fetch.
+2026-04-27 01:22:15 [INFO   ]   [BOUNCE->FAILURE] placement@cau.ac.in
+2026-04-27 01:22:38 [INFO   ] 
+  > jain204sandeep@gmail.com
+2026-04-27 01:22:38 [INFO   ]   Connecting to jain204sandeep@gmail.com …
+2026-04-27 01:22:42 [INFO   ]   Found 165 candidate email(s)
+2026-04-27 01:22:42 [INFO   ]   Pass 1: scanning headers of 165 email(s)...
+2026-04-27 01:23:15 [INFO   ]     ...100/165 headers done
+2026-04-27 01:23:35 [INFO   ]   Pass 1 done — 165/165 need full fetch.
+2026-04-27 01:24:44 [INFO   ] 
+  > jain205sandeep@gmail.com
+2026-04-27 01:24:44 [INFO   ]   Connecting to jain205sandeep@gmail.com …
+2026-04-27 01:24:48 [INFO   ]   Found 150 candidate email(s)
+2026-04-27 01:24:48 [INFO   ]   Pass 1: scanning headers of 150 email(s)...
+2026-04-27 01:25:20 [INFO   ]     ...100/150 headers done
+2026-04-27 01:25:37 [INFO   ]   Pass 1 done — 150/150 need full fetch.
+2026-04-27 01:26:21 [INFO   ]   [BOUNCE->FAILURE] placement@dhsgsu.edu.in
+2026-04-27 01:26:40 [INFO   ] 
+  > jain206sandeep@gmail.com
+2026-04-27 01:26:40 [INFO   ]   Connecting to jain206sandeep@gmail.com …
+2026-04-27 01:26:44 [INFO   ]   Found 147 candidate email(s)
+2026-04-27 01:26:44 [INFO   ]   Pass 1: scanning headers of 147 email(s)...
+2026-04-27 01:27:19 [INFO   ]     ...100/147 headers done
+2026-04-27 01:27:36 [INFO   ]   Pass 1 done — 147/147 need full fetch.
+2026-04-27 01:28:26 [INFO   ]   [BOUNCE->FAILURE] placement@gsv.ac.in
+2026-04-27 01:28:37 [INFO   ] 
+  > jain207sandeep@gmail.com
+2026-04-27 01:28:37 [INFO   ]   Connecting to jain207sandeep@gmail.com …
+2026-04-27 01:28:41 [INFO   ]   Found 153 candidate email(s)
+2026-04-27 01:28:41 [INFO   ]   Pass 1: scanning headers of 153 email(s)...
+2026-04-27 01:29:16 [INFO   ]     ...100/153 headers done
+2026-04-27 01:29:34 [INFO   ]   Pass 1 done — 153/153 need full fetch.
+2026-04-27 01:30:37 [INFO   ] 
+  > jain208sandeep@gmail.com
+2026-04-27 01:30:37 [INFO   ]   Connecting to jain208sandeep@gmail.com …
+2026-04-27 01:30:42 [INFO   ]   Found 162 candidate email(s)
+2026-04-27 01:30:42 [INFO   ]   Pass 1: scanning headers of 162 email(s)...
+2026-04-27 01:31:34 [INFO   ]     ...100/162 headers done
+2026-04-27 01:32:03 [INFO   ]   Pass 1 done — 162/162 need full fetch.
+2026-04-27 01:33:36 [INFO   ] 
+  > jain1001sandeep@gmail.com
+2026-04-27 01:33:36 [INFO   ]   Connecting to jain1001sandeep@gmail.com …
+2026-04-27 01:33:40 [INFO   ]   Found 18 candidate email(s)
+2026-04-27 01:33:40 [INFO   ]   Pass 1: scanning headers of 18 email(s)...
+2026-04-27 01:33:45 [INFO   ]   Pass 1 done — 18/18 need full fetch.
+2026-04-27 01:33:54 [INFO   ] 
+  Bounces found   : 13
+2026-04-27 01:33:54 [INFO   ]   Human responses : 0
+2026-04-27 01:33:54 [INFO   ] 
+[STEP 2] Sending to up to 2 institute(s)...
+2026-04-27 01:33:54 [INFO   ]   Institutes ready: 2
+2026-04-27 01:33:54 [INFO   ] 
+  [04] Sending to: tpo@amu.ac.in
+2026-04-27 01:33:54 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-27 01:34:00 [INFO   ]        [OK] Sent successfully
+2026-04-27 01:34:03 [INFO   ] 
+  [06] Sending to: tpo@bbau.ac.in
+2026-04-27 01:34:03 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-27 01:34:08 [INFO   ]        [OK] Sent successfully
+2026-04-27 01:34:11 [INFO   ] 
+================================================================
+2026-04-27 01:34:11 [INFO   ]   Emails sent      : 2
+2026-04-27 01:34:11 [INFO   ]   Send failures    : 0
+2026-04-27 01:34:11 [INFO   ]   Bounces detected : 13
+2026-04-27 01:34:11 [INFO   ]   Human responses  : 0
+2026-04-27 01:34:11 [INFO   ] ================================================================

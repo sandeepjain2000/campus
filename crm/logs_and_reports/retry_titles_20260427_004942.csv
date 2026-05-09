@@ -1,0 +1,92 @@
+﻿Original #,URL,University Name (Tab Title),Status
+5,http://bhatkhandemusic.edu.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+6,http://bnmu.bih.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+8,http://bssrv.ac.in/,,TIMEOUT
+13,http://cgkv.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+17,http://dial.gov.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+18,http://digitalindia.gov.in/,,TIMEOUT
+20,http://evisitors.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+22,http://hillagric.ac.in:1003/cskhpau/,,ERROR: Message: unknown error: net::ERR_CONNECTION_REFUSED
+23,http://mpsvvujjain.org,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+30,http://mmhapu.bih.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+43,http://ssuhs.in/,,TIMEOUT
+48,http://wbuafscl.ac.in/,West Bengal University of Animal & Fishery Sciences,OK
+50,http://www.aau.in/,,TIMEOUT
+55,http://www.apsurewa.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+59,http://www.bamu.net/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+61,http://www.baujharkhand.org/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+63,http://www.becs.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+65,http://www.bhattadevuniversity.ac.in/,,TIMEOUT
+70,http://www.bubhopal.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+71,http://www.bvvjdp.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+82,http://www.dcrusm.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+83,http://www.ddugu.edu.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+87,http://www.dtu.ac.in/,,TIMEOUT
+91,http://www.gbpuat.ac.in/,,TIMEOUT
+94,http://www.goidirectory.gov.in/index.php,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+95,http://www.gov.ua.nic.in/doonuniversity,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+100,http://www.igdtuw.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+108,http://www.jnkvv.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+113,http://www.jrdu.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+114,http://www.jrrsanskrituniversity.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+117,http://www.kannuruiversity.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+120,http://www.keralauniversity.edu/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+121,http://www.kgmcindia.edu/,(no title),NO TITLE
+128,http://www.kswu.ac.in/,Privacy error,OK
+134,http://www.kuvempu.ac.in/eng/index.php,,TIMEOUT
+136,http://www.mafsu.in/,mafsu - Mafsu,OK
+138,http://www.mangaloreuniversity.ac.in/,Mangalore University,OK
+144,http://www.mmmut.ac.in/,,TIMEOUT
+145,http://www.mpkv.mah.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+148,http://www.mu.ac.in/,,ERROR: Alert Text: As we are up with our new website. Would you like to have a quick ov
+152,"http://www.nalandaopenuniversity.com,/",,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+153,http://www.nannayauniversity.info/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+159,http://www.nls.ac.in/,National Law School of India University -,OK
+163,http://www.nmu.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+167,http://www.nuals.ac.in/,(no title),NO TITLE
+172,http://www.pdkv.mah.nic.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+176,http://www.presiuniv.ac.in/,Presidency University,OK
+191,http://www.sanchiuniv.edu.in/,(no title),NO TITLE
+192,"http://www.sanskrituni.digitaluniversity.ac,/",,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+193,http://www.sasu.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+199,http://www.sjsv.nic.in/,,ERROR: Message: unknown error: net::ERR_CONNECTION_REFUSED
+200,http://www.skbu.ac.in/,Sidho-Kanho-Birsha University 103.163.91.101-1,OK
+208,http://www.svbpmeerut.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+211,http://www.telanganauniversity.ac.in/,TELANGANA UNIVERISITY,OK
+214,http://www.tnfu.org.in/university/wp/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+216,http://www.uasbangalore.edu.in/,"ಮುಖಪುಟ - University of Agricultural Sciences, Bangalore",OK
+222,http://www.uktech.ac.in/,"Official website of Veer Madho Singh Bhandari Uttarakhand Technical University, Dehradun, India",OK
+231,http://www.utkaluniversity.ac.in/,Utkal University,OK
+233,http://www.vbspu.ac.in/index,(no title),NO TITLE
+234,http://www.vbu.co.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+243,http://www.wbsubregistration.org/,WBSU,OK
+247,https://aktu.ac.in/,,TIMEOUT
+253,https://aukota.org/,,TIMEOUT
+272,https://deemed.ugc.ac.in/,(no title),NO TITLE
+273,https://dlcsupva.ac.in/,"DLCSUPVA - Dada Lakhmi Chand State University of Performing and Visual Arts, Rohtak",OK
+281,https://email.gov.in/,,TIMEOUT
+282,https://eng.bangaloreuniversity.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+283,https://eng.bnu.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+290,https://gurucharancollege.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+291,https://harichandguruchanduniversity.com/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+301,https://jncu.ac.in/,,TIMEOUT
+319,https://makautwb.ac.in/,"MAKAUT,WB - Maulana Abul Kalam Azad University of Technology, West Bengal",OK
+331,https://mrsptu.ac.in/,Maharaja Ranjit Singh Punjab Technical University,OK
+338,https://nau.in/,,TIMEOUT
+342,https://ouat.ac.in/,,TIMEOUT
+364,https://snpv.ac.in/,"Shaheed Nandkumar Patel Vishwavidyalaya,Raigarh - Shaheed Nandkumar Patel Vishwavidyalaya,Raigarh",OK
+382,https://www.aicte-india.org/,Government of India | All India Council for Technical Education,OK
+386,https://www.argucom.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+397,https://www.bujhansi.ac.in/,,TIMEOUT
+413,https://www.gjust.ac.in/,,TIMEOUT
+416,https://www.hbsu.ac.in/,,TIMEOUT
+420,https://www.hsncu.edu.in/,,TIMEOUT
+424,https://www.iite.ac.in/,(no title),NO TITLE
+426,https://www.jadavpuruniversity.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+435,https://www.mandyauniversity.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+467,https://www.rpnlup.ac.in/,Homepage of RPNLUP,OK
+473,https://www.ssvv.ac.in/,,TIMEOUT
+474,https://www.suksn.edu.in/,,TIMEOUT
+486,https://www.uhsbagalkot.edu.in/,(no title),NO TITLE
+489,https://www.uniraj.ac.in/,,TIMEOUT
+498,https://www.wbuttepa.ac.in/,,ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED

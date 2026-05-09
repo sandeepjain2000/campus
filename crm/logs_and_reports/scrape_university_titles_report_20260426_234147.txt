@@ -1,0 +1,48 @@
+=================================================================
+  SCRIPT REPORT: scrape_university_titles.py  v1.0.0
+=================================================================
+  Start Time  : 2026-04-26 23:41:47
+  End Time    : 2026-04-27 00:29:55
+  Duration    : 2887.9 seconds
+  Outcome     : SUCCESS
+-----------------------------------------------------------------
+  Summary:
+    Total URLs   : 502
+    Successful   : 418
+    Failed/Timeout: 84
+    Skipped      : 0
+    CSV saved to : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\university_titles_20260426_234147.csv
+-----------------------------------------------------------------
+  Errors (84):
+    [5] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://bhatkhandemusic.edu.in/
+    [6] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://bnmu.bih.nic.in/
+    [8] TIMEOUT: http://bssrv.ac.in/
+    [13] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://cgkv.ac.in/
+    [17] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://dial.gov.in/
+    [18] TIMEOUT: http://digitalindia.gov.in/
+    [20] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://evisitors.nic.in/
+    [22] Message: unknown error: net::ERR_CONNECTION_REFUSED: http://hillagric.ac.in:1003/cskhpau/
+    [23] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://http//mpsvvujjain.org
+    [30] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://mmhapu.bih.nic.in/
+    [43] TIMEOUT: http://ssuhs.in/
+    [48] TIMEOUT: http://wbuafscl.ac.in/
+    [50] TIMEOUT: http://www.aau.in/
+    [55] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.apsurewa.nic.in/
+    [59] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bamu.net/
+    [61] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.baujharkhand.org/
+    [63] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.becs.ac.in/
+    [65] TIMEOUT: http://www.bhattadevuniversity.ac.in/
+    [70] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bubhopal.nic.in/
+    [71] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bvvjdp.ac.in/
+    [82] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.dcrusm.ac.in/
+    [83] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.ddugu.edu.in/
+    [87] TIMEOUT: http://www.dtu.ac.in/
+    [91] TIMEOUT: http://www.gbpuat.ac.in/
+    [94] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.goidirectory.gov.in/index.php
+    [95] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.gov.ua.nic.in/doonuniversity
+    [100] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.igdtuw.ac.in/
+    [108] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jnkvv.nic.in/
+    [113] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jrdu.ac.in/
+    [114] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jrrsanskrituniversity.ac.in/
+    … and 54 more (see log)
+=================================================================

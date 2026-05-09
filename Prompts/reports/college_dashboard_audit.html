@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Dashboard — Hardcoding &amp; Dummy UI Audit</title>
+<style>
+:root{--red:#ef4444;--orange:#f97316;--yellow:#eab308;--green:#22c55e;--blue:#3b82f6;--bg:#f9fafb;--card:#fff;--border:#e5e7eb;--text:#111827;--sub:#6b7280}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:24px;max-width:1200px;margin:0 auto}
+h1{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+.meta{color:var(--sub);font-size:.85rem;margin-bottom:20px}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.stat-num{font-size:2rem;font-weight:700;line-height:1}
+.stat-label{font-size:.75rem;color:var(--sub);margin-top:4px}
+.c-red{color:var(--red)}.c-orange{color:var(--orange)}.c-green{color:var(--green)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:.83rem;margin-bottom:24px}
+th{background:#f3f4f6;text-align:left;padding:9px 12px;font-weight:600;border-bottom:1px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.55}
+tr:last-child td{border-bottom:none}
+tr.open td{background:#fff7f7}
+tr.fixed td{background:#f0fdf4}
+tr.warn td{background:#fffbeb}
+code{font-family:'Courier New',monospace;font-size:.78rem;background:#f3f4f6;padding:1px 5px;border-radius:3px;word-break:break-all}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.71rem;font-weight:700}
+.badge-red{background:#fee2e2;color:#b91c1c}
+.badge-orange{background:#ffedd5;color:#c2410c}
+.badge-yellow{background:#fef9c3;color:#a16207}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-gray{background:#f3f4f6;color:#374151}
+.note{border-radius:6px;padding:10px 14px;font-size:.82rem;margin-bottom:16px;line-height:1.5}
+.note-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a5f}
+.note-yellow{background:#fffbeb;border:1px solid #fde68a;color:#78350f}
+.h2{font-size:1rem;font-weight:700;margin:24px 0 10px}
+.p-h{color:var(--red);font-weight:700;font-size:.8rem}
+.p-m{color:var(--orange);font-weight:700;font-size:.8rem}
+.p-l{color:var(--yellow);font-weight:700;font-size:.8rem}
+.verdict{font-size:.8rem;font-weight:700}
+.v-fixed{color:#166534}.v-open{color:#b91c1c}.v-partial{color:#c2410c}
+</style>
+</head>
+<body>
+
+<h1>College Dashboard — Hardcoding &amp; Dummy UI Audit</h1>
+<p class="meta">Source: <code>hardcoded-elements-audit-observations.txt</code> &nbsp;|&nbsp; Verified: 2026-04-26 &nbsp;|&nbsp; All 8 findings from the observations file checked against live code</p>
+
+<div class="note note-blue">
+  Each finding from the observations file was verified by reading the actual current source files. The table below shows current status — what was fixed, what remains open, and what still needs action.
+</div>
+
+<div class="summary-grid">
+  <div class="stat"><div class="stat-num c-red">1</div><div class="stat-label">Open — action required</div></div>
+  <div class="stat"><div class="stat-num c-orange">1</div><div class="stat-label">Partial — dead code remains</div></div>
+  <div class="stat"><div class="stat-num c-green">6</div><div class="stat-label">Fully fixed</div></div>
+  <div class="stat"><div class="stat-num c-green">8</div><div class="stat-label">Total findings audited</div></div>
+</div>
+
+<!-- MAIN TABLE -->
+<div class="h2">All Findings — Current Status</div>
+<table>
+<thead>
+  <tr>
+    <th style="width:30px">#</th>
+    <th style="width:80px">Priority</th>
+    <th style="width:90px">Status</th>
+    <th style="width:220px">File(s)</th>
+    <th>Finding</th>
+    <th>Current Code State</th>
+  </tr>
+</thead>
+<tbody>
+
+<tr class="warn">
+  <td>4</td>
+  <td><span class="p-m">MEDIUM</span></td>
+  <td><span class="verdict v-partial">⚠️ PARTIAL</span></td>
+  <td><code>SocialWireframeToolkit.jsx</code></td>
+  <td>
+    <strong>Social preview toolkit still uses mock/wireframe concepts.</strong><br>
+    <code>MockLinkedIn</code>, <code>MockFacebook</code>, <code>MockInstagram</code>, <code>MockX</code>, <code>DashboardSocialWireframeDock</code>, <code>SocialWireframeModal</code> all still exist in the file with "dummy preview", "Wireframe" badges, "nothing is posted" labels.
+  </td>
+  <td>
+    <strong>Good news:</strong> No page currently imports <code>DashboardSocialWireframeDock</code> or <code>SocialWireframeModal</code>. They are dead exports.<br><br>
+    <code>overview/page.js</code> and <code>drives/page.js</code> import only <code>SOCIAL_PLATFORM_ORDER</code> (real icon metadata). <code>settings/page.js</code> imports only the four icon components (<code>IconTwitter</code>, <code>IconFacebook</code>, <code>IconInstagram</code>, <code>IconLinkedIn</code>).<br><br>
+    <strong>Action needed:</strong> Delete <code>MockLinkedIn</code>, <code>MockFacebook</code>, <code>MockInstagram</code>, <code>MockX</code>, <code>DashboardSocialWireframeDock</code>, and <code>SocialWireframeModal</code> from the toolkit file. These are dead code and a risk of accidental re-use.
+  </td>
+</tr>
+
+<tr class="open">
+  <td>6</td>
+  <td><span class="p-h">HIGH</span></td>
+  <td><span class="verdict v-open">🔴 OPEN</span></td>
+  <td><code>EntityLogo.js</code><br><code>lib/utils.js</code></td>
+  <td>
+    <strong>EntityLogo uses Clearbit logo guessing from website domain.</strong><br>
+    The previous hard-coded IITM/NIT/Infosys/TechCorp mappings are gone, but the component now falls back to <code>https://logo.clearbit.com/{domain}</code> derived from the entity's <code>website</code> field. This is still guessing — Clearbit is a third-party service that may return wrong logos, fail silently, or return logos for unrelated domains.
+  </td>
+  <td>
+    <strong>Current chain:</strong> <code>logoUrl</code> prop (saved upload) → Clearbit from <code>website</code> domain → initials fallback.<br><br>
+    The Clearbit step is not hardcoding per se, but it is still an assumption: any entity whose website domain matches a Clearbit entry gets that logo, regardless of whether it's correct. If a college uses a subdomain or shared hosting, the wrong logo appears.<br><br>
+    <strong>Action needed:</strong> Remove the Clearbit step from <code>getEntityLogoUrl</code>. Use only explicit <code>logoUrl</code> (uploaded/pasted) → initials. Let users configure their own logo via settings. This is the rule: editable and persisted, not guessed.
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>1</td>
+  <td><span class="p-m">MEDIUM</span></td>
+  <td><span class="verdict v-fixed">✅ FIXED</span></td>
+  <td><code>overview/page.js</code></td>
+  <td><strong>College dashboard title not fully data-driven.</strong> Was using session tenant name first, which may not reflect settings edits.</td>
+  <td>
+    Now reads <code>settingsData?.institution?.collegeName</code> first (from <code>/api/college/settings</code> via SWR), falls back to <code>session?.user?.tenantName</code>, then <code>'Your institution'</code>. Settings value takes priority. "Edit in Settings →" link added inline.
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>2</td>
+  <td><span class="p-m">MEDIUM</span></td>
+  <td><span class="verdict v-fixed">✅ FIXED</span></td>
+  <td><code>overview/page.js</code><br><code>layout.js</code></td>
+  <td><strong>Placement season driven by sessionStorage, not persisted DB config.</strong></td>
+  <td>
+    <code>layout.js</code> now resolves academic year as: <code>collegeSettings?.placementSeasonLabel</code> (persisted DB value via <code>/api/college/settings</code>) → sessionStorage override → <code>getCurrentAcademicYear()</code> computed fallback.<br>
+    <code>overview/page.js</code> also reads <code>settingsData?.placementSeasonLabel</code> first. Season is now editable in College Settings and takes priority everywhere.
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>3</td>
+  <td><span class="p-m">MEDIUM</span></td>
+  <td><span class="verdict v-fixed">✅ FIXED</span></td>
+  <td><code>infrastructure/page.js</code></td>
+  <td><strong>Wireframe/dummy language visible in production.</strong> Terms: "Wireframe", "dummy preview", "static post shells", "Wireframe month grid", "Wireframe publish targets".</td>
+  <td>
+    Full grep + text search of <code>infrastructure/page.js</code> returns zero matches for "wireframe", "dummy", "mock", "static post", "shell", "fake", "preview college". All such language has been removed from this file.
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>5</td>
+  <td><span class="p-m">MEDIUM</span></td>
+  <td><span class="verdict v-fixed">✅ FIXED</span></td>
+  <td><code>layout.js</code><br><code>lib/auth.js</code></td>
+  <td><strong>Logo editable in settings but not reliably used — some surfaces use only tenant name to derive/guess logo.</strong></td>
+  <td>
+    <code>auth.js</code> now reads <code>tenant_logo_url</code> (college) and <code>employer_logo_url</code> (employer) from DB and sets <code>session.user.brandLogoUrl</code>.<br>
+    <code>layout.js</code> passes <code>session.user.brandLogoUrl</code> as the <code>logoUrl</code> prop to <code>EntityLogo</code>. Saved uploaded logo takes priority.
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>6a</td>
+  <td><span class="p-h">HIGH</span></td>
+  <td><span class="verdict v-fixed">✅ FIXED (hardcoding removed)</span></td>
+  <td><code>EntityLogo.js</code></td>
+  <td><strong>EntityLogo had hard-coded demo mappings</strong> for IIT Madras, NIT Trichy, BITS Pilani, TechCorp, Infosys, PlacementHub → specific <code>/logos/</code> image paths.</td>
+  <td>
+    All hardcoded name-to-logo mappings removed. File comment now explicitly states: <em>"no hard-coded institution or brand image guessing"</em>. Logo derivation is now: explicit <code>logoUrl</code> prop → Clearbit from <code>website</code> → initials. (See finding #6 above for remaining Clearbit concern.)
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>7</td>
+  <td><span class="p-l">LOW</span></td>
+  <td><span class="verdict v-fixed">✅ FIXED</span></td>
+  <td><code>settings/page.js</code></td>
+  <td><strong>College settings had hard-coded profile defaults:</strong> <code>naacGrade: 'A++'</code> and <code>designation: 'Training &amp; Placement Officer'</code> pre-filled without DB data.</td>
+  <td>
+    Form state now initialises with empty strings: <code>naacGrade: ''</code>, <code>designation: ''</code>. All fields load from <code>/api/college/settings</code> response; if DB has no value, field stays blank. No real-looking defaults remain.
+  </td>
+</tr>
+
+<tr class="fixed">
+  <td>8</td>
+  <td>—</td>
+  <td><span class="verdict v-fixed">✅ RULE ENFORCED</span></td>
+  <td>All pages</td>
+  <td><strong>Overall rule:</strong> All profile/screen elements must be (1) editable &amp; persisted, (2) generated from real stored data, (3) computed from live DB metrics, or (4) hidden until data exists.</td>
+  <td>
+    Verified across all 21 college dashboard pages. No hardcoded institution names, seeded company names, or mock email addresses remain in any page file. The two exceptions above (toolkit dead code + Clearbit guessing) are the only outstanding violations.
+  </td>
+</tr>
+
+</tbody>
+</table>
+
+<!-- ACTION PLAN -->
+<div class="h2">Two Actions Remaining</div>
+<table>
+<thead><tr><th>Order</th><th>File</th><th>Action</th><th>Effort</th></tr></thead>
+<tbody>
+<tr class="open">
+  <td>1</td>
+  <td><code>lib/utils.js → getEntityLogoUrl</code><br><code>EntityLogo.js</code></td>
+  <td>Remove the Clearbit fallback step. Keep only: explicit <code>logoUrl</code> prop → initials. Users set their logo via College Settings (already working). Third-party logo guessing is not reliable and violates the "editable and persisted" rule.</td>
+  <td>~15 min</td>
+</tr>
+<tr class="warn">
+  <td>2</td>
+  <td><code>SocialWireframeToolkit.jsx</code></td>
+  <td>Delete <code>MockLinkedIn</code>, <code>MockFacebook</code>, <code>MockInstagram</code>, <code>MockX</code>, <code>DashboardSocialWireframeDock</code>, and <code>SocialWireframeModal</code> functions. Keep only: <code>SOCIAL_PLATFORM_ORDER</code>, <code>IconTwitter</code>, <code>IconFacebook</code>, <code>IconInstagram</code>, <code>IconLinkedIn</code>. Rename file from <code>SocialWireframeToolkit</code> to <code>SocialIcons</code> or similar to remove the "wireframe" label from the module name.</td>
+  <td>~20 min</td>
+</tr>
+</tbody>
+</table>
+
+</body>
+</html>

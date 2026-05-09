@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notice Board – Text & UX Copy Audit</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; font-size: 13.5px; background: #f5f7fa; color: #1a1a2e; line-height: 1.55; }
+  header { background: #0f172a; color: #fff; padding: 28px 40px 24px; }
+  header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  header p  { font-size: 13px; color: #94a3b8; }
+  .meta { display: flex; gap: 32px; margin-top: 16px; }
+  .meta div { background: #1e293b; border-radius: 8px; padding: 10px 20px; text-align: center; }
+  .meta div span { display: block; }
+  .meta div .n  { font-size: 24px; font-weight: 700; }
+  .meta div .lh { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .n.high   { color: #f87171; }
+  .n.medium { color: #fbbf24; }
+  .n.low    { color: #34d399; }
+
+  section { max-width: 1260px; margin: 28px auto; padding: 0 24px; }
+  h2 { font-size: 15px; font-weight: 700; color: #0f172a; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  thead tr { background: #0f172a; color: #fff; }
+  thead th { padding: 11px 14px; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid #f1f5f9; transition: background .1s; }
+  tbody tr:hover { background: #f8fafc; }
+  td { padding: 11px 14px; vertical-align: top; font-size: 13px; }
+
+  .cat { font-weight: 600; color: #475569; white-space: nowrap; }
+
+  .sev { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .sev.High   { background: #fee2e2; color: #b91c1c; }
+  .sev.Medium { background: #fef3c7; color: #92400e; }
+  .sev.Low    { background: #dcfce7; color: #166534; }
+
+  .old { font-family: 'Courier New', monospace; background: #fef2f2; color: #991b1b; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+  .new { font-family: 'Courier New', monospace; background: #f0fdf4; color: #15803d; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+
+  footer { text-align: center; padding: 32px 0 48px; color: #94a3b8; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Notice Board — Text &amp; UX Copy Audit</h1>
+  <p>Full review of labels, wording, typography, readability, buttons, and grammar across the wireframe.</p>
+  <div class="meta">
+    <div><span class="n high">8</span><span class="lh">High</span></div>
+    <div><span class="n medium">11</span><span class="lh">Medium</span></div>
+    <div><span class="n low">9</span><span class="lh">Low</span></div>
+    <div><span class="n" style="color:#60a5fa">28</span><span class="lh">Total Issues</span></div>
+  </div>
+</header>
+
+<section>
+
+  <!-- ── 1. LABEL CLARITY ── -->
+  <h2>1 · Label Clarity</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Category</th>
+        <th style="width:20%">Element / Label</th>
+        <th style="width:28%">Issue</th>
+        <th style="width:10%">Severity</th>
+        <th style="width:28%">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Modal field: <span class="old">Name</span></td>
+        <td>Too generic — could mean a person's name, a group name, or a board title. Users must infer the intent.</td>
+        <td><span class="sev High">High</span></td>
+        <td>Rename to <span class="new">Notice Board Name</span> or <span class="new">Board Title</span> to make the purpose unambiguous.</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Column header: <span class="old">Group Name</span></td>
+        <td>Inconsistent with the modal field labelled <span class="old">Name</span>. Users editing a row see "Name" but the table shows "Group Name", causing a disconnect.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Align both to <span class="new">Notice Board Name</span> or use a shared term like <span class="new">Board Name</span> throughout.</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Column header: <span class="old">S.No.</span></td>
+        <td>Abbreviation "S.No." is not universally understood, especially by non-Indian audiences. Ambiguous to new users.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Expand to <span class="new">#</span> (minimal) or <span class="new">No.</span> for clarity. If the audience is primarily Irish/international, use <span class="new">#</span>.</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Column header: <span class="old">Filter by</span> (modal)</td>
+        <td>Vague — does not explain what it filters. "Filter by what?" is the reader's natural question.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Rename to <span class="new">Recipient Type</span> or <span class="new">Add Recipients by</span> to communicate the intent clearly.</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Main table column: <span class="old">Filter by</span></td>
+        <td>Same issue as above. Displaying the filter mode in the table as "Filter by" does not tell the reader what the value means.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Rename column to <span class="new">Recipient Type</span>. Values already make sense (Groups, Students, Teachers).</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Chat Group Users table: <span class="old">Primary Contact/Staff Name</span></td>
+        <td>The slash creates ambiguity — is this one person or two? The header conflates two semantically different roles.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Split into two columns: <span class="new">Primary Contact</span> and <span class="new">Staff Name</span>, or use a tooltip to clarify the dual meaning.</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>Legend item: <span class="old">Added in Chat group</span></td>
+        <td>Lowercase "group" inconsistent with title-case convention used elsewhere. Minor but noticeable.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Write as <span class="new">Added to Chat Group</span> — title case and preposition corrected.</td>
+      </tr>
+      <tr>
+        <td class="cat">Label Clarity</td>
+        <td>View Messages column: <span class="old">View Message read Users</span></td>
+        <td>Mixed case, grammatically awkward phrasing. "read" is lowercase mid-sentence, and the word order is unusual.</td>
+        <td><span class="sev High">High</span></td>
+        <td>Rename to <span class="new">Read Receipts</span> or <span class="new">Readers</span> for the column header. Show the count as a button label: <span class="new">View Readers (45)</span>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 2. TERMINOLOGY CONSISTENCY ── -->
+  <h2>2 · Terminology Consistency</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Category</th>
+        <th style="width:20%">Element / Label</th>
+        <th style="width:28%">Issue</th>
+        <th style="width:10%">Severity</th>
+        <th style="width:28%">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat">Terminology</td>
+        <td>Toast: <span class="old">notice(s)</span> vs <span class="old">Group message(s)</span></td>
+        <td>Inconsistent use of "(s)" pluralisation pattern. Some toasts use it, some don't. It reads as awkward technical shorthand.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Use dynamic pluralisation in code: e.g. <span class="new">"2 notices published"</span> / <span class="new">"1 notice published"</span>. Remove the "(s)" pattern entirely.</td>
+      </tr>
+      <tr>
+        <td class="cat">Terminology</td>
+        <td>Modal source panel: <span class="old">Students List</span> vs <span class="old">Teachers List</span></td>
+        <td>The word "List" is appended in these panel titles but not in the main table header ("Group Name", not "Group Name List"). Inconsistent naming convention.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Standardise: either always use "List" (e.g. <span class="new">Students List</span>, <span class="new">Final List</span>) or never (e.g. <span class="new">Students</span>, <span class="new">Final Recipients</span>).</td>
+      </tr>
+      <tr>
+        <td class="cat">Terminology</td>
+        <td>Reply modal header vs button: <span class="old">User Reply</span> column vs <span class="old">Can Reply</span> modal column</td>
+        <td>The table column is labelled "User Reply" but inside the modal it becomes "Can Reply". Two different labels for the same concept.</td>
+        <td><span class="sev High">High</span></td>
+        <td>Pick one term. <span class="new">Can Reply</span> is more descriptive. Use it consistently in both the main table column header and the modal.</td>
+      </tr>
+      <tr>
+        <td class="cat">Terminology</td>
+        <td>Sidebar label: <span class="old">Notice Board</span> vs page heading: <span class="old">Manage Notice Board</span></td>
+        <td>The nav item just says "Notice Board" but the page title says "Manage Notice Board". The word "Manage" appears nowhere in the breadcrumb or nav, causing a cognitive mismatch.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Either add "Manage" to the breadcrumb/nav, or remove it from the page heading. Consistent: <span class="new">Notice Board</span> everywhere, or <span class="new">Manage Notice Board</span> everywhere.</td>
+      </tr>
+      <tr>
+        <td class="cat">Terminology</td>
+        <td>Status values: <span class="old">Published</span> / <span class="old">Unpublished</span></td>
+        <td>Status badges display only "P" or "U" — cryptic to unfamiliar users. Tooltip exists but is not obvious.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Display the full word in the badge: <span class="new">Published</span> / <span class="new">Unpublished</span>. Use colour coding to reinforce meaning. Remove single-letter abbreviation or make them optional via a compact/expanded view toggle.</td>
+      </tr>
+      <tr>
+        <td class="cat">Terminology</td>
+        <td>Empty state: <span class="old">No data found.</span></td>
+        <td>Generic fallback. Doesn't tell the user why data is empty or what action to take.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Replace with contextual messages like <span class="new">"Apply a filter above to load students"</span> or <span class="new">"No students match the selected year and class."</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 3. TYPOGRAPHY HIERARCHY ── -->
+  <h2>3 · Typography Hierarchy</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Category</th>
+        <th style="width:20%">Element / Label</th>
+        <th style="width:28%">Issue</th>
+        <th style="width:10%">Severity</th>
+        <th style="width:28%">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat">Typography</td>
+        <td>Modal subtitle: <span class="old">Please Fill Mandatory Fields</span></td>
+        <td>Sentence case inconsistency — every word is capitalised (title case), but this is a sentence, not a title. Looks like a style error.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Use sentence case: <span class="new">"Fields marked * are required"</span> — also more informative and conventional.</td>
+      </tr>
+      <tr>
+        <td class="cat">Typography</td>
+        <td>Filter sub-panel headers: <span class="old">Years</span> and <span class="old">Class</span></td>
+        <td>"Years" is plural; "Class" is singular. Inconsistent grammatical number for two parallel section headers.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Standardise to plural: <span class="new">Years</span> and <span class="new">Classes</span>. Or singular: <span class="new">Year</span> and <span class="new">Class</span>.</td>
+      </tr>
+      <tr>
+        <td class="cat">Typography</td>
+        <td>Panel headings: <span class="old">text-[17px]</span> inline style</td>
+        <td>The "Years" and "Class" sub-headers use a non-standard 17px size that sits between body text (14px) and section headings (base). Creates a weak hierarchy — they don't look like headings.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Use a consistent heading scale. Elevate these to <span class="new">font-semibold text-sm uppercase tracking-wide text-gray-500</span> to look like proper section labels rather than ambiguous large body text.</td>
+      </tr>
+      <tr>
+        <td class="cat">Typography</td>
+        <td>Source list column headers: <span class="old">Student name</span> (lowercase "n")</td>
+        <td>Inconsistent capitalisation — other headers use Title Case (Primary Contact, Secondary Contact, Year, Class) but "Student name" uses sentence case.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Change to <span class="new">Student Name</span> to match the Title Case pattern of all adjacent column headers.</td>
+      </tr>
+      <tr>
+        <td class="cat">Typography</td>
+        <td>Page heading: <span class="old">text-2xl font-semibold</span> vs modal heading: <span class="old">text-xl font-semibold</span></td>
+        <td>Two different heading weights/sizes for conceptually equivalent titles. Both use <code>font-semibold</code> but the page is 2xl and the modal is xl without a clear rationale documented in style.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Fine as-is if intentional (modals are smaller contexts). Document or codify: modal titles = xl, page titles = 2xl. Apply consistently — the "Chat Group Users" heading is 2xl, same as the main page heading, making it feel equal in visual weight to a top-level page.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 4. READABILITY ── -->
+  <h2>4 · Readability</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Category</th>
+        <th style="width:20%">Element / Label</th>
+        <th style="width:28%">Issue</th>
+        <th style="width:10%">Severity</th>
+        <th style="width:28%">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat">Readability</td>
+        <td>Chat Users table: long column headers wrapping</td>
+        <td>Headers like "Primary Contact/Staff Name" and "Secondary Contact Mobile" are very wide. At normal widths they wrap or truncate, harming scan-ability.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Shorten to <span class="new">Primary Contact</span> and <span class="new">Sec. Contact</span> in the header. Use full text in a tooltip. Or break the table into a card layout for this view.</td>
+      </tr>
+      <tr>
+        <td class="cat">Readability</td>
+        <td>Loading row text: <span class="old">Loading more notices...</span> / <span class="old">Loading more users...</span></td>
+        <td>Good pattern, but the spinner and text share the same <code>text-gray-500</code> colour, making them blend into the table body. Low contrast.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Use a slightly more distinct treatment: a full-row light blue tint background and <span class="new">text-gray-700</span>, so the loading state is visually distinct from data rows.</td>
+      </tr>
+      <tr>
+        <td class="cat">Readability</td>
+        <td>Sidebar label: <span class="old">App Engagement Overview</span></td>
+        <td>At 14px with standard weight in a narrow sidebar, this 3-word label wraps to 2 lines, pushing other nav items down unexpectedly.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Shorten to <span class="new">App Engagement</span> or <span class="new">Engagement Overview</span>. Or increase sidebar width slightly to accommodate long labels cleanly.</td>
+      </tr>
+      <tr>
+        <td class="cat">Readability</td>
+        <td>Groups Messages empty state: <span class="old">No results found.</span> (italic)</td>
+        <td>Italic text in a table cell is hard to read and looks like a placeholder rather than a real system message. Italics reduce readability, especially at small sizes.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Remove italic. Use normal weight <span class="new">text-gray-500</span> with an optional icon: <span class="new">No messages to display.</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 5. BUTTON AND ACTION LABELS ── -->
+  <h2>5 · Button and Action Labels</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Category</th>
+        <th style="width:20%">Element / Label</th>
+        <th style="width:28%">Issue</th>
+        <th style="width:10%">Severity</th>
+        <th style="width:28%">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat">Button Labels</td>
+        <td>Main toolbar: <span class="old">Add</span></td>
+        <td>Single-word label gives no context about what is being added. "Add" what — a group? A notice? A user?</td>
+        <td><span class="sev High">High</span></td>
+        <td>Rename to <span class="new">+ New Notice Board</span> or <span class="new">Add Notice Board</span>. Mirrors industry convention (e.g. "+ New Post").</td>
+      </tr>
+      <tr>
+        <td class="cat">Button Labels</td>
+        <td>Reply modal: <span class="old">don't allow to Reply</span></td>
+        <td>Three problems: (1) starts with lowercase "d", (2) grammatically incorrect ("don't allow to" → should be "Don't Allow Reply"), (3) inconsistent style vs "Allow" and "Allow All".</td>
+        <td><span class="sev High">High</span></td>
+        <td>Rename to <span class="new">Restrict Reply</span> or <span class="new">Disallow Reply</span>. Matches the positive counterpart "Allow Reply" / "Allow All" cleanly.</td>
+      </tr>
+      <tr>
+        <td class="cat">Button Labels</td>
+        <td>Modal footer: <span class="old">Submit</span></td>
+        <td>Generic. Doesn't communicate what is being submitted or what happens next. "Submit" is a form-era pattern that feels outdated.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Use context-aware labels: <span class="new">Save Notice Board</span> (edit mode) and <span class="new">Create Notice Board</span> (add mode).</td>
+      </tr>
+      <tr>
+        <td class="cat">Button Labels</td>
+        <td>Modal source panel footer: <span class="old">Add to Final List</span></td>
+        <td>Good label, but the ChevronRight icon implies navigation rather than an action of moving items. Can mislead users into thinking they'll be taken to another screen.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Replace the ChevronRight with a <span class="new">→</span> arrow or a plus icon. Or use a downward arrow since the Final List appears below the source list.</td>
+      </tr>
+      <tr>
+        <td class="cat">Button Labels</td>
+        <td>Messages view: <span class="old">Apply Filter</span> / <span class="old">Clear Filter</span></td>
+        <td>Inconsistent capitalisation between these two adjacent buttons: "Apply Filter" (Title Case) vs "Clear Filter" (Title Case) — these are actually consistent, but compared with the modal's <span class="old">Apply Filter</span> button (teal border) vs the main view's (no distinctive style), the pattern feels visually inconsistent.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Unify button styling for "Apply Filter" across all views. Use the same teal border style for all filter-apply actions.</td>
+      </tr>
+      <tr>
+        <td class="cat">Button Labels</td>
+        <td>Confirm dialog: <span class="old">Confirm Delete</span> (title) + <span class="old">Delete</span> (button)</td>
+        <td>Redundant — "Confirm Delete" as a modal title and then "Delete" as the action button. Users read the title, then see "Delete" again without knowing what they're deleting.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Change the dialog title to <span class="new">Delete Notice Board?</span> (includes the object). The confirm button can then simply say <span class="new">Delete</span> — the object is clear from the title.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── 6. GRAMMAR AND SPELLING ── -->
+  <h2>6 · Grammar and Spelling</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Category</th>
+        <th style="width:20%">Element / Label</th>
+        <th style="width:28%">Issue</th>
+        <th style="width:10%">Severity</th>
+        <th style="width:28%">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat">Grammar</td>
+        <td>Reply modal header: <span class="old">Assign Can reply status to the Users</span></td>
+        <td>Multiple issues: (1) "Can reply" mid-sentence should be lowercase, (2) "the Users" — article "the" is unnatural; should be "to Users", (3) whole phrase reads like a machine-translated label.</td>
+        <td><span class="sev High">High</span></td>
+        <td>Rewrite as <span class="new">Manage Reply Permissions</span> or <span class="new">Set Reply Access for Users</span>.</td>
+      </tr>
+      <tr>
+        <td class="cat">Grammar</td>
+        <td>Read/Unread modal header: <span class="old">Users Who Read &amp; Doesn't read Messages</span></td>
+        <td>Subject–verb agreement error: "Users … Doesn't" is grammatically incorrect (should be "don't"). Also, "read" is ambiguous (past vs present tense).</td>
+        <td><span class="sev High">High</span></td>
+        <td>Rewrite as <span class="new">Message Read Status</span> for the modal title. The tab labels ("Read" / "Unread") are sufficient to communicate the content.</td>
+      </tr>
+      <tr>
+        <td class="cat">Grammar</td>
+        <td>Toast: <span class="old">Error: Group Name is required.</span></td>
+        <td>"Group Name" is not what the field is labelled in the UI (it's labelled "Name"). Mismatch between field label and error message. Also, colon after "Error" is unusual in modern UI patterns.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Change to <span class="new">Notice Board Name is required.</span> — matches the field label and removes the redundant "Error:" prefix (the red colour already communicates error).</td>
+      </tr>
+      <tr>
+        <td class="cat">Grammar</td>
+        <td>Toast: <span class="old">Users list updated based on groups.</span></td>
+        <td>Lowercase "list" inconsistent with title-case used for "Students List" in panel headers. Minor but part of a pattern.</td>
+        <td><span class="sev Low">Low</span></td>
+        <td>Rewrite as <span class="new">Students list updated based on selected groups.</span> — adds "selected" for clarity and keeps lowercase consistent for body text.</td>
+      </tr>
+      <tr>
+        <td class="cat">Spelling</td>
+        <td>Reply modal button: <span class="old">don't allow to Reply</span></td>
+        <td>Starts with a lowercase letter. All other buttons in the same row use Title Case or Sentence case. This is the only all-lowercase button label in the interface.</td>
+        <td><span class="sev High">High</span></td>
+        <td>Already covered in Button Labels — fix capitalisation to <span class="new">Disallow Reply</span> or <span class="new">Restrict Reply</span>.</td>
+      </tr>
+      <tr>
+        <td class="cat">Grammar</td>
+        <td>Tab label: <span class="old">Read Message Users</span> / <span class="old">Unread Message Users</span></td>
+        <td>Awkward noun-stacking. "Read Message Users" could mean "Users who are message-readers" or "Read [this] Message Users". Ambiguous.</td>
+        <td><span class="sev Medium">Medium</span></td>
+        <td>Simplify to <span class="new">Read</span> and <span class="new">Unread</span> as tab labels. The modal title provides the context that these are message recipients.</td>
+      </tr>
+    </tbody>
+  </table>
+
+</section>
+
+<footer>Notice Board Text &amp; UX Copy Audit · Generated March 2026</footer>
+</body>
+</html>

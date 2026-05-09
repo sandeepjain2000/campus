@@ -1,0 +1,439 @@
+2026-04-28 01:11:34 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-28_01-11-34.log
+2026-04-28 01:11:34 [INFO   ] ================================================================
+2026-04-28 01:11:34 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-28 01:11:34 [INFO   ]   Run : 2026-04-28 01:11:34
+2026-04-28 01:11:34 [INFO   ]   Mode: Send up to 20 institute(s)
+2026-04-28 01:11:34 [INFO   ] ================================================================
+2026-04-28 01:11:34 [INFO   ]   Gmail accounts available: 32
+2026-04-28 01:11:34 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-28 01:11:34 [INFO   ]   Monitoring 65 'Sent' address(es)
+2026-04-28 01:11:34 [INFO   ]   Checking 31/32 accounts (only those that sent emails)
+2026-04-28 01:11:34 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-28 01:11:34 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-28 01:11:40 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 59 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:11:40 [INFO   ]   Pass 1: scanning headers of 59 email(s) (batch size 40)...
+2026-04-28 01:11:40 [INFO   ]     … 40/59 headers
+2026-04-28 01:11:41 [INFO   ]     … 59/59 headers
+2026-04-28 01:11:41 [INFO   ]   Pass 1 done — full fetch for 59 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 01:13:43 [INFO   ]   [BOUNCE->FAILURE] vc@amu.ac.in
+2026-04-28 01:13:45 [INFO   ] 
+  > sj1799274@gmail.com
+2026-04-28 01:13:45 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-28 01:13:50 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 172 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:13:50 [INFO   ]   Pass 1: scanning headers of 172 email(s) (batch size 40)...
+2026-04-28 01:13:50 [INFO   ]     … 40/172 headers
+2026-04-28 01:13:53 [INFO   ]     … 80/172 headers
+2026-04-28 01:13:57 [INFO   ]     … 120/172 headers
+2026-04-28 01:14:00 [INFO   ]     … 160/172 headers
+2026-04-28 01:14:00 [INFO   ]     … 172/172 headers
+2026-04-28 01:14:02 [INFO   ]   Pass 1 done — full fetch for 163 UID(s); tagged NON-CAMPUS from headers: 9
+2026-04-28 01:18:01 [INFO   ] 
+  > jain109sandeep@gmail.com
+2026-04-28 01:18:01 [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-04-28 01:18:07 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 190 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:18:07 [INFO   ]   Pass 1: scanning headers of 190 email(s) (batch size 40)...
+2026-04-28 01:18:07 [INFO   ]     … 40/190 headers
+2026-04-28 01:18:08 [INFO   ]     … 80/190 headers
+2026-04-28 01:18:10 [INFO   ]     … 120/190 headers
+2026-04-28 01:18:10 [INFO   ]     … 160/190 headers
+2026-04-28 01:18:11 [INFO   ]     … 190/190 headers
+2026-04-28 01:18:11 [INFO   ]   Pass 1 done — full fetch for 189 UID(s); tagged NON-CAMPUS from headers: 1
+2026-04-28 01:24:18 [INFO   ]   [BOUNCE->FAILURE] registrar@sanskrit.nic.in
+2026-04-28 01:24:20 [INFO   ] 
+  > jain111sandeep@gmail.com
+2026-04-28 01:24:20 [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-04-28 01:24:26 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 184 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:24:26 [INFO   ]   Pass 1: scanning headers of 184 email(s) (batch size 40)...
+2026-04-28 01:24:26 [INFO   ]     … 40/184 headers
+2026-04-28 01:24:28 [INFO   ]     … 80/184 headers
+2026-04-28 01:24:29 [INFO   ]     … 120/184 headers
+2026-04-28 01:24:30 [INFO   ]     … 160/184 headers
+2026-04-28 01:24:35 [INFO   ]     … 184/184 headers
+2026-04-28 01:24:36 [INFO   ]   Pass 1 done — full fetch for 182 UID(s); tagged NON-CAMPUS from headers: 2
+2026-04-28 01:29:06 [INFO   ] 
+  > sandeep196605@gmail.com
+2026-04-28 01:29:06 [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-04-28 01:29:13 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 190 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:29:13 [INFO   ]   Pass 1: scanning headers of 190 email(s) (batch size 40)...
+2026-04-28 01:29:13 [INFO   ]     … 40/190 headers
+2026-04-28 01:29:19 [INFO   ]     … 80/190 headers
+2026-04-28 01:29:20 [INFO   ]     … 120/190 headers
+2026-04-28 01:29:23 [INFO   ]     … 160/190 headers
+2026-04-28 01:29:23 [INFO   ]     … 190/190 headers
+2026-04-28 01:29:24 [INFO   ]   Pass 1 done — full fetch for 186 UID(s); tagged NON-CAMPUS from headers: 4
+2026-04-28 01:36:20 [INFO   ] 
+  > jain114sandeep@gmail.com
+2026-04-28 01:36:20 [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-04-28 01:36:27 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 195 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:36:27 [INFO   ]   Pass 1: scanning headers of 195 email(s) (batch size 40)...
+2026-04-28 01:36:27 [INFO   ]     … 40/195 headers
+2026-04-28 01:36:27 [INFO   ]     … 80/195 headers
+2026-04-28 01:36:29 [INFO   ]     … 120/195 headers
+2026-04-28 01:36:30 [INFO   ]     … 160/195 headers
+2026-04-28 01:36:33 [INFO   ]     … 195/195 headers
+2026-04-28 01:36:33 [INFO   ]   Pass 1 done — full fetch for 192 UID(s); tagged NON-CAMPUS from headers: 3
+2026-04-28 01:42:29 [INFO   ] 
+  > jain105sandeep@gmail.com
+2026-04-28 01:42:29 [INFO   ]   Connecting to jain105sandeep@gmail.com …
+2026-04-28 01:42:33 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 194 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:42:33 [INFO   ]   Pass 1: scanning headers of 194 email(s) (batch size 40)...
+2026-04-28 01:42:33 [INFO   ]     … 40/194 headers
+2026-04-28 01:42:35 [INFO   ]     … 80/194 headers
+2026-04-28 01:42:36 [INFO   ]     … 120/194 headers
+2026-04-28 01:42:36 [INFO   ]     … 160/194 headers
+2026-04-28 01:42:40 [INFO   ]     … 194/194 headers
+2026-04-28 01:42:43 [INFO   ]   Pass 1 done — full fetch for 186 UID(s); tagged NON-CAMPUS from headers: 8
+2026-04-28 01:47:01 [INFO   ] 
+  > jain107sandeep@gmail.com
+2026-04-28 01:47:01 [INFO   ]   Connecting to jain107sandeep@gmail.com …
+2026-04-28 01:47:06 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 195 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:47:06 [INFO   ]   Pass 1: scanning headers of 195 email(s) (batch size 40)...
+2026-04-28 01:47:06 [INFO   ]     … 40/195 headers
+2026-04-28 01:47:07 [INFO   ]     … 80/195 headers
+2026-04-28 01:47:07 [INFO   ]     … 120/195 headers
+2026-04-28 01:47:08 [INFO   ]     … 160/195 headers
+2026-04-28 01:47:08 [INFO   ]     … 195/195 headers
+2026-04-28 01:47:10 [INFO   ]   Pass 1 done — full fetch for 194 UID(s); tagged NON-CAMPUS from headers: 1
+2026-04-28 01:52:05 [INFO   ] 
+  > sj7634811@gmail.com
+2026-04-28 01:52:05 [INFO   ]   Connecting to sj7634811@gmail.com …
+2026-04-28 01:52:10 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 182 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:52:10 [INFO   ]   Pass 1: scanning headers of 182 email(s) (batch size 40)...
+2026-04-28 01:52:10 [INFO   ]     … 40/182 headers
+2026-04-28 01:52:12 [INFO   ]     … 80/182 headers
+2026-04-28 01:52:12 [INFO   ]     … 120/182 headers
+2026-04-28 01:52:13 [INFO   ]     … 160/182 headers
+2026-04-28 01:52:13 [INFO   ]     … 182/182 headers
+2026-04-28 01:52:14 [INFO   ]   Pass 1 done — full fetch for 181 UID(s); tagged NON-CAMPUS from headers: 1
+2026-04-28 01:57:53 [INFO   ] 
+  > jain115sandeep@gmail.com
+2026-04-28 01:57:53 [INFO   ]   Connecting to jain115sandeep@gmail.com …
+2026-04-28 01:58:00 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 201 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 01:58:00 [INFO   ]   Pass 1: scanning headers of 201 email(s) (batch size 40)...
+2026-04-28 01:58:00 [INFO   ]     … 40/201 headers
+2026-04-28 01:58:00 [INFO   ]     … 80/201 headers
+2026-04-28 01:58:01 [INFO   ]     … 120/201 headers
+2026-04-28 01:58:01 [INFO   ]     … 160/201 headers
+2026-04-28 01:58:04 [INFO   ]     … 200/201 headers
+2026-04-28 01:58:04 [INFO   ]     … 201/201 headers
+2026-04-28 01:58:05 [INFO   ]   Pass 1 done — full fetch for 200 UID(s); tagged NON-CAMPUS from headers: 1
+2026-04-28 02:04:38 [INFO   ] 
+  > jain200sandeep@gmail.com
+2026-04-28 02:04:38 [INFO   ]   Connecting to jain200sandeep@gmail.com …
+2026-04-28 02:04:43 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 185 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:04:43 [INFO   ]   Pass 1: scanning headers of 185 email(s) (batch size 40)...
+2026-04-28 02:04:43 [INFO   ]     … 40/185 headers
+2026-04-28 02:04:43 [INFO   ]     … 80/185 headers
+2026-04-28 02:04:46 [INFO   ]     … 120/185 headers
+2026-04-28 02:04:48 [INFO   ]     … 160/185 headers
+2026-04-28 02:04:49 [INFO   ]     … 185/185 headers
+2026-04-28 02:04:49 [INFO   ]   Pass 1 done — full fetch for 182 UID(s); tagged NON-CAMPUS from headers: 3
+2026-04-28 02:09:59 [INFO   ]   [BOUNCE->FAILURE] registrar@nta.ac.in
+2026-04-28 02:10:01 [INFO   ] 
+  > jain201sandeep@gmail.com
+2026-04-28 02:10:01 [INFO   ]   Connecting to jain201sandeep@gmail.com …
+2026-04-28 02:10:06 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 186 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:10:06 [INFO   ]   Pass 1: scanning headers of 186 email(s) (batch size 40)...
+2026-04-28 02:10:06 [INFO   ]     … 40/186 headers
+2026-04-28 02:10:07 [INFO   ]     … 80/186 headers
+2026-04-28 02:10:09 [INFO   ]     … 120/186 headers
+2026-04-28 02:10:10 [INFO   ]     … 160/186 headers
+2026-04-28 02:10:17 [INFO   ]     … 186/186 headers
+2026-04-28 02:10:18 [INFO   ]   Pass 1 done — full fetch for 181 UID(s); tagged NON-CAMPUS from headers: 5
+2026-04-28 02:16:47 [INFO   ]   [BOUNCE->FAILURE] placement@nvsp.in
+2026-04-28 02:16:48 [INFO   ] 
+  > jain202sandeep@gmail.com
+2026-04-28 02:16:48 [INFO   ]   Connecting to jain202sandeep@gmail.com …
+2026-04-28 02:16:52 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 183 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:16:52 [INFO   ]   Pass 1: scanning headers of 183 email(s) (batch size 40)...
+2026-04-28 02:16:52 [INFO   ]     … 40/183 headers
+2026-04-28 02:16:59 [INFO   ]     … 80/183 headers
+2026-04-28 02:16:59 [INFO   ]     … 120/183 headers
+2026-04-28 02:17:00 [INFO   ]     … 160/183 headers
+2026-04-28 02:17:01 [INFO   ]     … 183/183 headers
+2026-04-28 02:17:01 [INFO   ]   Pass 1 done — full fetch for 177 UID(s); tagged NON-CAMPUS from headers: 6
+2026-04-28 02:21:13 [INFO   ]   [BOUNCE->FAILURE] registrar@andhrakesariuniversity.in
+2026-04-28 02:21:14 [INFO   ] 
+  > jain203sandeep@gmail.com
+2026-04-28 02:21:14 [INFO   ]   Connecting to jain203sandeep@gmail.com …
+2026-04-28 02:21:20 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 186 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:21:20 [INFO   ]   Pass 1: scanning headers of 186 email(s) (batch size 40)...
+2026-04-28 02:21:20 [INFO   ]     … 40/186 headers
+2026-04-28 02:21:30 [INFO   ]     … 80/186 headers
+2026-04-28 02:21:32 [INFO   ]     … 120/186 headers
+2026-04-28 02:21:35 [INFO   ]     … 160/186 headers
+2026-04-28 02:21:35 [INFO   ]     … 186/186 headers
+2026-04-28 02:21:36 [INFO   ]   Pass 1 done — full fetch for 176 UID(s); tagged NON-CAMPUS from headers: 10
+2026-04-28 02:27:18 [INFO   ] 
+  > jain204sandeep@gmail.com
+2026-04-28 02:27:18 [INFO   ]   Connecting to jain204sandeep@gmail.com …
+2026-04-28 02:27:24 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 186 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:27:24 [INFO   ]   Pass 1: scanning headers of 186 email(s) (batch size 40)...
+2026-04-28 02:27:24 [INFO   ]     … 40/186 headers
+2026-04-28 02:27:31 [INFO   ]     … 80/186 headers
+2026-04-28 02:27:32 [INFO   ]     … 120/186 headers
+2026-04-28 02:27:33 [INFO   ]     … 160/186 headers
+2026-04-28 02:27:34 [INFO   ]     … 186/186 headers
+2026-04-28 02:27:34 [INFO   ]   Pass 1 done — full fetch for 179 UID(s); tagged NON-CAMPUS from headers: 7
+2026-04-28 02:32:10 [INFO   ]   [BOUNCE->FAILURE] registrar@buat.edu.in
+2026-04-28 02:32:12 [INFO   ] 
+  > jain205sandeep@gmail.com
+2026-04-28 02:32:12 [INFO   ]   Connecting to jain205sandeep@gmail.com …
+2026-04-28 02:32:17 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 173 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:32:17 [INFO   ]   Pass 1: scanning headers of 173 email(s) (batch size 40)...
+2026-04-28 02:32:17 [INFO   ]     … 40/173 headers
+2026-04-28 02:32:22 [INFO   ]     … 80/173 headers
+2026-04-28 02:32:23 [INFO   ]     … 120/173 headers
+2026-04-28 02:32:24 [INFO   ]     … 160/173 headers
+2026-04-28 02:32:25 [INFO   ]     … 173/173 headers
+2026-04-28 02:32:25 [INFO   ]   Pass 1 done — full fetch for 166 UID(s); tagged NON-CAMPUS from headers: 7
+2026-04-28 02:36:32 [INFO   ]   [BOUNCE->FAILURE] registrar@cbpbu.ac.in
+2026-04-28 02:36:33 [INFO   ] 
+  > jain206sandeep@gmail.com
+2026-04-28 02:36:33 [INFO   ]   Connecting to jain206sandeep@gmail.com …
+2026-04-28 02:36:38 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 170 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:36:38 [INFO   ]   Pass 1: scanning headers of 170 email(s) (batch size 40)...
+2026-04-28 02:36:38 [INFO   ]     … 40/170 headers
+2026-04-28 02:36:43 [INFO   ]     … 80/170 headers
+2026-04-28 02:36:43 [INFO   ]     … 120/170 headers
+2026-04-28 02:36:45 [INFO   ]     … 160/170 headers
+2026-04-28 02:36:46 [INFO   ]     … 170/170 headers
+2026-04-28 02:36:46 [INFO   ]   Pass 1 done — full fetch for 163 UID(s); tagged NON-CAMPUS from headers: 7
+2026-04-28 02:40:42 [INFO   ]   [BOUNCE->FAILURE] registrar@cuc.ac.in
+2026-04-28 02:40:43 [INFO   ] 
+  > jain207sandeep@gmail.com
+2026-04-28 02:40:43 [INFO   ]   Connecting to jain207sandeep@gmail.com …
+2026-04-28 02:40:48 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 175 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:40:48 [INFO   ]   Pass 1: scanning headers of 175 email(s) (batch size 40)...
+2026-04-28 02:40:48 [INFO   ]     … 40/175 headers
+2026-04-28 02:40:55 [INFO   ]     … 80/175 headers
+2026-04-28 02:40:55 [INFO   ]     … 120/175 headers
+2026-04-28 02:40:57 [INFO   ]     … 160/175 headers
+2026-04-28 02:40:57 [INFO   ]     … 175/175 headers
+2026-04-28 02:40:58 [INFO   ]   Pass 1 done — full fetch for 167 UID(s); tagged NON-CAMPUS from headers: 8
+2026-04-28 02:44:34 [INFO   ] 
+  > jain208sandeep@gmail.com
+2026-04-28 02:44:34 [INFO   ]   Connecting to jain208sandeep@gmail.com …
+2026-04-28 02:44:40 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 182 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:44:40 [INFO   ]   Pass 1: scanning headers of 182 email(s) (batch size 40)...
+2026-04-28 02:44:40 [INFO   ]     … 40/182 headers
+2026-04-28 02:44:48 [INFO   ]     … 80/182 headers
+2026-04-28 02:44:48 [INFO   ]     … 120/182 headers
+2026-04-28 02:44:48 [INFO   ]     … 160/182 headers
+2026-04-28 02:44:51 [INFO   ]     … 182/182 headers
+2026-04-28 02:44:51 [INFO   ]   Pass 1 done — full fetch for 176 UID(s); tagged NON-CAMPUS from headers: 6
+2026-04-28 02:50:33 [INFO   ] 
+  > jain1001sandeep@gmail.com
+2026-04-28 02:50:33 [INFO   ]   Connecting to jain1001sandeep@gmail.com …
+2026-04-28 02:50:37 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 38 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:50:37 [INFO   ]   Pass 1: scanning headers of 38 email(s) (batch size 40)...
+2026-04-28 02:50:37 [INFO   ]     … 38/38 headers
+2026-04-28 02:50:48 [INFO   ]   Pass 1 done — full fetch for 31 UID(s); tagged NON-CAMPUS from headers: 7
+2026-04-28 02:51:48 [INFO   ] 
+  > jain1002sandeep@gmail.com
+2026-04-28 02:51:48 [INFO   ]   Connecting to jain1002sandeep@gmail.com …
+2026-04-28 02:51:52 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 108 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:51:52 [INFO   ]   Pass 1: scanning headers of 108 email(s) (batch size 40)...
+2026-04-28 02:51:52 [INFO   ]     … 40/108 headers
+2026-04-28 02:52:34 [INFO   ]     … 80/108 headers
+2026-04-28 02:53:11 [INFO   ]     … 108/108 headers
+2026-04-28 02:53:12 [INFO   ]   Pass 1 done — full fetch for 31 UID(s); tagged NON-CAMPUS from headers: 77
+2026-04-28 02:53:53 [INFO   ] 
+  > jain1003sandeep@gmail.com
+2026-04-28 02:53:53 [INFO   ]   Connecting to jain1003sandeep@gmail.com …
+2026-04-28 02:53:58 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 81 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:53:58 [INFO   ]   Pass 1: scanning headers of 81 email(s) (batch size 40)...
+2026-04-28 02:53:58 [INFO   ]     … 40/81 headers
+2026-04-28 02:54:36 [INFO   ]     … 80/81 headers
+2026-04-28 02:54:50 [INFO   ]     … 81/81 headers
+2026-04-28 02:54:50 [INFO   ]   Pass 1 done — full fetch for 27 UID(s); tagged NON-CAMPUS from headers: 54
+2026-04-28 02:55:28 [INFO   ] 
+  > jain1004sandeep@gmail.com
+2026-04-28 02:55:28 [INFO   ]   Connecting to jain1004sandeep@gmail.com …
+2026-04-28 02:55:33 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 38 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:55:33 [INFO   ]   Pass 1: scanning headers of 38 email(s) (batch size 40)...
+2026-04-28 02:55:33 [INFO   ]     … 38/38 headers
+2026-04-28 02:55:38 [INFO   ]   Pass 1 done — full fetch for 33 UID(s); tagged NON-CAMPUS from headers: 5
+2026-04-28 02:56:00 [INFO   ]   [HUMAN REPLY] from: jain111sandeep@gmail.com
+2026-04-28 02:56:07 [INFO   ]   [FORWARDED] REPLY-CAMPUS → sandeepjain200019@gmail.com
+2026-04-28 02:56:12 [INFO   ]   [AUTOREPLY SENT] to jain111sandeep@gmail.com
+2026-04-28 02:56:14 [INFO   ]   [HUMAN REPLY] from: jain111sandeep@gmail.com
+2026-04-28 02:56:19 [INFO   ]   [FORWARDED] REPLY-CAMPUS → sandeepjain200019@gmail.com
+2026-04-28 02:56:25 [INFO   ]   [AUTOREPLY SENT] to jain111sandeep@gmail.com
+2026-04-28 02:56:48 [INFO   ] 
+  > jain104sandeep@gmail.com
+2026-04-28 02:56:48 [INFO   ]   Connecting to jain104sandeep@gmail.com …
+2026-04-28 02:56:53 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 31 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:56:53 [INFO   ]   Pass 1: scanning headers of 31 email(s) (batch size 40)...
+2026-04-28 02:56:53 [INFO   ]     … 31/31 headers
+2026-04-28 02:56:59 [INFO   ]   Pass 1 done — full fetch for 26 UID(s); tagged NON-CAMPUS from headers: 5
+2026-04-28 02:57:43 [INFO   ] 
+  > jain214sandeep@gmail.com
+2026-04-28 02:57:43 [INFO   ]   Connecting to jain214sandeep@gmail.com …
+2026-04-28 02:57:49 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 34 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:57:49 [INFO   ]   Pass 1: scanning headers of 34 email(s) (batch size 40)...
+2026-04-28 02:57:49 [INFO   ]     … 34/34 headers
+2026-04-28 02:58:02 [INFO   ]   Pass 1 done — full fetch for 25 UID(s); tagged NON-CAMPUS from headers: 9
+2026-04-28 02:58:50 [INFO   ] 
+  > jain215sandeep@gmail.com
+2026-04-28 02:58:50 [INFO   ]   Connecting to jain215sandeep@gmail.com …
+2026-04-28 02:58:56 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 37 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 02:58:56 [INFO   ]   Pass 1: scanning headers of 37 email(s) (batch size 40)...
+2026-04-28 02:58:56 [INFO   ]     … 37/37 headers
+2026-04-28 02:59:17 [INFO   ]   Pass 1 done — full fetch for 23 UID(s); tagged NON-CAMPUS from headers: 14
+2026-04-28 03:00:04 [INFO   ] 
+  > jain216sandeep@gmail.com
+2026-04-28 03:00:04 [INFO   ]   Connecting to jain216sandeep@gmail.com …
+2026-04-28 03:00:09 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 35 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 03:00:09 [INFO   ]   Pass 1: scanning headers of 35 email(s) (batch size 40)...
+2026-04-28 03:00:09 [INFO   ]     … 35/35 headers
+2026-04-28 03:00:19 [INFO   ]   Pass 1 done — full fetch for 26 UID(s); tagged NON-CAMPUS from headers: 9
+2026-04-28 03:00:57 [INFO   ] 
+  > jainsandeep729@gmail.com
+2026-04-28 03:00:57 [INFO   ]   Connecting to jainsandeep729@gmail.com …
+2026-04-28 03:01:02 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 1070 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 03:01:02 [INFO   ]   Pass 1: scanning headers of 1070 email(s) (batch size 40)...
+2026-04-28 03:01:02 [INFO   ]     … 40/1070 headers
+2026-04-28 03:01:45 [INFO   ]     … 80/1070 headers
+2026-04-28 03:02:29 [INFO   ]     … 120/1070 headers
+2026-04-28 03:03:11 [INFO   ]     … 160/1070 headers
+2026-04-28 03:03:56 [INFO   ]     … 200/1070 headers
+2026-04-28 03:04:41 [INFO   ]     … 240/1070 headers
+2026-04-28 03:05:24 [INFO   ]     … 280/1070 headers
+2026-04-28 03:06:08 [INFO   ]     … 320/1070 headers
+2026-04-28 03:06:51 [INFO   ]     … 360/1070 headers
+2026-04-28 03:07:34 [INFO   ]     … 400/1070 headers
+2026-04-28 03:08:17 [INFO   ]     … 440/1070 headers
+2026-04-28 03:09:01 [INFO   ]     … 480/1070 headers
+2026-04-28 03:09:46 [INFO   ]     … 520/1070 headers
+2026-04-28 03:10:29 [INFO   ]     … 560/1070 headers
+2026-04-28 03:11:11 [INFO   ]     … 600/1070 headers
+2026-04-28 03:11:54 [INFO   ]     … 640/1070 headers
+2026-04-28 03:12:36 [INFO   ]     … 680/1070 headers
+2026-04-28 03:13:20 [INFO   ]     … 720/1070 headers
+2026-04-28 03:14:05 [INFO   ]     … 760/1070 headers
+2026-04-28 03:14:47 [INFO   ]     … 800/1070 headers
+2026-04-28 03:15:29 [INFO   ]     … 840/1070 headers
+2026-04-28 03:16:11 [INFO   ]     … 880/1070 headers
+2026-04-28 03:16:55 [INFO   ]     … 920/1070 headers
+2026-04-28 03:17:37 [INFO   ]     … 960/1070 headers
+2026-04-28 03:18:20 [INFO   ]     … 1000/1070 headers
+2026-04-28 03:18:58 [INFO   ]     … 1040/1070 headers
+2026-04-28 03:19:27 [INFO   ]     … 1070/1070 headers
+2026-04-28 03:19:55 [INFO   ]   Pass 1 done — full fetch for 21 UID(s); tagged NON-CAMPUS from headers: 1049
+2026-04-28 03:20:26 [INFO   ] 
+  > mandify1@gmail.com
+2026-04-28 03:20:26 [INFO   ]   Connecting to mandify1@gmail.com …
+2026-04-28 03:20:31 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 30 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 03:20:31 [INFO   ]   Pass 1: scanning headers of 30 email(s) (batch size 40)...
+2026-04-28 03:20:31 [INFO   ]     … 30/30 headers
+2026-04-28 03:20:38 [INFO   ]   Pass 1 done — full fetch for 25 UID(s); tagged NON-CAMPUS from headers: 5
+2026-04-28 03:21:19 [INFO   ] 
+  > mandify2@gmail.com
+2026-04-28 03:21:19 [INFO   ]   Connecting to mandify2@gmail.com …
+2026-04-28 03:21:24 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 22 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 03:21:24 [INFO   ]   Pass 1: scanning headers of 22 email(s) (batch size 40)...
+2026-04-28 03:21:24 [INFO   ]     … 22/22 headers
+2026-04-28 03:21:25 [INFO   ]   Pass 1 done — full fetch for 21 UID(s); tagged NON-CAMPUS from headers: 1
+2026-04-28 03:21:58 [INFO   ] 
+  > sj5739255@gmail.com
+2026-04-28 03:21:58 [INFO   ]   Connecting to sj5739255@gmail.com …
+2026-04-28 03:22:04 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 30 UID(s) (newer_than:30d or SINCE fallback)
+2026-04-28 03:22:04 [INFO   ]   Pass 1: scanning headers of 30 email(s) (batch size 40)...
+2026-04-28 03:22:04 [INFO   ]     … 30/30 headers
+2026-04-28 03:22:13 [INFO   ]   Pass 1 done — full fetch for 24 UID(s); tagged NON-CAMPUS from headers: 6
+2026-04-28 03:23:01 [INFO   ] 
+  Bounces found   : 8
+2026-04-28 03:23:01 [INFO   ]   Human responses : 2
+2026-04-28 03:23:01 [INFO   ] 
+[STEP 2] Sending to up to 20 institute(s)...
+2026-04-28 03:23:01 [INFO   ]   Institutes ready: 20
+2026-04-28 03:23:01 [INFO   ] 
+  [16] Sending to: registrar@nvsp.in
+2026-04-28 03:23:01 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-28 03:23:07 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:23:10 [INFO   ] 
+  [17] Sending to: vc@sanskrit.nic.in
+2026-04-28 03:23:10 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-28 03:23:15 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:23:18 [INFO   ] 
+  [29] Sending to: vc@nta.ac.in
+2026-04-28 03:23:18 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-28 03:23:24 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:23:27 [INFO   ] 
+  [32] Sending to: vc@andhrakesariuniversity.in
+2026-04-28 03:23:27 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-28 03:23:33 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:23:36 [INFO   ] 
+  [36] Sending to: vc@buat.edu.in
+2026-04-28 03:23:36 [INFO   ]        From  : sandeep196605@gmail.com
+2026-04-28 03:23:42 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:23:45 [INFO   ] 
+  [38] Sending to: vc@cbpbu.ac.in
+2026-04-28 03:23:45 [INFO   ]        From  : jain114sandeep@gmail.com
+2026-04-28 03:23:51 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:23:54 [INFO   ] 
+  [41] Sending to: vc@cuc.ac.in
+2026-04-28 03:23:54 [INFO   ]        From  : jain105sandeep@gmail.com
+2026-04-28 03:24:00 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:03 [INFO   ] 
+  [49] Sending to: registrar@malayalamuniversity.edu.in
+2026-04-28 03:24:03 [INFO   ]        From  : jain107sandeep@gmail.com
+2026-04-28 03:24:08 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:11 [INFO   ] 
+  [50] Sending to: registrar@mdsuajmer.ac.in
+2026-04-28 03:24:11 [INFO   ]        From  : sj7634811@gmail.com
+2026-04-28 03:24:17 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:20 [INFO   ] 
+  [52] Sending to: registrar@nalsar.ac.in
+2026-04-28 03:24:20 [INFO   ]        From  : jain115sandeep@gmail.com
+2026-04-28 03:24:26 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:29 [INFO   ] 
+  [53] Sending to: registrar@nludelhi.ac.in
+2026-04-28 03:24:29 [INFO   ]        From  : jain200sandeep@gmail.com
+2026-04-28 03:24:35 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:38 [INFO   ] 
+  [55] Sending to: registrar@raiganjuniversity.ac.in
+2026-04-28 03:24:38 [INFO   ]        From  : jain201sandeep@gmail.com
+2026-04-28 03:24:43 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:46 [INFO   ] 
+  [58] Sending to: registrar@sdsuv.ac.in
+2026-04-28 03:24:46 [INFO   ]        From  : jain202sandeep@gmail.com
+2026-04-28 03:24:52 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:24:55 [INFO   ] 
+  [59] Sending to: registrar@skltshu.ac.in
+2026-04-28 03:24:55 [INFO   ]        From  : jain203sandeep@gmail.com
+2026-04-28 03:25:01 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:04 [INFO   ] 
+  [60] Sending to: registrar@skmu.ac.in
+2026-04-28 03:25:04 [INFO   ]        From  : jain204sandeep@gmail.com
+2026-04-28 03:25:09 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:12 [INFO   ] 
+  [61] Sending to: registrar@skuniversity.ac.in
+2026-04-28 03:25:12 [INFO   ]        From  : jain205sandeep@gmail.com
+2026-04-28 03:25:18 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:21 [INFO   ] 
+  [63] Sending to: registrar@teluguuniversity.ac.in
+2026-04-28 03:25:21 [INFO   ]        From  : jain206sandeep@gmail.com
+2026-04-28 03:25:26 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:29 [INFO   ] 
+  [64] Sending to: registrar@tnteu.ac.in
+2026-04-28 03:25:29 [INFO   ]        From  : jain207sandeep@gmail.com
+2026-04-28 03:25:35 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:38 [INFO   ] 
+  [65] Sending to: registrar@vikramuniv.ac.in
+2026-04-28 03:25:38 [INFO   ]        From  : jain208sandeep@gmail.com
+2026-04-28 03:25:44 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:47 [INFO   ] 
+  [66] Sending to: placement@aau.ac.in
+2026-04-28 03:25:47 [INFO   ]        From  : jain1001sandeep@gmail.com
+2026-04-28 03:25:53 [INFO   ]        [OK] Sent successfully
+2026-04-28 03:25:56 [INFO   ] 
+================================================================
+2026-04-28 03:25:56 [INFO   ]   Emails sent      : 20
+2026-04-28 03:25:56 [INFO   ]   Send failures    : 0
+2026-04-28 03:25:56 [INFO   ]   Bounces detected : 8
+2026-04-28 03:25:56 [INFO   ]   Human responses  : 2
+2026-04-28 03:25:56 [INFO   ] ================================================================

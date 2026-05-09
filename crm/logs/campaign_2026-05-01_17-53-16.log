@@ -1,0 +1,104 @@
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-05-01_17-53-16.log
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] ================================================================
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   Run : 2026-05-01 17:53:16
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   Mode: Send up to 20 institute(s)
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] ================================================================
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   Gmail accounts available: 32
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   Monitoring 0 'Sent' address(es)
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   No 'Sent' emails yet — skipping inbox check.
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] 
+  Bounces found   : 0
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   Human responses : 0
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] 
+[STEP 2] Sending to up to 20 institute(s)...
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]   Institutes ready: 20
+2026-05-01 17:53:16 [CAMPUS] [INFO   ] 
+  [01] Sending to: tpo.placement@iitb.ac.in
+2026-05-01 17:53:16 [CAMPUS] [INFO   ]        From [1/32 — 3.1%]: jain106sandeep@gmail.com
+2026-05-01 17:53:23 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:53:26 [CAMPUS] [INFO   ] 
+  [03] Sending to: placement@admin.iitd.ac.in
+2026-05-01 17:53:26 [CAMPUS] [INFO   ]        From [2/32 — 6.2%]: sj1799274@gmail.com
+2026-05-01 17:53:31 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:53:34 [CAMPUS] [INFO   ] 
+  [05] Sending to: iitm-ds-placement-council@study.iitm.ac.in
+2026-05-01 17:53:34 [CAMPUS] [INFO   ]        From [3/32 — 9.4%]: jain109sandeep@gmail.com
+2026-05-01 17:53:41 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:53:44 [CAMPUS] [INFO   ] 
+  [06] Sending to: balajis@ee.iitm.ac.in
+2026-05-01 17:53:44 [CAMPUS] [INFO   ]        From [4/32 — 12.5%]: jain111sandeep@gmail.com
+2026-05-01 17:53:49 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:53:52 [CAMPUS] [INFO   ] 
+  [07] Sending to: vsssandeep22@iitk.ac.in
+2026-05-01 17:53:52 [CAMPUS] [INFO   ]        From [5/32 — 15.6%]: sandeep196605@gmail.com
+2026-05-01 17:53:58 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:01 [CAMPUS] [INFO   ] 
+  [10] Sending to: placement@iitr.ac.in
+2026-05-01 17:54:01 [CAMPUS] [INFO   ]        From [6/32 — 18.8%]: jain114sandeep@gmail.com
+2026-05-01 17:54:07 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:10 [CAMPUS] [INFO   ] 
+  [12] Sending to: placement@iitg.ac.in
+2026-05-01 17:54:10 [CAMPUS] [INFO   ]        From [7/32 — 21.9%]: jain105sandeep@gmail.com
+2026-05-01 17:54:16 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:19 [CAMPUS] [INFO   ] 
+  [14] Sending to: office.placement@iith.ac.in
+2026-05-01 17:54:19 [CAMPUS] [INFO   ]        From [8/32 — 25.0%]: jain107sandeep@gmail.com
+2026-05-01 17:54:25 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:28 [CAMPUS] [INFO   ] 
+  [16] Sending to: tpo.cdc@iitbbs.ac.in
+2026-05-01 17:54:28 [CAMPUS] [INFO   ]        From [9/32 — 28.1%]: sj7634811@gmail.com
+2026-05-01 17:54:33 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:36 [CAMPUS] [INFO   ] 
+  [18] Sending to: director@iitp.ac.in
+2026-05-01 17:54:36 [CAMPUS] [INFO   ]        From [10/32 — 31.2%]: jain115sandeep@gmail.com
+2026-05-01 17:54:42 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:45 [CAMPUS] [INFO   ] 
+  [19] Sending to: placementofficer@iiti.ac.in
+2026-05-01 17:54:45 [CAMPUS] [INFO   ]        From [11/32 — 34.4%]: jain200sandeep@gmail.com
+2026-05-01 17:54:51 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:54:54 [CAMPUS] [INFO   ] 
+  [21] Sending to: hodcse@iitrpr.ac.in
+2026-05-01 17:54:54 [CAMPUS] [INFO   ]        From [12/32 — 37.5%]: jain201sandeep@gmail.com
+2026-05-01 17:55:00 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:03 [CAMPUS] [INFO   ] 
+  [22] Sending to: cds@iitgn.ac.in
+2026-05-01 17:55:03 [CAMPUS] [INFO   ]        From [13/32 — 40.6%]: jain202sandeep@gmail.com
+2026-05-01 17:55:09 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:12 [CAMPUS] [INFO   ] 
+  [23] Sending to: tpo@itbhu.ac.in
+2026-05-01 17:55:12 [CAMPUS] [INFO   ]        From [14/32 — 43.8%]: jain203sandeep@gmail.com
+2026-05-01 17:55:19 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:22 [CAMPUS] [INFO   ] 
+  [24] Sending to: placements@iitjammu.ac.in
+2026-05-01 17:55:22 [CAMPUS] [INFO   ]        From [15/32 — 46.9%]: jain204sandeep@gmail.com
+2026-05-01 17:55:28 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:31 [CAMPUS] [INFO   ] 
+  [25] Sending to: priyanka.naga@iitdh.ac.in
+2026-05-01 17:55:31 [CAMPUS] [INFO   ]        From [16/32 — 50.0%]: jain205sandeep@gmail.com
+2026-05-01 17:55:36 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:39 [CAMPUS] [INFO   ] 
+  [27] Sending to: administration@iitbhilai.ac.in
+2026-05-01 17:55:39 [CAMPUS] [INFO   ]        From [17/32 — 53.1%]: jain206sandeep@gmail.com
+2026-05-01 17:55:45 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:48 [CAMPUS] [INFO   ] 
+  [28] Sending to: placement@iittp.ac.in
+2026-05-01 17:55:48 [CAMPUS] [INFO   ]        From [18/32 — 56.2%]: jain207sandeep@gmail.com
+2026-05-01 17:55:54 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:55:57 [CAMPUS] [INFO   ] 
+  [29] Sending to: placements@iitgoa.ac.in
+2026-05-01 17:55:57 [CAMPUS] [INFO   ]        From [19/32 — 59.4%]: jain208sandeep@gmail.com
+2026-05-01 17:56:03 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:56:06 [CAMPUS] [INFO   ] 
+  [30] Sending to: tepvnit_ngp@vnit.ac.in
+2026-05-01 17:56:06 [CAMPUS] [INFO   ]        From [20/32 — 62.5%]: jain1001sandeep@gmail.com
+2026-05-01 17:56:12 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-01 17:56:15 [CAMPUS] [INFO   ] 
+================================================================
+2026-05-01 17:56:15 [CAMPUS] [INFO   ]   Emails sent      : 20
+2026-05-01 17:56:15 [CAMPUS] [INFO   ]   Send failures    : 0
+2026-05-01 17:56:15 [CAMPUS] [INFO   ]   Bounces detected : 0
+2026-05-01 17:56:15 [CAMPUS] [INFO   ]   Human responses  : 0
+2026-05-01 17:56:15 [CAMPUS] [INFO   ] ================================================================

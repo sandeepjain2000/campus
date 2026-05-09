@@ -1,0 +1,569 @@
+=================================================================
+  scrape_university_titles.py  v1.0.0
+  Started : 2026-04-26 23:41:47
+=================================================================
+  Input   : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\httpakubihar.ac.in.txt
+  Output  : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\university_titles_20260426_234147.csv
+=================================================================
+  Found 502 URLs to process
+
+  Starting Chrome …
+  Chrome started.
+
+[  1/502] ✓  .:Official Website : Aryabhatta Knowledge University, Patna:.  ←  http://akubihar.ac.in/
+[  2/502] ✓  Andhra Kesari University; AK Uni  ←  http://andhrakesariuniversity.in/
+[  3/502] ✓  Bihar Agricultural University  ←  http://bausabour.ac.in/
+[  4/502] ✓  BEU Bihar  ←  http://beu-bih.ac.in/BEUP/Default.aspx
+[  5/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://bhatkhandemusic.edu.in/
+[  6/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://bnmu.bih.nic.in/
+[  7/502] ✓  Home | Bhagat Phool Singh Mahila Vishwavidyalaya  ←  http://bpsmv.digitaluniversity.ac/
+[  8/502] ⚠  TIMEOUT  ←  http://bssrv.ac.in/
+[  9/502] ✓  Banda University of Agriculture and Technology | Banda University – Of  ←  http://buat.edu.in/
+[ 10/502] ✓  Bihar University Of Health Sciences  ←  http://buhs.ac.in/
+[ 11/502] ✓  Coochbehar Panchanan Barma University :: Home  ←  http://cbpbu.ac.in/
+[ 12/502] ✓  Home | Chaudhary Devi Lal University  ←  http://cdlu.digitaluniversity.ac/
+[ 13/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://cgkv.ac.in/
+[ 14/502] ✓  CSJM University, Kanpur | Chhatrapati Shahu Ji Maharaj University, Kan  ←  http://csjmu.ac.in/
+[ 15/502] ✓  Raja Shankar Shah University – Chhindwara Madhya Pradesh  ←  http://cuc.ac.in/
+[ 16/502] ✓  DR. B.R. AMBEDKAR NATIONAL LAW UNIVERSITY, SONEPAT - (Established unde  ←  http://dbranlu.ac.in/
+[ 17/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://dial.gov.in/
+[ 18/502] ⚠  TIMEOUT  ←  http://digitalindia.gov.in/
+[ 19/502] ✓  DAMODARAM SANJIVAYYA NATIONAL LAW UNIVERSITY  ←  http://dsnlu.ac.in/
+[ 20/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://evisitors.nic.in/
+[ 21/502] ✓  Gurugram University  ←  http://gurugramuniversity.ac.in/
+[ 22/502] ✗  ERROR: Message: unknown error: net::ERR_CONNECTION_REFUSED  ←  http://hillagric.ac.in:1003/cskhpau/
+[ 23/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://http//mpsvvujjain.org
+[ 24/502] ✓  HOME | IITRAM  ←  http://iitram.ac.in/
+[ 25/502] ✓  JAWAHARLAL NEHRU ARCHITECTURE AND FINE ARTS UNIVERSITY – HYDERABAD – T  ←  http://jnafau.ac.in/
+[ 26/502] ✓  Home | Krantiguru Shyamji Krishna Verma Kachchh University  ←  http://kskvku.digitaluniversity.ac/
+[ 27/502] ✓  Home - Krantisurya Tantya Bhil University, Khargone  ←  http://ktbuniv.ac.in/
+[ 28/502] ✓  Thunchath Ezhuthachan Malayalam University  ←  http://malayalamuniversity.edu.in/en/
+[ 29/502] ✓  Welcome to Maharshi Dayanand Saraswati University, Ajmer Maharshi Daya  ←  http://mdsuajmer.ac.in/
+[ 30/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://mmhapu.bih.nic.in/
+[ 31/502] ✓  MyGov.in | MyGov: A Platform for Citizen Engagement towards Good Gover  ←  http://mygov.in/
+[ 32/502] ✓  Home | NALSAR UNIVERSITY OF LAW  ←  http://nalsar.ac.in/
+[ 33/502] ✓  Home - National Law University Delhi  ←  http://nludelhi.ac.in/
+[ 34/502] ✓  Periyar University, Salem  ←  http://periyaruniversity.ac.in/
+[ 35/502] ✓  Raiganj University  ←  http://raiganjuniversity.ac.in/
+[ 36/502] ✓  Raja Mansingh Tomar Music and Arts University, Gwalior  ←  http://rmtmusicandartsuniversity.com/
+[ 37/502] ✓  rrgu.org - Schemes, News, Finance  ←  http://rrgu.org/
+[ 38/502] ✓  RUSA – Rashtriya Uchchatar Shiksha Abhiyan  ←  http://rusa.nic.in/
+[ 39/502] ✓  Sri Dev Suman Uttarakhand University  ←  http://sdsuv.ac.in/
+[ 40/502] ✓  403 Forbidden  ←  http://skltshu.ac.in/
+[ 41/502] ✓  Sido Kanhu Murmu University, Dumka  ←  http://skmu.ac.in/
+[ 42/502] ✓  Sri Krishnadevaraya University  ←  http://skuniversity.ac.in/
+[ 43/502] ⚠  TIMEOUT  ←  http://ssuhs.in/
+[ 44/502] ✓  Punyashlok Ahilyadevi Holkar Solapur University  ←  http://su.digitaluniversity.ac/
+[ 45/502] ✓  SPRTU – Suravaram Pratapa Reddy Telugu University  ←  http://teluguuniversity.ac.in/
+[ 46/502] ✓  Tamil Nadu Teachers Education University  ←  http://tnteu.ac.in/
+[ 47/502] ✓  Home  ←  http://vikramuniv.ac.in/
+[ 48/502] ⚠  TIMEOUT  ←  http://wbuafscl.ac.in/
+[ 49/502] ✓  AAU  ←  http://www.aau.ac.in/
+[ 50/502] ⚠  TIMEOUT  ←  http://www.aau.in/
+[ 51/502] ✓  अटल बिहारी हिन्दी विश्वविद्यालय  ←  http://www.abvhv.edu.in/
+[ 52/502] ✓  ALIAH UNIVERSITY  ←  http://www.aliah.ac.in/
+[ 53/502] ✓  Annamalai University  ←  http://www.annamalaiuniversity.ac.in/
+[ 54/502] ✓  Anna University, Chennai  ←  http://www.annauniv.edu/
+[ 55/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.apsurewa.nic.in/
+[ 56/502] ✓  astu.org.in  ←  http://www.astu.org.in/
+[ 57/502] ✓  Old Page  ←  http://www.aud.ac.in/
+[ 58/502] ✓  Gujarat Ayurved University  ←  http://www.ayurveduniversity.edu.in/
+[ 59/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.bamu.net/
+[ 60/502] ✓  Dr. Babasaheb Ambedkar Open University  ←  http://www.baou.edu.in/
+[ 61/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.baujharkhand.org/
+[ 62/502] ✓  Home  ←  http://www.bckv.edu.in/
+[ 63/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.becs.ac.in/
+[ 64/502] ✓  BFUHS - Baba Farid University of Health Sciences, Faridkot  ←  http://www.bfuhs.ac.in/
+[ 65/502] ⚠  TIMEOUT  ←  http://www.bhattadevuniversity.ac.in/
+[ 66/502] ✓  Privacy error  ←  http://www.bhojvirtualuniversity.com/
+[ 67/502] ✓  Examination Portal of Babasaheb Bhimrao Ambedkar Bihar University, Muz  ←  http://www.brabu.net/
+[ 68/502] ✓  Dr. B. R. Ambedkar University, Srikakulam - BrauWebrp  ←  http://www.brau.edu.in/
+[ 69/502] ✓  Bharathiar University | Bharathiar University  ←  http://www.b-u.ac.in/
+[ 70/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.bubhopal.nic.in/
+[ 71/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.bvvjdp.ac.in/
+[ 72/502] ✓  University of Calcutta  ←  http://www.caluniv.ac.in/
+[ 73/502] ✓  Download in progress  ←  http://www.cghealthuniv.com/
+[ 74/502] ✓  Chanakya National Law University  ←  http://www.cnlu.ac.in/
+[ 75/502] ✓  Home - Chaudhary Ranbir Singh University JindChaudhary Ranbir Singh Un  ←  http://www.crsujind.org/
+[ 76/502] ✓  Chandrashekhar Azad University of Agriculture and Technology | Kanpur  ←  http://www.csauk.ac.in/
+[ 77/502] ✓  Chhattisgarh Swami Vivekanand Technical University – CSVTU  ←  http://www.csvtu.ac.in/
+[ 78/502] ✓  Devi Ahilya Vishwavidyalaya  ←  http://www.dauniv.ac.in/
+[ 79/502] ✓  Davangere University - Davangere University  ←  http://www.davangereuniversity.ac.in/
+[ 80/502] ✓  Dr.Babasaheb Ambedkar Technological University – डॉ. बाबासाहेब आंबेडकर  ←  http://www.dbatu.ac.in/
+[ 81/502] ✓  Dr. Balasaheb Sawant Konkan Krishi Vidyapeeth, Dapoli (Agricultural Un  ←  http://www.dbskkv.org/
+[ 82/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.dcrusm.ac.in/
+[ 83/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.ddugu.edu.in/
+[ 84/502] ✓  Welcome | Diamond Harbour Women´s University  ←  http://www.dhwu.ac.in/
+[ 85/502] ✓  Dibrugarh University  ←  http://www.dibru.ac.in/
+[ 86/502] ✓  Dravidian University, Kuppam | Official Website  ←  http://www.dravidianuniversity.ac.in/
+[ 87/502] ⚠  TIMEOUT  ←  http://www.dtu.ac.in/
+[ 88/502] ✓  Hemchand Yadav Vishwavidyalaya, Durg  ←  http://www.durguniversity.ac.in/
+[ 89/502] ✓  GADVASU - Guru Angad Dev Veterinary And Animal Sciences University  ←  http://www.gadvasu.in/
+[ 90/502] ✓  Gauhati University | A NAAC A+ Grade Institution  ←  http://www.gauhati.ac.in/
+[ 91/502] ⚠  TIMEOUT  ←  http://www.gbpuat.ac.in/
+[ 92/502] ✓  Gangadhar Meher University, Sambalpur, Odisha  ←  http://www.gmuniversity.ac.in/
+[ 93/502] ✓  Gujarat National Law University  ←  http://www.gnlu.ac.in/
+[ 94/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.goidirectory.gov.in/index.php
+[ 95/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.gov.ua.nic.in/doonuniversity
+[ 96/502] ✓  Welcome to Gujarat Technological University  ←  http://www.gtu.ac.in/
+[ 97/502] ✓  Justin tv izle, Canlı maç izle, justintvizlesene.co  ←  http://www.guts.education/
+[ 98/502] ✓  Chaudhary Charan Singh Haryana Agricultural University, Hisar  ←  http://www.hau.ac.in/
+[ 99/502] ✓  Hidayatullah National Law University | HNLU  ←  http://www.hnlu.ac.in/
+[100/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.igdtuw.ac.in/
+[101/502] ✓  IIIT-Delhi  ←  http://www.iiitd.ac.in/
+[102/502] ✓  Indira Kala Sangeet Vishwavidyalaya  ←  http://www.iksv.ac.in/
+[103/502] ✓  Guru Gobind Singh Indraprastha University (Official Website)  ←  http://www.ipu.ac.in/
+[104/502] ✓  Privacy error  ←  http://www.islamicuniversity.edu.in/
+[105/502] ✓  Privacy error  ←  http://www.jammuuniversity.ac.in/
+[106/502] ✓  Junagadh Agricultural University  ←  http://www.jau.in/
+[107/502] ✓  Home  ←  http://www.jiwaji.edu/
+[108/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.jnkvv.nic.in/
+[109/502] ✓  Jawaharlal Nehru Technological University, Anantapur  ←  http://www.jntua.ac.in/
+[110/502] ✓  Jawaharlal Nehru Technological University Hyderabad  ←  http://www.jntuh.ac.in/
+[111/502] ✓  Jawaharlal Nehru Technological University Kakinada  ←  http://www.jntuk.edu.in/
+[112/502] ✓  Just a moment...  ←  http://www.jnvu.co.in/
+[113/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.jrdu.ac.in/
+[114/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.jrrsanskrituniversity.ac.in/
+[115/502] ✓  Kakatiya University, Warangal-506009, Telangana, India.  ←  http://www.kakatiya.ac.in/
+[116/502] ✓  Kannada University  ←  http://www.kannadauniversity.org/
+[117/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.kannuruiversity.ac.in/
+[118/502] ✓  Kerala Agricultural University | Towards excellence in Agricultural Ed  ←  http://www.kau.edu/
+[119/502] ✓  Kumar Bhaskar Varma Sanskrit and Ancient Studies University  ←  http://www.kbvsasun.ac.in/
+[120/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.keralauniversity.edu/
+[121/502] ✓  (no title)  ←  http://www.kgmcindia.edu/
+[122/502] ✓  Krishna Kanta Handiqui State Open University  ←  http://www.kkhsou.in/
+[123/502] ✓  University of Kalyani  ←  http://www.klyuniv.ac.in/
+[124/502] ✓  KNU | Homepage  ←  http://www.knu.ac.in/
+[125/502] ✓  Krishna University  ←  http://www.kru.ac.in/
+[126/502] ✓  Just a moment...  ←  http://www.ksdsu.edu.in/
+[127/502] ✓  Privacy error  ←  http://www.ksu.ac.in/
+[128/502] ⚠  TIMEOUT  ←  http://www.kswu.ac.in/
+[129/502] ✓  Welcome to Kushabhau Thakre Patrakarita Avam Jansanchar Vishwavidyalay  ←  http://www.ktujm.ac.in/
+[130/502] ✓  ಕರ್ನಾಟಕ ವಿಶ್ವವಿದ್ಯಾಲಯ ಧಾರವಾಡ  ←  http://www.kud.ac.in/
+[131/502] ✓  KUHS - Home  ←  http://www.kuhs.ac.in/
+[132/502] ✓  Kurukshetra University  ←  http://www.kuk.ac.in/
+[133/502] ✓  Welcome To The Official Website Of Kumaun University, Nainital | Kumau  ←  http://www.kunainital.ac.in/
+[134/502] ⚠  TIMEOUT  ←  http://www.kuvempu.ac.in/eng/index.php
+[135/502] ✓  University of Lucknow  ←  http://www.lkouniv.ac.in/
+[136/502] ⚠  TIMEOUT  ←  http://www.mafsu.in/
+[137/502] ✓  Welcome To Magadh University Bodh Gaya (Bihar)  ←  http://www.magadhuniversity.ac.in/
+[138/502] ⚠  TIMEOUT  ←  http://www.mangaloreuniversity.ac.in/
+[139/502] ✓  Makhanlal Chaturvedi Rashtriya Patrakarita Evam Sanchar Vishwavidyalay  ←  http://www.mcu.ac.in/
+[140/502] ✓  Mahatma Gandhi Kashi Vidyapith: Home Page  ←  http://www.mgkvp.ac.in/
+[141/502] ✓  Welcome to MG University, Kottayam  ←  http://www.mgu.ac.in/
+[142/502] ✓  Mahatma Gandhi University, Nalgonda(TS) - Home  ←  http://www.mguniversity.ac.in/
+[143/502] ✓  Welcome to Mohanlal Sukhadia University - Udaipur  ←  http://www.mlsu.ac.in/
+[144/502] ⚠  TIMEOUT  ←  http://www.mmmut.ac.in/
+[145/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.mpkv.mah.nic.in/
+[146/502] ✓  Maharana Pratap University of Agriculture & Technology  ←  http://www.mpuat.ac.in/
+[147/502] ✓  MTU  ←  http://www.mtu.ac.in/
+[148/502] ✗  ERROR: Alert Text: As we are up with our new website. Would you like to have a quick ov  ←  http://www.mu.ac.in/
+[149/502] ✓  MUC - Manipur University of Culture  ←  http://www.muc.ac.in/
+[150/502] ✓  muhsnashik.com  ←  http://www.muhsnashik.com/
+[151/502] ✓  Music University  ←  http://www.musicuniversity.ac.in/
+[152/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.nalandaopenuniversity.com,/
+[153/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.nannayauniversity.info/
+[154/502] ✓  University of North Bengal  ←  http://www.nbu.ac.in/
+[155/502] ✓  Nanaji Deshmukh Veterinary Science University, Jabalpur  ←  http://www.ndvsu.org/
+[156/502] ✓  HNGU-Hemchandracharya North Gujarat University,Patan  ←  http://www.ngu.ac.in/
+[157/502] ✓  NIMS - Nizam's Institute Of Medical Sciences  ←  http://www.nims.edu.in/
+[158/502] ✓  The National Law Institute University Bhopal | NLIU Bhopal  ←  http://www.nliu.ac.in/
+[159/502] ⚠  TIMEOUT  ←  http://www.nls.ac.in/
+[160/502] ✓  NLUJAA  ←  http://www.nluassam.ac.in/
+[161/502] ✓  National Law University  ←  http://www.nlujodhpur.ac.in/
+[162/502] ✓  Home - NLUO | National Law University Odisha  ←  http://www.nluo.ac.in/
+[163/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.nmu.ac.in/
+[164/502] ✓  Welcome To Maharaja Sriram Chandra Bhanja Deo University (Erstwhile No  ←  http://www.nou.nic.in/
+[165/502] ✓  Home Page | Nilamber-Pitamber University.  ←  http://www.npu.ac.in/
+[166/502] ✓  404 Not Found  ←  http://www.nrupathungauniversityblr.ac.in/index.php
+[167/502] ✓  (no title)  ←  http://www.nuals.ac.in/
+[168/502] ✓  Law NUJS Kolkata WB National University of Juridical Sciences India We  ←  http://www.nujs.edu/
+[169/502] ✓  Privacy error  ←  http://www.nvsp.in/
+[170/502] ✓  Palamuru University - Public university situated in Mahbubnagar in Tel  ←  http://www.palamuruuniversity.ac.in/
+[171/502] ✓  Coming Soon  ←  http://www.patnauniversity.ac.in/
+[172/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.pdkv.mah.nic.in/
+[173/502] ✓  PROFESSOR JAYASHANKAR TELANGANA AGRICULTURAL UNIVERSITY  ←  http://www.pjtsau.edu.in/
+[174/502] ✓  SARDAR PATEL UNIVERSITY OF POLICE,SECURITY AND CRIMINAL JUSTICE, JODHP  ←  http://www.policeuniversity.ac.in/
+[175/502] ✓  ::: PATLIPUTRA UNIVERSITY, PATNA :::  ←  http://www.ppup.ac.in/
+[176/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.presiuniv.ac.in/
+[177/502] ✓  Pt. Ravishankar Shukla University  ←  http://www.prsu.ac.in/
+[178/502] ✓  Pt. Sundarlal Sharma (Open) University Chhattisgarh, Bilaspur  ←  http://www.pssou.ac.in/
+[179/502] ✓  Official Website of Panjab University Chandigarh ਪੰਜਾਬ ਯੂਨੀਵਰਸਿਟੀ ਚੰਡੀ  ←  http://www.puchd.ac.in/
+[180/502] ✓  Punjabi University, Patiala | Higher Education Institute | NAAC "A" Gr  ←  http://www.punjabiuniversity.ac.in/
+[181/502] ✓  Official Website of Ranchi University, Ranchi  ←  http://www.ranchiuniversity.ac.in/
+[182/502] ✓  Welcome To Swami Kheswanand Rajasthan Agriculture University, Bikaner  ←  http://www.raubikaner.org/
+[183/502] ✓  Rabindra Bharati University  ←  http://www.rbu.ac.in/
+[184/502] ✓  Rani Durgavati Vishwavidyalaya, Jabalpur M.P.  ←  http://www.rdunijbpin.org/
+[185/502] ✓  Rajiv Gandhi National University of Law Punjab [ACCREDITED BY NAAC WTH  ←  http://www.rgnul.ac.in/
+[186/502] ✓  Rajiv Gandhi University of Health Sciences Karnataka  ←  http://www.rguhs.ac.in/
+[187/502] ✓  Rajiv Gandhi University of Knowledge Technologies - Andhra Pradesh  ←  http://www.rgukt.in/
+[188/502] ✓  Dr. Rammanohar Lohia Avadh University  ←  http://www.rmlau.ac.in/
+[189/502] ✓  Just a moment...  ←  http://www.rtu.ac.in/
+[190/502] ✓  Rajasthan University of Health Sciences  ←  http://www.ruhsraj.org/
+[191/502] ✓  (no title)  ←  http://www.sanchiuniv.edu.in/
+[192/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.sanskrituni.digitaluniversity.ac,/
+[193/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.sasu.ac.in/
+[194/502] ✓  Home  ←  http://www.satavahana.ac.in/
+[195/502] ✓  We've Moved!  ←  http://www.saurashtrauniversity.edu/
+[196/502] ✓  Region's Best State University for Engineering, Research, Agriculture,  ←  http://www.sbssugsp.ac.in/
+[197/502] ✓  SDAU | Sardarkrushinagar Dantiwada Agricultural University  ←  http://www.sdau.edu.in/
+[198/502] ✓  Sant Gadge Baba Amravati University, Amravati, Maharashtra, India  ←  http://www.sgbau.ac.in/
+[199/502] ✗  ERROR: Message: unknown error: net::ERR_CONNECTION_REFUSED  ←  http://www.sjsv.nic.in/
+[200/502] ⚠  TIMEOUT  ←  http://www.skbu.ac.in/
+[201/502] ✓  Sher-e-Kashmir University of Agricultural Sciences and Technology Kash  ←  http://www.skuastkashmir.ac.in/
+[202/502] ✓  ravin-obu.com  ←  http://www.smvdu.net.in/
+[203/502] ✓  Home | SNDT Women's University  ←  http://www.sndt.ac.in/
+[204/502] ✓  Sri Padmavati Mahila Visvavidyalayam – Women's University  ←  http://www.spmvv.ac.in/
+[205/502] ✓  Sardar Patel University, The public state university  ←  http://www.spuvvn.edu/
+[206/502] ✓  Why Mental Health Courses Matter in Australia's Community Services Sec  ←  http://www.srtmun.org/
+[207/502] ✓  Sree Sankaracharya University of Sanskrit  ←  http://www.ssus.ac.in/
+[208/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.svbpmeerut.ac.in/
+[209/502] ✓  Home Page :: Sri Venkateswara Vedic University ::  ←  http://www.svvedicuniversity.ac.in/
+[210/502] ✓  TANUVAS  ←  http://www.tanuvas.ac.in/
+[211/502] ⚠  TIMEOUT  ←  http://www.telanganauniversity.ac.in/
+[212/502] ✓  How to Book Bus Tickets in Colombia | .Map  ←  http://www.tmbu.org/
+[213/502] ✓  Tamil Nadu Agricultural University – The Tamil Nadu Agricultural Unive  ←  http://www.tnau.ac.in/
+[214/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.tnfu.org.in/university/wp/
+[215/502] ✓  Kannada Home Page - Tumkur University Tumkur  ←  http://www.tumkuruniversity.ac.in/
+[216/502] ⚠  TIMEOUT  ←  http://www.uasbangalore.edu.in/
+[217/502] ✓  University of Agricultural Sciences, Dharwad  ←  http://www.uasd.edu/
+[218/502] ✓  Home | Uttarakhand Ayurved University  ←  http://www.uau.ac.in/
+[219/502] ✓  University Of Gour Banga  ←  http://www.ugb.ac.in/
+[220/502] ✓  Welcome to UGC, New Delhi, India  ←  http://www.ugc.ac.in/
+[221/502] ✓  University Grants Commission - NET  ←  http://www.ugcnetonline.in/
+[222/502] ⚠  TIMEOUT  ←  http://www.uktech.ac.in/
+[223/502] ✓  Goa University, Goa's premier University, Post Graduation, PH.D, B.SC,  ←  http://www.unigoa.ac.in/
+[224/502] ✓  Savitribai Phule Pune University, One of the Premier Universities in I  ←  http://www.unipune.ac.in/
+[225/502] ✓  Shivaji University, Kolhapur - One of the oldest and premier Universit  ←  http://www.unishivaji.ac.in/
+[226/502] ✓  Welcome to University of Madras  ←  http://www.unom.ac.in/
+[227/502] ✓  University of Calicut  ←  http://www.uoc.ac.in/
+[228/502] ✓  UOU | Uttarakhand Open University  ←  http://www.uou.ac.in/
+[229/502] ✓  UPRTOU  ←  http://www.uprtou.ac.in/
+[230/502] ✓  duvasu mathura – Pandit Deen Dayal Upadhyaya Pashu Chikitsa Vigyan Vis  ←  http://www.upvetuniv.edu.in/
+[231/502] ⚠  TIMEOUT  ←  http://www.utkaluniversity.ac.in/
+[232/502] ✓  UTKAL UNIVERSITY OF CULTURE  ←  http://www.uuc.ac.in/
+[233/502] ✓  (no title)  ←  http://www.vbspu.ac.in/index
+[234/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.vbu.co.in/
+[235/502] ✓  Assam Veterinary and Fishery University | Official Website  ←  http://www.vetbifg.ac.in/
+[236/502] ✓  Vidyasagar University - Excellence through Inclusive Education - Vidya  ←  http://www.vidyasagar.ac.in/
+[237/502] ✓  VIMSAR  ←  http://www.vimsar.ac.in/
+[238/502] ✓  VMOU | Vardhman Mahaveer Open University, Kota  ←  http://www.vmou.ac.in/
+[239/502] ✓  VNSGU | Home  ←  http://www.vnsgu.ac.in/
+[240/502] ✓  Vijayanagara Sri Krishnadevaraya University | Vijayanagara Sri Krishna  ←  http://www.vskub.ac.in/
+[241/502] ✓  VSSUT::Veer Surendra Sai University of Technology  ←  http://www.vssut.ac.in/
+[242/502] ✓  403 Forbidden  ←  http://www.vtu.ac.in/
+[243/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.wbsubregistration.org/
+[244/502] ✓  Home | Dr YS Parmar University of Horticulture & Forestry  ←  http://www.yspuniversity.ac.in/
+[245/502] ✓  Home | Atal Bihari Vajpayee Medical University UP  ←  https://abvmuup.edu.in/
+[246/502] ✓  Dr.Abdul Haq Urdu University  ←  https://ahuuk.ac.in/
+[247/502] ⚠  TIMEOUT  ←  https://aktu.ac.in/
+[248/502] ✓  Atal Medical and Research University, Himachal Pradesh  ←  https://amruhp.ac.in/
+[249/502] ✓  Welcome to The Baba Amte Divyang University, Jaipur  ←  https://amtedivyanguniversity.ac.in/
+[250/502] ✓  ANGRAU  ←  https://angrau.ac.in/
+[251/502] ✓  ANDHRA PRADESH FISHERIES UNIVERSITY  ←  https://apfu.ap.gov.in/
+[252/502] ✓  Assam Skill University  ←  https://asu.ac.in/
+[253/502] ⚠  TIMEOUT  ←  https://aukota.org/
+[254/502] ✓  Assam Women's University  ←  https://awu.ac.in/
+[255/502] ✓  BankuraUniversity | BKU | Welcome to Bankura University,Bankura Univer  ←  https://bankurauniv.ac.in/
+[256/502] ✓  Dr. B. R. Ambedkar School of Economics University, Bengaluru – A Unita  ←  https://base.ac.in/
+[257/502] ✓  Binod Bihari Mahto Koyalanchal University  ←  https://bbmku.ac.in/
+[258/502] ✓  Dr Manmohan Singh Bengaluru City University Bengaluru | Bengaluru City  ←  https://bcu.ac.in/
+[259/502] ✓  Baba Ghulam Shah Badshah University, Rajouri, (J&K)  ←  https://bgsbu.ac.in/
+[260/502] ✓  Bihar State Sports Authority (BSSA) | Sports Development and Training   ←  https://biharsports.org/
+[261/502] ✓  BMTU  ←  https://bmtu.ac.in/
+[262/502] ✓  Privacy error  ←  https://brauss.in/
+[263/502] ✓  Bikaner Technical University  ←  https://btu.ac.in/
+[264/502] ✓  Bodoland University | Kokrajhar  ←  https://buniv.edu.in/
+[265/502] ✓  Chaudhary Bansi Lal University – Bhiwani, Haryana-127021  ←  https://cblu.ac.in/
+[266/502] ✓  Cluster University Of Jammu  ←  https://clujammu.ac.in/
+[267/502] ✓  Welcome to Cotton University, Assam, India, A State University  ←  https://cottonuniversity.ac.in/
+[268/502] ✓  Home | Open Government Data (OGD) Platform India  ←  https://data.gov.in/
+[269/502] ✓  Dr Bhimrao Ambedkar University, Agra – Dr Bhimrao Ambedkar University,  ←  https://dbrau.ac.in/
+[270/502] ✓  Dharanidhar University  ←  https://dduniversity.ac.in/
+[271/502] ✓  Distance Education Bureau | UGC  ←  https://deb.ugc.ac.in/
+[272/502] ✓  (no title)  ←  https://deemed.ugc.ac.in/
+[273/502] ⚠  TIMEOUT  ←  https://dlcsupva.ac.in/
+[274/502] ✓  Delhi Pharmaceutical Sciences and Research University  ←  https://dpsru.edu.in/
+[275/502] ✓  drntruhs.in  ←  https://drntruhs.in/
+[276/502] ✓  Dr.Y.S.R. Horticultural University  ←  https://drysrhu.ap.gov.in/
+[277/502] ✓  DSEU  ←  https://dseu.ac.in/
+[278/502] ✓  Dr Shakuntala Misra National Rehabilitation University  ←  https://dsmru.up.nic.in/
+[279/502] ✓  DR. SARVEPALLI RADHAKRISHNAN RAJASTHAN AYURVED UNIVERSITY, JODHPUR  ←  https://dsrrauexam.org/
+[280/502] ✓  Digital University Kerala – Curating a responsible digital world  ←  https://duk.ac.in/
+[281/502] ⚠  TIMEOUT  ←  https://email.gov.in/
+[282/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://eng.bangaloreuniversity.ac.in/
+[283/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://eng.bnu.ac.in/
+[284/502] ✓  eProcurement System Government of India  ←  https://eprocure.gov.in/eprocure/app
+[285/502] ✓  Privacy error  ←  https://fmuniversity.nic.in/
+[286/502] ✓  Gujarat Biotechnology University – Gujarat Biotechnology University  ←  https://gbu.gujarat.gov.in/Announcements.php
+[287/502] ✓  MGCGV - Mahatma Gandhi Chitrakoot Gramodaya Vishwavidyalaya  ←  https://gramodayachitrakoot.ac.in/
+[288/502] ✓  Guru Ravidas Ayurved University  ←  https://graupunjab.org/
+[289/502] ✓  Gulbarga University  ←  https://gug.ac.in/
+[290/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://gurucharancollege.ac.in/
+[291/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://harichandguruchanduniversity.com/
+[292/502] ✓  HBTU  ←  https://hbtu.ac.in/
+[293/502] ✓  हरिदेव जोशी विश्वविद्यालय  ←  https://hju.ac.in/
+[294/502] ✓  Himachal Pradesh University  ←  https://hpuniv.ac.in/
+[295/502] ✓  IGKV - Indira Gandhi Krishi Vishwavidyalaya  ←  https://igkv.ac.in/
+[296/502] ✓  Home | National Portal of India  ←  https://india.gov.in/
+[297/502] ✓  Institutions of Eminence  ←  https://ioe.ugc.ac.in/
+[298/502] ✓  A premier institution of higher education in Jorhat, celebrated its “P  ←  https://jbu.ac.in/
+[299/502] ✓  HTTP Status 404 – Not Found  ←  https://jharkhanduniversities.nic.in/jsou/home
+[300/502] ✓  Home - Kaushal Vidya Entrepreneurship, Digital and Skill University  ←  https://jhkaushalvedskill.university/
+[301/502] ⚠  TIMEOUT  ←  https://jncu.ac.in/
+[302/502] ✓  Privacy error  ←  https://jntukucev.ac.in/
+[303/502] ✓  Jai Prakash University | JPU Official Website  ←  https://jpv.ac.in/
+[304/502] ✓  Maa Manikeswari University, Bhawanipatna  ←  https://kalahandiuniversity.ac.in/
+[305/502] ✓  Kaushalya- The Skill University  ←  https://kaushalyaskilluniversity.ac.in/
+[306/502] ✓  Khwaja Moinuddin Chishti Language University, Lucknow  ←  https://kmclu.ac.in/
+[307/502] ✓  Home - KALOJI NARAYANA RAO UNIVERSITY OF HEALTH SCIENCES  ←  https://knruhs.telangana.gov.in/
+[308/502] ✓  क’क्राझार मुलुगसोलोंसालि – KOKRAJHAR UNIVERSITY  ←  https://kokrajharuniversity.ac.in/
+[309/502] ✓  ಕರ್ನಾಟಕ ರಾಜ್ಯ ಕಾನೂನು ವಿಶ್ವವಿದ್ಯಾಲಯ, ಹುಬ್ಬಳ್ಳಿ - Index  ←  https://kslu.karnataka.gov.in/
+[310/502] ✓  KSOU Mysuru  ←  https://ksoumysuru.ac.in/
+[311/502] ✓  MGRDPRU – Mahatma Gandhi Rural Development & Panchyat Raj University,   ←  https://ksrdpru.ac.in/
+[312/502] ✓  Krantivir Tatya Tope Vishwavidyalay  ←  https://kttv.edu.in/
+[313/502] ✓  APJ Abdul Kalam Technological University  ←  https://ktu.edu.in/
+[314/502] ✓  ಕೊಡಗು ವಿಶ್ವವಿದ್ಯಾಲಯ - Index  ←  https://kuk.karnataka.gov.in/en
+[315/502] ✓  KHALLIKOTE UNITARY UNIVERSITY  ←  https://kuu.ac.in/
+[316/502] ✓  LIT University, Nagpur  ←  https://litu.edu.in/
+[317/502] ✓  Just a moment...  ←  https://lnmu.ac.in/
+[318/502] ✓  Madhabdev University  ←  https://madhabdevuniversity.ac.in/
+[319/502] ⚠  TIMEOUT  ←  https://makautwb.ac.in/
+[320/502] ✓  Home | Maharaja Bir Bikram University  ←  https://mbbuniversity.ac.in/
+[321/502] ✓  The Maharaja Bhupinder Singh Punjab Sports University  ←  https://mbspsu.ac.in/en/
+[322/502] ✓  MCBU - Maharaja Chhatrasal Bundelkhand University  ←  https://mcbu.ac.in/
+[323/502] ✓  Maharani Cluster University - Index  ←  https://mcu.karnataka.gov.in/english
+[324/502] ✓  Maharaja Ganga Singh University  ←  https://mgsubikaner.ac.in/
+[325/502] ✓  Mahatma Gandhi Udyanikee Evam Vanikee Vishwavidyalaya  ←  https://mguvv.ac.in/
+[326/502] ✓  MADURAI KAMARAJ UNIVERSITY - OFFICIAL SITE  ←  https://mkuniversity.ac.in/
+[327/502] ✓  Madusudan Law University - Madusudan Law University  ←  https://mlu.ac.in/
+[328/502] ✓  Maharashtra National Law University Mumbai  ←  https://mnlumumbai.edu.in/
+[329/502] ✓  Madhya Pradesh Medical Science University, Hindi medical education  ←  https://mpmsu.edu.in/
+[330/502] ✓  Maa Pateswari University, Balrampur | State University in Uttar Prades  ←  https://mpublp.ac.in/
+[331/502] ⚠  TIMEOUT  ←  https://mrsptu.ac.in/
+[332/502] ✓  Maharaja Surajmal Brij University – Best University in Rajasthan, Indi  ←  https://msbrijuniversity.ac.in/
+[333/502] ✓  Maharaja Suhel Dev University, Azamgarh | Azamgarh University  ←  https://msdsu.ac.in/
+[334/502] ✓  RT-MSSU - RT-MSSU  ←  https://mssu.ac.in/
+[335/502] ✓  Maa Vindhyavasini University, Mirzapur  ←  https://mvvu.ac.in/
+[336/502] ✓  ANU - ACHARYA NAGARJUNA UNIVERSITY  ←  https://nagarjunauniversity.ac.in/
+[337/502] ✓  Rashtrasant Tukadoji Maharaj Nagpur University  ←  https://nagpuruniversity.ac.in/
+[338/502] ⚠  TIMEOUT  ←  https://nau.in/
+[339/502] ✓  North Lakhimpur University | A Public State University established by   ←  https://nlc.ac.in/
+[340/502] ✓  NUSRL, Ranchi, National University of Study and Research in Law  ←  https://nusrlranchi.ac.in/
+[341/502] ✓  Odia University | Satyabadi  ←  https://odiauniversity.ac.in/
+[342/502] ⚠  TIMEOUT  ←  https://ouat.ac.in/
+[343/502] ✓  Parichay Login  ←  https://parichay.nic.in/
+[344/502] ✓  CPGRAMS-Home  ←  https://pgportal.gov.in/
+[345/502] ✓  Prof. Rajendra Singh (Rajju Bhaiya) University, Prayagraj  ←  https://prsuniv.ac.in/
+[346/502] ✓  Jagat Guru Nanak Dev Punjab State Open University, Patiala  ←  https://psou.ac.in/
+[347/502] ✓  Pandit Shambhu Nath Shukla Vishwavidyalaya  ←  https://ptsnsuniversity.ac.in/
+[348/502] ✓  I.K. Gujral Punjab Technical University Jalandhar – Punjab – One of th  ←  https://ptu.ac.in/
+[349/502] ✓  Rajendra University  ←  https://rajendrauniversity.ac.in/
+[350/502] ✓  RAJUVAS – Rajasthan University of Veterinary and Animal Sciences  ←  https://rajuvas.ac.in/
+[351/502] ✓  RAJUVAS – Rajasthan University of Veterinary and Animal Sciences  ←  https://rajuvas.org/
+[352/502] ✓  Rani Awantibai Lodhi University, Sagar | Official Website  ←  https://ralvv.mponline.gov.in/
+[353/502] ✓  Ravenshaw University.Ravenshaw is the oldest institution of higher edu  ←  https://ravenshawuniversity.ac.in/
+[354/502] ✓  Rama Devi Women's University,Bhubaneswar  ←  https://rdwu.ac.in/
+[355/502] ✓  Raja Mahendra Pratap Singh University, Aligarh  ←  https://rmpssu.ac.in/
+[356/502] ✓  :: RTI Request & Appeal Management Information System(RTI-MIS) ::  ←  https://rtionline.gov.in/RTIMIS/login/index.php
+[357/502] ✓  Shaheed Bhagat Singh State University  ←  https://sbssu.ac.in/
+[358/502] ✓  Privacy error  ←  https://scholarship.canarabank.in/
+[359/502] ✓  Shri Govind Guru University Godhra  ←  https://sggu.ac.in/
+[360/502] ✓  Swarnim Gujarat Sports University : Sports, Youth and Culture Activiti  ←  https://sgsu.gujarat.gov.in/
+[361/502] ✓  PDUSU, Sikar  ←  https://shekhauni.ac.in/
+[362/502] ✓  Home | Sibsagar University  ←  https://sibsagaruniversity.ac.in/
+[363/502] ✓  Sri Karan Narendra Agriculture University, Jobner  ←  https://sknau.ac.in/
+[364/502] ⚠  TIMEOUT  ←  https://snpv.ac.in/
+[365/502] ✓  Home - Shree Somnath Sanskrit University  ←  https://sssu.ac.in/
+[366/502] ✓  SVIMS Tirupati - Sri Venkateswara Institute of Medical Sciences  ←  https://svimstpt.ap.nic.in/
+[367/502] ✓  Sri Venkateswara University, Tirupati – NAAC A+ Accredited  ←  https://svuniversity.edu.in/
+[368/502] ✓  The Tamil Nadu Dr.J Jayalalithaa Music and Fine Arts University  ←  https://tnjjmfau.in/
+[369/502] ✓  Tamil Nadu National Law University  ←  https://tnnlu.ac.in/
+[370/502] ✓  Making Agricultural Education Innovative  ←  https://uahs.edu.in/?lang=en
+[371/502] ✓  University Activity Monitoring Portal  ←  https://uamp.ugc.ac.in/
+[372/502] ✓  University of Agricultural Sciences, Mandya  ←  https://uasmandya.co.in/
+[373/502] ✓  यूजीसी, नई दिल्ली, भारत में आपका स्वागत है  ←  https://ugchindi.ugc.ac.in/
+[374/502] ✓  Koppal University – Shikshanave Shakti  ←  https://universitysolutions.in/kop/index.php
+[375/502] ✓  University of Ladakh  ←  https://uol.ac.in/
+[376/502] ✓  UVCE - 100 Years - First Engineering College of Karnataka  ←  https://uvce.ac.in/
+[377/502] ✓  Veer Kunwar Singh University, Ara, Bihar – 802301  ←  https://vksu.ac.in/
+[378/502] ✓  Vikrama Simhapuri University, Nellore - 524 320, Andhra Pradesh, India  ←  https://vsu.ac.in/
+[379/502] ✓  Vishvakarma Skills University  ←  https://vsuraj.ac.in/
+[380/502] ✓  Warana University  ←  https://waranauniversity.org/
+[381/502] ✓  WBUHS  ←  https://wbuhs.ac.in/
+[382/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.aicte-india.org/
+[383/502] ✓  Official Website of Alagappa University  ←  https://www.alagappauniversity.ac.in/
+[384/502] ✓  Welcome to Dr. Bhimrao Ambedkar Law University, Jaipur, Rajasthan  ←  https://www.alujaipur.ac.in/
+[385/502] ✓  Andhra University | Visakhapatnam  ←  https://www.andhrauniversity.edu.in/
+[386/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.argucom.ac.in/
+[387/502] ✓  AUJ | Agriculture University, Jodhpur  ←  https://www.aujodhpur.ac.in/
+[388/502] ✓  Bihar Animal Sciences University | बिहार पशु विज्ञान विश्वविद्यालय  ←  https://www.basu.org.in/
+[389/502] ✓  Official Website of Bharathidasan University, Tiruchirappalli, Tamil N  ←  https://www.bdu.ac.in/
+[390/502] ✓  ಬಾಗಲಕೋಟ ವಿಶ್ವವಿದ್ಯಾಲಯ - Index  ←  https://www.bgku.ac.in/
+[391/502] ✓  ABVV-Official Website of Atal Bihari Vajpayee Vishwavidyalaya, Bilaspu  ←  https://www.bilaspuruniversity.ac.in/
+[392/502] ✓  Mitratogel: Link Mitratogel Resmi, Login Daftar Mitra Togel, Situs Mit  ←  https://www.biswabanglabiswabidyalay.org/
+[393/502] ✓  BKNMU  ←  https://www.bknmu.edu.in/
+[394/502] ✓  Bongaigaon University  ←  https://www.bongaigaoncollege.ac.in/
+[395/502] ✓  BPUT || Biju Patnaik University of Technology  ←  https://www.bput.ac.in/
+[396/502] ✓  BRAOU WEBSITE  ←  https://www.braou.ac.in/
+[397/502] ⚠  TIMEOUT  ←  https://www.bujhansi.ac.in/
+[398/502] ✓  Berhampur University  ←  https://www.buodisha.edu.in/
+[399/502] ✓  The University of Burdwan  ←  https://www.buruniv.ac.in/
+[400/502] ✓  Chaudhary Charan Singh University, Meerut  ←  https://www.ccsuniversity.ac.in/
+[401/502] ✓  OUTR  ←  https://www.cet.edu.in/
+[402/502] ✓  COEP Technological University (COEP Tech)  ←  https://www.coeptech.ac.in/
+[403/502] ✓  Children’s Research University | Official University Website  ←  https://www.cugujarat.ac.in/
+[404/502] ✓  WELCOME TO CLUSTERUNIVERSITY:: KURNOOL  ←  https://www.cuklap.ac.in/
+[405/502] ✓  Cochin University of Science and Technology  ←  https://www.cusat.ac.in/
+[406/502] ✓  Cluster University Srinagar  ←  https://www.cusrinagar.edu.in/
+[407/502] ✓  DHARMSINH DESAI UNIVERSITY  ←  https://www.ddu.ac.in/
+[408/502] ✓  Home Page | Dr. Ram Manohar Lohia Institute of Medical Sciences (DR.RM  ←  https://www.drrmlims.ac.in/
+[409/502] ✓  प्रमुख पहल | भारत सरकार, शिक्षा मंत्रालय  ←  https://www.education.gov.in/
+[410/502] ✓  Department of Higher Education | Government of India, Ministry of Educ  ←  https://www.education.gov.in/institutions-national-importance
+[411/502] ✓  Gautam Buddha University  ←  https://www.gbu.ac.in/
+[412/502] ✓  Govind Guru Tribal University, Banswara  ←  https://www.ggtu.ac.in/
+[413/502] ⚠  TIMEOUT  ←  https://www.gjust.ac.in/
+[414/502] ✓  Guru Nanak Dev University  ←  https://www.gndu.ac.in/
+[415/502] ✓  Gujarat University  ←  https://www.gujaratuniversity.ac.in/
+[416/502] ⚠  TIMEOUT  ←  https://www.hbsu.ac.in/
+[417/502] ✓  Himachal Pradesh Technical University  ←  https://www.himtu.ac.in/
+[418/502] ✓  Hindi University  ←  https://www.hindiuniv.ac.in/
+[419/502] ✓  Himachal Pradesh National Law University  ←  https://www.hpnlu.ac.in/
+[420/502] ⚠  TIMEOUT  ←  https://www.hsncu.edu.in/
+[421/502] ✓  igu.ac.in | 521: Web server is down  ←  https://www.igu.ac.in/
+[422/502] ✓  IIIT Bhubaneswar  ←  https://www.iiit-bh.ac.in/
+[423/502] ✓  Welcome to IIIT NAYA RAIPUR | IIIT NAYA RAIPUR  ←  https://www.iiitnr.ac.in/
+[424/502] ✓  (no title)  ←  https://www.iite.ac.in/
+[425/502] ✓  UGC India (@ugcindia) • Instagram photos and videos  ←  https://www.instagram.com/ugcindia/
+[426/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.jadavpuruniversity.in/
+[427/502] ✓  ಮುಖಪುಟ | ಕರ್ನಾಟಕ ಜಾನಪದ ವಿಶ್ವವಿದ್ಯಾಲಯ  ←  https://www.janapadauniversity.ac.in/
+[428/502] ✓  J.C. Bose University of Sciences and Technology, YMCA Faridabad  ←  https://www.jcboseust.ac.in/
+[429/502] ✓  Home  ←  https://www.kamdhenuuni.edu.in/
+[430/502] ✓  Home | Kanyashree University  ←  https://www.kanyashreeuniversity.in/
+[431/502] ✓  Khangchendzonga State University  ←  https://www.ksus.ac.in/
+[432/502] ✓  Welcome to Karnataka Veterinary, Animal and Fisheries University  ←  https://www.kvafsu.edu.in/
+[433/502] ✓  Kerala Veterinary and animal Sciences University  ←  https://www.kvasu.ac.in/
+[434/502] ✓  Lala Lajpat Rai University of Veterinary & Animal Sciences (LUVAS)  ←  https://www.luvas.edu.in/
+[435/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.mandyauniversity.ac.in/
+[436/502] ✓  MBM UNIVERSITY  ←  https://www.mbm.ac.in/
+[437/502] ✓  Privacy error  ←  https://www.mdurohtak.ac.in/
+[438/502] ✓  Home | Mahatma Gandhi University, Purba Medinipur  ←  https://www.mguwb.org.in/
+[439/502] ✓  Maharana Pratap Horticultural University, Karnal (MHU)  ←  https://www.mhu.ac.in/
+[440/502] ✓  Mahatma Jyotiba Phule Rohilkhand University, Bareilly  ←  https://www.mjpru.ac.in/
+[441/502] ✓  Maharaja Krishnakumarsinhji Bhavnagar University  ←  https://www.mkbhavuni.edu.in/mkbhavuniweb/
+[442/502] ✓  MAHARASHTRA NATIONAL LAW UNIVERSITY - Chhatrapati Sambhajinagar  ←  https://www.mnlua.ac.in/
+[443/502] ✓  Mother Teresa Women's University Kodaikanal  ←  https://www.motherteresawomenuniv.ac.in/
+[444/502] ✓  Home  ←  https://www.mpdnlu.ac.in/
+[445/502] ✓  The Maharaja Sayajirao University of Baroda  ←  https://www.msubaroda.ac.in/
+[446/502] ✓  Manonmaniam Sundaranar University  ←  https://www.msuniv.ac.in/
+[447/502] ✓  :: Official Website | Munger University ::  ←  https://www.mungeruniversity.ac.in/
+[448/502] ✓  Home | Majuli University of Culture  ←  https://www.muoc.ac.in/
+[449/502] ✓  MVSU  ←  https://www.mvsu.ac.in/#/
+[450/502] ✓  Acharya Narendra Deva University of Agriculture and Technology  ←  https://www.nduat.org/
+[451/502] ✓  NLU Meghalaya - Excellence in Legal Education | Transforming Future Le  ←  https://www.nlumeg.ac.in/
+[452/502] ✓  National Law University, Nagpur  ←  https://www.nlunagpur.ac.in/
+[453/502] ✓  National Law University, Tripura | Agartala  ←  https://www.nlutripura.ac.in/
+[454/502] ✓  Nowgong College  ←  https://www.nowgongcollege.edu.in/
+[455/502] ✓  Homepage | NSUT  ←  https://www.nsut.ac.in/
+[456/502] ✓  National Testing Agency  ←  https://www.nta.ac.in/
+[457/502] ✓  Osmania University  ←  https://www.osmania.ac.in/
+[458/502] ✓  Odisha State Open University, Sambalpur  ←  https://www.osou.ac.in/
+[459/502] ✓  Veeranari Chakali Ilamma Women's University  ←  https://www.oucwkoti.ac.in/
+[460/502] ✓  Odisha University of Health Sciences  ←  https://www.ouhs.ac.in/
+[461/502] ✓  Punjab Agricultural University - PAU - Ludhiana, Punjab - INDIA - pau.  ←  https://www.pau.edu/
+[462/502] ✓  PUDUCHERRY TECHNOLOGICAL UNIVERSITY  ←  https://www.ptuniv.edu.in/
+[463/502] ✓  Purnea University, Purnia  ←  https://www.purneauniversity.ac.in/
+[464/502] ✓  Rayalaseema University  ←  https://www.rayalaseemauniversity.ac.in/
+[465/502] ✓  Rajiv Gandhi Proudyogiki Vishwavidyalaya  ←  https://www.rgpv.ac.in/
+[466/502] ✓  Rajiv Gandhi University of Knowledge Technologies - Andhra Pradesh  ←  https://www.rgukt.in/
+[467/502] ⚠  TIMEOUT  ←  https://www.rpnlup.ac.in/
+[468/502] ✓  Raj Rishi Bhartrihari Matsya University, Alwar  ←  https://www.rrbmuniv.ac.in/
+[469/502] ✓  Rabindranath Thakur Vishwavidyalaya  ←  https://www.rtuassam.ac.in/
+[470/502] ✓  EDP Section  ←  https://www.sanskritcollegeanduniversity.org.in/
+[471/502] ✓  Sant Gahira Guru Vishwavidyalaya,sarguja(C.G.)  ←  https://www.sggcg.in/
+[472/502] ✓  Major Dhyanchand Sports University  ←  https://www.sportsuniup.com/
+[473/502] ⚠  TIMEOUT  ←  https://www.ssvv.ac.in/
+[474/502] ⚠  TIMEOUT  ←  https://www.suksn.edu.in/
+[475/502] ✓  Sambalpur University, Jyoti Vihar, Burla, Sambalpur, Odisha  ←  https://www.suniv.ac.in/
+[476/502] ✓  Home | Sports University of Haryana  ←  https://www.suoh.ac.in/
+[477/502] ✓  Sri Venkateswara Veterinary University | శ్రీ వెంకటేశ్వరా పశువైద్య విశ  ←  https://www.svvu.edu.in/
+[478/502] ✓  :~: Tamil University :~:  ←  https://www.tamiluniversity.ac.in/
+[479/502] ✓  The Tamil Nadu Dr.Ambedkar Law University  ←  https://www.tndalu.ac.in/
+[480/502] ✓  One moment, please...  ←  https://www.tnmgrmu.ac.in/
+[481/502] ✓  Tamil Nadu Open University  ←  https://www.tnou.ac.in/
+[482/502] ✓  TAMILNADU - SPORTS-UNIVERSITY  ←  https://www.tnpesu.org/
+[483/502] ✓  Veterinary University Home  ←  https://www.tsvu.nic.in/
+[484/502] ✓  Just a moment...  ←  https://www.tvu.edu.in/
+[485/502] ✓  Uttar Banga Krishi Viswavidyalaya – Home  ←  https://www.ubkv.ac.in/
+[486/502] ✓  (no title)  ←  https://www.uhsbagalkot.edu.in/
+[487/502] ✓  Karmaveer Bhaurao Patil University, Satara  ←  https://www.unikbp.ac.in/
+[488/502] ✓  UOM | UNIVERSITY OF MYSORE | ಮೈಸೂರು ವಿಶ್ವವಿದ್ಯಾನಿಲಯ  ←  https://www.uni-mysore.ac.in/
+[489/502] ⚠  TIMEOUT  ←  https://www.uniraj.ac.in/
+[490/502] ✓  Welcome to University of Kota, Kota  ←  https://www.uok.ac.in/
+[491/502] ✓  University of Kashmir  ←  https://www.uok.edu.in/
+[492/502] ✓  Uttar Pradesh University of Medical Sciences | Best Government Medical  ←  https://www.upums.ac.in/
+[493/502] ✓  Uttarakhand Sanskrit University  ←  https://www.usvv.ac.in/
+[494/502] ✓  VCSG Uttarakhand University of Horticulture and forestry  ←  https://www.uuhf.ac.in/
+[495/502] ✓  Vikramdev University  ←  https://www.vikramdevuniversity.ac.in/
+[496/502] ✓  Vasantrao Naik Marathwada Krishi Vidyapeeth Parbhani  ←  https://www.vnmkv.ac.in/
+[497/502] ✓  Netaji Subhas Open University  ←  https://www.wbnsou.ac.in/
+[498/502] ✗  ERROR: Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.wbuttepa.ac.in/
+[499/502] ✓  Welcome to Yashwantrao Chavan Maharashtra Open University  ←  https://www.ycmou.ac.in/
+[500/502] ✓  YSRAFU – Dr. YSR ARCHITECTURE AND FINE ARTS UNIVERSITY  ←  https://www.ysrafu.ac.in/
+[501/502] ✓  Young India Skills University  ←  https://yisu.in/
+[502/502] ✓  Yogi Vemana University (YVU), Kadapa | Official Website  ←  https://yvu.edu.in/
+
+  Chrome closed.
+
+=================================================================
+  SCRIPT REPORT: scrape_university_titles.py  v1.0.0
+=================================================================
+  Start Time  : 2026-04-26 23:41:47
+  End Time    : 2026-04-27 00:29:55
+  Duration    : 2887.9 seconds
+  Outcome     : SUCCESS
+-----------------------------------------------------------------
+  Summary:
+    Total URLs   : 502
+    Successful   : 418
+    Failed/Timeout: 84
+    Skipped      : 0
+    CSV saved to : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\university_titles_20260426_234147.csv
+-----------------------------------------------------------------
+  Errors (84):
+    [5] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://bhatkhandemusic.edu.in/
+    [6] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://bnmu.bih.nic.in/
+    [8] TIMEOUT: http://bssrv.ac.in/
+    [13] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://cgkv.ac.in/
+    [17] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://dial.gov.in/
+    [18] TIMEOUT: http://digitalindia.gov.in/
+    [20] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://evisitors.nic.in/
+    [22] Message: unknown error: net::ERR_CONNECTION_REFUSED: http://hillagric.ac.in:1003/cskhpau/
+    [23] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://http//mpsvvujjain.org
+    [30] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://mmhapu.bih.nic.in/
+    [43] TIMEOUT: http://ssuhs.in/
+    [48] TIMEOUT: http://wbuafscl.ac.in/
+    [50] TIMEOUT: http://www.aau.in/
+    [55] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.apsurewa.nic.in/
+    [59] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bamu.net/
+    [61] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.baujharkhand.org/
+    [63] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.becs.ac.in/
+    [65] TIMEOUT: http://www.bhattadevuniversity.ac.in/
+    [70] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bubhopal.nic.in/
+    [71] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bvvjdp.ac.in/
+    [82] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.dcrusm.ac.in/
+    [83] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.ddugu.edu.in/
+    [87] TIMEOUT: http://www.dtu.ac.in/
+    [91] TIMEOUT: http://www.gbpuat.ac.in/
+    [94] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.goidirectory.gov.in/index.php
+    [95] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.gov.ua.nic.in/doonuniversity
+    [100] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.igdtuw.ac.in/
+    [108] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jnkvv.nic.in/
+    [113] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jrdu.ac.in/
+    [114] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jrrsanskrituniversity.ac.in/
+    … and 54 more (see log)
+=================================================================
+
+  Log    : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\scrape_university_titles_20260426_234147.log
+  Report : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\scrape_university_titles_report_20260426_234147.txt
+  CSV    : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\university_titles_20260426_234147.csv

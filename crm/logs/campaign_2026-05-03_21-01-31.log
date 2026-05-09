@@ -1,0 +1,378 @@
+2026-05-03 21:01:31 [CAMPUS] [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-05-03_21-01-31.log
+2026-05-03 21:01:31 [CAMPUS] [INFO   ] ================================================================
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   Run : 2026-05-03 21:01:31
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   Mode: Send up to 20 institute(s)
+2026-05-03 21:01:31 [CAMPUS] [INFO   ] ================================================================
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   Gmail accounts available: 32
+2026-05-03 21:01:31 [CAMPUS] [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   Monitoring 49 'Sent' address(es)
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   Checking 20/32 accounts (only those that sent emails; order follows JSON)
+2026-05-03 21:01:31 [CAMPUS] [INFO   ] 
+  [1/32 — 3.1%] > jain106sandeep@gmail.com
+2026-05-03 21:01:31 [CAMPUS] [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-05-03 21:01:37 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:01:37 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:01:37 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:01:40 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 5 UID(s); tagged NON-CAMPUS from headers: 1
+2026-05-03 21:01:40 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 5 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:01:40 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch 5 UID(s))
+2026-05-03 21:01:40 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch received, processing…)
+2026-05-03 21:01:40 [CAMPUS] [INFO   ]     … 1/5 full fetch
+2026-05-03 21:01:48 [CAMPUS] [INFO   ]     … 5/5 full fetch
+2026-05-03 21:01:50 [CAMPUS] [INFO   ]   Pass 2 done — 5 full fetch(es) finished.
+2026-05-03 21:01:50 [CAMPUS] [INFO   ] 
+  [2/32 — 6.2%] > sj1799274@gmail.com
+2026-05-03 21:01:50 [CAMPUS] [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-05-03 21:01:56 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 9 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:01:56 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 9 email(s) (batch size 40)...
+2026-05-03 21:01:56 [CAMPUS] [INFO   ]     … 9/9 headers
+2026-05-03 21:01:57 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 8 UID(s); tagged NON-CAMPUS from headers: 1
+2026-05-03 21:01:57 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 8 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:01:57 [CAMPUS] [INFO   ]     … 8/8 full fetch (batch 8 UID(s))
+2026-05-03 21:01:58 [CAMPUS] [INFO   ]     … 8/8 full fetch (batch received, processing…)
+2026-05-03 21:01:58 [CAMPUS] [INFO   ]     … 1/8 full fetch
+2026-05-03 21:02:02 [CAMPUS] [INFO   ]     … 5/8 full fetch
+2026-05-03 21:02:05 [CAMPUS] [INFO   ]     … 8/8 full fetch
+2026-05-03 21:02:06 [CAMPUS] [INFO   ]   Pass 2 done — 8 full fetch(es) finished.
+2026-05-03 21:02:07 [CAMPUS] [INFO   ] 
+  [3/32 — 9.4%] > jain109sandeep@gmail.com
+2026-05-03 21:02:07 [CAMPUS] [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-05-03 21:02:14 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:02:14 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:02:14 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:02:17 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 5 UID(s); tagged NON-CAMPUS from headers: 1
+2026-05-03 21:02:17 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 5 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:02:17 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch 5 UID(s))
+2026-05-03 21:02:17 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch received, processing…)
+2026-05-03 21:02:17 [CAMPUS] [INFO   ]     … 1/5 full fetch
+2026-05-03 21:02:23 [CAMPUS] [INFO   ]     … 5/5 full fetch
+2026-05-03 21:02:25 [CAMPUS] [INFO   ]   Pass 2 done — 5 full fetch(es) finished.
+2026-05-03 21:02:25 [CAMPUS] [INFO   ] 
+  [4/32 — 12.5%] > jain111sandeep@gmail.com
+2026-05-03 21:02:25 [CAMPUS] [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-05-03 21:02:30 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 12 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:02:30 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 12 email(s) (batch size 40)...
+2026-05-03 21:02:30 [CAMPUS] [INFO   ]     … 12/12 headers
+2026-05-03 21:02:31 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 12 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:02:31 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 12 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:02:31 [CAMPUS] [INFO   ]     … 8/12 full fetch (batch 8 UID(s))
+2026-05-03 21:02:32 [CAMPUS] [INFO   ]     … 8/12 full fetch (batch received, processing…)
+2026-05-03 21:02:32 [CAMPUS] [INFO   ]     … 1/12 full fetch
+2026-05-03 21:02:36 [CAMPUS] [INFO   ]     … 5/12 full fetch
+2026-05-03 21:02:40 [CAMPUS] [INFO   ]     … 12/12 full fetch (batch 4 UID(s))
+2026-05-03 21:02:40 [CAMPUS] [INFO   ]     … 12/12 full fetch (batch received, processing…)
+2026-05-03 21:02:42 [CAMPUS] [INFO   ]     … 10/12 full fetch
+2026-05-03 21:02:44 [CAMPUS] [INFO   ]     … 12/12 full fetch
+2026-05-03 21:02:45 [CAMPUS] [INFO   ]   Pass 2 done — 12 full fetch(es) finished.
+2026-05-03 21:02:45 [CAMPUS] [INFO   ] 
+  [5/32 — 15.6%] > sandeep196605@gmail.com
+2026-05-03 21:02:45 [CAMPUS] [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-05-03 21:02:52 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 7 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:02:52 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 7 email(s) (batch size 40)...
+2026-05-03 21:02:52 [CAMPUS] [INFO   ]     … 7/7 headers
+2026-05-03 21:02:54 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 1
+2026-05-03 21:02:54 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:02:54 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:02:55 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:02:55 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:03:02 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:03:03 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:03:04 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:03:05 [CAMPUS] [INFO   ] 
+  [6/32 — 18.8%] > jain114sandeep@gmail.com
+2026-05-03 21:03:05 [CAMPUS] [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-05-03 21:03:12 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:03:12 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:03:12 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:03:12 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:03:12 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:03:12 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:03:13 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:03:13 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:03:20 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:03:21 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:03:23 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:03:24 [CAMPUS] [INFO   ] 
+  [7/32 — 21.9%] > jain105sandeep@gmail.com
+2026-05-03 21:03:24 [CAMPUS] [INFO   ]   Connecting to jain105sandeep@gmail.com …
+2026-05-03 21:03:28 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 9 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:03:28 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 9 email(s) (batch size 40)...
+2026-05-03 21:03:28 [CAMPUS] [INFO   ]     … 9/9 headers
+2026-05-03 21:03:31 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 3
+2026-05-03 21:03:31 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:03:31 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:03:33 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:03:33 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:03:36 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:03:37 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:03:38 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:03:38 [CAMPUS] [INFO   ] 
+  [8/32 — 25.0%] > jain107sandeep@gmail.com
+2026-05-03 21:03:38 [CAMPUS] [INFO   ]   Connecting to jain107sandeep@gmail.com …
+2026-05-03 21:03:43 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:03:43 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:03:43 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:03:44 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 5 UID(s); tagged NON-CAMPUS from headers: 1
+2026-05-03 21:03:44 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 5 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:03:44 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch 5 UID(s))
+2026-05-03 21:03:45 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch received, processing…)
+2026-05-03 21:03:45 [CAMPUS] [INFO   ]     … 1/5 full fetch
+2026-05-03 21:03:48 [CAMPUS] [INFO   ]     … 5/5 full fetch
+2026-05-03 21:03:49 [CAMPUS] [INFO   ]   Pass 2 done — 5 full fetch(es) finished.
+2026-05-03 21:03:49 [CAMPUS] [INFO   ] 
+  [9/32 — 28.1%] > sj7634811@gmail.com
+2026-05-03 21:03:49 [CAMPUS] [INFO   ]   Connecting to sj7634811@gmail.com …
+2026-05-03 21:03:53 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 8 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:03:53 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 8 email(s) (batch size 40)...
+2026-05-03 21:03:53 [CAMPUS] [INFO   ]     … 8/8 headers
+2026-05-03 21:03:54 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 7 UID(s); tagged NON-CAMPUS from headers: 1
+2026-05-03 21:03:54 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 7 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:03:54 [CAMPUS] [INFO   ]     … 7/7 full fetch (batch 7 UID(s))
+2026-05-03 21:03:55 [CAMPUS] [INFO   ]     … 7/7 full fetch (batch received, processing…)
+2026-05-03 21:03:55 [CAMPUS] [INFO   ]     … 1/7 full fetch
+2026-05-03 21:04:02 [CAMPUS] [INFO   ]     … 5/7 full fetch
+2026-05-03 21:04:05 [CAMPUS] [INFO   ]     … 7/7 full fetch
+2026-05-03 21:04:06 [CAMPUS] [INFO   ]   Pass 2 done — 7 full fetch(es) finished.
+2026-05-03 21:04:06 [CAMPUS] [INFO   ] 
+  [10/32 — 31.2%] > jain115sandeep@gmail.com
+2026-05-03 21:04:06 [CAMPUS] [INFO   ]   Connecting to jain115sandeep@gmail.com …
+2026-05-03 21:04:12 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:04:12 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:04:12 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:04:12 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:04:12 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:04:12 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:04:13 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:04:13 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:04:13 [CAMPUS] [INFO   ]   [BOUNCE->FAILURE] tnpoffice@iiitsonepat.ac.in
+2026-05-03 21:04:18 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:04:19 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:04:20 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:04:21 [CAMPUS] [INFO   ] 
+  [11/32 — 34.4%] > jain200sandeep@gmail.com
+2026-05-03 21:04:21 [CAMPUS] [INFO   ]   Connecting to jain200sandeep@gmail.com …
+2026-05-03 21:04:25 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 5 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:04:25 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 5 email(s) (batch size 40)...
+2026-05-03 21:04:25 [CAMPUS] [INFO   ]     … 5/5 headers
+2026-05-03 21:04:25 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 5 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:04:25 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 5 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:04:25 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch 5 UID(s))
+2026-05-03 21:04:28 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch received, processing…)
+2026-05-03 21:04:28 [CAMPUS] [INFO   ]     … 1/5 full fetch
+2026-05-03 21:04:32 [CAMPUS] [INFO   ]     … 5/5 full fetch
+2026-05-03 21:04:33 [CAMPUS] [INFO   ]   Pass 2 done — 5 full fetch(es) finished.
+2026-05-03 21:04:33 [CAMPUS] [INFO   ] 
+  [12/32 — 37.5%] > jain201sandeep@gmail.com
+2026-05-03 21:04:33 [CAMPUS] [INFO   ]   Connecting to jain201sandeep@gmail.com …
+2026-05-03 21:04:38 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 7 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:04:38 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 7 email(s) (batch size 40)...
+2026-05-03 21:04:38 [CAMPUS] [INFO   ]     … 7/7 headers
+2026-05-03 21:04:41 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 5 UID(s); tagged NON-CAMPUS from headers: 2
+2026-05-03 21:04:41 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 5 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:04:41 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch 5 UID(s))
+2026-05-03 21:04:42 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch received, processing…)
+2026-05-03 21:04:42 [CAMPUS] [INFO   ]     … 1/5 full fetch
+2026-05-03 21:04:47 [CAMPUS] [INFO   ]     … 5/5 full fetch
+2026-05-03 21:04:49 [CAMPUS] [INFO   ]   Pass 2 done — 5 full fetch(es) finished.
+2026-05-03 21:04:49 [CAMPUS] [INFO   ] 
+  [13/32 — 40.6%] > jain202sandeep@gmail.com
+2026-05-03 21:04:49 [CAMPUS] [INFO   ]   Connecting to jain202sandeep@gmail.com …
+2026-05-03 21:04:53 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 5 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:04:53 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 5 email(s) (batch size 40)...
+2026-05-03 21:04:53 [CAMPUS] [INFO   ]     … 5/5 headers
+2026-05-03 21:04:54 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 5 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:04:54 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 5 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:04:54 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch 5 UID(s))
+2026-05-03 21:04:55 [CAMPUS] [INFO   ]     … 5/5 full fetch (batch received, processing…)
+2026-05-03 21:04:55 [CAMPUS] [INFO   ]     … 1/5 full fetch
+2026-05-03 21:05:00 [CAMPUS] [INFO   ]     … 5/5 full fetch
+2026-05-03 21:05:01 [CAMPUS] [INFO   ]   Pass 2 done — 5 full fetch(es) finished.
+2026-05-03 21:05:01 [CAMPUS] [INFO   ] 
+  [14/32 — 43.8%] > jain203sandeep@gmail.com
+2026-05-03 21:05:01 [CAMPUS] [INFO   ]   Connecting to jain203sandeep@gmail.com …
+2026-05-03 21:05:07 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:05:07 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:05:07 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:05:07 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:05:07 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:05:07 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:05:08 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:05:08 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:05:14 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:05:15 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:05:17 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:05:17 [CAMPUS] [INFO   ] 
+  [15/32 — 46.9%] > jain204sandeep@gmail.com
+2026-05-03 21:05:17 [CAMPUS] [INFO   ]   Connecting to jain204sandeep@gmail.com …
+2026-05-03 21:05:22 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 3 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:05:22 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 3 email(s) (batch size 40)...
+2026-05-03 21:05:22 [CAMPUS] [INFO   ]     … 3/3 headers
+2026-05-03 21:05:23 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 3 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:05:23 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 3 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:05:23 [CAMPUS] [INFO   ]     … 3/3 full fetch (batch 3 UID(s))
+2026-05-03 21:05:24 [CAMPUS] [INFO   ]     … 3/3 full fetch (batch received, processing…)
+2026-05-03 21:05:24 [CAMPUS] [INFO   ]     … 1/3 full fetch
+2026-05-03 21:05:27 [CAMPUS] [INFO   ]     … 3/3 full fetch
+2026-05-03 21:05:28 [CAMPUS] [INFO   ]   Pass 2 done — 3 full fetch(es) finished.
+2026-05-03 21:05:28 [CAMPUS] [INFO   ] 
+  [16/32 — 50.0%] > jain205sandeep@gmail.com
+2026-05-03 21:05:28 [CAMPUS] [INFO   ]   Connecting to jain205sandeep@gmail.com …
+2026-05-03 21:05:33 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:05:33 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:05:33 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:05:34 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:05:34 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:05:34 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:05:34 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:05:34 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:05:38 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:05:39 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:05:40 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:05:40 [CAMPUS] [INFO   ] 
+  [17/32 — 53.1%] > jain206sandeep@gmail.com
+2026-05-03 21:05:40 [CAMPUS] [INFO   ]   Connecting to jain206sandeep@gmail.com …
+2026-05-03 21:05:45 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 4 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:05:45 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 4 email(s) (batch size 40)...
+2026-05-03 21:05:45 [CAMPUS] [INFO   ]     … 4/4 headers
+2026-05-03 21:05:46 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 4 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:05:46 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 4 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:05:46 [CAMPUS] [INFO   ]     … 4/4 full fetch (batch 4 UID(s))
+2026-05-03 21:05:47 [CAMPUS] [INFO   ]     … 4/4 full fetch (batch received, processing…)
+2026-05-03 21:05:47 [CAMPUS] [INFO   ]     … 1/4 full fetch
+2026-05-03 21:05:49 [CAMPUS] [INFO   ]     … 4/4 full fetch
+2026-05-03 21:05:50 [CAMPUS] [INFO   ]   Pass 2 done — 4 full fetch(es) finished.
+2026-05-03 21:05:51 [CAMPUS] [INFO   ] 
+  [18/32 — 56.2%] > jain207sandeep@gmail.com
+2026-05-03 21:05:51 [CAMPUS] [INFO   ]   Connecting to jain207sandeep@gmail.com …
+2026-05-03 21:05:55 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 6 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:05:55 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 6 email(s) (batch size 40)...
+2026-05-03 21:05:55 [CAMPUS] [INFO   ]     … 6/6 headers
+2026-05-03 21:05:55 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 6 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:05:55 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 6 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:05:55 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch 6 UID(s))
+2026-05-03 21:05:56 [CAMPUS] [INFO   ]     … 6/6 full fetch (batch received, processing…)
+2026-05-03 21:05:56 [CAMPUS] [INFO   ]     … 1/6 full fetch
+2026-05-03 21:06:00 [CAMPUS] [INFO   ]     … 5/6 full fetch
+2026-05-03 21:06:01 [CAMPUS] [INFO   ]     … 6/6 full fetch
+2026-05-03 21:06:02 [CAMPUS] [INFO   ]   Pass 2 done — 6 full fetch(es) finished.
+2026-05-03 21:06:02 [CAMPUS] [INFO   ] 
+  [19/32 — 59.4%] > jain208sandeep@gmail.com
+2026-05-03 21:06:02 [CAMPUS] [INFO   ]   Connecting to jain208sandeep@gmail.com …
+2026-05-03 21:06:08 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 4 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:06:08 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 4 email(s) (batch size 40)...
+2026-05-03 21:06:08 [CAMPUS] [INFO   ]     … 4/4 headers
+2026-05-03 21:06:09 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 4 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:06:09 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 4 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:06:09 [CAMPUS] [INFO   ]     … 4/4 full fetch (batch 4 UID(s))
+2026-05-03 21:06:09 [CAMPUS] [INFO   ]     … 4/4 full fetch (batch received, processing…)
+2026-05-03 21:06:09 [CAMPUS] [INFO   ]     … 1/4 full fetch
+2026-05-03 21:06:14 [CAMPUS] [INFO   ]     … 4/4 full fetch
+2026-05-03 21:06:15 [CAMPUS] [INFO   ]   Pass 2 done — 4 full fetch(es) finished.
+2026-05-03 21:06:15 [CAMPUS] [INFO   ] 
+  [20/32 — 62.5%] > jain1001sandeep@gmail.com
+2026-05-03 21:06:15 [CAMPUS] [INFO   ]   Connecting to jain1001sandeep@gmail.com …
+2026-05-03 21:06:20 [CAMPUS] [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 4 UID(s) (newer_than:30d or SINCE fallback)
+2026-05-03 21:06:20 [CAMPUS] [INFO   ]   Pass 1: scanning headers of 4 email(s) (batch size 40)...
+2026-05-03 21:06:20 [CAMPUS] [INFO   ]     … 4/4 headers
+2026-05-03 21:06:21 [CAMPUS] [INFO   ]   Pass 1 done — full fetch for 4 UID(s); tagged NON-CAMPUS from headers: 0
+2026-05-03 21:06:21 [CAMPUS] [INFO   ]   Pass 2: full body (BODY.PEEK[]) for 4 UID(s) (batch 8, progress every 5)…
+2026-05-03 21:06:21 [CAMPUS] [INFO   ]     … 4/4 full fetch (batch 4 UID(s))
+2026-05-03 21:06:22 [CAMPUS] [INFO   ]     … 4/4 full fetch (batch received, processing…)
+2026-05-03 21:06:22 [CAMPUS] [INFO   ]     … 1/4 full fetch
+2026-05-03 21:06:26 [CAMPUS] [INFO   ]     … 4/4 full fetch
+2026-05-03 21:06:27 [CAMPUS] [INFO   ]   Pass 2 done — 4 full fetch(es) finished.
+2026-05-03 21:06:28 [CAMPUS] [INFO   ] 
+  Bounces found   : 1
+2026-05-03 21:06:28 [CAMPUS] [INFO   ]   Human responses : 0
+2026-05-03 21:06:28 [CAMPUS] [INFO   ] 
+[STEP 2] Sending to up to 20 institute(s)...
+2026-05-03 21:06:28 [CAMPUS] [INFO   ]   Institutes ready: 20
+2026-05-03 21:06:28 [CAMPUS] [INFO   ] 
+  [73] Sending to: tnp@iiitkalyani.ac.in
+2026-05-03 21:06:28 [CAMPUS] [INFO   ]        From [1/32 — 3.1%]: jain106sandeep@gmail.com
+2026-05-03 21:06:34 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:06:37 [CAMPUS] [INFO   ] 
+  [74] Sending to: tpo@iiitu.ac.in
+2026-05-03 21:06:37 [CAMPUS] [INFO   ]        From [2/32 — 6.2%]: sj1799274@gmail.com
+2026-05-03 21:06:43 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:06:46 [CAMPUS] [INFO   ] 
+  [75] Sending to: contact@iiitdwd.ac.in
+2026-05-03 21:06:46 [CAMPUS] [INFO   ]        From [3/32 — 9.4%]: jain109sandeep@gmail.com
+2026-05-03 21:06:51 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:06:54 [CAMPUS] [INFO   ] 
+  [76] Sending to: placementcell@iiitk.ac.in
+2026-05-03 21:06:54 [CAMPUS] [INFO   ]        From [4/32 — 12.5%]: jain111sandeep@gmail.com
+2026-05-03 21:07:00 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:03 [CAMPUS] [INFO   ] 
+  [77] Sending to: director@iiitmanipur.ac.in
+2026-05-03 21:07:03 [CAMPUS] [INFO   ]        From [5/32 — 15.6%]: sandeep196605@gmail.com
+2026-05-03 21:07:09 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:12 [CAMPUS] [INFO   ] 
+  [78] Sending to: placements@iiitp.ac.in
+2026-05-03 21:07:12 [CAMPUS] [INFO   ]        From [6/32 — 18.8%]: jain114sandeep@gmail.com
+2026-05-03 21:07:18 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:21 [CAMPUS] [INFO   ] 
+  [79] Sending to: tnp@iiitn.ac.in
+2026-05-03 21:07:21 [CAMPUS] [INFO   ]        From [7/32 — 21.9%]: jain105sandeep@gmail.com
+2026-05-03 21:07:27 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:30 [CAMPUS] [INFO   ] 
+  [82] Sending to: placement@iiitkottayam.ac.in
+2026-05-03 21:07:30 [CAMPUS] [INFO   ]        From [8/32 — 25.0%]: jain107sandeep@gmail.com
+2026-05-03 21:07:36 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:39 [CAMPUS] [INFO   ] 
+  [83] Sending to: info@iiitbhopal.ac.in
+2026-05-03 21:07:39 [CAMPUS] [INFO   ]        From [9/32 — 28.1%]: sj7634811@gmail.com
+2026-05-03 21:07:44 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:47 [CAMPUS] [INFO   ] 
+  [84] Sending to: skumar@iiitranchi.ac.in
+2026-05-03 21:07:47 [CAMPUS] [INFO   ]        From [10/32 — 31.2%]: jain115sandeep@gmail.com
+2026-05-03 21:07:53 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:07:56 [CAMPUS] [INFO   ] 
+  [87] Sending to: tnp_fic@iiitbh.ac.in
+2026-05-03 21:07:56 [CAMPUS] [INFO   ]        From [11/32 — 34.4%]: jain200sandeep@gmail.com
+2026-05-03 21:08:02 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:05 [CAMPUS] [INFO   ] 
+  [89] Sending to: placement@iiitagartala.ac.in
+2026-05-03 21:08:05 [CAMPUS] [INFO   ]        From [12/32 — 37.5%]: jain201sandeep@gmail.com
+2026-05-03 21:08:10 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:13 [CAMPUS] [INFO   ] 
+  [91] Sending to: fic.placement@iiitr.ac.in
+2026-05-03 21:08:13 [CAMPUS] [INFO   ]        From [13/32 — 40.6%]: jain202sandeep@gmail.com
+2026-05-03 21:08:19 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:22 [CAMPUS] [INFO   ] 
+  [93] Sending to: principal@pgmcoepune.com
+2026-05-03 21:08:22 [CAMPUS] [INFO   ]        From [14/32 — 43.8%]: jain203sandeep@gmail.com
+2026-05-03 21:08:28 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:31 [CAMPUS] [INFO   ] 
+  [94] Sending to: rscoe@jspm.edu.in
+2026-05-03 21:08:31 [CAMPUS] [INFO   ]        From [15/32 — 46.9%]: jain204sandeep@gmail.com
+2026-05-03 21:08:36 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:39 [CAMPUS] [INFO   ] 
+  [95] Sending to: principal@maepune.ac.in
+2026-05-03 21:08:39 [CAMPUS] [INFO   ]        From [16/32 — 50.0%]: jain205sandeep@gmail.com
+2026-05-03 21:08:45 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:48 [CAMPUS] [INFO   ] 
+  [96] Sending to: ghrcem.pune@raisoni.net
+2026-05-03 21:08:48 [CAMPUS] [INFO   ]        From [17/32 — 53.1%]: jain206sandeep@gmail.com
+2026-05-03 21:08:54 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:08:57 [CAMPUS] [INFO   ] 
+  [97] Sending to: principal@mmcoe.edu.in
+2026-05-03 21:08:57 [CAMPUS] [INFO   ]        From [18/32 — 56.2%]: jain207sandeep@gmail.com
+2026-05-03 21:09:02 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:09:05 [CAMPUS] [INFO   ] 
+  [99] Sending to: principal.scoe@sinhgad.edu
+2026-05-03 21:09:05 [CAMPUS] [INFO   ]        From [19/32 — 59.4%]: jain208sandeep@gmail.com
+2026-05-03 21:09:12 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:09:15 [CAMPUS] [INFO   ] 
+  [101] Sending to: principal@indiraicem.ac.in
+2026-05-03 21:09:15 [CAMPUS] [INFO   ]        From [20/32 — 62.5%]: jain1001sandeep@gmail.com
+2026-05-03 21:09:20 [CAMPUS] [INFO   ]        [OK] Sent successfully
+2026-05-03 21:09:23 [CAMPUS] [INFO   ] 
+================================================================
+2026-05-03 21:09:23 [CAMPUS] [INFO   ]   Emails sent      : 20
+2026-05-03 21:09:23 [CAMPUS] [INFO   ]   Send failures    : 0
+2026-05-03 21:09:23 [CAMPUS] [INFO   ]   Bounces detected : 1
+2026-05-03 21:09:23 [CAMPUS] [INFO   ]   Human responses  : 0
+2026-05-03 21:09:23 [CAMPUS] [INFO   ] ================================================================

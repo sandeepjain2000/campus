@@ -1,0 +1,352 @@
+2026-04-28 00:56:00 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-28_00-56-00.log
+2026-04-28 00:56:00 [INFO   ] ================================================================
+2026-04-28 00:56:00 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-28 00:56:00 [INFO   ]   Run : 2026-04-28 00:56:00
+2026-04-28 00:56:00 [INFO   ]   Mode: Send up to 20 institute(s)
+2026-04-28 00:56:00 [INFO   ] ================================================================
+2026-04-28 00:56:00 [INFO   ]   Gmail accounts available: 32
+2026-04-28 00:56:00 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-28 00:56:00 [INFO   ]   Monitoring 45 'Sent' address(es)
+2026-04-28 00:56:00 [INFO   ]   Checking 31/32 accounts (only those that sent emails)
+2026-04-28 00:56:00 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-28 00:56:00 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-28 00:56:05 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:05 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:05 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:05 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:05 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:06 [INFO   ] 
+  > sj1799274@gmail.com
+2026-04-28 00:56:06 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-28 00:56:10 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:10 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:10 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:10 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:10 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:10 [INFO   ] 
+  > jain109sandeep@gmail.com
+2026-04-28 00:56:10 [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-04-28 00:56:15 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:15 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:15 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:15 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:15 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:16 [INFO   ] 
+  > jain111sandeep@gmail.com
+2026-04-28 00:56:16 [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-04-28 00:56:19 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:20 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:20 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:20 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:20 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:20 [INFO   ] 
+  > sandeep196605@gmail.com
+2026-04-28 00:56:20 [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-04-28 00:56:25 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:25 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:25 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:25 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:25 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:26 [INFO   ] 
+  > jain114sandeep@gmail.com
+2026-04-28 00:56:26 [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-04-28 00:56:31 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:31 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:31 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:31 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:31 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:31 [INFO   ] 
+  > jain105sandeep@gmail.com
+2026-04-28 00:56:31 [INFO   ]   Connecting to jain105sandeep@gmail.com …
+2026-04-28 00:56:36 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:36 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:36 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:36 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:36 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:36 [INFO   ] 
+  > jain107sandeep@gmail.com
+2026-04-28 00:56:36 [INFO   ]   Connecting to jain107sandeep@gmail.com …
+2026-04-28 00:56:40 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:40 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:40 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:40 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:40 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:40 [INFO   ] 
+  > sj7634811@gmail.com
+2026-04-28 00:56:40 [INFO   ]   Connecting to sj7634811@gmail.com …
+2026-04-28 00:56:44 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:44 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:44 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:44 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:44 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:44 [INFO   ] 
+  > jain115sandeep@gmail.com
+2026-04-28 00:56:44 [INFO   ]   Connecting to jain115sandeep@gmail.com …
+2026-04-28 00:56:51 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:51 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:51 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:51 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:51 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:52 [INFO   ] 
+  > jain200sandeep@gmail.com
+2026-04-28 00:56:52 [INFO   ]   Connecting to jain200sandeep@gmail.com …
+2026-04-28 00:56:55 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:56 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:56 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:56 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:56 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:56:56 [INFO   ] 
+  > jain201sandeep@gmail.com
+2026-04-28 00:56:56 [INFO   ]   Connecting to jain201sandeep@gmail.com …
+2026-04-28 00:56:59 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:56:59 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:56:59 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:56:59 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:56:59 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:57:00 [INFO   ] 
+  > jain202sandeep@gmail.com
+2026-04-28 00:57:00 [INFO   ]   Connecting to jain202sandeep@gmail.com …
+2026-04-28 00:57:06 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:57:06 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:57:06 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:57:06 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:57:06 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:57:07 [INFO   ] 
+  > jain203sandeep@gmail.com
+2026-04-28 00:57:07 [INFO   ]   Connecting to jain203sandeep@gmail.com …
+2026-04-28 00:57:12 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:57:12 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:57:12 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:57:12 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:57:12 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:57:12 [INFO   ] 
+  > jain204sandeep@gmail.com
+2026-04-28 00:57:12 [INFO   ]   Connecting to jain204sandeep@gmail.com …
+2026-04-28 00:57:16 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:57:16 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:57:16 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:57:16 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:57:16 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:57:17 [INFO   ] 
+  > jain205sandeep@gmail.com
+2026-04-28 00:57:17 [INFO   ]   Connecting to jain205sandeep@gmail.com …
+2026-04-28 00:57:21 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:57:21 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:57:21 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:57:21 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:57:21 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:57:22 [INFO   ] 
+  > jain206sandeep@gmail.com
+2026-04-28 00:57:22 [INFO   ]   Connecting to jain206sandeep@gmail.com …
+2026-04-28 00:58:13 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:17 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:17 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:17 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:17 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:20 [INFO   ] 
+  > jain207sandeep@gmail.com
+2026-04-28 00:58:20 [INFO   ]   Connecting to jain207sandeep@gmail.com …
+2026-04-28 00:58:24 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:24 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:24 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:24 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:24 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:25 [INFO   ] 
+  > jain208sandeep@gmail.com
+2026-04-28 00:58:25 [INFO   ]   Connecting to jain208sandeep@gmail.com …
+2026-04-28 00:58:29 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:30 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:30 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:30 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:30 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:30 [INFO   ] 
+  > jain1001sandeep@gmail.com
+2026-04-28 00:58:30 [INFO   ]   Connecting to jain1001sandeep@gmail.com …
+2026-04-28 00:58:34 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:34 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:34 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:34 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:34 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:34 [INFO   ] 
+  > jain1002sandeep@gmail.com
+2026-04-28 00:58:34 [INFO   ]   Connecting to jain1002sandeep@gmail.com …
+2026-04-28 00:58:39 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:39 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:39 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:39 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:39 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:40 [INFO   ] 
+  > jain1003sandeep@gmail.com
+2026-04-28 00:58:40 [INFO   ]   Connecting to jain1003sandeep@gmail.com …
+2026-04-28 00:58:43 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:44 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:44 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:44 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:44 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:44 [INFO   ] 
+  > jain1004sandeep@gmail.com
+2026-04-28 00:58:44 [INFO   ]   Connecting to jain1004sandeep@gmail.com …
+2026-04-28 00:58:47 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:48 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:48 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:48 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:48 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:48 [INFO   ] 
+  > jain104sandeep@gmail.com
+2026-04-28 00:58:48 [INFO   ]   Connecting to jain104sandeep@gmail.com …
+2026-04-28 00:58:52 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:52 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:52 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:52 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:52 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:52 [INFO   ] 
+  > jain214sandeep@gmail.com
+2026-04-28 00:58:52 [INFO   ]   Connecting to jain214sandeep@gmail.com …
+2026-04-28 00:58:57 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:58:57 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:58:57 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:58:57 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:58:57 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:58:58 [INFO   ] 
+  > jain215sandeep@gmail.com
+2026-04-28 00:58:58 [INFO   ]   Connecting to jain215sandeep@gmail.com …
+2026-04-28 00:59:03 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:59:03 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:59:03 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:59:03 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:59:03 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:59:03 [INFO   ] 
+  > jain216sandeep@gmail.com
+2026-04-28 00:59:03 [INFO   ]   Connecting to jain216sandeep@gmail.com …
+2026-04-28 00:59:07 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:59:07 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:59:07 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:59:07 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:59:07 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:59:08 [INFO   ] 
+  > jainsandeep729@gmail.com
+2026-04-28 00:59:08 [INFO   ]   Connecting to jainsandeep729@gmail.com …
+2026-04-28 00:59:11 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:59:12 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:59:12 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:59:12 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:59:12 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:59:12 [INFO   ] 
+  > mandify1@gmail.com
+2026-04-28 00:59:12 [INFO   ]   Connecting to mandify1@gmail.com …
+2026-04-28 00:59:16 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:59:16 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:59:16 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:59:16 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:59:16 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:59:16 [INFO   ] 
+  > mandify2@gmail.com
+2026-04-28 00:59:16 [INFO   ]   Connecting to mandify2@gmail.com …
+2026-04-28 00:59:21 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:59:21 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:59:21 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:59:21 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:59:21 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:59:21 [INFO   ] 
+  > sj5739255@gmail.com
+2026-04-28 00:59:21 [INFO   ]   Connecting to sj5739255@gmail.com …
+2026-04-28 00:59:26 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox…)
+2026-04-28 00:59:26 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d label:PROCESSED-CAMPUS…)
+2026-04-28 00:59:26 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:59:26 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:59:26 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:59:26 [INFO   ] 
+  Bounces found   : 0
+2026-04-28 00:59:26 [INFO   ]   Human responses : 0
+2026-04-28 00:59:26 [INFO   ] 
+[STEP 2] Sending to up to 20 institute(s)...
+2026-04-28 00:59:26 [INFO   ]   Institutes ready: 20
+2026-04-28 00:59:26 [INFO   ] 
+  [13] Sending to: registrar@cukashmir.ac.in
+2026-04-28 00:59:26 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-28 00:59:32 [INFO   ]        [OK] Sent successfully
+2026-04-28 00:59:35 [INFO   ] 
+  [14] Sending to: registrar@cup.ac.in
+2026-04-28 00:59:35 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-28 00:59:41 [INFO   ]        [OK] Sent successfully
+2026-04-28 00:59:44 [INFO   ] 
+  [17] Sending to: registrar@sanskrit.nic.in
+2026-04-28 00:59:44 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-28 00:59:50 [INFO   ]        [OK] Sent successfully
+2026-04-28 00:59:53 [INFO   ] 
+  [20] Sending to: registrar@dhsgsu.edu.in
+2026-04-28 00:59:53 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-28 00:59:59 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:02 [INFO   ] 
+  [21] Sending to: registrar@gsv.ac.in
+2026-04-28 01:00:02 [INFO   ]        From  : sandeep196605@gmail.com
+2026-04-28 01:00:08 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:11 [INFO   ] 
+  [22] Sending to: registrar@parichay.nic.in
+2026-04-28 01:00:11 [INFO   ]        From  : jain114sandeep@gmail.com
+2026-04-28 01:00:17 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:20 [INFO   ] 
+  [23] Sending to: registrar@scholarship.canarabank.in
+2026-04-28 01:00:20 [INFO   ]        From  : jain105sandeep@gmail.com
+2026-04-28 01:00:25 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:28 [INFO   ] 
+  [25] Sending to: registrar@cug.ac.in
+2026-04-28 01:00:28 [INFO   ]        From  : jain107sandeep@gmail.com
+2026-04-28 01:00:34 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:37 [INFO   ] 
+  [26] Sending to: registrar@cukerala.ac.in
+2026-04-28 01:00:37 [INFO   ]        From  : sj7634811@gmail.com
+2026-04-28 01:00:42 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:45 [INFO   ] 
+  [27] Sending to: registrar@cusb.ac.in
+2026-04-28 01:00:45 [INFO   ]        From  : jain115sandeep@gmail.com
+2026-04-28 01:00:51 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:00:54 [INFO   ] 
+  [29] Sending to: registrar@nta.ac.in
+2026-04-28 01:00:54 [INFO   ]        From  : jain200sandeep@gmail.com
+2026-04-28 01:01:00 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:03 [INFO   ] 
+  [31] Sending to: registrar@akubihar.ac.in
+2026-04-28 01:01:03 [INFO   ]        From  : jain201sandeep@gmail.com
+2026-04-28 01:01:08 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:11 [INFO   ] 
+  [32] Sending to: registrar@andhrakesariuniversity.in
+2026-04-28 01:01:11 [INFO   ]        From  : jain202sandeep@gmail.com
+2026-04-28 01:01:17 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:20 [INFO   ] 
+  [34] Sending to: placement@beu-bih.ac.in
+2026-04-28 01:01:20 [INFO   ]        From  : jain203sandeep@gmail.com
+2026-04-28 01:01:26 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:29 [INFO   ] 
+  [36] Sending to: registrar@buat.edu.in
+2026-04-28 01:01:29 [INFO   ]        From  : jain204sandeep@gmail.com
+2026-04-28 01:01:35 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:38 [INFO   ] 
+  [38] Sending to: registrar@cbpbu.ac.in
+2026-04-28 01:01:38 [INFO   ]        From  : jain205sandeep@gmail.com
+2026-04-28 01:01:43 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:46 [INFO   ] 
+  [41] Sending to: registrar@cuc.ac.in
+2026-04-28 01:01:46 [INFO   ]        From  : jain206sandeep@gmail.com
+2026-04-28 01:01:52 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:01:55 [INFO   ] 
+  [42] Sending to: registrar@dbranlu.ac.in
+2026-04-28 01:01:55 [INFO   ]        From  : jain207sandeep@gmail.com
+2026-04-28 01:02:00 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:02:03 [INFO   ] 
+  [43] Sending to: registrar@dsnlu.ac.in
+2026-04-28 01:02:03 [INFO   ]        From  : jain208sandeep@gmail.com
+2026-04-28 01:02:11 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:02:14 [INFO   ] 
+  [44] Sending to: registrar@gurugramuniversity.ac.in
+2026-04-28 01:02:14 [INFO   ]        From  : jain1001sandeep@gmail.com
+2026-04-28 01:02:20 [INFO   ]        [OK] Sent successfully
+2026-04-28 01:02:23 [INFO   ] 
+================================================================
+2026-04-28 01:02:23 [INFO   ]   Emails sent      : 20
+2026-04-28 01:02:23 [INFO   ]   Send failures    : 0
+2026-04-28 01:02:23 [INFO   ]   Bounces detected : 0
+2026-04-28 01:02:23 [INFO   ]   Human responses  : 0
+2026-04-28 01:02:23 [INFO   ] ================================================================

@@ -1,0 +1,16 @@
+2026-05-01 17:50:59 [CAMPUS] [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-05-01_17-50-59.log
+2026-05-01 17:51:00 [CAMPUS] [INFO   ] ================================================================
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   Run : 2026-05-01 17:51:00
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   Mode: Check only
+2026-05-01 17:51:00 [CAMPUS] [INFO   ] ================================================================
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   Gmail accounts available: 32
+2026-05-01 17:51:00 [CAMPUS] [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   Monitoring 0 'Sent' address(es)
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   No 'Sent' emails yet — skipping inbox check.
+2026-05-01 17:51:00 [CAMPUS] [INFO   ] 
+  Bounces found   : 0
+2026-05-01 17:51:00 [CAMPUS] [INFO   ]   Human responses : 0
+2026-05-01 17:51:00 [CAMPUS] [INFO   ] 
+  --check-only mode: skipping send step.

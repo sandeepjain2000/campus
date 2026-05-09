@@ -1,0 +1,40 @@
+2026-04-25 23:43:06 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\CRM\logs\campaign_2026-04-25_23-43-06.log
+2026-04-25 23:43:06 [INFO   ] ================================================================
+2026-04-25 23:43:06 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-25 23:43:06 [INFO   ]   Run : 2026-04-25 23:43:06
+2026-04-25 23:43:06 [INFO   ]   Mode: Send up to 2 institute(s)
+2026-04-25 23:43:06 [INFO   ] ================================================================
+2026-04-25 23:43:06 [INFO   ]   Gmail accounts available: 32
+2026-04-25 23:43:06 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-25 23:43:06 [INFO   ]   Monitoring 1 'Sent' address(es)
+2026-04-25 23:43:06 [INFO   ]   Checking 1/32 accounts (only those that sent emails)
+2026-04-25 23:43:06 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-25 23:43:06 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-25 23:43:11 [INFO   ]   Found 172 candidate email(s)
+2026-04-25 23:43:11 [INFO   ]   Pass 1: scanning headers of 172 email(s)...
+2026-04-25 23:43:52 [INFO   ]     ...100/172 headers done
+2026-04-25 23:44:23 [INFO   ]   Pass 1 done — 172/172 need full fetch.
+2026-04-25 23:44:57 [INFO   ]   [BOUNCE->FAILURE] placement@cuo.ac.in
+2026-04-25 23:46:00 [INFO   ] 
+  Bounces found   : 1
+2026-04-25 23:46:00 [INFO   ]   Human responses : 0
+2026-04-25 23:46:00 [INFO   ] 
+[STEP 2] Sending to up to 2 institute(s)...
+2026-04-25 23:46:00 [INFO   ]   Institutes ready: 2
+2026-04-25 23:46:00 [INFO   ] 
+  [01] Sending to: placements@cuo.ac.in
+2026-04-25 23:46:00 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-25 23:46:07 [INFO   ]        [OK] Sent successfully
+2026-04-25 23:46:10 [INFO   ] 
+  [03] Sending to: placement@rusa.nic.in
+2026-04-25 23:46:10 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-25 23:46:16 [INFO   ]        [OK] Sent successfully
+2026-04-25 23:46:19 [INFO   ] 
+================================================================
+2026-04-25 23:46:19 [INFO   ]   Emails sent      : 2
+2026-04-25 23:46:19 [INFO   ]   Send failures    : 0
+2026-04-25 23:46:19 [INFO   ]   Bounces detected : 1
+2026-04-25 23:46:19 [INFO   ]   Human responses  : 0
+2026-04-25 23:46:19 [INFO   ] ================================================================

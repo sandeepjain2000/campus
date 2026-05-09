@@ -1,0 +1,461 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlacementHub — Backend API Test Cases (100)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;font-size:13px;background:#f5f7fa;color:#1a1a2e;line-height:1.5}
+header{background:#0f172a;color:#fff;padding:24px 40px}
+header h1{font-size:20px;font-weight:700;margin-bottom:4px}
+header p{font-size:12px;color:#94a3b8}
+.meta{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.meta div{background:#1e293b;border-radius:8px;padding:8px 18px;text-align:center}
+.meta div span{display:block}
+.meta div .n{font-size:22px;font-weight:700}
+.meta div .l{font-size:11px;color:#94a3b8;margin-top:2px}
+.n.h{color:#f87171}.n.m{color:#fbbf24}.n.lo{color:#34d399}.n.i{color:#60a5fa}
+section{max-width:1400px;margin:24px auto;padding:0 20px}
+h2{font-size:14px;font-weight:700;color:#0f172a;margin:32px 0 10px;padding-bottom:5px;border-bottom:2px solid #e2e8f0;display:flex;align-items:center;gap:8px}
+h2 .grp{font-size:11px;font-weight:600;background:#ddd6fe;color:#5b21b6;border-radius:12px;padding:2px 10px}
+h2 .cnt{font-size:11px;font-weight:600;background:#e2e8f0;color:#475569;border-radius:12px;padding:2px 10px;margin-left:auto}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:8px}
+thead tr{background:#0f172a;color:#fff}
+thead th{padding:9px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f1f5f9}
+tbody tr:hover{background:#f8fafc}
+td{padding:10px 12px;vertical-align:top;font-size:12px}
+.id{font-weight:700;color:#6366f1;white-space:nowrap}
+.title{font-weight:600;color:#0f172a}
+.desc,.pre{color:#475569;font-size:11.5px}
+.steps{color:#334155;font-size:11.5px;line-height:1.6}
+.steps ol{padding-left:16px}
+.steps code{font-family:'Courier New',monospace;background:#fef2f2;color:#991b1b;border-radius:3px;padding:1px 4px;font-size:10.5px}
+.exp{color:#166534;font-size:12px}
+.pri{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap}
+.pri.H{background:#fee2e2;color:#b91c1c}.pri.M{background:#fef3c7;color:#92400e}.pri.L{background:#dcfce7;color:#166534}
+.type{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap}
+.type.P{background:#dbeafe;color:#1e40af}.type.N{background:#fee2e2;color:#b91c1c}
+.type.E{background:#fef3c7;color:#92400e}.type.S{background:#fce7f3;color:#9d174d}
+footer{text-align:center;padding:28px;color:#94a3b8;font-size:12px}
+
+    .res { font-weight: 700; padding: 2px 8px; border-radius: 12px; font-size: 11px; white-space: nowrap; }
+    .res.pass { background: #dcfce7; color: #166534; }
+    .res.fail { background: #fee2e2; color: #b91c1c; }
+    .notes { font-size: 11px; color: #475569; }
+  </style></head><body>
+<header>
+  <h1>PlacementHub — Backend API Test Cases</h1>
+  <p>Project: Campus Placement &amp; Engagement Platform · Next.js App Router · PostgreSQL · NextAuth 4 · 62 API Routes · 4 Roles</p>
+  <div class="meta">
+    <div><span class="n h">24</span><span class="l">High</span></div>
+    <div><span class="n m">46</span><span class="l">Medium</span></div>
+    <div><span class="n lo">30</span><span class="l">Low</span></div>
+    <div><span class="n i">100</span><span class="l">Total</span></div>
+    <div><span class="n" style="color:#a78bfa">6</span><span class="l">Groups</span></div>
+  </div>
+</header><section><h2>🔒 Group 1 — Authentication &amp; Registration <span class="grp">AUTH</span><span class="cnt">12 cases</span></h2><table><thead><tr><th style="width:6%">ID</th><th style="width:15%">Title</th><th style="width:14%">Description</th><th style="width:13%">Preconditions</th><th style="width:27%">Test Steps</th><th style="width:15%">Expected Result</th><th style="width:5%">Priority</th><th style="width:5%">Type</th><th style="width:8%">Status</th><th style="width:12%">Notes</th></tr></thead><tbody><tr><td class="id">BE-001</td><td class="title">Register student with valid data</td><td class="desc">POST /api/auth/register with all required student fields creates account and returns 201</td><td class="pre">No existing account with test email. DB accessible.</td><td class="steps"><ol><li>Open Postman → New Request → POST</li><li>URL: <code>http://localhost:3000/api/auth/register</code></li><li>Header: <code>Content-Type: application/json</code></li><li>Body: <code>{"firstName":"Test","lastName":"Student","email":"ts@iitm.edu","password":"Test@1234","role":"student","department":"CS","rollNumber":"CS2024001","batchYear":2024}</code></li><li>Click Send</li><li>Check DB: SELECT * FROM users WHERE email='ts@iitm.edu'</li></ol></td><td class="exp">Status 201. Body: <code>{success:true}</code> or user object. No password in response. Row in users table with correct role and tenant_id.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-002</td><td class="title">Register employer with valid data</td><td class="desc">POST /api/auth/register for employer role creates account with company info</td><td class="pre">No existing account with test email.</td><td class="steps"><ol><li>POST <code>http://localhost:3000/api/auth/register</code></li><li>Body: <code>{"firstName":"Recruiter","lastName":"One","email":"rec@techcorp.com","password":"Test@1234","role":"employer","companyName":"TechCorp","designation":"HR Manager"}</code></li><li>Click Send</li><li>Check response status and body</li></ol></td><td class="exp">Status 201. Employer account created. role=employer in DB. companyName saved. No password in response.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-003</td><td class="title">Register duplicate email returns 409</td><td class="desc">Second registration with an already-used email must be rejected</td><td class="pre">Account already exists with email <code>existing@iitm.edu</code>.</td><td class="steps"><ol><li>POST <code>/api/auth/register</code></li><li>Use email: <code>existing@iitm.edu</code> with new name and password</li><li>Click Send</li><li>Observe status code and error body</li></ol></td><td class="exp">Status 409 Conflict. Error: 'Email already registered'. No new DB row created.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-004</td><td class="title">Register missing required fields returns 400</td><td class="desc">Omitting firstName and role should produce a 400 with field-level errors</td><td class="pre">DB accessible.</td><td class="steps"><ol><li>POST <code>/api/auth/register</code></li><li>Body: <code>{"email":"x@test.com","password":"Test@1234"}</code> (no firstName, no role)</li><li>Click Send</li><li>Note which fields are listed in error</li></ol></td><td class="exp">Status 400. Error body identifies missing fields. No DB row created.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-005</td><td class="title">Register invalid email format returns 400</td><td class="desc">Non-email string in email field is rejected server-side</td><td class="pre">DB accessible.</td><td class="steps"><ol><li>POST <code>/api/auth/register</code></li><li>Body: <code>{"email":"notanemail","password":"Test@1234","role":"student","firstName":"A","lastName":"B"}</code></li><li>Click Send</li></ol></td><td class="exp">Status 400. Error references invalid email format. No insert.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-006</td><td class="title">Register weak password returns 400</td><td class="desc">Password shorter than minimum or missing complexity is rejected</td><td class="pre">DB accessible.</td><td class="steps"><ol><li>POST <code>/api/auth/register</code></li><li>Body: same as BE-001 but password: <code>"abc"</code></li><li>Click Send</li></ol></td><td class="exp">Status 400. Error indicates password requirements. No account created.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-007</td><td class="title">Login valid credentials returns session</td><td class="desc">POST to NextAuth signin with correct credentials issues session cookie</td><td class="pre">Student account: <code>student1@college.edu / password123</code>.</td><td class="steps"><ol><li>First GET <code>/api/auth/csrf</code> → copy csrfToken</li><li>POST <code>/api/auth/callback/credentials</code> with email, password, csrfToken</li><li>Observe Set-Cookie header in response</li><li>GET <code>/api/student/dashboard</code> with that cookie</li><li>Verify 200 response with data</li></ol></td><td class="exp">Status 200 on signin. Session cookie set. Subsequent dashboard call returns student data. JWT payload contains role=student and tenantId.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-008</td><td class="title">Login wrong password returns 401</td><td class="desc">Correct email + wrong password must not issue a session</td><td class="pre">Student account exists.</td><td class="steps"><ol><li>POST <code>/api/auth/callback/credentials</code></li><li>Body: <code>{"email":"student1@college.edu","password":"wrongpass","csrfToken":"..."}</code></li><li>Click Send</li></ol></td><td class="exp">Status 401 or NextAuth redirects with error=CredentialsSignin. No session cookie. No data accessible.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-009</td><td class="title">Login non-existent account returns 401</td><td class="desc">Email not in DB must return same 401 as wrong password (no user enumeration)</td><td class="pre">Email <code>ghost@nobody.com</code> not registered.</td><td class="steps"><ol><li>POST <code>/api/auth/callback/credentials</code></li><li>Body: <code>{"email":"ghost@nobody.com","password":"Test@1234"}</code></li><li>Click Send</li><li>Ensure error message same as BE-008</li></ol></td><td class="exp">Status 401. Error message identical to wrong password (do not reveal whether email exists). No session created.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-010</td><td class="title">Protected route without token returns 401</td><td class="desc">Any /api/student/* or /api/employer/* call without session cookie is rejected</td><td class="pre">No session cookie available.</td><td class="steps"><ol><li>GET <code>http://localhost:3000/api/student/dashboard</code></li><li>Do NOT include Cookie header</li><li>Click Send</li><li>Observe status</li></ol></td><td class="exp">Status 401. Body: <code>{error:'Unauthorized'}</code>. No data returned.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-011</td><td class="title">Protected route with expired JWT returns 401</td><td class="desc">Expired session token is rejected; user must re-authenticate</td><td class="pre">Old expired session cookie from a previous session.</td><td class="steps"><ol><li>GET <code>/api/student/dashboard</code></li><li>Set Cookie header to expired session value</li><li>Click Send</li></ol></td><td class="exp">Status 401. Token rejected. No data. Caller must login again.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-012</td><td class="title">Employer token on student endpoint returns 403</td><td class="desc">Cross-role access: employer JWT cannot call student-specific routes</td><td class="pre">Employer session active. Employer session cookie in hand.</td><td class="steps"><ol><li>Login as employer → copy session cookie</li><li>GET <code>/api/student/dashboard</code> using employer cookie</li><li>Click Send</li></ol></td><td class="exp">Status 403 Forbidden. Student data NOT returned. Error indicates insufficient role.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+</tbody></table>
+<h2>🎓 Group 2 — Student APIs <span class="grp">STUDENT</span><span class="cnt">20 cases</span></h2><table><thead><tr><th style="width:6%">ID</th><th style="width:15%">Title</th><th style="width:14%">Description</th><th style="width:13%">Preconditions</th><th style="width:27%">Test Steps</th><th style="width:15%">Expected Result</th><th style="width:5%">Priority</th><th style="width:5%">Type</th><th style="width:8%">Status</th><th style="width:12%">Notes</th></tr></thead><tbody><tr><td class="id">BE-013</td><td class="title">GET /api/student/dashboard returns summary stats</td><td class="desc">Authenticated student gets application/shortlist/interview/offer counts</td><td class="pre">Student session active. Student has at least 1 application in DB.</td><td class="steps"><ol><li>Login as student to obtain session cookie</li><li>GET <code>http://localhost:3000/api/student/dashboard</code> with cookie</li><li>Click Send</li><li>Inspect JSON keys in response</li></ol></td><td class="exp">Status 200. JSON: {applications, shortlisted, interviews, offers} — all numbers. Values match DB counts for this student only.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-014</td><td class="title">Dashboard returns only this student's data</td><td class="desc">Student A cannot see Student B's dashboard stats through any manipulation</td><td class="pre">Two student accounts in different college tenants.</td><td class="steps"><ol><li>Login as Student A → GET /api/student/dashboard → note values</li><li>Login as Student B → GET /api/student/dashboard → note values</li><li>Try using Student A cookie on Student B's dashboard URL (if separate)</li><li>Confirm data isolation</li></ol></td><td class="exp">Each student sees only their own stats. Tenant_id and student_id filters enforced server-side. No cross-tenant leak.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-015</td><td class="title">GET /api/student/drives returns open drives for tenant</td><td class="desc">Student gets placement drives active for their college only</td><td class="pre">Student session. At least 2 drives in DB for this college.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/drives</code></li><li>Click Send</li><li>Check each drive's tenant matches student's college</li></ol></td><td class="exp">Status 200. Array of drives with: id, companyName, role, ctc, registrationDeadline, status. Only drives for this tenant.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-016</td><td class="title">GET /api/student/drives with status filter</td><td class="desc">?status=active returns only active drives; ?status=closed returns only closed</td><td class="pre">Student session. Mix of active and closed drives in DB.</td><td class="steps"><ol><li>GET <code>/api/student/drives?status=active</code> → note count</li><li>GET <code>/api/student/drives?status=closed</code> → note count</li><li>Verify each result set has correct status value</li></ol></td><td class="exp">With ?status=active: all items status=active. With ?status=closed: all items status=closed. Counts differ and are accurate.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-017</td><td class="title">GET /api/student/drives with search query</td><td class="desc">?search=TCS returns only drives matching company name</td><td class="pre">TCS drive and Infosys drive both in DB.</td><td class="steps"><ol><li>GET <code>/api/student/drives?search=TCS</code></li><li>Click Send → check companyName in each result</li><li>GET <code>/api/student/drives?search=NONEXISTENT_XYZ</code></li><li>Check result</li></ol></td><td class="exp">Search TCS: only TCS drives. Search NONEXISTENT_XYZ: empty array []. No 404 or crash.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-018</td><td class="title">POST apply to drive succeeds with 201</td><td class="desc">Eligible student applies to open drive — application row created in DB</td><td class="pre">Student eligible. Drive open. Drive ID known (e.g. driveId=1).</td><td class="steps"><ol><li>Login as student</li><li>POST <code>/api/student/drives/1/apply</code></li><li>Body: <code>{}</code> (identity from session)</li><li>Click Send</li><li>Check DB: SELECT * FROM applications WHERE student_id=... AND drive_id=1</li></ol></td><td class="exp">Status 201. DB row: student_id, drive_id=1, status=applied, applied_at timestamp. Response confirms applicationId.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-019</td><td class="title">POST apply to same drive twice returns 409</td><td class="desc">Second application attempt to same drive is rejected with conflict error</td><td class="pre">Student already applied to drive ID=1.</td><td class="steps"><ol><li>Login as student</li><li>POST <code>/api/student/drives/1/apply</code> again</li><li>Click Send</li></ol></td><td class="exp">Status 409 Conflict. Error: 'Already applied'. No duplicate row in DB. Unique constraint (student_id, drive_id) enforced.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-020</td><td class="title">POST apply as ineligible student returns 403</td><td class="desc">Student marked ineligible by college admin cannot submit applications</td><td class="pre">Student ID=99 has eligibility=false in DB.</td><td class="steps"><ol><li>Login as the ineligible student</li><li>POST <code>/api/student/drives/1/apply</code></li><li>Click Send</li></ol></td><td class="exp">Status 403. Error: 'Not eligible for placement'. No application row created.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-021</td><td class="title">GET /api/student/applications returns own applications</td><td class="desc">Student sees their own applications with current status</td><td class="pre">Student has 3 applications with different statuses.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/applications</code></li><li>Click Send</li><li>Count items and inspect statuses</li></ol></td><td class="exp">Status 200. Array of 3 items. Each: applicationId, driveId, companyName, status (applied/shortlisted/rejected), appliedAt. Only this student's data.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-022</td><td class="title">GET /api/student/applications/{id} returns single application</td><td class="desc">Student retrieves detail of one application including drive info</td><td class="pre">Student has application ID=10.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/applications/10</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Single object: applicationId=10, drive details, current status, interview schedule (if any), offer (if any).</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-023</td><td class="title">GET another student's application returns 403 or 404</td><td class="desc">Student A cannot view Student B's application by guessing ID</td><td class="pre">Application ID=99 belongs to Student B, not the logged-in Student A.</td><td class="steps"><ol><li>Login as Student A</li><li>GET <code>/api/student/applications/99</code></li><li>Click Send</li></ol></td><td class="exp">Status 403 or 404. Student A's data not compromised. Ownership check enforced server-side.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-024</td><td class="title">POST /api/student/documents upload PDF success</td><td class="desc">Student uploads resume PDF and gets back document metadata</td><td class="pre">Student logged in. Valid PDF under 5MB ready.</td><td class="steps"><ol><li>Login as student</li><li>POST <code>/api/student/documents</code></li><li>Set Content-Type: multipart/form-data</li><li>Attach resume.pdf, field: documentType=resume</li><li>Click Send</li></ol></td><td class="exp">Status 201. Response: {documentId, fileName, url, uploadedAt}. DB row with correct student_id and tenant_id.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-025</td><td class="title">GET /api/student/documents returns document list</td><td class="desc">Student sees all their uploaded documents</td><td class="pre">Student has 2 documents in DB.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/documents</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Array of 2 items: {id, fileName, documentType, uploadedAt, url}. No other students' documents.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-026</td><td class="title">DELETE /api/student/documents/{id} removes document</td><td class="desc">Student deletes their own document; gone from subsequent list</td><td class="pre">Student has document ID=7.</td><td class="steps"><ol><li>Login as student</li><li>DELETE <code>/api/student/documents/7</code></li><li>Click Send</li><li>GET /api/student/documents → verify document 7 absent</li></ol></td><td class="exp">Status 200 or 204. Document ID=7 no longer in list. DB row deleted.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-027</td><td class="title">GET /api/student/interviews returns scheduled interviews</td><td class="desc">Student sees interviews with date, mode, and join link</td><td class="pre">Student has 2 interviews scheduled.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/interviews</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Array: {interviewId, companyName, scheduledAt, mode (online/offline), meetingLink or venue}. Only this student's interviews.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-028</td><td class="title">GET /api/student/offers returns received offers</td><td class="desc">Student sees all job offers with CTC and status</td><td class="pre">Student has 1 pending offer.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/offers</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Array: {offerId, companyName, ctc, joiningDate, location, status=pending}. Only offers for this student.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-029</td><td class="title">PATCH /api/student/offers/{id}/accept changes status to accepted</td><td class="desc">Student accepts pending offer; status updates in DB and visible to employer</td><td class="pre">Offer ID=3 exists with status=pending for logged-in student.</td><td class="steps"><ol><li>Login as student</li><li>PATCH <code>/api/student/offers/3/accept</code></li><li>Body: <code>{}</code></li><li>Click Send</li><li>GET /api/student/offers → check offer 3 status</li></ol></td><td class="exp">Status 200. Offer status=accepted in DB. Employer sees acceptance in their offers list.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-030</td><td class="title">PATCH /api/student/offers/{id}/decline changes status to declined</td><td class="desc">Student declines offer; cannot be re-accepted</td><td class="pre">Offer ID=4 status=pending.</td><td class="steps"><ol><li>Login as student</li><li>PATCH <code>/api/student/offers/4/decline</code></li><li>Click Send</li><li>Try PATCH /accept on same offer</li></ol></td><td class="exp">Status 200. Offer status=declined. Subsequent accept attempt returns 409 or 400.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-031</td><td class="title">POST /api/student/clarifications submits question</td><td class="desc">Student posts a clarification question about a specific drive</td><td class="pre">Student session. Drive ID=2 exists.</td><td class="steps"><ol><li>Login as student</li><li>POST <code>/api/student/clarifications</code></li><li>Body: <code>{"driveId":2,"question":"What is the bond period?"}</code></li><li>Click Send</li><li>Check DB: clarifications table</li></ol></td><td class="exp">Status 201. Row created: status=pending, student_id, drive_id, question text. College admin can see it.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-032</td><td class="title">GET /api/student/calendar returns upcoming events sorted by date</td><td class="desc">Calendar returns drive events and interviews in ascending date order</td><td class="pre">Student has 2 upcoming interviews, 1 drive event.</td><td class="steps"><ol><li>Login as student</li><li>GET <code>/api/student/calendar</code></li><li>Click Send</li><li>Verify events sorted by date ascending</li></ol></td><td class="exp">Status 200. Array: {type, date, title, details}. Events sorted ascending. Only this student's events.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+</tbody></table>
+<h2>💼 Group 3 — Employer APIs <span class="grp">EMPLOYER</span><span class="cnt">18 cases</span></h2><table><thead><tr><th style="width:6%">ID</th><th style="width:15%">Title</th><th style="width:14%">Description</th><th style="width:13%">Preconditions</th><th style="width:27%">Test Steps</th><th style="width:15%">Expected Result</th><th style="width:5%">Priority</th><th style="width:5%">Type</th><th style="width:8%">Status</th><th style="width:12%">Notes</th></tr></thead><tbody><tr><td class="id">BE-033</td><td class="title">GET /api/employer/profile returns employer info</td><td class="desc">Employer retrieves their own company profile data</td><td class="pre">Employer session active. Profile in DB.</td><td class="steps"><ol><li>Login as employer</li><li>GET <code>/api/employer/profile</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Object: {companyName, designation, website, description, logoUrl, contactEmail}. Only this employer's data.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-034</td><td class="title">PUT /api/employer/profile updates company info</td><td class="desc">Employer edits description and website; changes persist</td><td class="pre">Employer session active.</td><td class="steps"><ol><li>Login as employer</li><li>PUT <code>/api/employer/profile</code></li><li>Body: <code>{"description":"AI-first company","website":"https://myco.io"}</code></li><li>Click Send</li><li>GET /api/employer/profile → verify changes</li></ol></td><td class="exp">Status 200. Updated fields in GET response. Unchanged fields retain original values.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-035</td><td class="title">GET /api/employer/jobs returns only own jobs</td><td class="desc">Employer A sees their 3 jobs; Employer B sees their own 2 — no cross-employer leakage</td><td class="pre">Employer A has 3 jobs. Employer B has 2 different jobs.</td><td class="steps"><ol><li>Login as Employer A → GET /api/employer/jobs → note IDs</li><li>Login as Employer B → GET /api/employer/jobs → note IDs</li><li>Verify no overlap in job IDs</li></ol></td><td class="exp">Employer A: 3 jobs. Employer B: 2 different jobs. No cross-employer data.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-036</td><td class="title">POST /api/employer/jobs creates new job listing</td><td class="desc">Employer posts a job with all required fields; job stored in DB</td><td class="pre">Employer logged in.</td><td class="steps"><ol><li>Login as employer</li><li>POST <code>/api/employer/jobs</code></li><li>Body: <code>{"title":"Backend Engineer","type":"full_time","ctc":1200000,"skills":["Node.js","PostgreSQL"],"description":"Join our team","openings":3}</code></li><li>Click Send</li><li>Check DB jobs table for new row</li></ol></td><td class="exp">Status 201. Job created: id, employer_id, tenant_id, status=draft. All fields stored correctly.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-037</td><td class="title">POST /api/employer/jobs without title returns 400</td><td class="desc">Missing job title field produces validation error before DB insert</td><td class="pre">Employer logged in.</td><td class="steps"><ol><li>POST <code>/api/employer/jobs</code></li><li>Body: <code>{"type":"full_time","ctc":1200000}</code> (no title)</li><li>Click Send</li></ol></td><td class="exp">Status 400. Error references missing title. No job created in DB.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-038</td><td class="title">PUT /api/employer/jobs/{id} updates job details</td><td class="desc">Employer edits CTC and description of an existing job</td><td class="pre">Employer has job ID=8.</td><td class="steps"><ol><li>Login as employer</li><li>PUT <code>/api/employer/jobs/8</code></li><li>Body: <code>{"ctc":1500000,"description":"Updated description"}</code></li><li>Click Send</li><li>GET /api/employer/jobs/8 → verify</li></ol></td><td class="exp">Status 200. CTC and description updated. Other fields unchanged. DB row updated.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-039</td><td class="title">DELETE /api/employer/jobs/{id} removes draft job</td><td class="desc">Employer deletes a draft job; disappears from list</td><td class="pre">Employer has draft job ID=9.</td><td class="steps"><ol><li>Login as employer</li><li>DELETE <code>/api/employer/jobs/9</code></li><li>Click Send</li><li>GET /api/employer/jobs → confirm job 9 absent</li></ol></td><td class="exp">Status 200 or 204. Job 9 not in list. DB row deleted. Published jobs with active applications return 409 on delete attempt.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-040</td><td class="title">GET /api/employer/applications returns all applicants</td><td class="desc">Employer sees all student applications across their drives</td><td class="pre">Employer has 2 drives, 3 applicants each = 6 total.</td><td class="steps"><ol><li>Login as employer</li><li>GET <code>/api/employer/applications</code></li><li>Click Send</li><li>Count items</li></ol></td><td class="exp">Status 200. 6 application objects. Each: {studentName, rollNumber, driveId, status, appliedAt}. Only this employer's applications.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-041</td><td class="title">GET /api/employer/applications?status=shortlisted filter</td><td class="desc">Employer filters to see only shortlisted candidates</td><td class="pre">Mix of applied, shortlisted, rejected applications.</td><td class="steps"><ol><li>GET <code>/api/employer/applications?status=shortlisted</code></li><li>Click Send</li><li>Verify each item status=shortlisted</li></ol></td><td class="exp">Only shortlisted applications returned. Other statuses excluded. Count matches DB shortlisted count.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-042</td><td class="title">PATCH application to shortlisted — student sees update</td><td class="desc">Employer shortlists a student; student's application list reflects new status</td><td class="pre">Application ID=15 status=applied.</td><td class="steps"><ol><li>Login as employer</li><li>PATCH <code>/api/employer/applications/15</code></li><li>Body: <code>{"status":"shortlisted"}</code></li><li>Click Send</li><li>Login as student → GET /api/student/applications → find application 15</li></ol></td><td class="exp">Status 200. Application 15 status=shortlisted in DB. Student sees shortlisted status.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-043</td><td class="title">PATCH application to rejected — student sees rejection</td><td class="desc">Employer rejects applicant; student sees rejection status</td><td class="pre">Application ID=16 status=applied.</td><td class="steps"><ol><li>Login as employer</li><li>PATCH <code>/api/employer/applications/16</code></li><li>Body: <code>{"status":"rejected"}</code></li><li>Click Send</li><li>Login as student → check application 16 status</li></ol></td><td class="exp">Status 200. Application 16 status=rejected in DB and visible to student.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-044</td><td class="title">POST /api/employer/interviews schedules interview</td><td class="desc">Employer creates interview for shortlisted application</td><td class="pre">Application ID=20 status=shortlisted.</td><td class="steps"><ol><li>Login as employer</li><li>POST <code>/api/employer/interviews</code></li><li>Body: <code>{"applicationId":20,"scheduledAt":"2026-05-15T10:00:00Z","mode":"online","meetingLink":"https://meet.google.com/abc"}</code></li><li>Click Send</li><li>Login as student → GET /api/student/interviews</li></ol></td><td class="exp">Status 201. Interview created. Student sees interview in their list with correct date, mode, and link.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-045</td><td class="title">PUT /api/employer/interviews/{id} reschedules interview</td><td class="desc">Employer changes interview time; student calendar updates</td><td class="pre">Interview ID=3 scheduled for May 10.</td><td class="steps"><ol><li>Login as employer</li><li>PUT <code>/api/employer/interviews/3</code></li><li>Body: <code>{"scheduledAt":"2026-05-20T14:00:00Z"}</code></li><li>Click Send</li><li>Student checks /api/student/interviews → verify new time</li></ol></td><td class="exp">Status 200. scheduledAt updated. Student sees new time. Old slot removed.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-046</td><td class="title">GET /api/employer/drives returns employer's submitted drives</td><td class="desc">Employer sees drives submitted to colleges with approval status</td><td class="pre">Employer has 2 drives: 1 pending, 1 approved.</td><td class="steps"><ol><li>Login as employer</li><li>GET <code>/api/employer/drives</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. 2 drives: {id, collegeName, status, registrationDeadline}. Only this employer's drives.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-047</td><td class="title">POST /api/employer/drives creates drive request</td><td class="desc">Employer submits a new placement drive to a college for approval</td><td class="pre">Employer logged in. College ID=2 exists.</td><td class="steps"><ol><li>Login as employer</li><li>POST <code>/api/employer/drives</code></li><li>Body: <code>{"collegeId":2,"role":"SWE","ctc":1400000,"registrationDeadline":"2026-05-01","driveDate":"2026-05-15","eligibilityCriteria":{"minCGPA":7.0}}</code></li><li>Click Send</li></ol></td><td class="exp">Status 201. Drive status=pending_approval. College admin sees in pending list. tenant_id=college 2.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-048</td><td class="title">POST /api/employer/offers extends offer to student</td><td class="desc">Employer creates formal job offer for a student after final round</td><td class="pre">Application ID=25 in final stage.</td><td class="steps"><ol><li>Login as employer</li><li>POST <code>/api/employer/offers</code></li><li>Body: <code>{"applicationId":25,"ctc":1600000,"joiningDate":"2026-07-01","location":"Bangalore"}</code></li><li>Click Send</li><li>Login as student → GET /api/student/offers</li></ol></td><td class="exp">Status 201. Offer row: status=pending, correct foreign keys. Student sees offer in their list.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-049</td><td class="title">GET /api/employer/offers lists all extended offers</td><td class="desc">Employer sees all offers sent and their acceptance status</td><td class="pre">Employer has extended 3 offers.</td><td class="steps"><ol><li>Login as employer</li><li>GET <code>/api/employer/offers</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. 3 offer objects: {studentName, ctc, joiningDate, status(pending/accepted/declined)}.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-050</td><td class="title">Employer cannot access another employer's applications</td><td class="desc">Cross-employer isolation: Employer A cannot see Employer B's application</td><td class="pre">Application ID=99 belongs to Employer B. Employer A is logged in.</td><td class="steps"><ol><li>Login as Employer A</li><li>GET <code>/api/employer/applications/99</code></li><li>Click Send</li></ol></td><td class="exp">Status 403 or 404. Employer A cannot see Employer B's application. employer_id ownership check in query.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+</tbody></table>
+<h2>🏫 Group 4 — College Admin APIs <span class="grp">COLLEGE</span><span class="cnt">22 cases</span></h2><table><thead><tr><th style="width:6%">ID</th><th style="width:15%">Title</th><th style="width:14%">Description</th><th style="width:13%">Preconditions</th><th style="width:27%">Test Steps</th><th style="width:15%">Expected Result</th><th style="width:5%">Priority</th><th style="width:5%">Type</th><th style="width:8%">Status</th><th style="width:12%">Notes</th></tr></thead><tbody><tr><td class="id">BE-051</td><td class="title">GET /api/college/students lists all students in tenant</td><td class="desc">College admin sees all students under their college only</td><td class="pre">College admin session. 10 students in this college.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/students</code></li><li>Click Send</li><li>Verify all 10 returned</li></ol></td><td class="exp">Status 200. 10 student objects: {id, name, email, rollNumber, department, eligibility}. All same tenant.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-052</td><td class="title">GET /api/college/students with pagination</td><td class="desc">Paginated results return correct subset and total count</td><td class="pre">25 students in college.</td><td class="steps"><ol><li>GET <code>/api/college/students?page=1&amp;limit=10</code></li><li>Click Send → note items, total, hasNextPage</li><li>GET <code>?page=2&amp;limit=10</code> → verify different students</li><li>GET <code>?page=3&amp;limit=10</code> → verify 5 students, hasNextPage=false</li></ol></td><td class="exp">Page 1: 10 items, total=25, hasNextPage=true. Page 3: 5 items, hasNextPage=false. No duplicates across pages.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-053</td><td class="title">GET /api/college/students/{id} returns full student detail</td><td class="desc">College admin retrieves one student's full profile</td><td class="pre">Student ID=5 in this college.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/students/5</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Full student: personal info, academics, applications summary, documents list, eligibility status.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-054</td><td class="title">GET /api/college/students with search filter</td><td class="desc">Search by name or roll number returns matching students only</td><td class="pre">Student named Arjun and another named Priya exist.</td><td class="steps"><ol><li>GET <code>/api/college/students?search=Arjun</code></li><li>Verify only Arjun returned</li><li>GET <code>?search=CS2024</code> (roll prefix)</li><li>Verify matching roll numbers returned</li></ol></td><td class="exp">Name search: only students with Arjun in name. Roll search: students matching prefix. Empty search returns all.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-055</td><td class="title">PATCH eligibility to true enables drive applications</td><td class="desc">Admin marks ineligible student eligible; student can now apply</td><td class="pre">Student ID=7 eligibility=false.</td><td class="steps"><ol><li>Login as college admin</li><li>PATCH <code>/api/college/students/7/eligibility</code></li><li>Body: <code>{"eligible":true}</code></li><li>Click Send</li><li>Login as student 7 → POST /api/student/drives/1/apply</li></ol></td><td class="exp">Admin: status 200, eligibility=true in DB. Student apply: 201 success (no longer 403).</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-056</td><td class="title">PATCH eligibility to false blocks drive applications</td><td class="desc">Admin marks student ineligible; student apply returns 403</td><td class="pre">Student ID=8 currently eligible.</td><td class="steps"><ol><li>Login as college admin</li><li>PATCH <code>/api/college/students/8/eligibility</code></li><li>Body: <code>{"eligible":false}</code></li><li>Click Send</li><li>Login as student 8 → POST /api/student/drives/1/apply</li></ol></td><td class="exp">Admin: 200, eligibility=false. Student apply: 403 ineligibility error. No application row created.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-057</td><td class="title">POST /api/college/students/import CSV bulk import success</td><td class="desc">Valid CSV of 5 students imported; all appear in student list</td><td class="pre">Valid 5-row CSV prepared: name, email, rollNumber, department, batchYear.</td><td class="steps"><ol><li>Login as college admin</li><li>POST <code>/api/college/students/import</code></li><li>Content-Type: multipart/form-data</li><li>Attach students.csv</li><li>Click Send</li><li>GET /api/college/students → verify 5 new rows</li></ol></td><td class="exp">Status 200. Response: <code>{imported:5, errors:0}</code>. 5 new student rows with correct tenant_id.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-058</td><td class="title">POST /api/college/students/import malformed CSV returns errors</td><td class="desc">CSV with missing columns or bad data returns row-level errors</td><td class="pre">Malformed CSV with missing email column and invalid CGPA.</td><td class="steps"><ol><li>POST <code>/api/college/students/import</code></li><li>Attach malformed.csv</li><li>Click Send</li></ol></td><td class="exp">Status 400 or 207. Response lists rows with errors and column names. No crash. DB stays consistent.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-059</td><td class="title">GET /api/college/drives lists drives for this college</td><td class="desc">College admin sees all drives with their approval statuses</td><td class="pre">3 drives in DB: 1 pending, 1 approved, 1 rejected.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/drives</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. 3 drives: {id, companyName, role, status, submittedAt}. Only for this college.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-060</td><td class="title">POST /api/college/drives/{id}/approve approves drive</td><td class="desc">College admin approves pending drive; students can now see and apply</td><td class="pre">Drive ID=4 status=pending_approval.</td><td class="steps"><ol><li>Login as college admin</li><li>POST <code>/api/college/drives/4/approve</code></li><li>Click Send</li><li>Login as student → GET /api/student/drives → find drive 4</li></ol></td><td class="exp">Status 200. Drive 4 status=active. Visible to students. Employer notified.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-061</td><td class="title">POST /api/college/drives/{id}/reject with reason</td><td class="desc">College admin rejects drive with reason; employer sees status and reason</td><td class="pre">Drive ID=5 status=pending_approval.</td><td class="steps"><ol><li>Login as college admin</li><li>POST <code>/api/college/drives/5/reject</code></li><li>Body: <code>{"reason":"CTC below minimum"}</code></li><li>Click Send</li><li>Login as employer → GET /api/employer/drives → check drive 5</li></ol></td><td class="exp">Status 200. Drive 5 status=rejected. Reason stored. Employer sees rejection + reason. NOT visible to students.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-062</td><td class="title">POST /api/college/drives creates admin-initiated drive</td><td class="desc">College admin creates a drive directly without employer submission</td><td class="pre">College admin session.</td><td class="steps"><ol><li>POST <code>/api/college/drives</code></li><li>Body: <code>{"companyName":"Campus Partner","role":"Analyst","ctc":800000,"registrationDeadline":"2026-05-10","driveDate":"2026-05-20"}</code></li><li>Click Send</li></ol></td><td class="exp">Status 201. Drive status=active immediately (no approval needed for admin-created). Visible to students.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-063</td><td class="title">GET /api/college/clarifications lists all student queries</td><td class="desc">College admin sees all clarifications across drives in their college</td><td class="pre">3 clarifications: 2 pending, 1 answered.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/clarifications</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. 3 items: {studentName, question, driveId, status, reply}. All from this college's drives.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-064</td><td class="title">PATCH /api/college/clarifications/{id}/reply adds answer</td><td class="desc">College admin replies to question; student sees the answer</td><td class="pre">Clarification ID=2 status=pending.</td><td class="steps"><ol><li>Login as college admin</li><li>PATCH <code>/api/college/clarifications/2/reply</code></li><li>Body: <code>{"reply":"Bond period is 1 year."}</code></li><li>Click Send</li><li>Login as student → GET /api/student/clarifications → find question 2</li></ol></td><td class="exp">Status 200. Clarification status=answered. Reply visible to student.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-065</td><td class="title">GET /api/college/reports generates placement summary</td><td class="desc">College admin retrieves report with placed count, avg CTC, highest CTC</td><td class="pre">College admin session. Several accepted offers in DB.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/reports</code></li><li>Click Send</li><li>Compare avgCTC to UI value (check for hardcoding bug)</li></ol></td><td class="exp">Status 200. {totalStudents, totalPlaced, avgCTC, highestCTC, placementPercentage}. Values computed from DB. DEFECT: if UI shows ₹12.4 LPA while API returns different value — hardcoding confirmed.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Verified fix: avgCTC values are fetched dynamically from database.</td>
+    </tr>
+<tr><td class="id">BE-066</td><td class="title">GET /api/college/reports with academic year filter</td><td class="desc">Year filter restricts report to selected academic year data</td><td class="pre">Data in both 2024-25 and 2025-26.</td><td class="steps"><ol><li>GET <code>/api/college/reports?year=2024-25</code> → note stats</li><li>GET <code>/api/college/reports?year=2025-26</code> → note stats</li><li>Verify different results</li></ol></td><td class="exp">Different statistics for each year. Year filter correctly scopes data. No cross-year contamination.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-067</td><td class="title">GET /api/college/overview returns dashboard stats</td><td class="desc">College admin home stats computed from DB (not hardcoded)</td><td class="pre">College admin session.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/overview</code></li><li>Click Send</li><li>Note avgPackage and highestPackage values</li><li>Compare to hardcoded ₹12.4 LPA / ₹45 LPA shown in UI</li></ol></td><td class="exp">Status 200. {studentsPlaced, avgPackage, highestPackage, activeDrives} from DB. Any discrepancy with UI confirms hardcoding bug in college/overview/page.js lines 210-217.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Verified fix: College overview stats are now dynamic.</td>
+    </tr>
+<tr><td class="id">BE-068</td><td class="title">GET /api/college/calendar returns events for month</td><td class="desc">College admin calendar shows all drive and interview events for a month</td><td class="pre">Drives and interviews scheduled in May 2026.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/calendar?month=2026-05</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Events: {date, type(drive/interview), title, details}. All for this college. None from other tenants.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-069</td><td class="title">POST /api/college/notices creates announcement</td><td class="desc">College admin posts notice; students can retrieve it</td><td class="pre">College admin session.</td><td class="steps"><ol><li>POST <code>/api/college/notices</code></li><li>Body: <code>{"title":"Drive Announcement","body":"TCS visiting May 15","targetRole":"student"}</code></li><li>Click Send</li><li>Login as student → GET /api/student/notices</li></ol></td><td class="exp">Status 201. Notice stored with id, title, body, publishedAt. Students in this college can see it.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-070</td><td class="title">GET /api/college/notices lists published notices</td><td class="desc">College admin retrieves all notices for their college</td><td class="pre">3 notices in DB.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/college/notices</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. 3 notice objects: {id, title, body, publishedAt, targetRole}. Sorted date descending.</td><td><span class="pri L">Low</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-071</td><td class="title">DELETE /api/college/notices/{id} removes notice</td><td class="desc">Deleted notice no longer visible to students</td><td class="pre">Notice ID=6 exists.</td><td class="steps"><ol><li>Login as college admin</li><li>DELETE <code>/api/college/notices/6</code></li><li>Click Send</li><li>GET /api/college/notices → verify absent</li><li>Login as student → GET /api/student/notices → verify absent</li></ol></td><td class="exp">Status 200 or 204. Notice 6 not in either list. DB row deleted.</td><td><span class="pri L">Low</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-072</td><td class="title">College admin cannot access another college's student data</td><td class="desc">Tenant isolation: college admin A token returns 403 on college B's student</td><td class="pre">Two college admins for different colleges.</td><td class="steps"><ol><li>Login as College A admin</li><li>Note a student ID from College A's list</li><li>Login as College B admin</li><li>GET <code>/api/college/students/{studentIdFromCollegeA}</code></li><li>Observe status</li></ol></td><td class="exp">Status 403 or 404. College B admin cannot see College A's student. tenant_id filter enforced at query level.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+</tbody></table>
+<h2>⚙ Group 5 — Super Admin APIs <span class="grp">ADMIN</span><span class="cnt">12 cases</span></h2><table><thead><tr><th style="width:6%">ID</th><th style="width:15%">Title</th><th style="width:14%">Description</th><th style="width:13%">Preconditions</th><th style="width:27%">Test Steps</th><th style="width:15%">Expected Result</th><th style="width:5%">Priority</th><th style="width:5%">Type</th><th style="width:8%">Status</th><th style="width:12%">Notes</th></tr></thead><tbody><tr><td class="id">BE-073</td><td class="title">GET /api/admin/settings returns platform config</td><td class="desc">Super admin retrieves current platform name, emails, SMTP settings</td><td class="pre">Super admin session.</td><td class="steps"><ol><li>Login as super admin</li><li>GET <code>/api/admin/settings</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. {platformName, supportEmail, smtpHost, fromEmail, logoUrl}. Values from DB.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-074</td><td class="title">POST /api/admin/settings updates platform name</td><td class="desc">Super admin saves new platform name and it persists in DB</td><td class="pre">Super admin session.</td><td class="steps"><ol><li>POST <code>/api/admin/settings</code></li><li>Body: <code>{"platformName":"MyPlatform","supportEmail":"help@myplatform.com"}</code></li><li>Click Send</li><li>GET /api/admin/settings → verify updated values</li></ol></td><td class="exp">Status 200. GET returns platformName=MyPlatform. supportEmail updated.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-075</td><td class="title">POST /api/admin/settings empty platformName reverts to default — BUG</td><td class="desc">Empty string is falsy; || fallback reverts to PlacementHub default</td><td class="pre">Super admin session. Current platformName is MyPlatform.</td><td class="steps"><ol><li>POST <code>/api/admin/settings</code></li><li>Body: <code>{"platformName":""}</code></li><li>Click Send</li><li>GET /api/admin/settings</li><li>Observe platformName in response</li></ol></td><td class="exp">BUG CONFIRMED if GET returns 'PlacementHub'. Root cause: <code>String(payload?.platformName || DEFAULTS.platformName)</code> — empty string is falsy. Fix: use <code>?? DEFAULTS.platformName</code> instead.</td><td><span class="pri H">High</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Verified fix: Empty string input is correctly parsed and saved.</td>
+    </tr>
+<tr><td class="id">BE-076</td><td class="title">GET /api/admin/colleges lists all colleges across tenants</td><td class="desc">Super admin sees all colleges on the platform</td><td class="pre">Super admin session. 3 colleges in DB.</td><td class="steps"><ol><li>Login as super admin</li><li>GET <code>/api/admin/colleges</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Array of 3 colleges: {id, name, status, adminEmail, studentCount, createdAt}.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-077</td><td class="title">GET /api/admin/colleges/{id} returns college detail</td><td class="desc">Super admin retrieves full profile of one college</td><td class="pre">College ID=1 exists.</td><td class="steps"><ol><li>Login as super admin</li><li>GET <code>/api/admin/colleges/1</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Full college: name, adminEmail, status, studentCount, drivesCount, placedCount, createdAt.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-078</td><td class="title">PATCH /api/admin/colleges/{id}/status approve</td><td class="desc">Super admin approves pending college; admin can then log in</td><td class="pre">College ID=3 status=pending.</td><td class="steps"><ol><li>Login as super admin</li><li>PATCH <code>/api/admin/colleges/3/status</code></li><li>Body: <code>{"status":"approved"}</code></li><li>Click Send</li><li>Login as college 3 admin → verify dashboard access</li></ol></td><td class="exp">Status 200. College status=approved. College admin dashboard accessible. Previously blocked login now works.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-079</td><td class="title">PATCH /api/admin/colleges/{id}/status reject</td><td class="desc">Super admin rejects college; their login is blocked</td><td class="pre">College ID=4 status=pending.</td><td class="steps"><ol><li>Login as super admin</li><li>PATCH <code>/api/admin/colleges/4/status</code></li><li>Body: <code>{"status":"rejected","reason":"Incomplete docs"}</code></li><li>Click Send</li><li>Attempt login as college 4 admin</li></ol></td><td class="exp">Status 200. status=rejected. College admin login returns error indicating not approved.</td><td><span class="pri M">Medium</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-080</td><td class="title">GET /api/admin/feedback lists all user feedback</td><td class="desc">Super admin sees feedback from all tenants</td><td class="pre">5 feedback submissions across different colleges.</td><td class="steps"><ol><li>Login as super admin</li><li>GET <code>/api/admin/feedback</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. 5 feedback items from different roles/colleges: {id, submittedBy, role, message, createdAt}.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-081</td><td class="title">GET /api/admin/users?role=employer filters user list</td><td class="desc">Super admin can list users filtered by role</td><td class="pre">Multiple users of all roles in DB.</td><td class="steps"><ol><li>Login as super admin</li><li>GET <code>/api/admin/users?role=employer</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Only employer accounts returned. Each: {id, name, email, role, tenantId, active, createdAt}.</td><td><span class="pri M">Medium</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-082</td><td class="title">PATCH /api/admin/users/{id}/deactivate disables account</td><td class="desc">Deactivated user cannot log in; existing session invalidated</td><td class="pre">User ID=20 (employer) is active.</td><td class="steps"><ol><li>Login as super admin</li><li>PATCH <code>/api/admin/users/20/deactivate</code></li><li>Click Send</li><li>Attempt login as user 20 → observe result</li></ol></td><td class="exp">Status 200. Account deactivated. Login attempt returns 401. Any active session for user 20 rejected on next API call.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-083</td><td class="title">GET /api/admin/overview returns system-wide aggregate stats</td><td class="desc">Super admin home shows totals across all tenants</td><td class="pre">Super admin session. Multiple tenants with data.</td><td class="steps"><ol><li>Login as super admin</li><li>GET <code>/api/admin/overview</code></li><li>Click Send</li><li>Manually count from DB and verify</li></ol></td><td class="exp">Status 200. {totalColleges, totalStudents, totalEmployers, activeDrives, offersExtended} aggregated across all tenants.</td><td><span class="pri H">High</span></td><td><span class="type P">Positive</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-084</td><td class="title">College admin cannot access /api/admin/* endpoints</td><td class="desc">Role-based access: college admin token is rejected on super-admin routes</td><td class="pre">College admin session active.</td><td class="steps"><ol><li>Login as college admin</li><li>GET <code>/api/admin/settings</code></li><li>Click Send → note status</li><li>GET <code>/api/admin/colleges</code></li><li>Note status</li></ol></td><td class="exp">Status 403 on both. College admin cannot read or write admin endpoints. Error: insufficient role.</td><td><span class="pri H">High</span></td><td><span class="type N">Negative</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+</tbody></table>
+<h2>🛡 Group 6 — Security, Edge &amp; Performance <span class="grp">SECURITY</span><span class="cnt">16 cases</span></h2><table><thead><tr><th style="width:6%">ID</th><th style="width:15%">Title</th><th style="width:14%">Description</th><th style="width:13%">Preconditions</th><th style="width:27%">Test Steps</th><th style="width:15%">Expected Result</th><th style="width:5%">Priority</th><th style="width:5%">Type</th><th style="width:8%">Status</th><th style="width:12%">Notes</th></tr></thead><tbody><tr><td class="id">BE-085</td><td class="title">SQL injection in login email field</td><td class="desc">SQL payload as email must not bypass auth or crash DB</td><td class="pre">App running.</td><td class="steps"><ol><li>POST <code>/api/auth/callback/credentials</code></li><li>Body email: <code>admin'--</code>, password: anything</li><li>Click Send</li><li>Also try: <code>' OR '1'='1</code></li><li>Verify: no 200 response, no session cookie</li></ol></td><td class="exp">Status 401 or 400. No session created. No DB error in response body. Parameterized queries prevent injection.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-086</td><td class="title">XSS payload in job description stored safely</td><td class="desc">Script tag in job description must not execute when retrieved</td><td class="pre">Employer logged in.</td><td class="steps"><ol><li>POST <code>/api/employer/jobs</code></li><li>Description: <code>&lt;script&gt;alert('XSS')&lt;/script&gt; Engineer role</code></li><li>Click Send → note job ID</li><li>GET /api/employer/jobs/{id}</li><li>Inspect raw description field in JSON response</li></ol></td><td class="exp">Status 201 on save. GET returns description as escaped text or sanitized string. No script tag executes. Response Content-Type: application/json.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-087</td><td class="title">Manipulated tenant_id in body cannot switch tenant</td><td class="desc">Client-supplied tenantId in body is ignored; session tenantId used</td><td class="pre">Student in Tenant A logged in. Tenant B has ID=99.</td><td class="steps"><ol><li>Login as student (Tenant A)</li><li>POST <code>/api/student/drives/1/apply</code></li><li>Add to body: <code>{"tenantId":99}</code></li><li>Click Send</li><li>Check DB application row's tenant_id</li></ol></td><td class="exp">Application created under Tenant A (from JWT). Body-supplied tenantId=99 ignored. Cross-tenant write blocked.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-088</td><td class="title">Tampered JWT role rejected (signature invalid)</td><td class="desc">Manually escalated JWT role claim fails signature check</td><td class="pre">Valid student JWT available (from session cookie).</td><td class="steps"><ol><li>Decode student JWT payload (base64 decode middle section)</li><li>Change role: student → super_admin</li><li>Re-encode payload (do NOT update signature)</li><li>GET <code>/api/admin/settings</code> with tampered token in Cookie header</li><li>Observe status</li></ol></td><td class="exp">Status 401. Invalid signature detected. Admin endpoint not accessible. NextAuth validates signature on every request.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-089</td><td class="title">Missing Content-Type on POST handled gracefully</td><td class="desc">POST without Content-Type header returns clean error, not crash</td><td class="pre">App running.</td><td class="steps"><ol><li>POST <code>/api/auth/register</code></li><li>Remove Content-Type header entirely</li><li>Send raw JSON string as body</li><li>Click Send</li></ol></td><td class="exp">Status 400 or 415. Server does not crash. Error message is descriptive. No unhandled exception exposed in response.</td><td><span class="pri L">Low</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-090</td><td class="title">File upload exceeding size limit returns 413</td><td class="desc">File larger than allowed limit is rejected before processing</td><td class="pre">Student logged in. 15MB file available.</td><td class="steps"><ol><li>Login as student</li><li>POST <code>/api/student/documents</code></li><li>Attach 15MB file</li><li>Click Send</li></ol></td><td class="exp">Status 413 Payload Too Large or 400 with size error. File not saved. Error states max allowed size.</td><td><span class="pri M">Medium</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-091</td><td class="title">File upload wrong MIME type returns 400</td><td class="desc">Non-PDF file (e.g. .jpg) is rejected; server validates MIME, not just extension</td><td class="pre">Student logged in.</td><td class="steps"><ol><li>POST <code>/api/student/documents</code></li><li>Attach a .jpg image</li><li>Click Send</li></ol></td><td class="exp">Status 400. Error: only PDF accepted. MIME type checked server-side. File not stored.</td><td><span class="pri M">Medium</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-092</td><td class="title">Concurrent duplicate apply creates only 1 application</td><td class="desc">Race condition: two simultaneous apply requests produce one DB row</td><td class="pre">Student eligible. Drive ID=1 open. Two Postman tabs ready.</td><td class="steps"><ol><li>In Postman Collection Runner: create 2 concurrent POST /api/student/drives/1/apply requests</li><li>Run simultaneously</li><li>After both complete: check DB application count for (student_id, drive_id=1)</li></ol></td><td class="exp">One application row in DB. One request returns 201, other 409. Unique constraint prevents duplicates.</td><td><span class="pri H">High</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-093</td><td class="title">Dashboard API responds within 500ms</td><td class="desc">GET /api/student/dashboard returns in under 500ms on clean DB</td><td class="pre">Student session active. Normal DB load.</td><td class="steps"><ol><li>In Postman: GET <code>/api/student/dashboard</code></li><li>Run 5 times</li><li>Note response time shown at bottom of each response</li><li>Calculate average</li></ol></td><td class="exp">Average &lt;500ms. No single request &gt;1000ms. If slow: check for missing index on tenant_id or student_id.</td><td><span class="pri M">Medium</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-094</td><td class="title">Pagination page=0 handled without crash</td><td class="desc">page=0 or page=-1 returns first page or 400, not a crash</td><td class="pre">College admin session.</td><td class="steps"><ol><li>GET <code>/api/college/students?page=0&amp;limit=10</code></li><li>GET <code>/api/college/students?page=-1&amp;limit=10</code></li><li>Observe responses</li></ol></td><td class="exp">Status 200 (first page) or 400 (invalid page). No crash. No empty result with confusing total.</td><td><span class="pri L">Low</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-095</td><td class="title">Pagination beyond records returns empty array</td><td class="desc">page=99 when only 3 pages exist returns [] not 404</td><td class="pre">50 students in college.</td><td class="steps"><ol><li>GET <code>/api/college/students?page=99&amp;limit=10</code></li><li>Click Send</li></ol></td><td class="exp">Status 200. Empty array []. total still correct (50). hasNextPage=false. No error.</td><td><span class="pri L">Low</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-096</td><td class="title">Empty search returns all records</td><td class="desc">?search= (empty string) returns same count as no filter</td><td class="pre">College admin session. 50 students.</td><td class="steps"><ol><li>GET <code>/api/college/students?search=</code></li><li>Compare count to GET /api/college/students</li></ol></td><td class="exp">Both return 50 students. Empty search treated as no filter. No error thrown.</td><td><span class="pri L">Low</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-097</td><td class="title">CORS headers present on API responses</td><td class="desc">API includes correct CORS headers for browser-based requests</td><td class="pre">App running.</td><td class="steps"><ol><li>GET <code>/api/student/dashboard</code> with student cookie</li><li>Check response Headers tab for Access-Control-Allow-Origin</li><li>Send OPTIONS preflight to same URL</li></ol></td><td class="exp">Access-Control-Allow-Origin present and restricts to known origins (not wildcard *). OPTIONS returns 200 with correct Allow headers.</td><td><span class="pri M">Medium</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-098</td><td class="title">Rate limiting on login after repeated failures</td><td class="desc">5+ failed logins trigger 429; prevents brute force</td><td class="pre">App running.</td><td class="steps"><ol><li>POST <code>/api/auth/callback/credentials</code> with wrong password 10 times in rapid succession</li><li>Note status code changes</li><li>Check for X-RateLimit-Remaining or Retry-After headers</li></ol></td><td class="exp">After threshold: status 429. Retry-After header present. Legitimate users cannot brute force.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-099</td><td class="title">GET on POST-only endpoint returns 405</td><td class="desc">Wrong HTTP method returns Method Not Allowed, not 500</td><td class="pre">App running.</td><td class="steps"><ol><li>GET <code>/api/auth/register</code> (POST-only endpoint)</li><li>Click Send</li><li>Also GET <code>/api/student/drives/{id}/apply</code></li></ol></td><td class="exp">Status 405. Response includes Allow header listing valid methods. No crash, no data returned.</td><td><span class="pri L">Low</span></td><td><span class="type E">Edge</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+<tr><td class="id">BE-100</td><td class="title">Error responses don't expose stack traces or SQL</td><td class="desc">Production errors return user-friendly messages only</td><td class="pre">App running.</td><td class="steps"><ol><li>Send malformed JSON body to several endpoints</li><li>Request a non-existent resource ID</li><li>Inspect error response body carefully</li><li>Look for: stack traces, file paths, SQL queries, framework versions</li></ol></td><td class="exp">Error responses: user-friendly text only ('Not found', 'Invalid input'). No stack traces. No SQL. No internal paths. NODE_ENV=production suppresses verbose errors.</td><td><span class="pri H">High</span></td><td><span class="type S">Security</span></td>
+      <td><span class="res pass">Passed</span></td>
+      <td class="notes">Tested successfully.</td>
+    </tr>
+</tbody></table>
+</section><footer>PlacementHub Backend Test Cases — 100 cases · 6 groups · Generated 2026-04-26</footer></body></html>

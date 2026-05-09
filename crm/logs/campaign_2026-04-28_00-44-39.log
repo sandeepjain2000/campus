@@ -1,0 +1,435 @@
+2026-04-28 00:44:39 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-28_00-44-39.log
+2026-04-28 00:44:39 [INFO   ] ================================================================
+2026-04-28 00:44:39 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-28 00:44:39 [INFO   ]   Run : 2026-04-28 00:44:39
+2026-04-28 00:44:39 [INFO   ]   Mode: Send up to 2 institute(s)
+2026-04-28 00:44:39 [INFO   ] ================================================================
+2026-04-28 00:44:39 [INFO   ]   Gmail accounts available: 32
+2026-04-28 00:44:39 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-28 00:44:39 [INFO   ]   Monitoring 43 'Sent' address(es)
+2026-04-28 00:44:39 [INFO   ]   Checking 31/32 accounts (only those that sent emails)
+2026-04-28 00:44:39 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-28 00:44:39 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-28 00:44:41 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:44:42 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:44:42 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:44:43 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:44:43 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:44:44 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:44:44 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:44:44 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:44:44 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:44:44 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:44:45 [INFO   ] 
+  > sj1799274@gmail.com
+2026-04-28 00:44:45 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-28 00:44:47 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:44:47 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:44:48 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:44:48 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:44:48 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:44:49 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:44:49 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:44:49 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:44:49 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:44:49 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:44:50 [INFO   ] 
+  > jain109sandeep@gmail.com
+2026-04-28 00:44:50 [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-04-28 00:44:52 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:44:53 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:44:53 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:44:54 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:44:54 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:44:55 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:44:55 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:44:55 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:44:55 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:44:55 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:44:56 [INFO   ] 
+  > jain111sandeep@gmail.com
+2026-04-28 00:44:56 [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-04-28 00:44:58 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:44:58 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:44:59 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:44:59 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:00 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:00 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:01 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:01 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:01 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:01 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:01 [INFO   ] 
+  > sandeep196605@gmail.com
+2026-04-28 00:45:01 [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-04-28 00:45:04 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:04 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:05 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:05 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:06 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:06 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:07 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:07 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:07 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:07 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:07 [INFO   ] 
+  > jain114sandeep@gmail.com
+2026-04-28 00:45:07 [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-04-28 00:45:09 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:10 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:10 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:11 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:11 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:12 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:12 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:12 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:12 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:12 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:13 [INFO   ] 
+  > jain105sandeep@gmail.com
+2026-04-28 00:45:13 [INFO   ]   Connecting to jain105sandeep@gmail.com …
+2026-04-28 00:45:15 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:15 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:16 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:16 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:16 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:17 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:17 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:17 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:17 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:17 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:17 [INFO   ] 
+  > jain107sandeep@gmail.com
+2026-04-28 00:45:17 [INFO   ]   Connecting to jain107sandeep@gmail.com …
+2026-04-28 00:45:19 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:20 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:20 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:20 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:21 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:21 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:22 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:22 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:22 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:22 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:22 [INFO   ] 
+  > sj7634811@gmail.com
+2026-04-28 00:45:22 [INFO   ]   Connecting to sj7634811@gmail.com …
+2026-04-28 00:45:25 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:26 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:26 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:27 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:28 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:29 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:29 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:29 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:29 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:29 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:29 [INFO   ] 
+  > jain115sandeep@gmail.com
+2026-04-28 00:45:29 [INFO   ]   Connecting to jain115sandeep@gmail.com …
+2026-04-28 00:45:32 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:32 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:33 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:33 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:34 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:34 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:35 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:35 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:35 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:35 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:35 [INFO   ] 
+  > jain200sandeep@gmail.com
+2026-04-28 00:45:35 [INFO   ]   Connecting to jain200sandeep@gmail.com …
+2026-04-28 00:45:37 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:37 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:38 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:38 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:39 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:39 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:39 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:39 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:39 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:39 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:39 [INFO   ] 
+  > jain201sandeep@gmail.com
+2026-04-28 00:45:39 [INFO   ]   Connecting to jain201sandeep@gmail.com …
+2026-04-28 00:45:41 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:42 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:42 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:42 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:43 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:43 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:43 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:43 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:43 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:43 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:43 [INFO   ] 
+  > jain202sandeep@gmail.com
+2026-04-28 00:45:43 [INFO   ]   Connecting to jain202sandeep@gmail.com …
+2026-04-28 00:45:45 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:45 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:46 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:46 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:47 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:47 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:47 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:47 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:47 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:47 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:47 [INFO   ] 
+  > jain203sandeep@gmail.com
+2026-04-28 00:45:47 [INFO   ]   Connecting to jain203sandeep@gmail.com …
+2026-04-28 00:45:50 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:51 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:45:51 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:45:52 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:45:52 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:45:53 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:45:53 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:45:53 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:45:53 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:45:53 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:45:54 [INFO   ] 
+  > jain204sandeep@gmail.com
+2026-04-28 00:45:54 [INFO   ]   Connecting to jain204sandeep@gmail.com …
+2026-04-28 00:45:59 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:45:59 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:00 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:00 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:01 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:01 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:02 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:02 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:02 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:02 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:02 [INFO   ] 
+  > jain205sandeep@gmail.com
+2026-04-28 00:46:02 [INFO   ]   Connecting to jain205sandeep@gmail.com …
+2026-04-28 00:46:04 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:04 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:05 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:05 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:05 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:06 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:06 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:06 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:06 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:06 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:07 [INFO   ] 
+  > jain206sandeep@gmail.com
+2026-04-28 00:46:07 [INFO   ]   Connecting to jain206sandeep@gmail.com …
+2026-04-28 00:46:09 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:09 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:09 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:10 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:10 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:11 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:11 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:11 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:11 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:11 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:11 [INFO   ] 
+  > jain207sandeep@gmail.com
+2026-04-28 00:46:11 [INFO   ]   Connecting to jain207sandeep@gmail.com …
+2026-04-28 00:46:13 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:14 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:14 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:14 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:15 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:15 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:15 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:15 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:15 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:15 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:16 [INFO   ] 
+  > jain208sandeep@gmail.com
+2026-04-28 00:46:16 [INFO   ]   Connecting to jain208sandeep@gmail.com …
+2026-04-28 00:46:18 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:19 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:19 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:20 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:21 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:21 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:22 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:22 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:22 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:22 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:22 [INFO   ] 
+  > jain1001sandeep@gmail.com
+2026-04-28 00:46:22 [INFO   ]   Connecting to jain1001sandeep@gmail.com …
+2026-04-28 00:46:24 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:25 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:25 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:26 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:26 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:27 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:27 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:27 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:27 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:27 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:27 [INFO   ] 
+  > jain1002sandeep@gmail.com
+2026-04-28 00:46:27 [INFO   ]   Connecting to jain1002sandeep@gmail.com …
+2026-04-28 00:46:29 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:29 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:30 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:30 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:30 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:31 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:31 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:31 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:31 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:31 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:31 [INFO   ] 
+  > jain1003sandeep@gmail.com
+2026-04-28 00:46:31 [INFO   ]   Connecting to jain1003sandeep@gmail.com …
+2026-04-28 00:46:33 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:34 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:34 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:34 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:35 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:35 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:35 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:35 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:35 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:35 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:36 [INFO   ] 
+  > jain1004sandeep@gmail.com
+2026-04-28 00:46:36 [INFO   ]   Connecting to jain1004sandeep@gmail.com …
+2026-04-28 00:46:38 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:38 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:39 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:39 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:39 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:40 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:40 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:40 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:40 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:40 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:41 [INFO   ] 
+  > jain104sandeep@gmail.com
+2026-04-28 00:46:41 [INFO   ]   Connecting to jain104sandeep@gmail.com …
+2026-04-28 00:46:43 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:43 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:44 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:44 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:44 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:45 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:45 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:45 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:45 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:45 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:46 [INFO   ] 
+  > jain214sandeep@gmail.com
+2026-04-28 00:46:46 [INFO   ]   Connecting to jain214sandeep@gmail.com …
+2026-04-28 00:46:48 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:48 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:49 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:49 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:50 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:50 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:51 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:51 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:51 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:51 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:51 [INFO   ] 
+  > jain215sandeep@gmail.com
+2026-04-28 00:46:51 [INFO   ]   Connecting to jain215sandeep@gmail.com …
+2026-04-28 00:46:54 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:46:54 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:46:55 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:46:55 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:46:56 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:46:56 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:46:57 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:46:57 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:46:57 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:46:57 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:46:57 [INFO   ] 
+  > jain216sandeep@gmail.com
+2026-04-28 00:46:57 [INFO   ]   Connecting to jain216sandeep@gmail.com …
+2026-04-28 00:46:59 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:47:00 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:47:00 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:47:01 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:47:01 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:47:02 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:47:02 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:47:02 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:47:02 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:47:02 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:47:02 [INFO   ] 
+  > jainsandeep729@gmail.com
+2026-04-28 00:47:02 [INFO   ]   Connecting to jainsandeep729@gmail.com …
+2026-04-28 00:47:04 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:47:05 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:47:05 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:47:06 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:47:06 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:47:07 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:47:07 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:47:07 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:47:07 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:47:07 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:47:07 [INFO   ] 
+  > mandify1@gmail.com
+2026-04-28 00:47:07 [INFO   ]   Connecting to mandify1@gmail.com …
+2026-04-28 00:47:10 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:47:10 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:47:10 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:47:11 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:47:11 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:47:12 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:47:12 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:47:12 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:47:12 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:47:12 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:47:12 [INFO   ] 
+  > mandify2@gmail.com
+2026-04-28 00:47:12 [INFO   ]   Connecting to mandify2@gmail.com …
+2026-04-28 00:47:14 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:47:15 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:47:15 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:47:15 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:47:16 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:47:16 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:47:16 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:47:16 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:47:16 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:47:16 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:47:17 [INFO   ] 
+  > sj5739255@gmail.com
+2026-04-28 00:47:17 [INFO   ]   Connecting to sj5739255@gmail.com …
+2026-04-28 00:47:20 [INFO   ]   Created Gmail label 'PROCESSED-CAMPUS'
+2026-04-28 00:47:20 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS'
+2026-04-28 00:47:21 [INFO   ]   Created Gmail label 'BOUNCE-CAMPUS-UNMATCHED'
+2026-04-28 00:47:21 [INFO   ]   Created Gmail label 'REPLY-CAMPUS'
+2026-04-28 00:47:22 [INFO   ]   Created Gmail label 'AUTOREPLY-CAMPUS'
+2026-04-28 00:47:23 [INFO   ]   Created Gmail label 'NON-CAMPUS'
+2026-04-28 00:47:23 [WARNING]   X-GM-RAW search failed: error("UID command error: BAD [b'Could not parse command']") (query: newer_than:30d in:inbox -label:PROCESSED-CAMPUS…)
+2026-04-28 00:47:23 [INFO   ]   INBOX without 'PROCESSED-CAMPUS': 0 UID(s) (newer_than:30d)
+2026-04-28 00:47:23 [INFO   ]   Pass 1: scanning headers of 0 email(s)...
+2026-04-28 00:47:23 [INFO   ]   Pass 1 done — full fetch for 0 UID(s); tagged NON-CAMPUS from headers: 0
+2026-04-28 00:47:24 [INFO   ] 
+  Bounces found   : 0
+2026-04-28 00:47:24 [INFO   ]   Human responses : 0
+2026-04-28 00:47:24 [INFO   ] 
+[STEP 2] Sending to up to 2 institute(s)...
+2026-04-28 00:47:24 [INFO   ]   Institutes ready: 2
+2026-04-28 00:47:24 [INFO   ] 
+  [09] Sending to: registrar@cuhimachal.ac.in
+2026-04-28 00:47:24 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-28 00:47:30 [INFO   ]        [OK] Sent successfully
+2026-04-28 00:47:33 [INFO   ] 
+  [10] Sending to: registrar@cuj.ac.in
+2026-04-28 00:47:33 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-28 00:47:38 [INFO   ]        [OK] Sent successfully
+2026-04-28 00:47:41 [INFO   ] 
+================================================================
+2026-04-28 00:47:41 [INFO   ]   Emails sent      : 2
+2026-04-28 00:47:41 [INFO   ]   Send failures    : 0
+2026-04-28 00:47:41 [INFO   ]   Bounces detected : 0
+2026-04-28 00:47:41 [INFO   ]   Human responses  : 0
+2026-04-28 00:47:41 [INFO   ] ================================================================

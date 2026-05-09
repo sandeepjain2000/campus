@@ -1,0 +1,158 @@
+=================================================================
+  scrape_retry_failed.py  v1.0.0
+  Started : 2026-04-27 00:49:42
+=================================================================
+  Input   : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\Book2.csv
+  Output  : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\retry_titles_20260427_004942.csv
+=================================================================
+  Found 91 URLs to retry  (0 skipped as malformed)
+
+  Starting Chrome …
+  Chrome started.
+
+[  1/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://bhatkhandemusic.edu.in/
+[  2/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://bnmu.bih.nic.in/
+[  3/91] ⚠  TIMEOUT  ←  http://bssrv.ac.in/
+[  4/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://cgkv.ac.in/
+[  5/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://dial.gov.in/
+[  6/91] ⚠  TIMEOUT  ←  http://digitalindia.gov.in/
+[  7/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://evisitors.nic.in/
+[  8/91] ✗  Message: unknown error: net::ERR_CONNECTION_REFUSED  ←  http://hillagric.ac.in:1003/cskhpau/
+[  9/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://mpsvvujjain.org
+[ 10/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://mmhapu.bih.nic.in/
+[ 11/91] ⚠  TIMEOUT  ←  http://ssuhs.in/
+[ 12/91] ✓  West Bengal University of Animal & Fishery Sciences  ←  http://wbuafscl.ac.in/
+[ 13/91] ⚠  TIMEOUT  ←  http://www.aau.in/
+[ 14/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.apsurewa.nic.in/
+[ 15/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.bamu.net/
+[ 16/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.baujharkhand.org/
+[ 17/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.becs.ac.in/
+[ 18/91] ⚠  TIMEOUT  ←  http://www.bhattadevuniversity.ac.in/
+[ 19/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.bubhopal.nic.in/
+[ 20/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.bvvjdp.ac.in/
+[ 21/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.dcrusm.ac.in/
+[ 22/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.ddugu.edu.in/
+[ 23/91] ⚠  TIMEOUT  ←  http://www.dtu.ac.in/
+[ 24/91] ⚠  TIMEOUT  ←  http://www.gbpuat.ac.in/
+[ 25/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.goidirectory.gov.in/index.php
+[ 26/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.gov.ua.nic.in/doonuniversity
+[ 27/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.igdtuw.ac.in/
+[ 28/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.jnkvv.nic.in/
+[ 29/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.jrdu.ac.in/
+[ 30/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.jrrsanskrituniversity.ac.in/
+[ 31/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.kannuruiversity.ac.in/
+[ 32/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.keralauniversity.edu/
+[ 33/91] ✓  (no title)  ←  http://www.kgmcindia.edu/
+[ 34/91] ✓  Privacy error  ←  http://www.kswu.ac.in/
+[ 35/91] ⚠  TIMEOUT  ←  http://www.kuvempu.ac.in/eng/index.php
+[ 36/91] ✓  mafsu - Mafsu  ←  http://www.mafsu.in/
+[ 37/91] ✓  Mangalore University  ←  http://www.mangaloreuniversity.ac.in/
+[ 38/91] ⚠  TIMEOUT  ←  http://www.mmmut.ac.in/
+[ 39/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.mpkv.mah.nic.in/
+[ 40/91] ✗  Alert Text: As we are up with our new website. Would you like to have a quick ov  ←  http://www.mu.ac.in/
+[ 41/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.nalandaopenuniversity.com,/
+[ 42/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.nannayauniversity.info/
+[ 43/91] ✓  National Law School of India University -  ←  http://www.nls.ac.in/
+[ 44/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.nmu.ac.in/
+[ 45/91] ✓  (no title)  ←  http://www.nuals.ac.in/
+[ 46/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.pdkv.mah.nic.in/
+[ 47/91] ✓  Presidency University  ←  http://www.presiuniv.ac.in/
+[ 48/91] ✓  (no title)  ←  http://www.sanchiuniv.edu.in/
+[ 49/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.sanskrituni.digitaluniversity.ac,/
+[ 50/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.sasu.ac.in/
+[ 51/91] ✗  Message: unknown error: net::ERR_CONNECTION_REFUSED  ←  http://www.sjsv.nic.in/
+[ 52/91] ✓  Sidho-Kanho-Birsha University 103.163.91.101-1  ←  http://www.skbu.ac.in/
+[ 53/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.svbpmeerut.ac.in/
+[ 54/91] ✓  TELANGANA UNIVERISITY  ←  http://www.telanganauniversity.ac.in/
+[ 55/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.tnfu.org.in/university/wp/
+[ 56/91] ✓  ಮುಖಪುಟ - University of Agricultural Sciences, Bangalore  ←  http://www.uasbangalore.edu.in/
+[ 57/91] ✓  Official website of Veer Madho Singh Bhandari Uttarakhand Technical Un  ←  http://www.uktech.ac.in/
+[ 58/91] ✓  Utkal University  ←  http://www.utkaluniversity.ac.in/
+[ 59/91] ✓  (no title)  ←  http://www.vbspu.ac.in/index
+[ 60/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  http://www.vbu.co.in/
+[ 61/91] ✓  WBSU  ←  http://www.wbsubregistration.org/
+[ 62/91] ⚠  TIMEOUT  ←  https://aktu.ac.in/
+[ 63/91] ⚠  TIMEOUT  ←  https://aukota.org/
+[ 64/91] ✓  (no title)  ←  https://deemed.ugc.ac.in/
+[ 65/91] ✓  DLCSUPVA - Dada Lakhmi Chand State University of Performing and Visual  ←  https://dlcsupva.ac.in/
+[ 66/91] ⚠  TIMEOUT  ←  https://email.gov.in/
+[ 67/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://eng.bangaloreuniversity.ac.in/
+[ 68/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://eng.bnu.ac.in/
+[ 69/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://gurucharancollege.ac.in/
+[ 70/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://harichandguruchanduniversity.com/
+[ 71/91] ⚠  TIMEOUT  ←  https://jncu.ac.in/
+[ 72/91] ✓  MAKAUT,WB - Maulana Abul Kalam Azad University of Technology, West Ben  ←  https://makautwb.ac.in/
+[ 73/91] ✓  Maharaja Ranjit Singh Punjab Technical University  ←  https://mrsptu.ac.in/
+[ 74/91] ⚠  TIMEOUT  ←  https://nau.in/
+[ 75/91] ⚠  TIMEOUT  ←  https://ouat.ac.in/
+[ 76/91] ✓  Shaheed Nandkumar Patel Vishwavidyalaya,Raigarh - Shaheed Nandkumar Pa  ←  https://snpv.ac.in/
+[ 77/91] ✓  Government of India | All India Council for Technical Education  ←  https://www.aicte-india.org/
+[ 78/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.argucom.ac.in/
+[ 79/91] ⚠  TIMEOUT  ←  https://www.bujhansi.ac.in/
+[ 80/91] ⚠  TIMEOUT  ←  https://www.gjust.ac.in/
+[ 81/91] ⚠  TIMEOUT  ←  https://www.hbsu.ac.in/
+[ 82/91] ⚠  TIMEOUT  ←  https://www.hsncu.edu.in/
+[ 83/91] ✓  (no title)  ←  https://www.iite.ac.in/
+[ 84/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.jadavpuruniversity.in/
+[ 85/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.mandyauniversity.ac.in/
+[ 86/91] ✓  Homepage of RPNLUP  ←  https://www.rpnlup.ac.in/
+[ 87/91] ⚠  TIMEOUT  ←  https://www.ssvv.ac.in/
+[ 88/91] ⚠  TIMEOUT  ←  https://www.suksn.edu.in/
+[ 89/91] ✓  (no title)  ←  https://www.uhsbagalkot.edu.in/
+[ 90/91] ⚠  TIMEOUT  ←  https://www.uniraj.ac.in/
+[ 91/91] ✗  Message: unknown error: net::ERR_NAME_NOT_RESOLVED  ←  https://www.wbuttepa.ac.in/
+
+  Chrome closed.
+
+=================================================================
+  SCRIPT REPORT: scrape_retry_failed.py  v1.0.0
+=================================================================
+  Start Time   : 2026-04-27 00:49:42
+  End Time     : 2026-04-27 01:02:36
+  Duration     : 773.9 seconds
+  Outcome      : SUCCESS
+-----------------------------------------------------------------
+  Summary:
+    Total retried  : 91
+    Successful     : 25
+    Failed/Timeout : 66
+    Skipped (bad)  : 0
+    CSV saved to   : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\retry_titles_20260427_004942.csv
+-----------------------------------------------------------------
+  Errors (66):
+    [orig #5] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://bhatkhandemusic.edu.in/
+    [orig #6] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://bnmu.bih.nic.in/
+    [orig #8] TIMEOUT: http://bssrv.ac.in/
+    [orig #13] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://cgkv.ac.in/
+    [orig #17] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://dial.gov.in/
+    [orig #18] TIMEOUT: http://digitalindia.gov.in/
+    [orig #20] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://evisitors.nic.in/
+    [orig #22] Message: unknown error: net::ERR_CONNECTION_REFUSED: http://hillagric.ac.in:1003/cskhpau/
+    [orig #23] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://mpsvvujjain.org
+    [orig #30] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://mmhapu.bih.nic.in/
+    [orig #43] TIMEOUT: http://ssuhs.in/
+    [orig #50] TIMEOUT: http://www.aau.in/
+    [orig #55] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.apsurewa.nic.in/
+    [orig #59] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bamu.net/
+    [orig #61] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.baujharkhand.org/
+    [orig #63] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.becs.ac.in/
+    [orig #65] TIMEOUT: http://www.bhattadevuniversity.ac.in/
+    [orig #70] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bubhopal.nic.in/
+    [orig #71] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.bvvjdp.ac.in/
+    [orig #82] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.dcrusm.ac.in/
+    [orig #83] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.ddugu.edu.in/
+    [orig #87] TIMEOUT: http://www.dtu.ac.in/
+    [orig #91] TIMEOUT: http://www.gbpuat.ac.in/
+    [orig #94] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.goidirectory.gov.in/index.php
+    [orig #95] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.gov.ua.nic.in/doonuniversity
+    [orig #100] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.igdtuw.ac.in/
+    [orig #108] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jnkvv.nic.in/
+    [orig #113] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jrdu.ac.in/
+    [orig #114] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.jrrsanskrituniversity.ac.in/
+    [orig #117] Message: unknown error: net::ERR_NAME_NOT_RESOLVED: http://www.kannuruiversity.ac.in/
+    … and 36 more (see log)
+=================================================================
+
+  Log    : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\scrape_retry_failed_20260427_004942.log
+  Report : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\scrape_retry_failed_report_20260427_004942.txt
+  CSV    : C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs_and_reports\retry_titles_20260427_004942.csv

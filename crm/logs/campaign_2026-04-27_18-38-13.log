@@ -1,0 +1,569 @@
+2026-04-27 18:38:13 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\crm\logs\campaign_2026-04-27_18-38-13.log
+2026-04-27 18:38:13 [INFO   ] ================================================================
+2026-04-27 18:38:13 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-27 18:38:13 [INFO   ]   Run : 2026-04-27 18:38:13
+2026-04-27 18:38:13 [INFO   ]   Mode: Send up to 100 institute(s)
+2026-04-27 18:38:13 [INFO   ] ================================================================
+2026-04-27 18:38:13 [INFO   ]   Gmail accounts available: 32
+2026-04-27 18:38:13 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-27 18:38:13 [INFO   ]   Monitoring 12 'Sent' address(es)
+2026-04-27 18:38:13 [INFO   ]   Checking 20/32 accounts (only those that sent emails)
+2026-04-27 18:38:13 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-27 18:38:13 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-27 18:38:18 [INFO   ]   Found 190 candidate email(s)
+2026-04-27 18:38:18 [INFO   ]   Pass 1: scanning headers of 190 email(s)...
+2026-04-27 18:39:21 [INFO   ]     ...100/190 headers done
+2026-04-27 18:40:08 [INFO   ]   Pass 1 done — 190/190 need full fetch.
+2026-04-27 18:41:52 [INFO   ]   [BOUNCE->FAILURE] tpo@amu.ac.in
+2026-04-27 18:42:29 [INFO   ] 
+  > sj1799274@gmail.com
+2026-04-27 18:42:29 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-27 18:42:33 [INFO   ]   Found 158 candidate email(s)
+2026-04-27 18:42:33 [INFO   ]   Pass 1: scanning headers of 158 email(s)...
+2026-04-27 18:43:09 [INFO   ]     ...100/158 headers done
+2026-04-27 18:43:29 [INFO   ]   Pass 1 done — 158/158 need full fetch.
+2026-04-27 18:44:30 [INFO   ]   [BOUNCE->FAILURE] tpo@bbau.ac.in
+2026-04-27 18:44:36 [INFO   ]   [BOUNCE->FAILURE] placement@rusa.nic.in
+2026-04-27 18:44:38 [INFO   ] 
+  > jain109sandeep@gmail.com
+2026-04-27 18:44:38 [INFO   ]   Connecting to jain109sandeep@gmail.com …
+2026-04-27 18:44:43 [INFO   ]   Found 187 candidate email(s)
+2026-04-27 18:44:43 [INFO   ]   Pass 1: scanning headers of 187 email(s)...
+2026-04-27 18:45:27 [INFO   ]     ...100/187 headers done
+2026-04-27 18:46:04 [INFO   ]   Pass 1 done — 187/187 need full fetch.
+2026-04-27 18:47:50 [INFO   ] 
+  > jain111sandeep@gmail.com
+2026-04-27 18:47:50 [INFO   ]   Connecting to jain111sandeep@gmail.com …
+2026-04-27 18:47:54 [INFO   ]   Found 180 candidate email(s)
+2026-04-27 18:47:54 [INFO   ]   Pass 1: scanning headers of 180 email(s)...
+2026-04-27 18:48:31 [INFO   ]     ...100/180 headers done
+2026-04-27 18:48:59 [INFO   ]   Pass 1 done — 180/180 need full fetch.
+2026-04-27 18:50:20 [INFO   ] 
+  > sandeep196605@gmail.com
+2026-04-27 18:50:20 [INFO   ]   Connecting to sandeep196605@gmail.com …
+2026-04-27 18:50:25 [INFO   ]   Found 186 candidate email(s)
+2026-04-27 18:50:25 [INFO   ]   Pass 1: scanning headers of 186 email(s)...
+2026-04-27 18:51:09 [INFO   ]     ...100/186 headers done
+2026-04-27 18:51:45 [INFO   ]   Pass 1 done — 186/186 need full fetch.
+2026-04-27 18:53:30 [INFO   ] 
+  > jain114sandeep@gmail.com
+2026-04-27 18:53:30 [INFO   ]   Connecting to jain114sandeep@gmail.com …
+2026-04-27 18:53:35 [INFO   ]   Found 190 candidate email(s)
+2026-04-27 18:53:35 [INFO   ]   Pass 1: scanning headers of 190 email(s)...
+2026-04-27 18:54:21 [INFO   ]     ...100/190 headers done
+2026-04-27 18:55:03 [INFO   ]   Pass 1 done — 190/190 need full fetch.
+2026-04-27 18:56:52 [INFO   ] 
+  > jain105sandeep@gmail.com
+2026-04-27 18:56:52 [INFO   ]   Connecting to jain105sandeep@gmail.com …
+2026-04-27 18:56:56 [INFO   ]   Found 185 candidate email(s)
+2026-04-27 18:56:56 [INFO   ]   Pass 1: scanning headers of 185 email(s)...
+2026-04-27 18:57:26 [INFO   ]     ...100/185 headers done
+2026-04-27 18:57:52 [INFO   ]   Pass 1 done — 185/185 need full fetch.
+2026-04-27 18:59:13 [INFO   ] 
+  > jain107sandeep@gmail.com
+2026-04-27 18:59:13 [INFO   ]   Connecting to jain107sandeep@gmail.com …
+2026-04-27 18:59:17 [INFO   ]   Found 191 candidate email(s)
+2026-04-27 18:59:17 [INFO   ]   Pass 1: scanning headers of 191 email(s)...
+2026-04-27 18:59:51 [INFO   ]     ...100/191 headers done
+2026-04-27 19:00:20 [INFO   ]   Pass 1 done — 191/191 need full fetch.
+2026-04-27 19:01:45 [INFO   ] 
+  > sj7634811@gmail.com
+2026-04-27 19:01:45 [INFO   ]   Connecting to sj7634811@gmail.com …
+2026-04-27 19:01:54 [INFO   ]   Found 178 candidate email(s)
+2026-04-27 19:01:54 [INFO   ]   Pass 1: scanning headers of 178 email(s)...
+2026-04-27 19:02:33 [INFO   ]     ...100/178 headers done
+2026-04-27 19:02:59 [INFO   ]   Pass 1 done — 178/178 need full fetch.
+2026-04-27 19:04:18 [INFO   ] 
+  > jain115sandeep@gmail.com
+2026-04-27 19:04:18 [INFO   ]   Connecting to jain115sandeep@gmail.com …
+2026-04-27 19:04:23 [INFO   ]   Found 198 candidate email(s)
+2026-04-27 19:04:23 [INFO   ]   Pass 1: scanning headers of 198 email(s)...
+2026-04-27 19:05:12 [INFO   ]     ...100/198 headers done
+2026-04-27 19:05:53 [INFO   ]   Pass 1 done — 198/198 need full fetch.
+2026-04-27 19:07:46 [INFO   ] 
+  > jain200sandeep@gmail.com
+2026-04-27 19:07:46 [INFO   ]   Connecting to jain200sandeep@gmail.com …
+2026-04-27 19:07:55 [INFO   ]   Found 178 candidate email(s)
+2026-04-27 19:07:55 [INFO   ]   Pass 1: scanning headers of 178 email(s)...
+2026-04-27 19:09:08 [INFO   ]     ...100/178 headers done
+2026-04-27 19:09:47 [INFO   ]   Pass 1 done — 178/178 need full fetch.
+2026-04-27 19:11:47 [INFO   ] 
+  > jain201sandeep@gmail.com
+2026-04-27 19:11:47 [INFO   ]   Connecting to jain201sandeep@gmail.com …
+2026-04-27 19:11:51 [INFO   ]   Found 179 candidate email(s)
+2026-04-27 19:11:51 [INFO   ]   Pass 1: scanning headers of 179 email(s)...
+2026-04-27 19:12:20 [INFO   ]     ...100/179 headers done
+2026-04-27 19:12:49 [INFO   ]   Pass 1 done — 179/179 need full fetch.
+2026-04-27 19:14:07 [INFO   ] 
+  > jain202sandeep@gmail.com
+2026-04-27 19:14:07 [INFO   ]   Connecting to jain202sandeep@gmail.com …
+2026-04-27 19:14:11 [INFO   ]   Found 173 candidate email(s)
+2026-04-27 19:14:11 [INFO   ]   Pass 1: scanning headers of 173 email(s)...
+2026-04-27 19:14:40 [INFO   ]     ...100/173 headers done
+2026-04-27 19:15:01 [INFO   ]   Pass 1 done — 173/173 need full fetch.
+2026-04-27 19:16:06 [INFO   ] 
+  > jain203sandeep@gmail.com
+2026-04-27 19:16:06 [INFO   ]   Connecting to jain203sandeep@gmail.com …
+2026-04-27 19:16:11 [INFO   ]   Found 175 candidate email(s)
+2026-04-27 19:16:11 [INFO   ]   Pass 1: scanning headers of 175 email(s)...
+2026-04-27 19:16:53 [INFO   ]     ...100/175 headers done
+2026-04-27 19:17:25 [INFO   ]   Pass 1 done — 175/175 need full fetch.
+2026-04-27 19:19:02 [INFO   ] 
+  > jain204sandeep@gmail.com
+2026-04-27 19:19:02 [INFO   ]   Connecting to jain204sandeep@gmail.com …
+2026-04-27 19:19:07 [INFO   ]   Found 176 candidate email(s)
+2026-04-27 19:19:07 [INFO   ]   Pass 1: scanning headers of 176 email(s)...
+2026-04-27 19:19:45 [INFO   ]     ...100/176 headers done
+2026-04-27 19:20:13 [INFO   ]   Pass 1 done — 176/176 need full fetch.
+2026-04-27 19:21:39 [INFO   ] 
+  > jain205sandeep@gmail.com
+2026-04-27 19:21:39 [INFO   ]   Connecting to jain205sandeep@gmail.com …
+2026-04-27 19:21:43 [INFO   ]   Found 162 candidate email(s)
+2026-04-27 19:21:43 [INFO   ]   Pass 1: scanning headers of 162 email(s)...
+2026-04-27 19:22:17 [INFO   ]     ...100/162 headers done
+2026-04-27 19:22:38 [INFO   ]   Pass 1 done — 162/162 need full fetch.
+2026-04-27 19:23:51 [INFO   ] 
+  > jain206sandeep@gmail.com
+2026-04-27 19:23:51 [INFO   ]   Connecting to jain206sandeep@gmail.com …
+2026-04-27 19:23:56 [INFO   ]   Found 159 candidate email(s)
+2026-04-27 19:23:56 [INFO   ]   Pass 1: scanning headers of 159 email(s)...
+2026-04-27 19:24:29 [INFO   ]     ...100/159 headers done
+2026-04-27 19:24:51 [INFO   ]   Pass 1 done — 159/159 need full fetch.
+2026-04-27 19:26:04 [INFO   ] 
+  > jain207sandeep@gmail.com
+2026-04-27 19:26:04 [INFO   ]   Connecting to jain207sandeep@gmail.com …
+2026-04-27 19:26:08 [INFO   ]   Found 164 candidate email(s)
+2026-04-27 19:26:08 [INFO   ]   Pass 1: scanning headers of 164 email(s)...
+2026-04-27 19:26:48 [INFO   ]     ...100/164 headers done
+2026-04-27 19:27:15 [INFO   ]   Pass 1 done — 164/164 need full fetch.
+2026-04-27 19:28:45 [INFO   ] 
+  > jain208sandeep@gmail.com
+2026-04-27 19:28:45 [INFO   ]   Connecting to jain208sandeep@gmail.com …
+2026-04-27 19:28:51 [INFO   ]   Found 172 candidate email(s)
+2026-04-27 19:28:51 [INFO   ]   Pass 1: scanning headers of 172 email(s)...
+2026-04-27 19:29:40 [INFO   ]     ...100/172 headers done
+2026-04-27 19:30:12 [INFO   ]   Pass 1 done — 172/172 need full fetch.
+2026-04-27 19:32:00 [INFO   ] 
+  > jain1001sandeep@gmail.com
+2026-04-27 19:32:00 [INFO   ]   Connecting to jain1001sandeep@gmail.com …
+2026-04-27 19:32:04 [INFO   ]   Found 29 candidate email(s)
+2026-04-27 19:32:04 [INFO   ]   Pass 1: scanning headers of 29 email(s)...
+2026-04-27 19:32:12 [INFO   ]   Pass 1 done — 29/29 need full fetch.
+2026-04-27 19:32:24 [INFO   ] 
+  Bounces found   : 3
+2026-04-27 19:32:24 [INFO   ]   Human responses : 0
+2026-04-27 19:32:24 [INFO   ] 
+[STEP 2] Sending to up to 100 institute(s)...
+2026-04-27 19:32:24 [INFO   ]   Institutes ready: 100
+2026-04-27 19:32:24 [INFO   ] 
+  [03] Sending to: placements@rusa.nic.in
+2026-04-27 19:32:24 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-27 19:32:31 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:32:34 [INFO   ] 
+  [04] Sending to: registrar@amu.ac.in
+2026-04-27 19:32:34 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-27 19:32:40 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:32:43 [INFO   ] 
+  [06] Sending to: registrar@bbau.ac.in
+2026-04-27 19:32:43 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-27 19:32:52 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:32:55 [INFO   ] 
+  [07] Sending to: tpo@bhu.ac.in
+2026-04-27 19:32:55 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-27 19:33:03 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:33:06 [INFO   ] 
+  [08] Sending to: tpo@cuh.ac.in
+2026-04-27 19:33:06 [INFO   ]        From  : sandeep196605@gmail.com
+2026-04-27 19:33:13 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:33:16 [INFO   ] 
+  [09] Sending to: tpo@cuhimachal.ac.in
+2026-04-27 19:33:16 [INFO   ]        From  : jain114sandeep@gmail.com
+2026-04-27 19:33:26 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:33:29 [INFO   ] 
+  [10] Sending to: tpo@cuj.ac.in
+2026-04-27 19:33:29 [INFO   ]        From  : jain105sandeep@gmail.com
+2026-04-27 19:33:35 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:33:38 [INFO   ] 
+  [13] Sending to: placements@cukashmir.ac.in
+2026-04-27 19:33:38 [INFO   ]        From  : jain107sandeep@gmail.com
+2026-04-27 19:33:43 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:33:46 [INFO   ] 
+  [14] Sending to: placements@cup.ac.in
+2026-04-27 19:33:46 [INFO   ]        From  : sj7634811@gmail.com
+2026-04-27 19:33:52 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:33:55 [INFO   ] 
+  [15] Sending to: placements@curaj.ac.in
+2026-04-27 19:33:55 [INFO   ]        From  : jain115sandeep@gmail.com
+2026-04-27 19:34:01 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:04 [INFO   ] 
+  [17] Sending to: placements@sanskrit.nic.in
+2026-04-27 19:34:04 [INFO   ]        From  : jain200sandeep@gmail.com
+2026-04-27 19:34:10 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:13 [INFO   ] 
+  [18] Sending to: placements@cau.ac.in
+2026-04-27 19:34:13 [INFO   ]        From  : jain201sandeep@gmail.com
+2026-04-27 19:34:19 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:22 [INFO   ] 
+  [20] Sending to: placements@dhsgsu.edu.in
+2026-04-27 19:34:22 [INFO   ]        From  : jain202sandeep@gmail.com
+2026-04-27 19:34:28 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:31 [INFO   ] 
+  [21] Sending to: placements@gsv.ac.in
+2026-04-27 19:34:31 [INFO   ]        From  : jain203sandeep@gmail.com
+2026-04-27 19:34:37 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:40 [INFO   ] 
+  [25] Sending to: placement@cug.ac.in
+2026-04-27 19:34:40 [INFO   ]        From  : jain204sandeep@gmail.com
+2026-04-27 19:34:47 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:50 [INFO   ] 
+  [26] Sending to: placement@cukerala.ac.in
+2026-04-27 19:34:50 [INFO   ]        From  : jain205sandeep@gmail.com
+2026-04-27 19:34:56 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:34:59 [INFO   ] 
+  [27] Sending to: placement@cusb.ac.in
+2026-04-27 19:34:59 [INFO   ]        From  : jain206sandeep@gmail.com
+2026-04-27 19:35:06 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:35:09 [INFO   ] 
+  [28] Sending to: placement@efluniversity.ac.in
+2026-04-27 19:35:09 [INFO   ]        From  : jain207sandeep@gmail.com
+2026-04-27 19:35:15 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:35:18 [INFO   ] 
+  [29] Sending to: placement@nta.ac.in
+2026-04-27 19:35:18 [INFO   ]        From  : jain208sandeep@gmail.com
+2026-04-27 19:35:25 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:35:28 [INFO   ] 
+  [30] Sending to: placement@rpcau.ac.in
+2026-04-27 19:35:28 [INFO   ]        From  : jain1001sandeep@gmail.com
+2026-04-27 19:35:34 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:35:37 [INFO   ] 
+  [31] Sending to: placement@akubihar.ac.in
+2026-04-27 19:35:37 [INFO   ]        From  : jain1002sandeep@gmail.com
+2026-04-27 19:35:43 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:35:46 [INFO   ] 
+  [32] Sending to: placement@andhrakesariuniversity.in
+2026-04-27 19:35:46 [INFO   ]        From  : jain1003sandeep@gmail.com
+2026-04-27 19:35:51 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:35:54 [INFO   ] 
+  [33] Sending to: placement@bausabour.ac.in
+2026-04-27 19:35:54 [INFO   ]        From  : jain1004sandeep@gmail.com
+2026-04-27 19:36:00 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:36:03 [INFO   ] 
+  [34] Sending to: placement@beu-bih.ac.in
+2026-04-27 19:36:03 [INFO   ]        From  : jain1005sandeo@gmail.com
+2026-04-27 19:36:08 [ERROR  ]     SMTP error sending to placement@beu-bih.ac.in: (535, b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-2b5fa9ff71esm319615695ad.8 - gsmtp')
+2026-04-27 19:36:08 [WARNING]        [FAIL] Send failed - not marking as Sent
+2026-04-27 19:36:11 [INFO   ] 
+  [35] Sending to: placement@bpsmv.digitaluniversity.ac
+2026-04-27 19:36:11 [INFO   ]        From  : jain104sandeep@gmail.com
+2026-04-27 19:36:16 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:36:19 [INFO   ] 
+  [36] Sending to: placement@buat.edu.in
+2026-04-27 19:36:19 [INFO   ]        From  : jain214sandeep@gmail.com
+2026-04-27 19:36:26 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:36:29 [INFO   ] 
+  [37] Sending to: placement@buhs.ac.in
+2026-04-27 19:36:29 [INFO   ]        From  : jain215sandeep@gmail.com
+2026-04-27 19:36:35 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:36:38 [INFO   ] 
+  [38] Sending to: placement@cbpbu.ac.in
+2026-04-27 19:36:38 [INFO   ]        From  : jain216sandeep@gmail.com
+2026-04-27 19:36:43 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:36:46 [INFO   ] 
+  [39] Sending to: placement@cdlu.digitaluniversity.ac
+2026-04-27 19:36:46 [INFO   ]        From  : jainsandeep729@gmail.com
+2026-04-27 19:36:52 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:36:55 [INFO   ] 
+  [40] Sending to: placement@csjmu.ac.in
+2026-04-27 19:36:55 [INFO   ]        From  : mandify1@gmail.com
+2026-04-27 19:37:01 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:04 [INFO   ] 
+  [41] Sending to: placement@cuc.ac.in
+2026-04-27 19:37:04 [INFO   ]        From  : mandify2@gmail.com
+2026-04-27 19:37:11 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:14 [INFO   ] 
+  [42] Sending to: placement@dbranlu.ac.in
+2026-04-27 19:37:14 [INFO   ]        From  : sj5739255@gmail.com
+2026-04-27 19:37:20 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:23 [INFO   ] 
+  [43] Sending to: placement@dsnlu.ac.in
+2026-04-27 19:37:23 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-27 19:37:29 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:32 [INFO   ] 
+  [44] Sending to: placement@gurugramuniversity.ac.in
+2026-04-27 19:37:32 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-27 19:37:37 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:40 [INFO   ] 
+  [45] Sending to: placement@iitram.ac.in
+2026-04-27 19:37:40 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-27 19:37:47 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:50 [INFO   ] 
+  [46] Sending to: placement@jnafau.ac.in
+2026-04-27 19:37:50 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-27 19:37:55 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:37:58 [INFO   ] 
+  [47] Sending to: placement@kskvku.digitaluniversity.ac
+2026-04-27 19:37:58 [INFO   ]        From  : sandeep196605@gmail.com
+2026-04-27 19:38:04 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:07 [INFO   ] 
+  [48] Sending to: placement@ktbuniv.ac.in
+2026-04-27 19:38:07 [INFO   ]        From  : jain114sandeep@gmail.com
+2026-04-27 19:38:13 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:16 [INFO   ] 
+  [49] Sending to: placement@malayalamuniversity.edu.in
+2026-04-27 19:38:16 [INFO   ]        From  : jain105sandeep@gmail.com
+2026-04-27 19:38:22 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:25 [INFO   ] 
+  [50] Sending to: placement@mdsuajmer.ac.in
+2026-04-27 19:38:25 [INFO   ]        From  : jain107sandeep@gmail.com
+2026-04-27 19:38:31 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:34 [INFO   ] 
+  [51] Sending to: placement@mygov.in
+2026-04-27 19:38:34 [INFO   ]        From  : sj7634811@gmail.com
+2026-04-27 19:38:39 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:42 [INFO   ] 
+  [52] Sending to: placement@nalsar.ac.in
+2026-04-27 19:38:42 [INFO   ]        From  : jain115sandeep@gmail.com
+2026-04-27 19:38:48 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:51 [INFO   ] 
+  [53] Sending to: placement@nludelhi.ac.in
+2026-04-27 19:38:51 [INFO   ]        From  : jain200sandeep@gmail.com
+2026-04-27 19:38:56 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:38:59 [INFO   ] 
+  [54] Sending to: placement@periyaruniversity.ac.in
+2026-04-27 19:38:59 [INFO   ]        From  : jain201sandeep@gmail.com
+2026-04-27 19:39:05 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:39:08 [INFO   ] 
+  [55] Sending to: placement@raiganjuniversity.ac.in
+2026-04-27 19:39:08 [INFO   ]        From  : jain202sandeep@gmail.com
+2026-04-27 19:39:13 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:39:16 [INFO   ] 
+  [56] Sending to: placement@rmtmusicandartsuniversity.com
+2026-04-27 19:39:16 [INFO   ]        From  : jain203sandeep@gmail.com
+2026-04-27 19:39:22 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:39:25 [INFO   ] 
+  [57] Sending to: placement@rrgu.org
+2026-04-27 19:39:25 [INFO   ]        From  : jain204sandeep@gmail.com
+2026-04-27 19:39:31 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:39:34 [INFO   ] 
+  [58] Sending to: placement@sdsuv.ac.in
+2026-04-27 19:39:34 [INFO   ]        From  : jain205sandeep@gmail.com
+2026-04-27 19:39:40 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:39:43 [INFO   ] 
+  [59] Sending to: placement@skltshu.ac.in
+2026-04-27 19:39:43 [INFO   ]        From  : jain206sandeep@gmail.com
+2026-04-27 19:39:49 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:39:52 [INFO   ] 
+  [60] Sending to: placement@skmu.ac.in
+2026-04-27 19:39:52 [INFO   ]        From  : jain207sandeep@gmail.com
+2026-04-27 19:39:58 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:40:01 [INFO   ] 
+  [61] Sending to: placement@skuniversity.ac.in
+2026-04-27 19:40:01 [INFO   ]        From  : jain208sandeep@gmail.com
+2026-04-27 19:40:07 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:40:10 [INFO   ] 
+  [62] Sending to: placement@su.digitaluniversity.ac
+2026-04-27 19:40:10 [INFO   ]        From  : jain1001sandeep@gmail.com
+2026-04-27 19:40:15 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:40:18 [INFO   ] 
+  [63] Sending to: placement@teluguuniversity.ac.in
+2026-04-27 19:40:18 [INFO   ]        From  : jain1002sandeep@gmail.com
+2026-04-27 19:40:23 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:40:26 [INFO   ] 
+  [64] Sending to: placement@tnteu.ac.in
+2026-04-27 19:40:26 [INFO   ]        From  : jain1003sandeep@gmail.com
+2026-04-27 19:40:32 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:40:35 [INFO   ] 
+  [65] Sending to: placement@vikramuniv.ac.in
+2026-04-27 19:40:35 [INFO   ]        From  : jain1004sandeep@gmail.com
+2026-04-27 19:40:41 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:40:44 [INFO   ] 
+  [66] Sending to: placement@aau.ac.in
+2026-04-27 19:40:44 [INFO   ]        From  : jain1005sandeo@gmail.com
+2026-04-27 19:40:48 [ERROR  ]     SMTP error sending to placement@aau.ac.in: (535, b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials 41be03b00d2f7-c7976f9dfc8sm27309850a12.12 - gsmtp')
+2026-04-27 19:40:48 [WARNING]        [FAIL] Send failed - not marking as Sent
+2026-04-27 19:40:51 [INFO   ] 
+  [67] Sending to: placement@abvhv.edu.in
+2026-04-27 19:40:51 [INFO   ]        From  : jain104sandeep@gmail.com
+2026-04-27 19:40:57 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:41:00 [INFO   ] 
+  [68] Sending to: placement@aliah.ac.in
+2026-04-27 19:41:00 [INFO   ]        From  : jain214sandeep@gmail.com
+2026-04-27 19:41:06 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:41:09 [INFO   ] 
+  [69] Sending to: placement@annamalaiuniversity.ac.in
+2026-04-27 19:41:09 [INFO   ]        From  : jain215sandeep@gmail.com
+2026-04-27 19:41:15 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:41:18 [INFO   ] 
+  [70] Sending to: placement@annauniv.edu
+2026-04-27 19:41:18 [INFO   ]        From  : jain216sandeep@gmail.com
+2026-04-27 19:41:24 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:41:27 [INFO   ] 
+  [71] Sending to: placement@astu.org.in
+2026-04-27 19:41:27 [INFO   ]        From  : jainsandeep729@gmail.com
+2026-04-27 19:41:44 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:41:47 [INFO   ] 
+  [72] Sending to: placement@aud.ac.in
+2026-04-27 19:41:47 [INFO   ]        From  : mandify1@gmail.com
+2026-04-27 19:41:53 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:41:56 [INFO   ] 
+  [73] Sending to: placement@ayurveduniversity.edu.in
+2026-04-27 19:41:56 [INFO   ]        From  : mandify2@gmail.com
+2026-04-27 19:42:02 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:05 [INFO   ] 
+  [74] Sending to: placement@baou.edu.in
+2026-04-27 19:42:05 [INFO   ]        From  : sj5739255@gmail.com
+2026-04-27 19:42:10 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:13 [INFO   ] 
+  [75] Sending to: placement@bckv.edu.in
+2026-04-27 19:42:13 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-27 19:42:19 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:22 [INFO   ] 
+  [76] Sending to: placement@bfuhs.ac.in
+2026-04-27 19:42:22 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-27 19:42:28 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:31 [INFO   ] 
+  [77] Sending to: placement@bhojvirtualuniversity.com
+2026-04-27 19:42:31 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-27 19:42:37 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:40 [INFO   ] 
+  [78] Sending to: placement@brabu.net
+2026-04-27 19:42:40 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-27 19:42:46 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:49 [INFO   ] 
+  [79] Sending to: placement@brau.edu.in
+2026-04-27 19:42:49 [INFO   ]        From  : sandeep196605@gmail.com
+2026-04-27 19:42:54 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:42:57 [INFO   ] 
+  [80] Sending to: placement@b-u.ac.in
+2026-04-27 19:42:57 [INFO   ]        From  : jain114sandeep@gmail.com
+2026-04-27 19:43:03 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:06 [INFO   ] 
+  [81] Sending to: placement@caluniv.ac.in
+2026-04-27 19:43:06 [INFO   ]        From  : jain105sandeep@gmail.com
+2026-04-27 19:43:12 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:15 [INFO   ] 
+  [82] Sending to: placement@cghealthuniv.com
+2026-04-27 19:43:15 [INFO   ]        From  : jain107sandeep@gmail.com
+2026-04-27 19:43:20 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:23 [INFO   ] 
+  [83] Sending to: placement@cnlu.ac.in
+2026-04-27 19:43:23 [INFO   ]        From  : sj7634811@gmail.com
+2026-04-27 19:43:29 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:32 [INFO   ] 
+  [84] Sending to: placement@crsujind.org
+2026-04-27 19:43:32 [INFO   ]        From  : jain115sandeep@gmail.com
+2026-04-27 19:43:38 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:41 [INFO   ] 
+  [85] Sending to: placement@csauk.ac.in
+2026-04-27 19:43:41 [INFO   ]        From  : jain200sandeep@gmail.com
+2026-04-27 19:43:46 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:49 [INFO   ] 
+  [86] Sending to: placement@csvtu.ac.in
+2026-04-27 19:43:49 [INFO   ]        From  : jain201sandeep@gmail.com
+2026-04-27 19:43:55 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:43:58 [INFO   ] 
+  [87] Sending to: placement@dauniv.ac.in
+2026-04-27 19:43:58 [INFO   ]        From  : jain202sandeep@gmail.com
+2026-04-27 19:44:03 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:06 [INFO   ] 
+  [88] Sending to: placement@davangereuniversity.ac.in
+2026-04-27 19:44:06 [INFO   ]        From  : jain203sandeep@gmail.com
+2026-04-27 19:44:12 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:15 [INFO   ] 
+  [89] Sending to: placement@dbatu.ac.in
+2026-04-27 19:44:15 [INFO   ]        From  : jain204sandeep@gmail.com
+2026-04-27 19:44:21 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:24 [INFO   ] 
+  [90] Sending to: placement@dbskkv.org
+2026-04-27 19:44:24 [INFO   ]        From  : jain205sandeep@gmail.com
+2026-04-27 19:44:29 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:32 [INFO   ] 
+  [91] Sending to: placement@dhwu.ac.in
+2026-04-27 19:44:32 [INFO   ]        From  : jain206sandeep@gmail.com
+2026-04-27 19:44:38 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:41 [INFO   ] 
+  [92] Sending to: placement@dibru.ac.in
+2026-04-27 19:44:41 [INFO   ]        From  : jain207sandeep@gmail.com
+2026-04-27 19:44:47 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:50 [INFO   ] 
+  [93] Sending to: placement@dravidianuniversity.ac.in
+2026-04-27 19:44:50 [INFO   ]        From  : jain208sandeep@gmail.com
+2026-04-27 19:44:56 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:44:59 [INFO   ] 
+  [94] Sending to: placement@durguniversity.ac.in
+2026-04-27 19:44:59 [INFO   ]        From  : jain1001sandeep@gmail.com
+2026-04-27 19:45:04 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:45:07 [INFO   ] 
+  [95] Sending to: placement@gadvasu.in
+2026-04-27 19:45:07 [INFO   ]        From  : jain1002sandeep@gmail.com
+2026-04-27 19:45:13 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:45:16 [INFO   ] 
+  [96] Sending to: placement@gauhati.ac.in
+2026-04-27 19:45:16 [INFO   ]        From  : jain1003sandeep@gmail.com
+2026-04-27 19:45:22 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:45:25 [INFO   ] 
+  [97] Sending to: placement@gmuniversity.ac.in
+2026-04-27 19:45:25 [INFO   ]        From  : jain1004sandeep@gmail.com
+2026-04-27 19:45:30 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:45:33 [INFO   ] 
+  [98] Sending to: placement@gnlu.ac.in
+2026-04-27 19:45:33 [INFO   ]        From  : jain1005sandeo@gmail.com
+2026-04-27 19:45:37 [ERROR  ]     SMTP error sending to placement@gnlu.ac.in: (535, b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials d2e1a72fcca58-82f8e981be6sm39724487b3a.9 - gsmtp')
+2026-04-27 19:45:37 [WARNING]        [FAIL] Send failed - not marking as Sent
+2026-04-27 19:45:40 [INFO   ] 
+  [99] Sending to: placement@gtu.ac.in
+2026-04-27 19:45:40 [INFO   ]        From  : jain104sandeep@gmail.com
+2026-04-27 19:45:46 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:45:49 [INFO   ] 
+  [100] Sending to: placement@guts.education
+2026-04-27 19:45:49 [INFO   ]        From  : jain214sandeep@gmail.com
+2026-04-27 19:45:55 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:45:58 [INFO   ] 
+  [101] Sending to: placement@hau.ac.in
+2026-04-27 19:45:58 [INFO   ]        From  : jain215sandeep@gmail.com
+2026-04-27 19:46:04 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:46:07 [INFO   ] 
+  [102] Sending to: placement@hnlu.ac.in
+2026-04-27 19:46:07 [INFO   ]        From  : jain216sandeep@gmail.com
+2026-04-27 19:46:13 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:46:16 [INFO   ] 
+  [103] Sending to: placement@iiitd.ac.in
+2026-04-27 19:46:16 [INFO   ]        From  : jainsandeep729@gmail.com
+2026-04-27 19:46:22 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:46:25 [INFO   ] 
+  [104] Sending to: placement@iksv.ac.in
+2026-04-27 19:46:25 [INFO   ]        From  : mandify1@gmail.com
+2026-04-27 19:46:31 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:46:34 [INFO   ] 
+  [105] Sending to: placement@ipu.ac.in
+2026-04-27 19:46:34 [INFO   ]        From  : mandify2@gmail.com
+2026-04-27 19:46:40 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:46:43 [INFO   ] 
+  [106] Sending to: placement@islamicuniversity.edu.in
+2026-04-27 19:46:43 [INFO   ]        From  : sj5739255@gmail.com
+2026-04-27 19:46:49 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:46:52 [INFO   ] 
+  [107] Sending to: placement@jammuuniversity.ac.in
+2026-04-27 19:46:52 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-27 19:46:57 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:47:00 [INFO   ] 
+  [108] Sending to: placement@jau.in
+2026-04-27 19:47:00 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-27 19:47:06 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:47:09 [INFO   ] 
+  [109] Sending to: placement@jiwaji.edu
+2026-04-27 19:47:09 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-27 19:47:17 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:47:20 [INFO   ] 
+  [110] Sending to: placement@jntua.ac.in
+2026-04-27 19:47:20 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-27 19:47:25 [INFO   ]        [OK] Sent successfully
+2026-04-27 19:47:28 [INFO   ] 
+================================================================
+2026-04-27 19:47:28 [INFO   ]   Emails sent      : 97
+2026-04-27 19:47:28 [INFO   ]   Send failures    : 3
+2026-04-27 19:47:28 [INFO   ]   Bounces detected : 3
+2026-04-27 19:47:28 [INFO   ]   Human responses  : 0
+2026-04-27 19:47:28 [INFO   ] ================================================================

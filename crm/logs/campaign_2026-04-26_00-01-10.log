@@ -1,0 +1,79 @@
+2026-04-26 00:01:10 [INFO   ] [LOG] C:\Users\sandeep\Downloads\Claudes\CampusPlacement\CRM\logs\campaign_2026-04-26_00-01-10.log
+2026-04-26 00:01:10 [INFO   ] ================================================================
+2026-04-26 00:01:10 [INFO   ]   PLACEMENT CRM – CAMPAIGN RUNNER
+2026-04-26 00:01:10 [INFO   ]   Run : 2026-04-26 00:01:10
+2026-04-26 00:01:10 [INFO   ]   Mode: Send up to 10 institute(s)
+2026-04-26 00:01:10 [INFO   ] ================================================================
+2026-04-26 00:01:10 [INFO   ]   Gmail accounts available: 32
+2026-04-26 00:01:10 [INFO   ] 
+[STEP 1] Checking inboxes for bounces and human replies...
+2026-04-26 00:01:10 [INFO   ]   Monitoring 2 'Sent' address(es)
+2026-04-26 00:01:10 [INFO   ]   Checking 2/32 accounts (only those that sent emails)
+2026-04-26 00:01:10 [INFO   ] 
+  > jain106sandeep@gmail.com
+2026-04-26 00:01:10 [INFO   ]   Connecting to jain106sandeep@gmail.com …
+2026-04-26 00:01:15 [INFO   ]   Found 171 candidate email(s)
+2026-04-26 00:01:15 [INFO   ]   Pass 1: scanning headers of 171 email(s)...
+2026-04-26 00:01:59 [INFO   ]     ...100/171 headers done
+2026-04-26 00:02:29 [INFO   ]   Pass 1 done — 171/171 need full fetch.
+2026-04-26 00:03:30 [INFO   ]   [BOUNCE->FAILURE] placements@cuo.ac.in
+2026-04-26 00:04:02 [INFO   ] 
+  > sj1799274@gmail.com
+2026-04-26 00:04:02 [INFO   ]   Connecting to sj1799274@gmail.com …
+2026-04-26 00:04:06 [INFO   ]   Found 134 candidate email(s)
+2026-04-26 00:04:06 [INFO   ]   Pass 1: scanning headers of 134 email(s)...
+2026-04-26 00:04:39 [INFO   ]     ...100/134 headers done
+2026-04-26 00:04:50 [INFO   ]   Pass 1 done — 134/134 need full fetch.
+2026-04-26 00:05:43 [INFO   ] 
+  Bounces found   : 1
+2026-04-26 00:05:43 [INFO   ]   Human responses : 0
+2026-04-26 00:05:43 [INFO   ] 
+[STEP 2] Sending to up to 10 institute(s)...
+2026-04-26 00:05:43 [INFO   ]   Institutes ready: 10
+2026-04-26 00:05:43 [INFO   ] 
+  [01] Sending to: tpo@cuo.ac.in
+2026-04-26 00:05:43 [INFO   ]        From  : jain106sandeep@gmail.com
+2026-04-26 00:05:49 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:05:52 [INFO   ] 
+  [04] Sending to: placement@amu.ac.in
+2026-04-26 00:05:52 [INFO   ]        From  : sj1799274@gmail.com
+2026-04-26 00:05:58 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:01 [INFO   ] 
+  [05] Sending to: placement@aus.ac.in
+2026-04-26 00:06:01 [INFO   ]        From  : jain109sandeep@gmail.com
+2026-04-26 00:06:07 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:10 [INFO   ] 
+  [06] Sending to: placement@bbau.ac.in
+2026-04-26 00:06:10 [INFO   ]        From  : jain111sandeep@gmail.com
+2026-04-26 00:06:16 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:19 [INFO   ] 
+  [07] Sending to: placement@bhu.ac.in
+2026-04-26 00:06:19 [INFO   ]        From  : sandeep196605@gmail.com
+2026-04-26 00:06:25 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:28 [INFO   ] 
+  [08] Sending to: placement@cuh.ac.in
+2026-04-26 00:06:28 [INFO   ]        From  : jain114sandeep@gmail.com
+2026-04-26 00:06:34 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:37 [INFO   ] 
+  [09] Sending to: placement@cuhimachal.ac.in
+2026-04-26 00:06:37 [INFO   ]        From  : jain105sandeep@gmail.com
+2026-04-26 00:06:42 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:45 [INFO   ] 
+  [10] Sending to: placement@cuj.ac.in
+2026-04-26 00:06:45 [INFO   ]        From  : jain107sandeep@gmail.com
+2026-04-26 00:06:51 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:06:54 [INFO   ] 
+  [11] Sending to: placement@cujammu.ac.in
+2026-04-26 00:06:54 [INFO   ]        From  : sj7634811@gmail.com
+2026-04-26 00:07:00 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:07:03 [INFO   ] 
+  [12] Sending to: placement@cuk.ac.in
+2026-04-26 00:07:03 [INFO   ]        From  : jain115sandeep@gmail.com
+2026-04-26 00:07:09 [INFO   ]        [OK] Sent successfully
+2026-04-26 00:07:12 [INFO   ] 
+================================================================
+2026-04-26 00:07:12 [INFO   ]   Emails sent      : 10
+2026-04-26 00:07:12 [INFO   ]   Send failures    : 0
+2026-04-26 00:07:12 [INFO   ]   Bounces detected : 1
+2026-04-26 00:07:12 [INFO   ]   Human responses  : 0
+2026-04-26 00:07:12 [INFO   ] ================================================================
