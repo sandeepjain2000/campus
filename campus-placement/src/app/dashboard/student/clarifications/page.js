@@ -97,6 +97,7 @@ export default function StudentClarificationsPage() {
   const [data, setData] = useState({ batches: [] });
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('date'); // 'date' | 'name'
   const [openBatchIds, setOpenBatchIds] = useState(new Set());
 
   const formatDate = (d) => {
@@ -121,16 +122,21 @@ export default function StudentClarificationsPage() {
 
   useEffect(() => {
     const q = search.trim().toLowerCase();
-    setFiltered(
-      q
-        ? data.batches.filter(
-            (b) =>
-              b.company.toLowerCase().includes(q) ||
-              b.questions.some((qn) => qn.text.toLowerCase().includes(q)),
-          )
-        : data.batches,
-    );
-  }, [search, data.batches]);
+    let results = q
+      ? data.batches.filter(
+          (b) =>
+            b.company.toLowerCase().includes(q) ||
+            b.questions.some((qn) => qn.text.toLowerCase().includes(q)),
+        )
+      : [...data.batches];
+
+    if (sortBy === 'name') {
+      results = results.sort((a, b) => a.company.localeCompare(b.company));
+    } else {
+      results = results.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+    }
+    setFiltered(results);
+  }, [search, sortBy, data.batches]);
 
   const toggleBatch = (id) => {
     setOpenBatchIds((prev) => {
@@ -191,17 +197,48 @@ export default function StudentClarificationsPage() {
         </div>
       </div>
 
-      {/* Search Filter */}
-      <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-        <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)', pointerEvents: 'none' }} />
-        <input
-          type="text"
-          className="form-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search companies or questions…"
-          style={{ paddingLeft: '2.5rem', borderRadius: '999px', background: 'var(--surface-2)' }}
-        />
+      {/* Search + Sort Row */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            className="form-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search companies or questions…"
+            style={{ paddingLeft: '2.5rem', borderRadius: '999px', background: 'var(--surface-2)' }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', whiteSpace: 'nowrap' }}>Sort:</span>
+          <button
+            onClick={() => setSortBy('date')}
+            style={{
+              padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 500,
+              border: '1px solid', cursor: 'pointer',
+              background: sortBy === 'date' ? 'var(--primary-600)' : 'var(--surface-2)',
+              color: sortBy === 'date' ? '#fff' : 'var(--gray-600)',
+              borderColor: sortBy === 'date' ? 'var(--primary-600)' : 'var(--gray-300)',
+              transition: 'all 0.15s',
+            }}
+          >
+            Recent
+          </button>
+          <button
+            onClick={() => setSortBy('name')}
+            style={{
+              padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 500,
+              border: '1px solid', cursor: 'pointer',
+              background: sortBy === 'name' ? 'var(--primary-600)' : 'var(--surface-2)',
+              color: sortBy === 'name' ? '#fff' : 'var(--gray-600)',
+              borderColor: sortBy === 'name' ? 'var(--primary-600)' : 'var(--gray-300)',
+              transition: 'all 0.15s',
+            }}
+          >
+            A–Z
+          </button>
+        </div>
       </div>
 
       {/* Company Accordion List */}
