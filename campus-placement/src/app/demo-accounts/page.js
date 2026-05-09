@@ -64,7 +64,7 @@ export default async function DemoAccountsPage() {
             
             return (
               <div key={group.key} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                <div style={{ background: group.bg, borderBottom: \`1px solid \${group.border}\`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
+                <div style={{ background: group.bg, borderBottom: `1px solid ${group.border}`, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: group.color, fontWeight: 700, letterSpacing: '0.025em', textTransform: 'uppercase', fontSize: '0.8125rem' }}>
                   <Icon size={16} />
                   {group.label} ({groupUsers.length})
                 </div>
@@ -72,7 +72,7 @@ export default async function DemoAccountsPage() {
                   {groupUsers.map((user, i) => (
                     <Link
                       key={user.email}
-                      href={\`/login?email=\${encodeURIComponent(user.email)}\`}
+                      href={`/login?email=${encodeURIComponent(user.email)}`}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -108,9 +108,9 @@ export default async function DemoAccountsPage() {
         </div>
 
       </div>
-      <style dangerouslySetInnerHTML={{__html: \`
+      <style dangerouslySetInnerHTML={{__html: `
         .hover-bg-secondary:hover { background-color: var(--bg-secondary); }
-      \`}} />
+      `}} />
     </div>
   );
 }
