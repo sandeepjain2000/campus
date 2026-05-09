@@ -11,6 +11,7 @@ import { getDevScreenId } from '@/config/devScreenIds';
 import { getNotificationIconTitle } from '@/lib/appVersion';
 import { getRoleDisplayName } from '@/lib/utils';
 import DevScreenTag from '@/components/DevScreenTag';
+// import OnboardingChecklist from '@/components/OnboardingChecklist';
 
 function getHubPageTitle(session, role, menu) {
   if (role === 'super_admin') return 'Platform Administration';
@@ -41,9 +42,9 @@ function getQuickActions(role, employerHasCampus) {
   if (role === 'student') {
     return [
       { label: 'Browse drives', href: '/dashboard/student/drives' },
-      { label: 'Internships', href: '/dashboard/student/internships' },
-      { label: 'Projects', href: '/dashboard/student/projects' },
-      { label: 'My applications', href: '/dashboard/student/applications' },
+      { label: 'Jobs', href: '/dashboard/student/applications/jobs' },
+      { label: 'Internships', href: '/dashboard/student/applications/internships' },
+      { label: 'Projects', href: '/dashboard/student/applications/projects' },
       { label: 'Calendar', href: '/dashboard/student/calendar' },
       { label: 'Alerts', href: '/dashboard/alerts' },
       { label: 'My profile', href: '/dashboard/student/profile' },
@@ -95,6 +96,7 @@ export default function DashboardFullScreenHub({ role, session }) {
 
   useEffect(() => {
     if (role !== 'employer') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmployerHasCampus(true);
       return;
     }
@@ -109,24 +111,17 @@ export default function DashboardFullScreenHub({ role, session }) {
     };
   }, [role]);
 
-  if (!menu?.sections?.length) {
-    return (
-      <div style={{ padding: '2rem', minHeight: '50vh' }}>
-        <p>Workspace menu could not be loaded. Please sign out and try again.</p>
-      </div>
-    );
-  }
-
-  const hubTitle = getHubPageTitle(session, role, menu);
   const quickActions = getQuickActions(role, employerHasCampus);
   const hubFilter = useMemo(() => {
+    const sections = menu?.sections;
+    if (!Array.isArray(sections) || sections.length === 0) return null;
     const q = hubSearch.trim().toLowerCase();
     if (!q) return null;
     const match = (s) => String(s ?? '').toLowerCase().includes(q);
     const qa = quickActions.filter(
       (a) => match(a.label) || match(a.href) || match(getDevScreenId(a.href)),
     );
-    const sections = menu.sections
+    const nextSections = sections
       .map((section) => ({
         ...section,
         items: section.items.filter(
@@ -138,8 +133,18 @@ export default function DashboardFullScreenHub({ role, session }) {
         ),
       }))
       .filter((section) => section.items.length > 0);
-    return { quickActions: qa, sections };
-  }, [hubSearch, menu.sections, quickActions]);
+    return { quickActions: qa, sections: nextSections };
+  }, [hubSearch, menu, quickActions]);
+
+  if (!menu?.sections?.length) {
+    return (
+      <div style={{ padding: '2rem', minHeight: '50vh' }}>
+        <p>Workspace menu could not be loaded. Please sign out and try again.</p>
+      </div>
+    );
+  }
+
+  const hubTitle = getHubPageTitle(session, role, menu);
 
   const logoName =
     role === 'super_admin' ? 'PlacementHub' : session?.user?.tenantName || session?.user?.name || 'PlacementHub';
@@ -219,6 +224,7 @@ export default function DashboardFullScreenHub({ role, session }) {
       </header>
 
       <div className="dashboard-nav-hub-body">
+        {/* OnboardingChecklist moved to dedicated menu item */}
         {role === 'employer' && !employerHasCampus && (
           <div
             className="wireframe-banner"
