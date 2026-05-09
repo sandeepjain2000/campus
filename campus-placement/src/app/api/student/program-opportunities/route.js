@@ -26,8 +26,9 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const kind = searchParams.get('kind') === 'project' ? 'project' : 'internship';
-    const types = kind === 'project' ? ['short_project', 'hackathon'] : ['internship'];
+    const kindParam = searchParams.get('kind');
+    const kind = kindParam === 'project' ? 'project' : kindParam === 'job' ? 'job' : 'internship';
+    const types = kind === 'project' ? ['short_project', 'hackathon'] : kind === 'job' ? ['full_time'] : ['internship'];
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 1);
     const userIdx = 1 + tenantInParams.length;
