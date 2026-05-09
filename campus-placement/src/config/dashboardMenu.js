@@ -95,7 +95,6 @@ export const menuConfig = {
           { label: 'My Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
           { label: 'My Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
           { label: 'My Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
-          { label: 'My Mentorship', href: '/dashboard/student/applications/mentorship', icon: Users },
           { label: 'My Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
         ],
       },
