@@ -8,7 +8,7 @@ import { uuidInClause } from '@/lib/sqlPlaceholders';
 
 export const dynamic = 'force-dynamic';
 
-const PROGRAM_TYPES = new Set(['internship', 'short_project', 'hackathon']);
+const PROGRAM_TYPES = new Set(['full_time', 'internship', 'short_project', 'hackathon']);
 
 export async function GET() {
   try {
