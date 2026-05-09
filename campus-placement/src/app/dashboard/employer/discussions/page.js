@@ -30,8 +30,19 @@ export default function EmployerDiscussionsPage() {
   }, [batchesAll, myCompany]);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('activeCampus');
-    if (stored) setActiveCampusId(JSON.parse(stored)?.id || null);
+    try {
+      const stored = sessionStorage.getItem('activeCampus');
+      if (!stored) {
+        setActiveCampusId(null);
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      setActiveCampusId(parsed?.id || null);
+      if (!parsed?.id) sessionStorage.removeItem('activeCampus');
+    } catch {
+      sessionStorage.removeItem('activeCampus');
+      setActiveCampusId(null);
+    }
   }, []);
 
   useEffect(() => {

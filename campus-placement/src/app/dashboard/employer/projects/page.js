@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { FolderGit2, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatStatus } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 
 async function swrFetcher(url) {
@@ -349,7 +349,7 @@ export default function EmployerProjectsPage() {
                 : '—'}
               {' · '}
               Min CGPA {p.cgpa ?? '—'} · {p.vacancies} openings ·{' '}
-              <span className={`badge ${p.status === 'published' ? 'badge-success' : 'badge-gray'} badge-dot`}>{p.status}</span>
+              <span className={`badge ${p.status === 'published' ? 'badge-success' : 'badge-gray'} badge-dot`}>{formatStatus(p.status)}</span>
               {p.createdAt ? ` · ${formatDate(p.createdAt)}` : ''}
             </p>
             <div className="stats-card-oneline-actions">

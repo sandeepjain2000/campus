@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatStatus } from '@/lib/utils';
 
 const historyFetcher = async (url) => {
   const res = await fetch(url);
@@ -27,9 +27,28 @@ export default function MyExportsPage() {
   const { data: reg } = useSWR('/api/screens/registry', registryFetcher);
   const [busy, setBusy] = useState(false);
   const [showAllScreens, setShowAllScreens] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
 
   const exports = hist?.exports || [];
   const screens = reg?.screens || [];
+  const filteredExports = useMemo(() => {
+    const q = sectionFilter.trim().toLowerCase();
+    return exports.filter((row) => {
+      if (statusFilter && String(row.status || '') !== statusFilter) return false;
+      if (!q) return true;
+      let s = row.section_summary;
+      if (typeof s === 'string') {
+        try {
+          s = JSON.parse(s);
+        } catch {
+          return false;
+        }
+      }
+      const text = Array.isArray(s) ? s.map((x) => x.key).filter(Boolean).join(', ').toLowerCase() : '';
+      return text.includes(q);
+    });
+  }, [exports, statusFilter, sectionFilter]);
 
   const runExport = useCallback(async () => {
     setBusy(true);
@@ -77,12 +96,27 @@ export default function MyExportsPage() {
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <h3 className="card-title">Export history</h3>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+          <select className="form-input" style={{ width: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+          </select>
+          <input
+            className="form-input"
+            style={{ width: 240 }}
+            placeholder="Filter by section..."
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+          />
+        </div>
         {isLoading && <p className="text-sm text-secondary">Loading…</p>}
         {error && <p className="text-sm" style={{ color: 'var(--danger-600)' }}>{error.message}</p>}
-        {!isLoading && !error && exports.length === 0 && (
+        {!isLoading && !error && filteredExports.length === 0 && (
           <p className="text-sm text-secondary">No exports yet. Run a download to create the first entry.</p>
         )}
-        {exports.length > 0 && (
+        {filteredExports.length > 0 && (
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -94,10 +128,10 @@ export default function MyExportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {exports.map((row) => (
+                {filteredExports.map((row) => (
                   <tr key={row.id}>
                     <td>{row.created_at ? formatDate(row.created_at) : '—'}</td>
-                    <td>{row.status}</td>
+                    <td>{formatStatus(row.status)}</td>
                     <td>{row.byte_size != null ? `${row.byte_size} B` : '—'}</td>
                     <td className="text-sm text-secondary">
                       {(() => {

@@ -119,4 +119,5 @@ export async function transaction(callback) {
   }
 }
 
-export default { query, getClient, transaction };
+const db = { query, getClient, transaction };
+export default db;

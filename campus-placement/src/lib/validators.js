@@ -13,9 +13,11 @@ export function validatePassword(password) {
   return re.test(password);
 }
 
+/** E.164: leading +, country code, 8–15 digits total (spaces/dashes stripped). */
 export function validatePhone(phone) {
-  const re = /^[+]?[\d\s-]{10,15}$/;
-  return re.test(phone);
+  if (phone == null || String(phone).trim() === '') return true;
+  const compact = String(phone).replace(/[\s-]/g, '');
+  return /^\+[1-9]\d{7,14}$/.test(compact);
 }
 
 export function validateURL(url) {
@@ -73,9 +75,12 @@ export function validateRegistration(data) {
       typeof data.campusBindingToken === 'string'
         ? data.campusBindingToken.trim().replace(/\s+/g, '')
         : '';
-    if (key.length < 32) {
+    if (key.length < 16) {
       errors.campusBindingToken =
-        'Campus enrollment key is required (ask your placement office for the key)';
+        'Campus enrollment key is too short — paste the full code from your placement office';
+    }
+    if (!data.department || String(data.department).trim().length < 2) {
+      errors.department = 'Department is required';
     }
   }
 

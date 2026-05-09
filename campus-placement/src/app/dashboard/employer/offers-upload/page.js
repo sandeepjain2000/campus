@@ -8,6 +8,26 @@ import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmen
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
 
+function summarizeCsvErrors(errors) {
+  const list = Array.isArray(errors) ? errors : [];
+  if (!list.length) return '';
+  const groups = new Map();
+  for (const e of list) {
+    const msg = String(e?.message || 'Unknown error').trim();
+    const line = Number(e?.line || 0);
+    if (!groups.has(msg)) groups.set(msg, []);
+    groups.get(msg).push(line);
+  }
+  const top = [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 3)
+    .map(([msg, lines]) => {
+      const preview = lines.slice(0, 3).filter((n) => Number.isFinite(n) && n > 0).join(', ');
+      return `${msg} (${lines.length} row${lines.length > 1 ? 's' : ''}${preview ? `, lines: ${preview}` : ''})`;
+    });
+  return top.join(' | ');
+}
+
 export default function EmployerOffersUploadPage() {
   const { addToast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -68,7 +88,7 @@ export default function EmployerOffersUploadPage() {
         accepted ? 'success' : 'warning',
       );
       if (errors?.length) {
-        addToast(errors.slice(0, 5).map((x) => `Line ${x.line}: ${x.message}`).join(' · '), 'error');
+        addToast(summarizeCsvErrors(errors), 'error');
       }
     } catch (err) {
       addToast(err.message || 'Upload failed', 'error');
@@ -135,7 +155,7 @@ export default function EmployerOffersUploadPage() {
             <code>drive_id</code> comes from the <strong>newest</strong> assessment upload row for that student when present.
           </p>
           <button type="button" className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={downloadAssessmentStarter}>
-            Download offers CSV (all students)
+            Download Template (All students)
           </button>
         </div>
       </div>

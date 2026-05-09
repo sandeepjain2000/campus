@@ -6,6 +6,7 @@ import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid
 import { formatDate } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
+import { CalendarCheck } from 'lucide-react';
 
 function formatTimeDisplay(t) {
   if (!t) return '';
@@ -34,14 +35,24 @@ export default function EmployerInterviewsPage() {
   });
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('activeCampus');
-    if (!stored) {
+    try {
+      const stored = sessionStorage.getItem('activeCampus');
+      if (!stored) {
+        router.replace('/dashboard/employer/select-campus');
+        return;
+      }
+      const campus = JSON.parse(stored);
+      if (!campus?.id) {
+        sessionStorage.removeItem('activeCampus');
+        router.replace('/dashboard/employer/select-campus');
+        return;
+      }
+      setActiveCampus(campus);
+      setForm((p) => ({ ...p, campus: campus?.name || '' }));
+    } catch {
+      sessionStorage.removeItem('activeCampus');
       router.replace('/dashboard/employer/select-campus');
-      return;
     }
-    const campus = JSON.parse(stored);
-    setActiveCampus(campus);
-    setForm((p) => ({ ...p, campus: campus?.name || '' }));
   }, [router]);
 
   useEffect(() => {
@@ -118,8 +129,11 @@ export default function EmployerInterviewsPage() {
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
-          <h1>🎯 Interview Scheduling</h1>
-          <p>Create multi-round interview slots and assign shortlisted students.</p>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CalendarCheck size={22} strokeWidth={1.75} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
+            Interview Scheduling
+          </h1>
+          <p className="text-secondary" style={{ margin: 0 }}>Create multi-round interview slots and assign shortlisted students.</p>
         </div>
         <div className="page-header-actions">
           <Link href="/dashboard/employer/hiring-assessment" className="btn btn-secondary">
@@ -156,7 +170,7 @@ export default function EmployerInterviewsPage() {
             <input className="form-input" placeholder="Campus" value={form.campus} onChange={(e) => setForm((p) => ({ ...p, campus: e.target.value }))} />
             <input className="form-input" placeholder="Round name" value={form.round} onChange={(e) => setForm((p) => ({ ...p, round: e.target.value }))} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <input className="form-input" type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
+              <input className="form-input" type="date" min={new Date().toISOString().split('T')[0]} value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
               <input className="form-input" type="time" value={form.time} onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))} />
             </div>
             <input className="form-input" type="number" min={0} placeholder="Assigned students" value={form.assigned} onChange={(e) => setForm((p) => ({ ...p, assigned: e.target.value }))} />

@@ -21,6 +21,7 @@ export default function AdminSettingsPage() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [platformName, setPlatformName] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
@@ -38,6 +39,8 @@ export default function AdminSettingsPage() {
   const [systemNotificationSenderName, setSystemNotificationSenderName] = useState('');
   const [storageProvider, setStorageProvider] = useState('');
   const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordMessage, setPasswordMessage] = useState('');
 
   const timezones = useMemo(() => {
     if (typeof Intl !== 'undefined' && Intl.supportedValuesOf) {
@@ -127,6 +130,74 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const exportSettings = () => {
+    const payload = {
+      platformName,
+      supportEmail,
+      timezone,
+      requireEmailVerification,
+      enableTwoFactorAuth,
+      sessionTimeoutValue,
+      sessionTimeoutUnit,
+      rememberDeviceValue,
+      rememberDeviceUnit,
+      smtpHost,
+      smtpPort,
+      fromEmail,
+      systemNotificationInboxEmail,
+      systemNotificationWebmailUrl,
+      systemNotificationSenderName,
+      storageProvider,
+      maxUploadSizeMb,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'platform-settings-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addToast('Settings exported.', 'info');
+  };
+
+  const updatePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMessage('');
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordMessage('Please fill all password fields.');
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordMessage('New password must be at least 8 characters.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage('New password and confirmation do not match.');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to update password');
+      setPasswordMessage('Password updated successfully.');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (e2) {
+      setPasswordMessage(e2.message || 'Failed to update password');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="animate-fadeIn">
@@ -143,7 +214,10 @@ export default function AdminSettingsPage() {
           <h1>⚙️ Platform Settings</h1>
           <p>Global platform configuration</p>
         </div>
-        <button className="btn btn-primary" onClick={saveSettings} disabled={loading || saving}>{saving ? 'Saving...' : '💾 Save'}</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button type="button" className="btn btn-secondary" onClick={exportSettings} disabled={loading || saving}>Export JSON</button>
+          <button type="button" className="btn btn-primary" onClick={saveSettings} disabled={loading || saving}>{saving ? 'Saving...' : '💾 Save'}</button>
+        </div>
       </div>
       <div className="grid grid-2">
         <div className="card">
@@ -255,6 +329,51 @@ export default function AdminSettingsPage() {
           <div className="card-header"><h3 className="card-title">📦 Storage</h3></div>
           <div className="form-group"><label className="form-label">Storage Provider</label><select className="form-select" value={storageProvider} onChange={(e) => setStorageProvider(e.target.value)}><option value="">Select storage provider</option><option>Local Filesystem</option><option>AWS S3</option><option>Supabase Storage</option></select></div>
           <div className="form-group"><label className="form-label">Max Upload Size (MB)</label><input className="form-input" type="number" value={maxUploadSizeMb} onChange={(e) => setMaxUploadSizeMb(Number(e.target.value || 5))} /></div>
+        </div>
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header"><h3 className="card-title">🔐 Change Password</h3></div>
+          <form onSubmit={updatePassword}>
+            <div className="grid grid-3">
+              <div className="form-group">
+                <label className="form-label">Current password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">New password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirm new password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button type="submit" className="btn btn-secondary" disabled={passwordSaving}>
+                {passwordSaving ? 'Updating...' : 'Update password'}
+              </button>
+              {passwordMessage ? <span className="text-sm text-secondary">{passwordMessage}</span> : null}
+            </div>
+          </form>
         </div>
       </div>
     </div>

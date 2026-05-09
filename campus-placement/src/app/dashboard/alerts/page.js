@@ -60,8 +60,17 @@ export default function AlertsEmailPage() {
   }
 
   return (
-    <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
-      <div className="page-header" style={{ marginBottom: '1rem' }}>
+    <div
+      className="animate-fadeIn alerts-inbox-root"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: '1 1 auto',
+        minHeight: 0,
+        maxHeight: 'calc(100dvh - var(--topbar-height) - 3rem)',
+      }}
+    >
+      <div className="page-header" style={{ marginBottom: '1rem', flexShrink: 0 }}>
         <div className="page-header-left">
           <h1>📨 Inbox & Alerts</h1>
           <p>System notifications, event coordination, and alerts.</p>
@@ -69,10 +78,32 @@ export default function AlertsEmailPage() {
         <button className="btn btn-primary" disabled title="Coming soon">Compose Alert</button>
       </div>
 
-      <div className="card" style={{ flex: 1, padding: 0, display: 'flex', overflow: 'hidden' }}>
-        
+      <div
+        className="card alerts-inbox-card"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          padding: 0,
+          display: 'flex',
+          flexDirection: 'row',
+          overflow: 'hidden',
+        }}
+      >
         {/* Left Sidebar Menu */}
-        <div style={{ width: '250px', borderRight: '1px solid var(--border)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-secondary)' }}>
+        <div
+          className="alerts-inbox-nav"
+          style={{
+            width: 'min(250px, 36vw)',
+            flexShrink: 0,
+            borderRight: '1px solid var(--border)',
+            padding: '1rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            background: 'var(--bg-secondary)',
+            overflowY: 'auto',
+          }}
+        >
           <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: mailbox === 'inbox' ? 'var(--primary-100)' : undefined, color: mailbox === 'inbox' ? 'var(--primary-700)' : 'var(--text-secondary)', fontWeight: mailbox === 'inbox' ? 600 : 400 }} onClick={() => setMailbox('inbox')}>
             📥 Inbox <span className="badge badge-accent" style={{ marginLeft: 'auto' }}>{Number(data?.unreadCount || 0)}</span>
           </button>
@@ -88,7 +119,7 @@ export default function AlertsEmailPage() {
         </div>
 
         {/* Center Inbox List */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
           {emails.map(email => (
             <div key={email.id} style={{ borderBottom: '1px solid var(--border)' }}>
               
@@ -96,7 +127,7 @@ export default function AlertsEmailPage() {
                 className="hover-bg-secondary"
                 onClick={() => handleOpen(email.id)}
                 style={{ 
-                  display: 'flex', alignItems: 'center', padding: '1rem 1.5rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', padding: '0.75rem 1rem', cursor: 'pointer', gap: '0.5rem', flexWrap: 'wrap',
                   background: !email.read ? 'white' : 'var(--bg-secondary)',
                   fontWeight: !email.read ? 700 : 400
                 }}
@@ -107,10 +138,10 @@ export default function AlertsEmailPage() {
                 <div style={{ width: '40px', display: 'flex', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
                   ⭐
                 </div>
-                <div style={{ flex: '0 0 200px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                <div style={{ flex: '1 1 140px', minWidth: '120px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                   {email.sender}
                 </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                   <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{email.subject}</span>
                   <span style={{ color: 'var(--text-tertiary)' }}>-</span>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

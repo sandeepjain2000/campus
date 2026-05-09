@@ -1,12 +1,29 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
-import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled } from '@/lib/demoLogins';
+import { DEMO_LOGINS, DEMO_SEED_PASSWORD, SEEDED_EMPLOYER_CREDENTIALS, isDemoLoginsEnabled } from '@/lib/demoLogins';
+import { ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff } from 'lucide-react';
+
+const ROLE_GROUPS = [
+  { key: 'student',   label: 'Students',        icon: GraduationCap, color: 'var(--primary-600)',  bg: 'var(--primary-50)',  border: 'var(--primary-200)' },
+  { key: 'employer',  label: 'Employers',       icon: Building2,     color: 'var(--success-600)', bg: 'var(--success-50)', border: 'var(--success-200)' },
+  { key: 'admin',     label: 'College Admins',  icon: School,        color: 'var(--warning-600)', bg: 'var(--warning-50)', border: 'var(--warning-200)' },
+  { key: 'superadmin',label: 'Platform Admin',  icon: ShieldCheck,   color: 'var(--danger-600)',  bg: 'var(--danger-50)',  border: 'var(--danger-200)' },
+  { key: 'dummy',     label: 'Coming Soon',     icon: Users,         color: 'var(--text-tertiary)',bg: 'var(--bg-secondary)',border: 'var(--border-default)' },
+];
+
+function getGroupKey(demo) {
+  if (demo.isDummy) return 'dummy';
+  if (demo.icon === '🎓') return 'student';
+  if (demo.icon === '🏢') return 'employer';
+  if (demo.icon === '⚙️') return 'superadmin';
+  if (demo.icon === '🏫') return 'admin';
+  return 'admin';
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,25 +31,44 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [filledFrom, setFilledFrom] = useState(''); // tracks which card was clicked
+  const [showPassword, setShowPassword] = useState(false);
   const [registeredBanner, setRegisteredBanner] = useState('');
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [showAllAccounts, setShowAllAccounts] = useState(false);
   const toast = useToast();
+  const uniqueDemoLogins = useMemo(() => {
+    const seen = new Set();
+    return DEMO_LOGINS.filter((d) => {
+      const key = String(d?.email || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, []);
+  const uniqueAllAccounts = useMemo(() => {
+    const seen = new Set();
+    return SEEDED_EMPLOYER_CREDENTIALS.filter((d) => {
+      const key = String(d?.email || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const email = new URLSearchParams(window.location.search).get('email');
     if (email) {
-      const match = DEMO_LOGINS.find((d) => d.email === email && !d.isDummy);
+      const match = uniqueDemoLogins.find((d) => d.email === email && !d.isDummy);
       if (match) {
         setFormData((prev) => ({
           ...prev,
           email: match.email,
           password: DEMO_SEED_PASSWORD,
         }));
-        setFilledFrom(match.email);
       }
     }
-  }, []);
+  }, [uniqueDemoLogins]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -51,17 +87,9 @@ export default function LoginPage() {
     router.replace(getDashboardPath(session.user.role));
   }, [status, session, router]);
 
-  if (status === 'loading') {
+  if (status === 'loading' || status === 'authenticated') {
     return (
-      <div className="auth-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div className="skeleton" style={{ width: 220, height: 28 }} />
-      </div>
-    );
-  }
-
-  if (status === 'authenticated') {
-    return (
-      <div className="auth-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="skeleton" style={{ width: 220, height: 28 }} />
       </div>
     );
@@ -99,103 +127,300 @@ export default function LoginPage() {
     }
   };
 
-  // Card click: prefill seed email + password (user clicks Sign In)
-  const handleDemoCardClick = (demo) => {
+  const fillCredential = (demo) => {
     if (demo.isDummy) {
       toast.info("Placement Committee is coming soon. It's currently in design.");
       return;
     }
     setError('');
-    setFilledFrom(demo.email);
-    setFormData((prev) => ({ ...prev, email: demo.email, password: DEMO_SEED_PASSWORD }));
-    toast.info('Demo email and password filled — click Sign In.');
+    setFormData({ email: demo.email, password: DEMO_SEED_PASSWORD });
+    setShowCredentials(false);
+    toast.info('Credentials auto-filled — click Sign In.');
   };
 
+
   return (
-    <div className="auth-page">
-      <div className="auth-left">
-        <div className="auth-card animate-slideUp">
-          <Link href="/" className="auth-logo">
-            <div className="sidebar-logo-icon">P</div>
-            PlacementHub
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
+      
+      <div style={{ width: '100%', maxWidth: '420px' }}>
+        
+        {/* Modern Centered Header */}
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', height: '2.5rem', width: '2.5rem', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', backgroundColor: 'var(--primary-600)', color: '#ffffff', fontWeight: 'bold', fontSize: '1.125rem', boxShadow: '0 4px 6px rgba(79, 70, 229, 0.2)' }}>
+              P
+            </div>
+            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.025em' }}>PlacementHub</span>
           </Link>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', letterSpacing: '-0.025em' }}>Welcome back</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Sign in to your account to continue</p>
+        </div>
 
-          <h1 className="auth-title">Welcome back</h1>
-          <p className="auth-subtitle">Sign in to your account to continue</p>
-
+        {/* Auth Card */}
+        <div style={{ backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-xl)', padding: '2rem', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-default)' }}>
+          
           {registeredBanner && !error && (
-            <div
-              style={{
-                padding: '0.75rem 1rem',
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: 'var(--radius-lg)',
-                color: '#166534',
-                fontSize: '0.875rem',
-                marginBottom: '1rem',
-              }}
-            >
+            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--success-50)', border: '1px solid var(--success-100)', borderRadius: 'var(--radius-md)', color: 'var(--success-700)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
               {registeredBanner}
             </div>
           )}
 
           {error && (
-            <div style={{
-              padding: '0.75rem 1rem',
-              background: 'var(--danger-50)',
-              border: '1px solid var(--danger-100)',
-              borderRadius: 'var(--radius-lg)',
-              color: 'var(--danger-600)',
-              fontSize: '0.875rem',
-              marginBottom: '1rem',
-            }}>
+            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--danger-50)', border: '1px solid var(--danger-100)', borderRadius: 'var(--radius-md)', color: 'var(--danger-700)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
               {error}
             </div>
           )}
 
-          {filledFrom && !error && (
-            <div style={{
-              padding: '0.6rem 1rem',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              borderRadius: 'var(--radius-lg)',
-              color: '#166534',
-              fontSize: '0.82rem',
-              marginBottom: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}>
-              ✅ Demo credentials filled — click <strong>Sign In</strong>
+          {showDemoLogins && (
+            <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-default)' }}>
+              <button
+                type="button"
+                id="view-credentials-btn"
+                onClick={() => setShowCredentials((v) => !v)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.625rem 0.875rem',
+                  background: showCredentials ? 'var(--primary-50)' : 'var(--bg-secondary)',
+                  border: `1px solid ${showCredentials ? 'var(--primary-300)' : 'var(--border-default)'}`,
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  color: showCredentials ? 'var(--primary-700)' : 'var(--text-primary)',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <KeyRound size={15} />
+                  Demo accounts
+                </span>
+                {showCredentials ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+
+              {showCredentials && (
+                <div style={{
+                  marginTop: '0.625rem',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                }}>
+                  {/* Password note */}
+                  <div style={{
+                    padding: '0.5rem 0.875rem',
+                    background: 'var(--bg-secondary)',
+                    borderBottom: '1px solid var(--border-default)',
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}>
+                    Demo accounts share password: <code style={{ fontWeight: 700, color: 'var(--text-primary)', background: 'var(--bg-primary)', padding: '0.1rem 0.35rem', borderRadius: 4 }}>{DEMO_SEED_PASSWORD}</code>
+                  </div>
+
+                  {ROLE_GROUPS.map((group) => {
+                    const Icon = group.icon;
+                    const items = uniqueDemoLogins.filter((d) => getGroupKey(d) === group.key);
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={group.key}>
+                        {/* Group header */}
+                        <div style={{
+                          padding: '0.375rem 0.875rem',
+                          background: group.bg,
+                          borderBottom: `1px solid ${group.border}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.05em',
+                          textTransform: 'uppercase',
+                          color: group.color,
+                        }}>
+                          <Icon size={12} aria-hidden />
+                          {group.label}
+                        </div>
+                        {/* Credential rows */}
+                        {items.map((demo, i) => (
+                          <div
+                            key={demo.email}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.5rem 0.875rem',
+                              borderBottom: i < items.length - 1 ? '1px solid var(--border-default)' : 'none',
+                              background: 'var(--bg-primary)',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: demo.isDummy ? 'var(--text-tertiary)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {demo.label}
+                                {demo.name ? <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {demo.name}</span> : null}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.1rem' }}>{demo.email}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => fillCredential(demo)}
+                              disabled={demo.isDummy}
+                              style={{
+                                flexShrink: 0,
+                                padding: '0.25rem 0.625rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                borderRadius: 'var(--radius-sm)',
+                                border: `1px solid ${demo.isDummy ? 'var(--border-default)' : group.border}`,
+                                background: demo.isDummy ? 'var(--bg-secondary)' : group.bg,
+                                color: demo.isDummy ? 'var(--text-tertiary)' : group.color,
+                                cursor: demo.isDummy ? 'not-allowed' : 'pointer',
+                                transition: 'opacity 0.15s',
+                              }}
+                            >
+                              {demo.isDummy ? 'Soon' : 'Use →'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
+          <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-default)' }}>
+            <button
+              type="button"
+              id="view-employer-credentials-btn"
+              onClick={() => setShowAllAccounts((v) => !v)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.625rem 0.875rem',
+                background: showAllAccounts ? 'var(--success-50)' : 'var(--bg-secondary)',
+                border: `1px solid ${showAllAccounts ? 'var(--success-300)' : 'var(--border-default)'}`,
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                color: showAllAccounts ? 'var(--success-700)' : 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Building2 size={15} />
+                All accounts
+              </span>
+              {showAllAccounts ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            {showAllAccounts && (
+              <div style={{
+                marginTop: '0.625rem',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  padding: '0.5rem 0.875rem',
+                  background: 'var(--bg-secondary)',
+                  borderBottom: '1px solid var(--border-default)',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                }}>
+                  All accounts list is static (not clickable). Password: <code style={{ fontWeight: 700, color: 'var(--text-primary)', background: 'var(--bg-primary)', padding: '0.1rem 0.35rem', borderRadius: 4 }}>{DEMO_SEED_PASSWORD}</code>
+                </div>
+                {uniqueAllAccounts.map((credential, index) => (
+                  <div
+                    key={credential.email}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.5rem 0.875rem',
+                      borderBottom: index < uniqueAllAccounts.length - 1 ? '1px solid var(--border-default)' : 'none',
+                      background: 'var(--bg-primary)',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {credential.label}
+                        {credential.name ? <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {credential.name}</span> : null}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.1rem' }}>{credential.email}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Email address</label>
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label className="form-label" htmlFor="login-email">Email address</label>
               <input
                 id="login-email"
                 type="email"
                 className="form-input"
                 placeholder="you@example.com"
                 value={formData.email}
-                onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setFilledFrom(''); }}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Password</label>
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label" htmlFor="login-password">Password</label>
+                <Link href="/forgot-password" style={{ fontSize: '0.8125rem', color: 'var(--primary-600)', fontWeight: 500, textDecoration: 'none' }}>
+                  Forgot password?
+                </Link>
+              </div>
+              <div style={{ position: 'relative' }}>
               <input
                 id="login-password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 className="form-input"
                 placeholder="Enter your password"
                 value={formData.password}
-                onChange={(e) => { setFormData({ ...formData, password: e.target.value }); setFilledFrom(''); }}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                style={{ paddingRight: '2.4rem' }}
                 required
               />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    position: 'absolute',
+                    right: '0.45rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    minWidth: 28,
+                    width: 28,
+                    height: 28,
+                    padding: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -203,78 +428,18 @@ export default function LoginPage() {
               type="submit"
               className="btn btn-primary"
               disabled={loading}
-              style={{ width: '100%', marginTop: '0.5rem' }}
+              style={{ width: '100%', padding: '0.625rem', fontSize: '1rem', justifyContent: 'center' }}
             >
-              {loading ? 'Signing in...' : 'Sign In →'}
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-
-          {showDemoLogins ? (
-            <>
-              <div className="auth-divider">or use a quick account</div>
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #fef9c3, #fef3c7)',
-                  border: '1px solid #fde68a',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '0.6rem 0.9rem',
-                  fontSize: '0.75rem',
-                  color: '#92400e',
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.4rem',
-                }}
-              >
-                <span>💡</span>
-                <span>
-                  <strong>Demo accounts:</strong> Quick-fill seeded roles (same password as <code className="font-mono">db/seed.sql</code>).
-                  To hide this block on a private deployment, set{' '}
-                  <code className="font-mono">NEXT_PUBLIC_HIDE_DEMO_LOGINS=true</code>.
-                </span>
-              </div>
-              <div className="role-select-grid">
-                {DEMO_LOGINS.map((demo) => {
-                  const isSelected = filledFrom === demo.email;
-                  return (
-                    <button
-                      key={demo.email}
-                      type="button"
-                      className="role-card"
-                      onClick={() => handleDemoCardClick(demo)}
-                      style={{
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        outline: isSelected ? '2px solid var(--primary-500)' : 'none',
-                        background: isSelected ? 'var(--primary-50)' : undefined,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                        <EntityLogo name={demo.name} size="xs" shape="rounded" />
-                        <span className="role-card-name" style={{ fontWeight: 700, fontSize: '0.8rem' }}>
-                          {demo.label}
-                          {isSelected && <span style={{ color: 'var(--primary-500)', marginLeft: '0.3rem' }}>✓</span>}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem', marginTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)', wordBreak: 'break-all' }}>
-                          📧 {demo.email}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--gray-500)' }}>
-                          🔑 Auto-fills email &amp; password
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
-
-          <div className="auth-footer">
-            Don&apos;t have an account? <Link href="/register">Sign up</Link>
-          </div>
+          
         </div>
+
+        <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+          Don&apos;t have an account? <Link href="/register" style={{ color: 'var(--primary-600)', fontWeight: 600, textDecoration: 'none' }}>Sign up</Link>
+        </div>
+
       </div>
     </div>
   );

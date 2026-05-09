@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatStatus } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 
 async function swrFetcher(url) {
@@ -359,7 +359,7 @@ export default function EmployerInternshipsPage() {
               <strong>{intern.title}</strong>
               {' · '}
               {stipendLabel(intern.salaryMin, intern.salaryMax)} · Min CGPA {intern.cgpa ?? '—'} · {intern.vacancies} openings ·{' '}
-              <span className={`badge ${intern.status === 'published' ? 'badge-success' : 'badge-gray'} badge-dot`}>{intern.status}</span>
+              <span className={`badge ${intern.status === 'published' ? 'badge-success' : 'badge-gray'} badge-dot`}>{formatStatus(intern.status)}</span>
               {' · '}
               {intern.createdAt ? formatDate(intern.createdAt) : ''}
             </p>

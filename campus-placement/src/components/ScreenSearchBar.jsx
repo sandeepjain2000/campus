@@ -66,16 +66,45 @@ export default function ScreenSearchBar() {
 
   return (
     <div className="screen-search-bar" ref={wrapRef} style={{ position: 'relative' }}>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        title="Find a screen"
+      <div
+        className="screen-search-inline"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+          padding: '0.15rem 0.5rem 0.15rem 0.35rem',
+          background: 'var(--bg-primary)',
+          minWidth: 'min(200px, 42vw)',
+        }}
       >
-        <Search size={16} aria-hidden /> Screens
-      </button>
+        <Search size={16} aria-hidden style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+        <input
+          type="search"
+          className="form-input"
+          placeholder="Search screens…"
+          value={q}
+          aria-label="Search dashboard screens"
+          title="Filter screens by name, path, or tag (e.g. S-11)"
+          onChange={(e) => {
+            const v = e.target.value;
+            setQ(v);
+            setAiMatches([]);
+            setAiNote('');
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          style={{
+            border: 'none',
+            boxShadow: 'none',
+            flex: 1,
+            minWidth: 0,
+            padding: '0.35rem 0.25rem',
+            background: 'transparent',
+          }}
+        />
+      </div>
       {open && (
         <div
           className="card screen-search-popover"
@@ -90,19 +119,8 @@ export default function ScreenSearchBar() {
           }}
         >
           <label className="form-label" style={{ marginBottom: '0.35rem' }}>
-            Search screens ({role.replace(/_/g, ' ')})
+            Screens ({role.replace(/_/g, ' ')})
           </label>
-          <input
-            className="form-input"
-            autoFocus
-            placeholder="e.g. assessment upload, drives, audit…"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setAiMatches([]);
-              setAiNote('');
-            }}
-          />
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-secondary btn-sm" disabled={aiLoading || !q.trim()} onClick={runAi}>
               <Sparkles size={14} style={{ marginRight: 4 }} aria-hidden />

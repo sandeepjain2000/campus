@@ -12,7 +12,7 @@ function getTenantId(session) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'college_admin') {
+    if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -71,7 +71,7 @@ export async function GET() {
 export async function PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'college_admin') {
+    if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

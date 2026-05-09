@@ -6,6 +6,7 @@ import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { Target, Plus, MapPin, Video, Building2 } from 'lucide-react';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -81,17 +82,19 @@ export default function EmployerDrivesPage() {
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
-          <h1>🎯 My Drives</h1>
-          <p>
-            Track your campus placement drives.
-            {activeCampus ? (
-              <>
-                {' '}
-                Active campus: <strong>{activeCampus.name}</strong>
-              </>
-            ) : (
-              <> Choose a campus from the employer home page to scope this list and request new drives.</>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Target size={22} strokeWidth={2} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
+            Placement Drives
+            {drives.length > 0 && (
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, background: 'var(--primary-50)', color: 'var(--primary-700)', padding: '0.15rem 0.6rem', borderRadius: '999px', letterSpacing: 0 }}>
+                {drives.length}
+              </span>
             )}
+          </h1>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            {activeCampus
+              ? <>Campus: <strong style={{ color: 'var(--text-primary)' }}>{activeCampus.name}</strong></>
+              : 'Select an active campus from the home page to scope and request drives.'}
           </p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -114,8 +117,9 @@ export default function EmployerDrivesPage() {
               ]),
             })}
           />
-          <button className="btn btn-primary" type="button" onClick={() => setShowModal(true)}>
-            + Request New Drive
+          <button className="btn btn-primary" type="button" onClick={() => setShowModal(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Plus size={15} /> Request Drive
           </button>
         </div>
       </div>
@@ -145,8 +149,11 @@ export default function EmployerDrivesPage() {
               <div className="drive-info-item">
                 <div className="drive-info-label">Type</div>
                 <div className="drive-info-value">
-                  <span className={`badge badge-${drive.type === 'virtual' ? 'blue' : 'indigo'}`}>
-                    {drive.type === 'virtual' ? '🌐 Virtual' : '🏛️ On-Campus'}
+                  <span className={`badge badge-${drive.type === 'virtual' ? 'blue' : 'indigo'}`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    {drive.type === 'virtual'
+                      ? <><Video size={11} /> Virtual</>
+                      : <><Building2 size={11} /> On-Campus</>}
                   </span>
                 </div>
               </div>
@@ -161,6 +168,22 @@ export default function EmployerDrivesPage() {
             </div>
           </div>
         ))}
+        {drives.length === 0 && !isLoading && (
+          <div className="empty-state-container" style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)' }}>
+            <div style={{ background: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+              <span style={{ fontSize: '1.75rem' }}>🎯</span>
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No placement drives yet</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
+              You haven't requested any placement drives. Start recruiting top talent by initiating your first campus drive.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button className="btn btn-primary" type="button" onClick={() => setShowModal(true)}>
+                + Request New Drive
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && (
@@ -196,8 +219,8 @@ export default function EmployerDrivesPage() {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Preferred date</label>
-                <input className="form-input" type="date" value={form.driveDate} onChange={(e) => setForm((p) => ({ ...p, driveDate: e.target.value }))} />
+                <label className="form-label">Drive Date <span style={{color:'red'}}>*</span></label>
+                <input className="form-input" type="date" min={new Date().toISOString().split('T')[0]} value={form.driveDate} onChange={(e) => setForm((p) => ({ ...p, driveDate: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="form-label">Venue</label>

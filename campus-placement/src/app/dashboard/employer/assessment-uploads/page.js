@@ -241,7 +241,7 @@ export default function EmployerAssessmentUploadsPage() {
               ]),
             })}
           />
-          <button className="btn btn-secondary" type="button" onClick={downloadTemplate}>Download CSV template</button>
+          <button className="btn btn-secondary" type="button" onClick={downloadTemplate}>Download Template</button>
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import { query } from '@/lib/db';
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -17,9 +17,14 @@ export async function POST(req) {
       return NextResponse.json({ error: 'file_url must be an https URL' }, { status: 400 });
     }
 
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
+
     const upd = await query(
       `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 AND role = 'student' RETURNING id, avatar_url`,
-      [file_url, session.user.id],
+      [file_url, userId],
     );
 
     if (!upd.rows[0]) {

@@ -9,7 +9,7 @@ const DOC_TYPES = new Set(['resume', 'id_proof', 'academic', 'certificate', 'oth
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,7 +26,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Invalid document_type' }, { status: 400 });
     }
 
-    const studentId = await getOrCreateStudentProfileId(session.user.id);
+    const userId = session.user.id || session.user.sub;
+    const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
       return NextResponse.json({ error: 'Could not create student profile (missing tenant?)' }, { status: 400 });
     }

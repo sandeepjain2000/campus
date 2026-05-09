@@ -32,14 +32,26 @@ if (!connectionString) {
   process.exit(1);
 }
 
+let warnedInsecureTls;
 function pgSslOption(hostname) {
   const h = String(hostname || '').toLowerCase();
   const local = h === 'localhost' || h === '127.0.0.1' || h === '::1';
   if (local) return false;
-  const insecure =
+  const insecureEnv =
     process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'false' ||
     process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false';
-  if (insecure) return { rejectUnauthorized: false };
+  const devLike = ['development', 'test', 'local'].includes(
+    (process.env.NODE_ENV || '').toLowerCase(),
+  );
+  if (insecureEnv) {
+    if (!devLike && !warnedInsecureTls) {
+      warnedInsecureTls = true;
+      console.warn(
+        '[pgSsl] TLS verification disabled for PostgreSQL (DATABASE_SSL_REJECT_UNAUTHORIZED=false). Prefer DATABASE_SSL_CA or NODE_EXTRA_CA_CERTS in production.',
+      );
+    }
+    return { rejectUnauthorized: false };
+  }
   const ssl = { rejectUnauthorized: true };
   const caPath = process.env.DATABASE_SSL_CA?.trim();
   if (caPath) {

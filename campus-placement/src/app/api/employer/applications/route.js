@@ -41,7 +41,7 @@ function mapRow(row) {
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -183,5 +183,68 @@ export async function GET(request) {
   } catch (e) {
     console.error('GET /api/employer/applications', e);
     return NextResponse.json({ error: 'Failed to load applications' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'employer') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
+
+    const employerId = await getEmployerProfileId(userId);
+    if (!employerId) {
+      return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const applicationId = String(body?.applicationId || '').trim();
+    const sourceKind = String(body?.sourceKind || '').trim().toLowerCase();
+    const nextStatus = String(body?.status || '').trim().toLowerCase();
+    const allowed = new Set(['applied', 'shortlisted', 'in_progress', 'selected', 'rejected', 'on_hold']);
+    if (!applicationId || !['drive', 'program'].includes(sourceKind) || !allowed.has(nextStatus)) {
+      return NextResponse.json({ error: 'applicationId, sourceKind and valid status are required' }, { status: 400 });
+    }
+
+    if (sourceKind === 'drive') {
+      const updated = await query(
+        `UPDATE applications a
+         SET status = $1, updated_at = NOW()
+         FROM placement_drives d
+         WHERE a.id = $2::uuid
+           AND d.id = a.drive_id
+           AND d.employer_id = $3::uuid
+         RETURNING a.id, a.status`,
+        [nextStatus, applicationId, employerId],
+      );
+      if (!updated.rows[0]) {
+        return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+      }
+      return NextResponse.json({ application: updated.rows[0] });
+    }
+
+    const updated = await query(
+      `UPDATE program_applications pa
+       SET status = $1, updated_at = NOW()
+       FROM job_postings jp
+       WHERE pa.id = $2::uuid
+         AND jp.id = pa.job_id
+         AND jp.employer_id = $3::uuid
+       RETURNING pa.id, pa.status`,
+      [nextStatus, applicationId, employerId],
+    );
+    if (!updated.rows[0]) {
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    }
+    return NextResponse.json({ application: updated.rows[0] });
+  } catch (e) {
+    console.error('PATCH /api/employer/applications', e);
+    return NextResponse.json({ error: 'Failed to update application status' }, { status: 500 });
   }
 }

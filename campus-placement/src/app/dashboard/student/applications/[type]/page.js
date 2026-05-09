@@ -27,8 +27,11 @@ function roundLabel(item) {
 
 const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons'];
 
+import { use } from 'react';
+
 export default function StudentApplicationsPage({ params }) {
-  const { type } = params;
+  const unwrappedParams = use(params);
+  const type = unwrappedParams.type;
 
   if (!VALID_TYPES.includes(type)) {
     notFound();

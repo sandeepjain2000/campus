@@ -59,11 +59,13 @@ const sql = fs.readFileSync(sqlPath, 'utf8');
   const local = h === 'localhost' || h === '127.0.0.1' || h === '::1';
   let ssl = false;
   if (!local) {
-    const insecure =
+    const insecureEnv =
       process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'false' ||
       process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false';
-    if (insecure) ssl = { rejectUnauthorized: false };
-    else {
+    const insecureAllowedEnv = ['development', 'test', 'local'].includes(currentEnv);
+    if (insecureEnv && insecureAllowedEnv) {
+      ssl = { rejectUnauthorized: false };
+    } else {
       ssl = { rejectUnauthorized: true };
       const caPath = process.env.DATABASE_SSL_CA?.trim();
       if (caPath) ssl.ca = fs.readFileSync(caPath, 'utf8');

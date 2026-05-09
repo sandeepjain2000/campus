@@ -75,27 +75,25 @@ export default function CollegeSponsorshipsPage() {
   );
 
   return (
-    <div className="animate-fadeIn">
-      {/* Hero Section */}
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* Glassmorphic Hero */}
       <div style={{
-        background: 'var(--bg-primary)',
-        borderRadius: '1.5rem',
-        padding: '3rem 2rem',
+        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
+        marginBottom: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         textAlign: 'center',
-        marginBottom: '3rem',
-        position: 'relative',
-        overflow: 'hidden',
-        border: '1px solid var(--border-default)',
-        boxShadow: 'var(--shadow-sm)'
       }}>
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Invest in the <span className="text-primary-600">Future</span></h1>
-          <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 2rem' }}>
-            Live sponsorship opportunities for {collegeName} are shown below. Use this as your college-facing catalog of active sponsor tiers.
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 0.75rem', letterSpacing: '-0.02em' }}>
+            Invest in the <span style={{ color: 'rgba(255,255,255,0.75)' }}>Future</span>
+          </h1>
+          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.85)', maxWidth: 560, margin: '0 auto 1.75rem' }}>
+            Live sponsorship opportunities for {collegeName}. Use this as your college-facing catalog of active sponsor tiers.
           </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={downloadGuide}>Download Guide</button>
-            <button className="btn btn-secondary" onClick={scheduleMeeting}>Schedule Meeting</button>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn" onClick={downloadGuide} style={{ background: 'white', color: 'var(--primary-800)', border: 'none', fontWeight: 700 }}>Download Guide</button>
+            <button className="btn" onClick={scheduleMeeting} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(10px)' }}>Schedule Meeting</button>
           </div>
         </div>
       </div>

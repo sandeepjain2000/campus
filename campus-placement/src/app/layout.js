@@ -2,6 +2,7 @@ import './globals.css';
 import AuthProvider from '@/components/AuthProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ToastProvider } from '@/components/ToastProvider';
+import PreventWheelOnNumberInputs from '@/components/PreventWheelOnNumberInputs';
 
 export const metadata = {
   title: 'PlacementHub — Campus Placement & Engagement Platform',
@@ -16,6 +17,7 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <ThemeProvider>
             <ToastProvider>
+              <PreventWheelOnNumberInputs />
               {children}
             </ToastProvider>
           </ThemeProvider>

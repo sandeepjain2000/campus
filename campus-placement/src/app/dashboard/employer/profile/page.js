@@ -10,6 +10,7 @@ import {
   EMPLOYER_COMPANY_SIZE_OPTIONS,
   labelEmployerCompanyType,
 } from '@/lib/employerCompanyTypeLabels';
+import { Building2, Phone, MapPin, FileText, Pencil, GraduationCap, Star, Users, ExternalLink, Mail, Camera } from 'lucide-react';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -24,6 +25,7 @@ export default function EmployerProfilePage() {
   const { addToast } = useToast();
   const { data, error, mutate } = useSWR('/api/employer/profile', fetcher);
   const [form, setForm] = useState(null);
+
   const profile = useMemo(() => {
     const p = data?.profile || {};
     const str = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '—');
@@ -100,7 +102,7 @@ export default function EmployerProfilePage() {
       if (!res.ok) throw new Error(json?.error || 'Failed to update profile');
       await mutate();
       setEditing(false);
-      addToast('Profile updated.', 'success');
+      addToast('Profile updated successfully.', 'success');
     } catch (e) {
       addToast(e.message || 'Failed to update profile', 'error');
     }
@@ -109,110 +111,57 @@ export default function EmployerProfilePage() {
   const onLogoChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) {
-      addToast('No file selected.', 'warning');
-      return;
-    }
+    if (!file) return;
+
     const contentType = inferImageContentType(file);
     if (!contentType) {
-      addToast('Choose a JPEG, PNG, WebP, or GIF (browser did not report a usable image type).', 'warning');
-      appendClientDebugLog({
-        source: 'employer_profile_logo',
-        action: 'reject_type',
-        fileName: file.name,
-        reportedType: file.type || null,
-      });
+      addToast('Choose a JPEG, PNG, WebP, or GIF.', 'warning');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
       addToast('Image too large (max 2MB).', 'warning');
       return;
     }
+    
     setLogoUploading(true);
     try {
-      appendClientDebugLog({
-        source: 'employer_profile_logo',
-        action: 'presign_request',
-        fileName: file.name,
-        contentType,
-        fileSize: file.size,
-      });
       const presignRes = await fetch('/api/employer/profile/logo/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, contentType, fileSize: file.size }),
       });
-      let presign = {};
-      try {
-        presign = await presignRes.json();
-      } catch {
-        presign = {};
-      }
-      appendClientDebugLog({
-        source: 'employer_profile_logo',
-        action: 'presign_response',
-        status: presignRes.status,
-        ok: presignRes.ok,
-        error: presign.error || null,
-      });
-      if (presignRes.status === 503) {
-        addToast(
-          `${presign.error || 'Logo storage not configured'}. Add AWS/S3 env vars on the server and redeploy.`,
-          'error',
-        );
-        return;
-      }
+      const presign = await presignRes.json().catch(() => ({}));
+      
       if (!presignRes.ok) {
-        addToast(presign.error || `Could not start upload (HTTP ${presignRes.status}).`, 'error');
+        addToast(presign.error || `Could not start upload.`, 'error');
         return;
       }
+
       const ph = {};
       if (presign.contentType) ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
       const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
-      let putDetail = '';
-      try {
-        putDetail = (await putRes.text()).slice(0, 500);
-      } catch {
-        putDetail = '';
-      }
-      appendClientDebugLog({
-        source: 'employer_profile_logo',
-        action: 's3_put',
-        status: putRes.status,
-        ok: putRes.ok,
-      });
+      
       if (!putRes.ok) {
-        addToast(
-          `Upload to storage failed (HTTP ${putRes.status}). Check S3 CORS for PUT from this site. ${putDetail ? putDetail.slice(0, 120) : ''}`.trim(),
-          'error',
-        );
+        addToast(`Upload to storage failed.`, 'error');
         return;
       }
+
       const completeRes = await fetch('/api/employer/profile/logo/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_url: presign.fileUrl }),
       });
-      const complete = await completeRes.json().catch(() => ({}));
-      appendClientDebugLog({
-        source: 'employer_profile_logo',
-        action: 'complete',
-        status: completeRes.status,
-        ok: completeRes.ok,
-        error: complete.error || null,
-      });
+      
       if (!completeRes.ok) {
-        addToast(complete.error || 'Logo uploaded but could not be saved to your profile.', 'error');
+        addToast('Logo uploaded but could not be saved to your profile.', 'error');
         return;
       }
+      
       if (form) setForm((p) => ({ ...p, logoUrl: presign.fileUrl }));
       await mutate();
-      addToast('Company logo uploaded.', 'success');
-      appendClientDebugLog({ source: 'employer_profile_logo', action: 'success', fileUrl: presign.fileUrl });
+      addToast('Company logo updated successfully.', 'success');
     } catch (err) {
-      const msg = err?.message || 'Upload failed (network).';
-      addToast(msg, 'error');
-      appendClientDebugLog({ source: 'employer_profile_logo', action: 'error', message: msg });
+      addToast(err?.message || 'Upload failed.', 'error');
     } finally {
       setLogoUploading(false);
     }
@@ -220,156 +169,321 @@ export default function EmployerProfilePage() {
 
   return (
     <div className="animate-fadeIn">
-      {error ? <div className="card text-secondary" style={{ marginBottom: '1rem' }}>{error.message}</div> : null}
-      <div className="profile-header" style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}>
-        <div className="profile-avatar" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <EntityLogo
-            name={profile.companyName}
-            logoUrl={profile.logoUrl}
-            website={profile.website}
-            size="xl"
-            shape="rounded"
-          />
-        </div>
-        <div className="profile-info" style={{ position: 'relative', zIndex: 1 }}>
-          <h2>{profile.companyName}</h2>
-          <p>{profile.industry} • {profile.companyTypeLabel} • Founded {profile.founded}</p>
-          <div className="profile-meta">
-            <div className="profile-meta-item">📍 {profile.headquarters}</div>
-            <div className="profile-meta-item">
-              {profile.companySize === '—' ? '👥 Company size —' : `👥 ${profile.companySize} employees`}
+      {error ? <div className="card text-secondary mb-4">{error.message}</div> : null}
+      
+      {/* Premium Hero Banner */}
+      <div 
+        style={{
+          position: 'relative',
+          borderRadius: 'var(--radius-xl)',
+          overflow: 'hidden',
+          background: 'linear-gradient(135deg, var(--primary-800), var(--primary-600))',
+          marginBottom: '2rem',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        {/* Abstract Background Elements */}
+        <div style={{ position: 'absolute', top: '-50%', left: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
+        <div style={{ position: 'absolute', bottom: '-20%', right: '5%', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
+        
+        <div style={{ 
+          padding: '2.5rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '1.5rem',
+          position: 'relative',
+          zIndex: 1
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ 
+                padding: '0.75rem', 
+                background: 'rgba(255, 255, 255, 0.95)', 
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
+                backdropFilter: 'blur(10px)',
+              }}>
+                <EntityLogo
+                  name={profile.companyName}
+                  logoUrl={profile.logoUrl}
+                  size="xl"
+                  shape="rounded"
+                />
+              </div>
+              <div style={{ color: 'white' }}>
+                <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 0.25rem', letterSpacing: '-0.02em', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  {profile.companyName}
+                </h1>
+                <p style={{ fontSize: '1rem', opacity: 0.9, margin: 0, fontWeight: 500 }}>
+                  {profile.industry} • {profile.companyTypeLabel}
+                </p>
+              </div>
             </div>
-            <div className="profile-meta-item">
-              ⭐{' '}
-              {profile.reliabilityScore != null
-                ? `${profile.reliabilityScore}/5 rating`
-                : 'Not rated yet'}
+            <button 
+              className="btn" 
+              onClick={toggleEdit} 
+              style={{ 
+                background: 'rgba(255,255,255,0.2)', 
+                color: 'white', 
+                border: '1px solid rgba(255,255,255,0.3)',
+                backdropFilter: 'blur(8px)',
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '0.4rem',
+                fontWeight: 600,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+            >
+              <Pencil size={15} /> Edit Profile
+            </button>
+          </div>
+          
+          <div style={{ 
+            display: 'flex', 
+            gap: '1rem', 
+            flexWrap: 'wrap', 
+            background: 'rgba(0,0,0,0.2)', 
+            padding: '0.75rem 1.25rem', 
+            borderRadius: 'var(--radius-md)',
+            backdropFilter: 'blur(4px)',
+            color: 'rgba(255,255,255,0.95)',
+            fontSize: '0.875rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <MapPin size={14} style={{ opacity: 0.7 }} /> {profile.headquarters}
             </div>
-            <div className="profile-meta-item">
-              🎓{' '}
-              {profile.totalHires != null ? `${profile.totalHires} total hires` : 'Hires not recorded'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Users size={14} style={{ opacity: 0.7 }} />{profile.companySize === '—' ? 'Company size —' : `${profile.companySize} employees`}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Star size={14} style={{ opacity: 0.7 }} /> {profile.reliabilityScore != null ? `${profile.reliabilityScore}/5 rating` : 'Not rated yet'}
+            </div>
+            {profile.website !== '—' && profile.website && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>
+                <a 
+                  href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}
+                  className="hover:underline"
+                >
+                  <ExternalLink size={14} /> Visit Website
+                </a>
+              </div>
+            )}
           </div>
         </div>
-        <button className="btn btn-secondary" onClick={toggleEdit} style={{ position: 'relative', zIndex: 1 }}>
-          {editing ? '✕ Cancel' : '✏️ Edit'}
-        </button>
       </div>
 
-      <div className="grid grid-2">
-        <div className="card">
-          <div className="card-header"><h3 className="card-title">🏢 Company Details</h3></div>
-          <div className="drive-info-grid">
-            <div className="drive-info-item"><div className="drive-info-label">Industry</div><div className="drive-info-value">{profile.industry}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Type</div><div className="drive-info-value">{profile.companyTypeLabel}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Size</div><div className="drive-info-value">{profile.companySize}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Founded</div><div className="drive-info-value">{profile.founded}</div></div>
+      <div className="grid grid-2" style={{ gap: '1.5rem', alignItems: 'start' }}>
+        {/* About Section */}
+        <div className="card card-hover" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+              <FileText size={18} className="text-primary-600" /> About the Company
+            </h3>
+          </div>
+          <p className="text-secondary" style={{ lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
+            {profile.description}
+          </p>
+        </div>
+
+        {/* Company Details */}
+        <div className="card card-hover">
+          <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+              <Building2 size={18} className="text-primary-600" /> At a Glance
+            </h3>
+          </div>
+          <div className="drive-info-grid" style={{ gap: '1.25rem' }}>
             <div className="drive-info-item">
-              <div className="drive-info-label">Website</div>
-              <div className="drive-info-value">
-                {profile.website ? (
-                  <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer">
-                    {profile.website}
-                  </a>
-                ) : (
-                  '—'
-                )}
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Industry</div>
+              <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.industry}</div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Company Type</div>
+              <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.companyTypeLabel}</div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Founded</div>
+              <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.founded}</div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Hires</div>
+              <div className="drive-info-value" style={{ fontWeight: 500, color: 'var(--primary-600)' }}>
+                {profile.totalHires != null ? profile.totalHires : '—'}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header"><h3 className="card-title">📞 Contact Information</h3></div>
-          <div className="drive-info-grid">
-            <div className="drive-info-item"><div className="drive-info-label">Contact Person</div><div className="drive-info-value">{profile.contactPerson}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Email</div><div className="drive-info-value">{profile.contactEmail}</div></div>
-            <div className="drive-info-item"><div className="drive-info-label">Phone</div><div className="drive-info-value">{profile.contactPhone}</div></div>
-          </div>
-        </div>
-
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-header"><h3 className="card-title">📍 Office Locations</h3></div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {profile.locations.map((loc, i) => (
-              <span key={i} className="badge badge-blue" style={{ padding: '0.375rem 1rem', fontSize: '0.8125rem' }}>📍 {loc}</span>
-            ))}
-          </div>
-        </div>
-
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-header"><h3 className="card-title">📝 About</h3></div>
-          {editing && form ? (
-            <div style={{ display: 'grid', gap: '0.6rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Industry</label>
-                <input className="form-input" value={form.industry} onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))} placeholder="e.g. Information Technology" />
+        {/* Contact Info & Locations */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="card card-hover">
+            <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+                <Phone size={18} className="text-primary-600" /> Primary Contact
+              </h3>
+            </div>
+            <div className="drive-info-grid" style={{ gap: '1.25rem' }}>
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Person</div>
+                <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPerson}</div>
               </div>
-              <div className="grid grid-2" style={{ gap: '0.6rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Company type</label>
-                  <select
-                    className="form-input"
-                    value={form.companyType}
-                    onChange={(e) => setForm((p) => ({ ...p, companyType: e.target.value }))}
-                  >
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</div>
+                <div className="drive-info-value" style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  {profile.contactEmail !== '—' && <Mail size={13} className="text-tertiary" />}
+                  {profile.contactEmail}
+                </div>
+              </div>
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</div>
+                <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPhone}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card card-hover">
+            <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+                <MapPin size={18} className="text-primary-600" /> Office Locations
+              </h3>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {profile.locations.length > 0 ? (
+                profile.locations.map((loc, i) => (
+                  <span key={i} className="badge badge-blue" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', fontWeight: 500, border: '1px solid var(--blue-200)' }}>
+                    <MapPin size={12} style={{ marginRight: '0.25rem', opacity: 0.7 }} /> {loc}
+                  </span>
+                ))
+              ) : (
+                <span className="text-secondary text-sm">No locations added.</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Profile Modal Dialog */}
+      {editing && form && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && toggleEdit()}>
+          <div className="modal modal-lg animate-in fade-in slide-in-from-bottom-4" style={{ maxWidth: '800px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border-color)' }}>
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Pencil size={20} className="text-primary-600" /> Edit Company Profile
+              </h2>
+              <button type="button" className="modal-close" onClick={toggleEdit}>×</button>
+            </div>
+            
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)' }}>
+                <EntityLogo name={profile.companyName} logoUrl={form.logoUrl} size="lg" shape="rounded" />
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 600 }}>Company Logo</h4>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <label className={`btn btn-secondary btn-sm${logoUploading ? ' disabled' : ''}`} style={{ cursor: logoUploading ? 'wait' : 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Camera size={14} />
+                      {logoUploading ? 'Uploading…' : 'Upload New Logo'}
+                      <input type="file" accept="image/*" hidden disabled={logoUploading} onChange={onLogoChange} />
+                    </label>
+                    <input 
+                      className="form-input form-input-sm" 
+                      style={{ flex: 1, minWidth: '200px' }}
+                      value={form.logoUrl} 
+                      onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))} 
+                      placeholder="Or paste an image URL" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-2" style={{ gap: '1.25rem' }}>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Company Description</label>
+                  <textarea 
+                    className="form-textarea" 
+                    rows={4} 
+                    value={form.description} 
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} 
+                    placeholder="Provide a brief overview of your company, culture, and mission."
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Industry</label>
+                  <input className="form-input" value={form.industry} onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))} placeholder="e.g. Information Technology" />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Company Type</label>
+                  <select className="form-select" value={form.companyType} onChange={(e) => setForm((p) => ({ ...p, companyType: e.target.value }))}>
                     <option value="">— Select —</option>
                     {EMPLOYER_COMPANY_TYPE_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Company size (employees)</label>
-                  <input
-                    className="form-input"
-                    list="employer-company-size-presets"
-                    value={form.companySize}
-                    onChange={(e) => setForm((p) => ({ ...p, companySize: e.target.value }))}
-                    placeholder="e.g. 10000+ or pick a suggestion"
-                  />
+
+                <div className="form-group">
+                  <label className="form-label">Company Size</label>
+                  <input className="form-input" list="employer-company-size-presets" value={form.companySize} onChange={(e) => setForm((p) => ({ ...p, companySize: e.target.value }))} placeholder="e.g. 10000+" />
                   <datalist id="employer-company-size-presets">
-                    {EMPLOYER_COMPANY_SIZE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
+                    {EMPLOYER_COMPANY_SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </datalist>
                 </div>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Founded year</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={1600}
-                  max={new Date().getFullYear() + 1}
-                  value={form.foundedYear}
-                  onChange={(e) => setForm((p) => ({ ...p, foundedYear: e.target.value }))}
-                  placeholder="e.g. 1981"
-                />
-              </div>
-              <textarea className="form-textarea" rows={4} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-              <input className="form-input" value={form.contactPerson} onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))} placeholder="Contact person" />
-              <input className="form-input" value={form.contactEmail} onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))} placeholder="Contact email" />
-              <input className="form-input" value={form.contactPhone} onChange={(e) => setForm((p) => ({ ...p, contactPhone: e.target.value }))} placeholder="Contact phone" />
-              <input className="form-input" value={form.headquarters} onChange={(e) => setForm((p) => ({ ...p, headquarters: e.target.value }))} placeholder="Headquarters" />
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label className={`btn btn-secondary btn-sm${logoUploading ? ' disabled' : ''}`} style={{ cursor: logoUploading ? 'wait' : 'pointer', margin: 0 }}>
-                  {logoUploading ? 'Uploading logo…' : 'Upload logo'}
-                  <input type="file" accept="image/*" hidden disabled={logoUploading} onChange={onLogoChange} />
-                </label>
-                <input className="form-input" value={form.logoUrl} onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))} placeholder="Or paste logo image URL" />
-              </div>
-              <input className="form-input" value={form.website} onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))} placeholder="Website" />
-              <input className="form-input" value={form.locations} onChange={(e) => setForm((p) => ({ ...p, locations: e.target.value }))} placeholder="Locations (comma separated)" />
-              <div>
-                <button className="btn btn-primary btn-sm" onClick={saveProfile}>Save profile</button>
+
+                <div className="form-group">
+                  <label className="form-label">Founded Year</label>
+                  <input className="form-input" type="number" min={1600} max={new Date().getFullYear() + 1} value={form.foundedYear} onChange={(e) => setForm((p) => ({ ...p, foundedYear: e.target.value }))} placeholder="e.g. 1998" />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Website</label>
+                  <input className="form-input" value={form.website} onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))} placeholder="https://example.com" />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <hr style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0 1rem' }} />
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Contact & Locations</h4>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Primary Contact Person</label>
+                  <input className="form-input" value={form.contactPerson} onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))} placeholder="Full Name" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Contact Email</label>
+                  <input className="form-input" type="email" value={form.contactEmail} onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))} placeholder="email@company.com" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Contact Phone</label>
+                  <input className="form-input" value={form.contactPhone} onChange={(e) => setForm((p) => ({ ...p, contactPhone: e.target.value }))} placeholder="+1 234 567 8900" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Global Headquarters</label>
+                  <input className="form-input" value={form.headquarters} onChange={(e) => setForm((p) => ({ ...p, headquarters: e.target.value }))} placeholder="City, Country" />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">All Office Locations</label>
+                  <input className="form-input" value={form.locations} onChange={(e) => setForm((p) => ({ ...p, locations: e.target.value }))} placeholder="Comma separated list of cities" />
+                </div>
               </div>
             </div>
-          ) : (
-            <p className="text-sm" style={{ lineHeight: 1.7 }}>{profile.description}</p>
-          )}
+            
+            <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: 'var(--bg-surface)' }}>
+              <button className="btn btn-secondary" onClick={toggleEdit}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveProfile}>Save Changes</button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

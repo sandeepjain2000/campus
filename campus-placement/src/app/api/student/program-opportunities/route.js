@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -52,16 +52,27 @@ export async function GET(request) {
          pa.id AS application_id,
          pa.status AS application_status
        FROM job_postings jp
-       INNER JOIN job_posting_visibility jpv
-         ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
        INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
-       INNER JOIN employer_approvals ea
-         ON ea.employer_id = ep.id AND ea.tenant_id = jpv.tenant_id AND ea.status = 'approved'
        LEFT JOIN student_profiles sp ON sp.user_id = $${userIdx}::uuid
        LEFT JOIN program_applications pa ON pa.job_id = jp.id AND pa.student_id = sp.id
-       WHERE jp.status = 'published'
-         AND jp.job_type = ANY($${typesIdx}::text[])
-       ORDER BY jp.created_at DESC`,
+       WHERE jp.job_type = ANY($${typesIdx}::text[])
+         AND (
+           (
+             jp.status = 'published'
+             AND EXISTS (
+               SELECT 1
+               FROM job_posting_visibility jpv
+               INNER JOIN employer_approvals ea
+                 ON ea.employer_id = jp.employer_id
+                AND ea.tenant_id = jpv.tenant_id
+                AND ea.status = 'approved'
+               WHERE jpv.job_id = jp.id
+                 AND jpv.tenant_id IN (${tenantInSql})
+             )
+           )
+           OR pa.id IS NOT NULL
+         )
+       ORDER BY COALESCE(pa.applied_at, jp.created_at) DESC`,
       [...tenantInParams, userId, types],
     );
 

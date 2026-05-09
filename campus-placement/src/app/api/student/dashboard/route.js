@@ -21,11 +21,28 @@ function calculateProfileCompletion(profile) {
   return Math.round((filled / checks.length) * 100);
 }
 
+/** Map DB row (real columns + aliases) to completion shape */
+function profileRowForCompletion(row) {
+  if (!row) return null;
+  return {
+    prn: row.prn,
+    roll_number: row.roll_number,
+    phone: row.phone,
+    course: row.course,
+    branch: row.branch,
+    current_semester: row.current_semester,
+    cgpa: row.cgpa,
+    tenth_percentage: row.tenth_percentage,
+    twelfth_percentage: row.twelfth_percentage,
+    resume_url: row.resume_url,
+  };
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -84,23 +101,24 @@ export async function GET(request) {
     const profileQuery = await query(
       `
       SELECT
-        prn,
-        roll_number,
-        phone,
-        course,
-        branch,
-        current_semester,
-        cgpa,
-        tenth_percentage,
-        twelfth_percentage,
-        resume_url
-      FROM student_profiles
-      WHERE user_id = $1
+        sp.roll_number,
+        sp.enrollment_number AS prn,
+        u.phone AS phone,
+        sp.department AS course,
+        sp.branch,
+        8 AS current_semester,
+        sp.cgpa,
+        sp.tenth_percentage,
+        sp.twelfth_percentage,
+        sp.resume_url
+      FROM student_profiles sp
+      INNER JOIN users u ON u.id = sp.user_id
+      WHERE sp.user_id = $1::uuid
       LIMIT 1
       `,
       [userId]
     );
-    const profileCompletion = calculateProfileCompletion(profileQuery.rows[0]);
+    const profileCompletion = calculateProfileCompletion(profileRowForCompletion(profileQuery.rows[0]));
 
     return NextResponse.json({
       stats: {

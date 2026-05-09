@@ -190,7 +190,15 @@ export default function StudentDocumentsPage() {
                   {dtype.label} • {formatSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <a className="btn btn-ghost btn-sm" style={{ flex: 1 }} href={doc.file_url} target="_blank" rel="noopener noreferrer">Open</a>
+                  <a
+                    className="btn btn-ghost btn-sm"
+                    style={{ flex: 1 }}
+                    href={`/api/student/documents/view?id=${encodeURIComponent(doc.id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open
+                  </a>
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
@@ -231,7 +239,14 @@ export default function StudentDocumentsPage() {
                       <td>{formatDate(doc.uploaded_at)}</td>
                       <td>{doc.is_verified ? 'Yes' : 'Pending'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        <a className="btn btn-ghost btn-sm" href={doc.file_url} target="_blank" rel="noopener noreferrer">Open</a>
+                        <a
+                          className="btn btn-ghost btn-sm"
+                          href={`/api/student/documents/view?id=${encodeURIComponent(doc.id)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open
+                        </a>
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"

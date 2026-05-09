@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
 export default function AdminPendingRegistrationsPage() {
   const { addToast } = useToast();
@@ -52,6 +53,18 @@ export default function AdminPendingRegistrationsPage() {
     }
   };
 
+  const getExportRows = () => {
+    const headers = ['Party', 'Contact Name', 'Email', 'Role', 'Requested Date'];
+    const rowsList = rows.map(r => [
+      r.label,
+      `${r.firstName} ${r.lastName}`,
+      r.email,
+      r.role === 'college_admin' ? 'College' : 'Employer',
+      r.createdAt ? new Date(r.createdAt).toLocaleString() : ''
+    ]);
+    return { headers, rows: rowsList };
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -59,9 +72,17 @@ export default function AdminPendingRegistrationsPage() {
           <h1>Pending registrations</h1>
           <p>Approve new college and employer accounts before they can sign in.</p>
         </div>
-        <Link href="/dashboard/admin/colleges" className="btn btn-secondary btn-sm">
-          ← Colleges
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <ExportCsvSplitButton 
+            filenameBase="admin_pending_registrations" 
+            currentCount={rows.length} 
+            fullCount={rows.length} 
+            getRows={getExportRows} 
+          />
+          <Link href="/dashboard/admin/colleges" className="btn btn-secondary btn-sm">
+            ← Colleges
+          </Link>
+        </div>
       </div>
 
       <div className="table-container">

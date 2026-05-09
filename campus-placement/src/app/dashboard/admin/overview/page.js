@@ -32,6 +32,23 @@ export default function AdminOverviewPage() {
   const stats = data?.stats || { colleges: 0, employers: 0, students: 0, totalUsers: 0 };
   const registeredColleges = Array.isArray(data?.registeredColleges) ? data.registeredColleges : [];
 
+  const exportOverview = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      stats,
+      registeredColleges
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'admin-overview-report.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -41,6 +58,9 @@ export default function AdminOverviewPage() {
           </h1>
           <p className="text-secondary">PlacementHub Super Admin Dashboard</p>
         </div>
+        <button type="button" className="btn btn-secondary" onClick={exportOverview}>
+          Export Report (JSON)
+        </button>
       </div>
 
       <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>

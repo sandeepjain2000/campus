@@ -5,6 +5,14 @@ import useSWR from 'swr';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+function parseEventYmd(raw) {
+  if (raw == null || raw === '') return null;
+  const s = String(raw).trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (!iso) return null;
+  return { y: +iso[1], mo: +iso[2], d: +iso[3] };
+}
+
 const fetcher = async (url) => {
   const res = await fetch(url);
   const json = await res.json();
@@ -61,9 +69,13 @@ export default function StudentPlacementCalendarPage() {
           {cells.map((day, i) => {
             const dayEvents = day
               ? events.filter((e) => {
-                if (!e.date) return false;
-                const d = new Date(e.date);
-                return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth() && d.getDate() === day;
+                const ymd = parseEventYmd(e.date);
+                if (!ymd) return false;
+                return (
+                  ymd.y === currentMonth.getFullYear() &&
+                  ymd.mo === currentMonth.getMonth() + 1 &&
+                  ymd.d === day
+                );
               })
               : [];
             const today = new Date();

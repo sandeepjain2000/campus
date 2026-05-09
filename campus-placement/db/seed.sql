@@ -3,6 +3,8 @@
 -- ============================================
 -- Logos: public/logos/seed-*.svg (served as /logos/...) — referenced from tenants.logo_url
 -- and employer_profiles.logo_url so UI does not rely on name-based logo guessing.
+-- Campus registration keys: shard_binding_pairs rows for IITM / NITT / BITS (64-char hex).
+--   Query: SELECT surface_token FROM shard_binding_pairs WHERE ref_scope_id = '<tenant uuid>';
 
 -- Default password for all seeded users: 'Admin@123'
 -- bcrypt hash: $2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82
@@ -53,6 +55,7 @@ INSERT INTO tenants (id, name, slug, type, city, state, email, accreditation, na
 UPDATE tenants SET
   website = 'https://www.iitm.ac.in',
   logo_url = '/logos/seed-iitm.svg',
+  nirf_rank = 1,
   phone = '+91-44-2257-8000',
   address = 'IIT Madras Campus, Sardar Patel Road',
   pincode = '600036',
@@ -69,6 +72,15 @@ UPDATE tenants SET
       "facebook": "https://www.facebook.com/iitmadras",
       "instagram": "https://www.instagram.com/iitmadras/",
       "linkedin": "https://www.linkedin.com/school/indian-institute-of-technology-madras/"
+    },
+    "institutionShowcase": {
+      "nbaAccreditedPrograms": "CSE, ECE, Mechanical (Tier-1)",
+      "nirfCategoryRanks": "Overall #1, Engineering #1, Innovation #2",
+      "notableAlumni": "Sundar Pichai, Arvind Krishna, Kris Gopalakrishnan",
+      "patentCount": 820,
+      "startupCount": 310,
+      "incubationCells": "IITM Incubation Cell, IITM Research Park",
+      "researchCenters": "AI4Bharat, Center for NEMS, National Center for Combustion R&D"
     }
   }$cfg$::jsonb
 WHERE id = 'a1000000-0000-0000-0000-000000000001';
@@ -76,6 +88,7 @@ WHERE id = 'a1000000-0000-0000-0000-000000000001';
 UPDATE tenants SET
   website = 'https://www.nitt.edu',
   logo_url = '/logos/seed-nitt.svg',
+  nirf_rank = 9,
   phone = '+91-431-250-3000',
   address = 'Tanjavur Main Road, National Highway 67',
   pincode = '620015',
@@ -92,6 +105,15 @@ UPDATE tenants SET
       "facebook": "https://www.facebook.com/nitttrichy",
       "instagram": "",
       "linkedin": "https://www.linkedin.com/school/national-institute-of-technology-tiruchirappalli/"
+    },
+    "institutionShowcase": {
+      "nbaAccreditedPrograms": "CSE, ECE, EEE, Civil, Mechanical",
+      "nirfCategoryRanks": "Engineering Top-10, Architecture Top-25",
+      "notableAlumni": "N. Chandrasekaran, S. Venkatachary, M. Lakshmanan",
+      "patentCount": 240,
+      "startupCount": 95,
+      "incubationCells": "NIT Trichy Incubation & Entrepreneurship Hub",
+      "researchCenters": "Energy & Environment, Robotics, Materials & Manufacturing"
     }
   }$cfg$::jsonb
 WHERE id = 'a1000000-0000-0000-0000-000000000002';
@@ -99,6 +121,7 @@ WHERE id = 'a1000000-0000-0000-0000-000000000002';
 UPDATE tenants SET
   website = 'https://www.bits-pilani.ac.in',
   logo_url = '/logos/seed-bits.svg',
+  nirf_rank = 25,
   phone = '+91-1596-242-192',
   address = 'Vidya Vihar, Pilani Campus',
   pincode = '333031',
@@ -115,9 +138,25 @@ UPDATE tenants SET
       "facebook": "https://www.facebook.com/bitspilani",
       "instagram": "",
       "linkedin": "https://www.linkedin.com/school/birla-institute-of-technology-and-science-pilani/"
+    },
+    "institutionShowcase": {
+      "nbaAccreditedPrograms": "CSE, ECE, EEE, Chemical, Mechanical",
+      "nirfCategoryRanks": "University Top-30, Engineering Top-30",
+      "notableAlumni": "Sanjay Mehrotra, Prithviraj Chavan, Baba Kalyani",
+      "patentCount": 310,
+      "startupCount": 180,
+      "incubationCells": "BITS BioCyTiH Foundation, Pilani Innovation & Entrepreneurship Development Society",
+      "researchCenters": "Photonics, Data Science, Advanced Materials"
     }
   }$cfg$::jsonb
 WHERE id = 'a1000000-0000-0000-0000-000000000003';
+
+-- 1c. Campus enrollment keys (64 hex chars each) for registration demos — survives full seed when tenants are recreated.
+INSERT INTO shard_binding_pairs (ref_scope_id, surface_token) VALUES
+('a1000000-0000-0000-0000-000000000001', md5('seed-campus-iitm-2025') || md5('seed-campus-iitm-2025-x')),
+('a1000000-0000-0000-0000-000000000002', md5('seed-campus-nitt-2025') || md5('seed-campus-nitt-2025-x')),
+('a1000000-0000-0000-0000-000000000003', md5('seed-campus-bits-2025') || md5('seed-campus-bits-2025-x'))
+ON CONFLICT (ref_scope_id) DO UPDATE SET surface_token = EXCLUDED.surface_token;
 
 -- 2. Create Users
 -- Super Admin
@@ -140,7 +179,11 @@ INSERT INTO users (id, email, password_hash, role, first_name, last_name, is_act
 ('b1000000-0000-0000-0000-000000000005', 'hr@globalsoft.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'Vikram', 'Singh', true, true),
 ('b1000000-0000-0000-0000-000000000006', 'hr@infosys.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'Meera', 'Nair', true, true),
 ('b1000000-0000-0000-0000-000000000013', 'hr@academic.nitt.edu', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'NITT', 'Academic Affairs', true, true),
-('b1000000-0000-0000-0000-000000000014', 'hr@alumni.bits.edu', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'BITS', 'Alumni Association', true, true);
+('b1000000-0000-0000-0000-000000000014', 'hr@alumni.bits.edu', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'BITS', 'Alumni Association', true, true),
+('b1000000-0000-0000-0000-000000000018', 'talent@innoventlabs.ai', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'Rahul', 'Menon', true, true),
+('b1000000-0000-0000-0000-000000000019', 'careers@finedge.io', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'Aditi', 'Kapoor', true, true),
+('b1000000-0000-0000-0000-000000000020', 'hiring@greenvolt.in', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'Karan', 'Joshi', true, true),
+('b1000000-0000-0000-0000-000000000021', 'jobs@dataquotient.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'Neha', 'Bansal', true, true);
 
 -- Students (IIT Mumbai)
 INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_name, is_active, is_verified) VALUES
@@ -151,6 +194,17 @@ INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_n
 ('b1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'amit.sharma@iitm.edu', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'student', 'Amit', 'Sharma', true, true),
 ('b1000000-0000-0000-0000-000000000015', 'a1000000-0000-0000-0000-000000000002', 'sneha.rao@nitt.edu', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'student', 'Sneha', 'Rao', true, true),
 ('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'rohan.mehta@bits.edu', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'student', 'Rohan', 'Mehta', true, true);
+
+-- Demo student mobiles (profile completion + realistic contact)
+UPDATE users SET phone = x.p FROM (VALUES
+  ('b1000000-0000-0000-0000-000000000007'::uuid, '+919800100001'),
+  ('b1000000-0000-0000-0000-000000000008'::uuid, '+919800100002'),
+  ('b1000000-0000-0000-0000-000000000009'::uuid, '+919800100003'),
+  ('b1000000-0000-0000-0000-000000000010'::uuid, '+919800100004'),
+  ('b1000000-0000-0000-0000-000000000011'::uuid, '+919800100005'),
+  ('b1000000-0000-0000-0000-000000000015'::uuid, '+919800100015'),
+  ('b1000000-0000-0000-0000-000000000016'::uuid, '+919800100016')
+) AS x(id, p) WHERE users.id = x.id;
 
 -- 3. College Settings
 INSERT INTO college_settings (tenant_id, max_offers_per_student, offer_acceptance_window_days, min_cgpa_threshold, placement_season_start, placement_season_end) VALUES
@@ -164,19 +218,36 @@ INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry
 ('c1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000005', 'GlobalSoft Technologies', 'globalsoft', 'Information Technology', 'mnc', '5000-10000', 1998, 'https://globalsoft.com', '/logos/seed-globalsoft.svg', 'Enterprise software development and consulting company with operations in 20+ countries.', 'Pune, India', ARRAY['Pune', 'Chennai', 'Noida']),
 ('c1000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000006', 'Infosys Limited', 'infosys', 'Information Technology', 'mnc', '10000+', 1981, 'https://infosys.com', '/logos/seed-infosys.svg', 'Global leader in next-generation digital services and consulting.', 'Bangalore, India', ARRAY['Bangalore', 'Mysuru', 'Pune', 'Hyderabad', 'Chennai']),
 ('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 1964, 'https://nitt.edu', '/logos/seed-nitt.svg', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
-('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 1978, 'https://bits-alumni.org', '/logos/seed-bits.svg', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']);
+('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 1978, 'https://bits-alumni.org', '/logos/seed-bits.svg', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']),
+('c1000000-0000-0000-0000-000000000006', 'b1000000-0000-0000-0000-000000000018', 'Innovent Labs', 'innovent-labs', 'Artificial Intelligence', 'startup', '500-1000', 2016, 'https://innoventlabs.ai', '/logos/seed-innovent.svg', 'AI products company building enterprise copilots and automation assistants.', 'Bengaluru, India', ARRAY['Bengaluru', 'Hyderabad']),
+('c1000000-0000-0000-0000-000000000007', 'b1000000-0000-0000-0000-000000000019', 'FinEdge Systems', 'finedge-systems', 'FinTech', 'private', '1000-5000', 2012, 'https://finedge.io', '/logos/seed-finedge.svg', 'FinTech platform focused on payments infra, fraud prevention, and risk scoring.', 'Mumbai, India', ARRAY['Mumbai', 'Pune', 'Gurugram']),
+('c1000000-0000-0000-0000-000000000008', 'b1000000-0000-0000-0000-000000000020', 'GreenVolt Mobility', 'greenvolt-mobility', 'EV & Mobility', 'startup', '200-500', 2019, 'https://greenvolt.in', '/logos/seed-greenvolt.svg', 'Electric mobility startup focused on battery systems, fleet analytics, and charging software.', 'Chennai, India', ARRAY['Chennai', 'Bengaluru']),
+('c1000000-0000-0000-0000-000000000009', 'b1000000-0000-0000-0000-000000000021', 'DataQuotient Analytics', 'dataquotient-analytics', 'Data Analytics', 'private', '500-1000', 2015, 'https://dataquotient.com', '/logos/seed-dataquotient.svg', 'Advanced analytics and decision intelligence consulting with strong campus hiring programs.', 'Hyderabad, India', ARRAY['Hyderabad', 'Noida', 'Pune']);
 
 -- 4b. Employer campus approvals: none in seed — employers request tie-ups from the app.
 
--- 5. Student Profiles
-INSERT INTO student_profiles (user_id, tenant_id, roll_number, department, branch, batch_year, graduation_year, cgpa, tenth_percentage, twelfth_percentage, gender, placement_status, is_verified, bio) VALUES
-('b1000000-0000-0000-0000-000000000007', 'a1000000-0000-0000-0000-000000000001', 'CS2021001', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.72, 94.5, 91.2, 'male', 'unplaced', true, 'Passionate about AI/ML and full-stack development. Looking for challenging opportunities in technology.'),
-('b1000000-0000-0000-0000-000000000008', 'a1000000-0000-0000-0000-000000000001', 'CS2021002', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 9.15, 96.0, 93.8, 'female', 'unplaced', true, 'Interested in data science, NLP, and backend engineering. Active contributor to open-source.'),
-('b1000000-0000-0000-0000-000000000009', 'a1000000-0000-0000-0000-000000000001', 'EC2021001', 'Electronics', 'Electronics & Communication', 2021, 2025, 7.65, 88.0, 85.5, 'male', 'unplaced', true, 'Experienced in embedded systems and IoT. Strong fundamentals in signal processing.'),
-('b1000000-0000-0000-0000-000000000010', 'a1000000-0000-0000-0000-000000000001', 'CS2021003', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.45, 92.0, 89.0, 'female', 'placed', true, 'Full-stack developer with experience in React, Node.js, and Python. Placed at TechCorp.'),
-('b1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'ME2021001', 'Mechanical', 'Mechanical Engineering', 2021, 2025, 7.20, 85.0, 82.0, 'male', 'unplaced', true, 'Interested in product design and manufacturing automation.'),
-('b1000000-0000-0000-0000-000000000015', 'a1000000-0000-0000-0000-000000000002', 'CS2021101', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.90, 95.0, 92.5, 'female', 'unplaced', true, 'Full stack developer with passion for building scalable web applications.'),
-('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'CS2021201', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 9.20, 98.0, 96.0, 'male', 'unplaced', true, 'AI/ML enthusiast. Working on deep learning applications and research.');
+-- 5. Student Profiles (enrollment_number + resume_url keep dashboard / profile flows healthy in demos)
+INSERT INTO student_profiles (user_id, tenant_id, roll_number, enrollment_number, department, branch, batch_year, graduation_year, cgpa, tenth_percentage, twelfth_percentage, gender, placement_status, is_verified, bio, resume_url) VALUES
+('b1000000-0000-0000-0000-000000000007', 'a1000000-0000-0000-0000-000000000001', 'CS2021001', 'ENR-IITM-CS2021001', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.72, 94.5, 91.2, 'male', 'unplaced', true, 'Passionate about AI/ML and full-stack development. Looking for challenging opportunities in technology.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000008', 'a1000000-0000-0000-0000-000000000001', 'CS2021002', 'ENR-IITM-CS2021002', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 9.15, 96.0, 93.8, 'female', 'unplaced', true, 'Interested in data science, NLP, and backend engineering. Active contributor to open-source.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000009', 'a1000000-0000-0000-0000-000000000001', 'EC2021001', 'ENR-IITM-EC2021001', 'Electronics', 'Electronics & Communication', 2021, 2025, 7.65, 88.0, 85.5, 'male', 'unplaced', true, 'Experienced in embedded systems and IoT. Strong fundamentals in signal processing.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000010', 'a1000000-0000-0000-0000-000000000001', 'CS2021003', 'ENR-IITM-CS2021003', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.45, 92.0, 89.0, 'female', 'placed', true, 'Full-stack developer with experience in React, Node.js, and Python. Placed at TechCorp.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'ME2021001', 'ENR-IITM-ME2021001', 'Mechanical', 'Mechanical Engineering', 2021, 2025, 7.20, 85.0, 82.0, 'male', 'unplaced', true, 'Interested in product design and manufacturing automation.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000015', 'a1000000-0000-0000-0000-000000000002', 'CS2021101', 'ENR-NITT-CS2021101', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.90, 95.0, 92.5, 'female', 'unplaced', true, 'Full stack developer with passion for building scalable web applications.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'CS2021201', 'ENR-BITS-CS2021201', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 9.20, 98.0, 96.0, 'male', 'unplaced', true, 'AI/ML enthusiast. Working on deep learning applications and research.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+
+-- Demo students: college placement verification ON (no “pending approval” banner). Mirrors migrations/025.
+UPDATE student_profiles
+SET is_verified = true, verified_at = COALESCE(verified_at, NOW())
+WHERE user_id IN (
+  'b1000000-0000-0000-0000-000000000007'::uuid,
+  'b1000000-0000-0000-0000-000000000008'::uuid,
+  'b1000000-0000-0000-0000-000000000009'::uuid,
+  'b1000000-0000-0000-0000-000000000010'::uuid,
+  'b1000000-0000-0000-0000-000000000011'::uuid,
+  'b1000000-0000-0000-0000-000000000015'::uuid,
+  'b1000000-0000-0000-0000-000000000016'::uuid
+);
 
 -- 6. Student Skills
 INSERT INTO student_skills (student_id, skill_name, proficiency) VALUES
@@ -210,7 +281,9 @@ INSERT INTO job_postings (id, employer_id, title, description, job_type, categor
 INSERT INTO placement_drives (id, tenant_id, employer_id, job_id, title, description, drive_type, drive_date, start_time, end_time, venue, status, max_students, registered_count) VALUES
 ('e1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'TechCorp - SDE Recruitment Drive', 'Annual recruitment drive for Software Development Engineer positions.', 'on_campus', '2026-09-15', '09:00', '17:00', 'Placement Hall A', 'scheduled', 100, 45),
 ('e1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000003', 'GlobalSoft - Full Stack Developer Hiring', 'Hiring full stack developers for Pune and Chennai offices.', 'virtual', '2026-09-22', '10:00', '16:00', 'Online (Zoom)', 'approved', 80, 32),
-('e1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000004', 'Infosys - Mass Recruitment 2026', 'Mega hiring drive for Systems Engineer role across multiple branches.', 'on_campus', '2026-10-05', '08:30', '18:00', 'Main Auditorium', 'requested', 200, 0);
+('e1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000004', 'Infosys - Mass Recruitment 2026', 'Mega hiring drive for Systems Engineer role across multiple branches.', 'on_campus', '2026-10-05', '08:30', '18:00', 'Main Auditorium', 'requested', 200, 0),
+('e1000000-0000-0000-0000-000000000010', 'a1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000004', 'Infosys — NIT Trichy Campus Drive', 'Systems Engineer hiring — same role as IITM cycle, hosted at NIT Trichy.', 'on_campus', '2026-10-12', '08:30', '18:00', 'Seminar Hall 2', 'scheduled', 200, 18),
+('e1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000005', 'd1000000-0000-0000-0000-000000000007', 'BITS Pilani — Mentorship briefing', 'On-campus orientation for alumni mentorship cohort.', 'on_campus', '2026-09-28', '14:00', '17:00', 'FD III Seminar Room', 'approved', 80, 6);
 
 -- 9. Drive Rounds
 INSERT INTO drive_rounds (drive_id, round_number, round_type, title, scheduled_date, is_eliminatory) VALUES
@@ -220,7 +293,9 @@ INSERT INTO drive_rounds (drive_id, round_number, round_type, title, scheduled_d
 ('e1000000-0000-0000-0000-000000000001', 4, 'hr_interview', 'HR Interview', '2026-09-16', false),
 ('e1000000-0000-0000-0000-000000000002', 1, 'coding', 'Online Coding Assessment', '2026-09-22', true),
 ('e1000000-0000-0000-0000-000000000002', 2, 'technical_interview', 'Technical Interview (Video)', '2026-09-23', true),
-('e1000000-0000-0000-0000-000000000002', 3, 'hr_interview', 'HR Discussion', '2026-09-23', false);
+('e1000000-0000-0000-0000-000000000002', 3, 'hr_interview', 'HR Discussion', '2026-09-23', false),
+('e1000000-0000-0000-0000-000000000010', 1, 'aptitude', 'Online aptitude', '2026-10-12', true),
+('e1000000-0000-0000-0000-000000000011', 1, 'other', 'Mentorship orientation', '2026-09-28', false);
 
 -- 10. Applications
 INSERT INTO applications (student_id, drive_id, job_id, status, current_round, applied_at) VALUES
@@ -265,7 +340,11 @@ INSERT INTO employer_approvals (tenant_id, employer_id, status, approved_by, app
 ('a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'pending', NULL, NULL, NULL, NOW() - INTERVAL '3 days'),
 ('a1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000003', 'approved', 'b1000000-0000-0000-0000-000000000003', NOW() - INTERVAL '16 days', NULL, NOW() - INTERVAL '18 days'),
 ('a1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 'rejected', 'b1000000-0000-0000-0000-000000000003', NOW() - INTERVAL '7 days', 'Past no-show in prior drive cycle', NOW() - INTERVAL '9 days'),
-('a1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000005', 'approved', 'b1000000-0000-0000-0000-000000000012', NOW() - INTERVAL '11 days', NULL, NOW() - INTERVAL '13 days');
+('a1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000005', 'approved', 'b1000000-0000-0000-0000-000000000012', NOW() - INTERVAL '11 days', NULL, NOW() - INTERVAL '13 days'),
+('a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000006', 'approved', 'b1000000-0000-0000-0000-000000000002', NOW() - INTERVAL '12 days', NULL, NOW() - INTERVAL '14 days'),
+('a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000007', 'pending', NULL, NULL, NULL, NOW() - INTERVAL '2 days'),
+('a1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000008', 'approved', 'b1000000-0000-0000-0000-000000000003', NOW() - INTERVAL '10 days', NULL, NOW() - INTERVAL '12 days'),
+('a1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000009', 'approved', 'b1000000-0000-0000-0000-000000000012', NOW() - INTERVAL '8 days', NULL, NOW() - INTERVAL '9 days');
 
 -- 15. Program applications (internships / projects / hackathons / mentorship / guest faculty)
 INSERT INTO program_applications (student_id, job_id, status, notes, applied_at) VALUES
@@ -335,8 +414,8 @@ INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date
 -- 21. Additional applications for richer pipeline (rejected/withdrawn/on_hold)
 INSERT INTO applications (student_id, drive_id, job_id, status, current_round, applied_at, withdrawal_reason, notes) VALUES
 ((SELECT id FROM student_profiles WHERE roll_number = 'ME2021001'), 'e1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000004', 'withdrawn', 0, NOW() - INTERVAL '2 days', 'Accepted higher studies admission', 'Withdrew before test round'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'e1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000003', 'rejected', 1, NOW() - INTERVAL '6 days', NULL, 'Did not clear coding benchmark'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'e1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000004', 'on_hold', 1, NOW() - INTERVAL '1 days', NULL, 'Panel decision pending');
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'e1000000-0000-0000-0000-000000000010', 'd1000000-0000-0000-0000-000000000004', 'rejected', 1, NOW() - INTERVAL '6 days', NULL, 'Did not clear coding benchmark'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'e1000000-0000-0000-0000-000000000011', 'd1000000-0000-0000-0000-000000000007', 'on_hold', 1, NOW() - INTERVAL '1 days', NULL, 'Panel decision pending');
 
 -- 22. Additional offers to cover pending/rejected/expired states
 INSERT INTO offers (application_id, student_id, employer_id, drive_id, job_title, salary, joining_date, location, status, deadline, rejected_at, rejection_reason) VALUES
@@ -349,12 +428,12 @@ INSERT INTO offers (application_id, student_id, employer_id, drive_id, job_title
   1650000, '2026-07-10', 'Hyderabad', 'pending', NOW() + INTERVAL '3 days', NULL, NULL
 ),
 (
-  (SELECT a.id FROM applications a JOIN student_profiles s ON a.student_id = s.id WHERE s.roll_number = 'CS2021101' AND a.drive_id = 'e1000000-0000-0000-0000-000000000002' LIMIT 1),
+  (SELECT a.id FROM applications a JOIN student_profiles s ON a.student_id = s.id WHERE s.roll_number = 'CS2021101' AND a.drive_id = 'e1000000-0000-0000-0000-000000000010' LIMIT 1),
   (SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'),
-  'c1000000-0000-0000-0000-000000000002',
-  'e1000000-0000-0000-0000-000000000002',
-  'Full Stack Developer',
-  1100000, '2026-08-01', 'Pune', 'rejected', NOW() + INTERVAL '2 days', NOW() - INTERVAL '1 day', 'Preferred higher package role'
+  'c1000000-0000-0000-0000-000000000003',
+  'e1000000-0000-0000-0000-000000000010',
+  'Systems Engineer',
+  950000, '2026-08-01', 'Mysuru', 'rejected', NOW() + INTERVAL '2 days', NOW() - INTERVAL '1 day', 'Preferred higher package role'
 ),
 (
   NULL,
@@ -382,7 +461,7 @@ INSERT INTO employer_ratings (employer_id, student_id, drive_id, professionalism
 (
   'c1000000-0000-0000-0000-000000000003',
   (SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'),
-  'e1000000-0000-0000-0000-000000000003',
+  'e1000000-0000-0000-0000-000000000010',
   3, 4, 3, 3, 'Assessment quality was good, waiting times were high.', true
 );
 
@@ -407,8 +486,8 @@ INSERT INTO clarification_questions (batch_id, question_text, answer_text, answe
 
 -- 26. Student education
 INSERT INTO student_education (student_id, institution, degree, field_of_study, start_year, end_year, grade, description) VALUES
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'IIT Mumbai', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '8.72 CGPA', 'Core CS coursework with AI/ML electives.'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'IIT Mumbai', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '9.15 CGPA', 'Focus on NLP and distributed systems.'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'Indian Institute of Technology, Madras', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '8.72 CGPA', 'Core CS coursework with AI/ML electives.'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'Indian Institute of Technology, Madras', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '9.15 CGPA', 'Focus on NLP and distributed systems.'),
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'NIT Trichy', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '8.90 CGPA', 'Strong backend and systems engineering profile.');
 
 -- 27. Student projects
@@ -481,3 +560,20 @@ INSERT INTO platform_feedback_replies (feedback_id, author_user_id, message, cha
   'dashboard',
   NOW() - INTERVAL '1 days'
 );
+
+-- Historical data (previous 2 academic years) for year-wise testing
+INSERT INTO job_postings (id, employer_id, title, description, job_type, category, locations, salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year, skills_required, vacancies, status) VALUES
+('d1000000-0000-0000-0000-000000000101', 'c1000000-0000-0000-0000-000000000001', 'Data Science Intern 2024', 'Historical internship listing for year-wise analytics tests.', 'internship', 'Data Science', ARRAY['Bangalore'], 55000, 75000, ARRAY['Computer Science & Engineering', 'Mathematics'], 7.5, 0, 2024, ARRAY['Python', 'ML'], 6, 'published'),
+('d1000000-0000-0000-0000-000000000102', 'c1000000-0000-0000-0000-000000000002', 'Platform Engineering Intern 2023', 'Historical internship listing for year-wise analytics tests.', 'internship', 'Engineering', ARRAY['Chennai'], 50000, 70000, ARRAY['Computer Science & Engineering', 'Information Technology'], 7.0, 1, 2023, ARRAY['Node.js', 'PostgreSQL'], 8, 'published');
+
+INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES
+('d1000000-0000-0000-0000-000000000101', 'a1000000-0000-0000-0000-000000000001'),
+('d1000000-0000-0000-0000-000000000102', 'a1000000-0000-0000-0000-000000000001');
+
+INSERT INTO placement_drives (id, tenant_id, employer_id, job_id, title, description, drive_type, drive_date, start_time, end_time, venue, status, max_students, registered_count) VALUES
+('e1000000-0000-0000-0000-000000000101', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000101', 'TechCorp Internship Drive 2024', 'Historical drive record for analytics testing.', 'on_campus', DATE '2024-09-18', TIME '10:00', TIME '17:00', 'IITM Main Hall', 'completed', 120, 54),
+('e1000000-0000-0000-0000-000000000102', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000102', 'GlobalSoft Internship Drive 2023', 'Historical drive record for analytics testing.', 'virtual', DATE '2023-10-10', TIME '09:00', TIME '16:00', 'Online', 'completed', 100, 48);
+
+INSERT INTO program_applications (student_id, job_id, status, notes, applied_at) VALUES
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'd1000000-0000-0000-0000-000000000101', 'selected', 'Selected in 2024 internship cycle.', TIMESTAMP '2024-08-20 11:15:00'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'd1000000-0000-0000-0000-000000000102', 'in_progress', 'Reached final technical round in 2023 cycle.', TIMESTAMP '2023-08-25 14:30:00');

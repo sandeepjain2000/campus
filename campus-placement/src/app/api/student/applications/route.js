@@ -7,7 +7,7 @@ import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -22,7 +22,8 @@ export async function GET() {
         a.applied_at,
         d.drive_date,
         ep.company_name AS company,
-        COALESCE(j.title, d.title) AS role
+        COALESCE(j.title, d.title) AS role,
+        j.job_type
       FROM applications a
       JOIN student_profiles sp ON a.student_id = sp.id
       JOIN placement_drives d ON a.drive_id = d.id
@@ -44,6 +45,7 @@ export async function GET() {
         currentRound: row.current_round,
         appliedAt: row.applied_at,
         driveDate: row.drive_date,
+        jobType: row.job_type || 'full_time',
       })),
     });
   } catch (error) {
@@ -55,7 +57,7 @@ export async function GET() {
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

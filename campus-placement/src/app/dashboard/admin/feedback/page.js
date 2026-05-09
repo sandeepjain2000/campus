@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { formatDate } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import { useToast } from '@/components/ToastProvider';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
 const fetcher = (url) => fetch(url).then((res) => {
   if (!res.ok) throw new Error('Failed to load feedback');
@@ -98,6 +99,20 @@ export default function AdminFeedbackInboxPage() {
     );
   }
 
+  const getExportRows = () => {
+    const headers = ['When', 'Title', 'Category', 'From', 'Role', 'Replies', 'Status'];
+    const rowsList = items.map((row) => [
+      formatDate(row.created_at),
+      row.title,
+      row.category,
+      (row.user_name && row.user_name.trim()) || row.user_email || '—',
+      row.user_role || '—',
+      String(row.reply_count || 0),
+      row.status
+    ]);
+    return { headers, rows: rowsList };
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -105,6 +120,12 @@ export default function AdminFeedbackInboxPage() {
           <h1>📥 Feedback inbox</h1>
           <p>Every submission from students, employers, and college admins across the platform.</p>
         </div>
+        <ExportCsvSplitButton 
+          filenameBase="admin_feedback" 
+          currentCount={items.length} 
+          fullCount={items.length} 
+          getRows={getExportRows} 
+        />
       </div>
 
       <div className="grid grid-4" style={{ marginBottom: '1rem' }}>

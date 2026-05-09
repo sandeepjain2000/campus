@@ -16,10 +16,10 @@ Each run:
   2. Marks bounced addresses as 'Failure' in crm.db.
   3. Forwards genuine human replies to sandeepjain200019@gmail.com.
   4. Sends an auto-reply to the human respondent.
-  5. Sends fresh outreach emails to N institutes (default 20, override with --count N).
+  5. Sends fresh outreach emails to N institutes (default 30, override with --count N).
 
 Logic per institute:
-  - Try emails in order: placement → registrar → vc (placements and tpo are never sent — high bounce)
+  - Try emails in order, skipping generic prefixes: (placement, placements, tpo, coe, corporaterelations, dean, director, outreach and admissions are never sent — high bounce/generic)
   - Skip already Sent/Success/Failure addresses
   - Send to the first 'Not Sent' address
   - On next run, if that address bounced ('Failure'), move to the next address
@@ -53,7 +53,7 @@ from email.mime.text import MIMEText
 # ═══════════════════════════════════════════════════
 _SCRIPT_DIR      = os.path.dirname(os.path.abspath(__file__))
 DB_PATH          = os.path.join(_SCRIPT_DIR, "crm.db")
-CONFIG_FILE      = os.path.join(_SCRIPT_DIR, "email_config.json")
+CONFIG_FILE      = r"C:\Users\sandeep\Downloads\Claudes\EmailJson\email_config.json"
 TEMPLATE_FILE    = os.path.join(_SCRIPT_DIR, "Mail_Template.htm")
 
 _LOG_DIR = os.path.join(_SCRIPT_DIR, "logs")
@@ -65,6 +65,8 @@ LOG_FILE = os.path.join(
 
 FORWARD_TO      = "sandeepjain200019@gmail.com"
 EMAIL_SUBJECT   = "Introducing PlacementsHub - A Unified Platform for Campus Placements"
+# Tight subject matching (Pass 1/2) — avoids routing almost all mail on bare word "placement".
+_EMAIL_SUBJECT_HEAD = EMAIL_SUBJECT.split(" - ")[0].strip().lower()
 SENDER_NAME     = "Sandeep"
 IMAP_HOST       = "imap.gmail.com"
 IMAP_PORT       = 993
@@ -100,8 +102,16 @@ HEADER_FETCH_BATCH = 40
 # Pass 2: log progress every N full-body fetches (always logs 1 and last).
 FULL_FETCH_PROGRESS_INTERVAL = 5
 
+# Pass 2: UIDs per ``UID FETCH`` full body (keep small — messages can be large).
+BODY_FETCH_BATCH = 8
+
 # Local parts (before @) excluded from outreach — not stored in DB; filtered at send time.
-SKIP_SEND_LOCAL_PARTS = ("placements", "tpo")
+SKIP_SEND_LOCAL_PARTS = (
+    "placement", "placements", "tpo", "tnp", "placementcell", "tnpoffice", 
+    "coe", "corporaterelations", "dean", "director", "outreach", "admissions",
+    "provc",
+    "info", "contact", "office", "admin", "principal", "administration"
+)
 
 AUTOREPLY_BODY = """Hi,
 
@@ -290,6 +300,7 @@ def get_next_email_for_institutes(conn, limit: int) -> list:
         FROM   email_contacts ec
         JOIN   institutes i ON i.id = ec.institute_id
         WHERE  ec.status = 'Not Sent'
+          AND  COALESCE(ec.zb_blocked, 0) = 0
           AND  LOWER(TRIM(SUBSTR(ec.email_address, 1, INSTR(ec.email_address || '@', '@') - 1)))
                NOT IN ({skip_ph})
           AND  ec.institute_id NOT IN (
@@ -456,12 +467,12 @@ def _campus_inbox_unprocessed_uids(mail: imaplib.IMAP4_SSL) -> set:
 
 
 def _imap_uid_copy_to_label(mail: imaplib.IMAP4_SSL, uid: bytes, label: str) -> bool:
-    """Add a Gmail label by copying the message into that IMAP mailbox."""
+    """Add a Gmail label natively using STORE +X-GM-LABELS."""
     try:
-        typ, _ = mail.uid("COPY", uid, label)
+        typ, _ = mail.uid("STORE", uid, "+X-GM-LABELS", f'"{label}"')
         return typ == "OK"
     except Exception as e:
-        log.warning(f"  UID COPY {uid!r} → {label!r}: {e}")
+        log.warning(f"  UID STORE +X-GM-LABELS {uid!r} {label!r}: {e}")
         return False
 
 
@@ -499,9 +510,47 @@ def _imap_uid_header_fetch_map(data) -> dict:
         out[uid_b] = lit
     return out
 
+
+def _imap_uid_body_peek_map(data) -> dict:
+    """Parse ``UID FETCH`` (BODY.PEEK[]) multi-response → uid → raw message bytes."""
+    out = {}
+    if not data:
+        return out
+    for part in data:
+        if not isinstance(part, tuple) or len(part) < 2:
+            continue
+        meta, lit = part[0], part[1]
+        if not isinstance(meta, bytes) or not isinstance(lit, bytes):
+            continue
+        m = re.search(rb"\bUID (\d+)\b", meta)
+        if m:
+            uid_b = m.group(1)
+        else:
+            m2 = re.match(rb"^(\d+) \(", meta)
+            if not m2:
+                continue
+            uid_b = m2.group(1)
+        out[uid_b] = lit
+    return out
+
 # ═══════════════════════════════════════════════════
 # BOUNCE / RESPONSE DETECTION
 # ═══════════════════════════════════════════════════
+
+def _campaign_subject_matches(subject_lower: str) -> bool:
+    """True if subject plausibly belongs to our outreach thread (not bare 'placement')."""
+    if not subject_lower:
+        return False
+    if _EMAIL_SUBJECT_HEAD in subject_lower:
+        return True
+    if "placementshub" in subject_lower:
+        return True
+    if subject_lower.lstrip().startswith("re:") and (
+        "placementshub" in subject_lower or _EMAIL_SUBJECT_HEAD in subject_lower
+    ):
+        return True
+    return False
+
 
 def is_bounce(msg) -> bool:
     sender  = (msg.get("From", "") or "").lower()
@@ -519,6 +568,12 @@ def is_autoreply(msg) -> bool:
     subject = (msg.get("Subject", "") or "").lower()
     sender  = (msg.get("From", "") or "").lower()
     auto_hdr = (msg.get("Auto-Submitted", "") or "").lower()
+    campus_hdr = msg.get("X-Campus-Campaign", "")
+    
+    if campus_hdr:
+        return True
+    if "[fwd" in subject and "human reply]" in subject:
+        return True
     if auto_hdr and auto_hdr != "no":
         return True
     for p in AUTOREPLY_INDICATORS:
@@ -579,6 +634,7 @@ def send_email(
         msg["From"]    = f"{SENDER_NAME} <{sender_address}>"
         msg["To"]      = to_address
         msg["Subject"] = subject
+        msg["X-Campus-Campaign"] = "1"
         if reply_to:
             msg["Reply-To"] = reply_to
 
@@ -621,6 +677,8 @@ def forward_email(
         fwd["From"]    = f"{SENDER_NAME} <{sender_address}>"
         fwd["To"]      = FORWARD_TO
         fwd["Subject"] = f"[FWD – Human Reply] {original_msg.get('Subject','')}"
+        fwd["X-Campus-Campaign"] = "1"
+        fwd["Auto-Submitted"] = "auto-replied"
 
         note = MIMEText(
             f"<p><b>Forwarded human reply from:</b> {from_address}</p><hr>",
@@ -687,7 +745,7 @@ def check_inbox(
         tagged_non_campus_headers = 0
 
         # ── PASS 1: Headers only (batched UID FETCH) ────────────────
-        HDRFETCH = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT AUTO-SUBMITTED X-FAILED-RECIPIENTS)])"
+        HDRFETCH = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT AUTO-SUBMITTED X-FAILED-RECIPIENTS X-CAMPUS-CAMPAIGN)])"
         relevant_uids: list = []
         log.info(
             f"  Pass 1: scanning headers of {len(ids_list)} email(s) "
@@ -752,11 +810,7 @@ def check_inbox(
                     or any(p in subject for p in BOUNCE_SUBJECTS)
                     or bool(failed_r)
                 )
-                is_reply_hdr = (
-                    EMAIL_SUBJECT[:20].lower() in subject
-                    or "placementshub" in subject
-                    or "placement" in subject
-                )
+                is_reply_hdr = _campaign_subject_matches(subject)
                 if is_bounce_hdr or is_reply_hdr:
                     relevant_uids.append(uid)
                 else:
@@ -771,105 +825,140 @@ def check_inbox(
             f"tagged NON-CAMPUS from headers: {tagged_non_campus_headers}"
         )
 
-        # ── PASS 2: Full body only for relevant emails ─────────────
-        reconnects = 0
-        i = 0
+        # ── PASS 2: Full body only for relevant emails (batched FETCH) ─
+        reconnects2 = 0
         total_p2 = len(relevant_uids)
+        p2_pos = 0
+        n_done = 0
+
+        def _fetch_full_body(uid_b: bytes):
+            """Single-UID BODY.PEEK[] with reconnect on transient IMAP errors."""
+            nonlocal mail, reconnects2
+            while True:
+                try:
+                    _, data = mail.uid("FETCH", uid_b, "(BODY.PEEK[])")
+                    if not data or not isinstance(data[0], tuple):
+                        return None
+                    raw = data[0][1]
+                    if not isinstance(raw, bytes):
+                        return None
+                    reconnects2 = 0
+                    return raw
+                except (ssl.SSLError, OSError, imaplib.IMAP4.abort) as e:
+                    if reconnects2 >= 3:
+                        log.warning(f"  Reconnect limit (pass2); skipping {uid_b!r}: {e}")
+                        reconnects2 = 0
+                        return None
+                    reconnects2 += 1
+                    log.warning(f"  Reconnecting ({reconnects2}/3)...")
+                    time.sleep(2 * reconnects2)
+                    try:
+                        mail = _imap_connect(gmail_address, app_password)
+                        ensure_gmail_labels(mail)
+                    except Exception:
+                        return None
+                except Exception as e:
+                    log.warning(f"  Could not read msg {uid_b!r}: {e}")
+                    return None
+
+        def _pass2_process_uid(uid_b: bytes, raw: bytes) -> None:
+            msg = email.message_from_bytes(raw)
+            if is_bounce(msg):
+                bounced_addrs = extract_bounced_addresses(msg, sent_addresses)
+                for addr in bounced_addrs:
+                    if mark_failure(conn, addr):
+                        log.info(f"  [BOUNCE->FAILURE] {addr}")
+                        counts["bounces"] += 1
+                if bounced_addrs:
+                    _tag_campus_message(mail, uid_b, GMAIL_LABEL_BOUNCE)
+                else:
+                    _tag_campus_message(mail, uid_b, GMAIL_LABEL_BOUNCE_UNMATCHED)
+                return
+
+            reply_from = extract_reply_from_address(msg)
+            subject = (msg.get("Subject", "") or "").lower()
+            is_campaign_reply = _campaign_subject_matches(subject) or any(
+                (addr or "").lower() in reply_from for addr in sent_addresses
+            )
+
+            if is_campaign_reply and not is_autoreply(msg):
+                matched_addr = None
+                for addr in sent_addresses:
+                    domain = addr.split("@")[-1]
+                    if domain in reply_from:
+                        matched_addr = addr
+                        break
+
+                if matched_addr or is_campaign_reply:
+                    log.info(f"  [HUMAN REPLY] from: {reply_from}")
+                    if matched_addr:
+                        mark_success(conn, matched_addr)
+                    fwd_ok = forward_email(first_sender, first_pass, msg, reply_from)
+                    if fwd_ok:
+                        log.info(f"  [FORWARDED] REPLY-CAMPUS → {FORWARD_TO}")
+                        if matched_addr:
+                            set_forwarded(conn, matched_addr)
+                    ar_ok = send_autoreply(first_sender, first_pass, reply_from)
+                    if ar_ok:
+                        log.info(f"  [AUTOREPLY SENT] to {reply_from}")
+                        if matched_addr:
+                            set_autoreply_sent(conn, matched_addr)
+                    counts["responses"] += 1
+                    _tag_campus_message(mail, uid_b, GMAIL_LABEL_REPLY)
+            elif is_autoreply(msg) and is_campaign_reply:
+                _tag_campus_message(mail, uid_b, GMAIL_LABEL_AUTOREPLY)
+            else:
+                _tag_campus_message(mail, uid_b, GMAIL_LABEL_NON_CAMPUS)
+
         if total_p2:
             log.info(
                 f"  Pass 2: full body (BODY.PEEK[]) for {total_p2} UID(s) "
-                f"(progress every {FULL_FETCH_PROGRESS_INTERVAL})…"
+                f"(batch {BODY_FETCH_BATCH}, progress every {FULL_FETCH_PROGRESS_INTERVAL})…"
             )
-        while i < total_p2:
-            uid = relevant_uids[i]
+
+        while p2_pos < total_p2:
+            batch = relevant_uids[p2_pos : p2_pos + BODY_FETCH_BATCH]
+            log.info(
+                f"    … {min(p2_pos + len(batch), total_p2)}/{total_p2} full fetch "
+                f"(batch {len(batch)} UID(s))"
+            )
+            bmap: dict = {}
             try:
-                n = i + 1
+                typ, data = mail.uid("FETCH", b",".join(batch), "(BODY.PEEK[])")
+                if typ == "OK" and data:
+                    bmap = _imap_uid_body_peek_map(data)
+                if typ == "OK":
+                    log.info(
+                        f"    … {min(p2_pos + len(batch), total_p2)}/{total_p2} full fetch "
+                        f"(batch received, processing…)"
+                    )
+            except Exception as e:
+                log.warning(f"  Batch body FETCH ({len(batch)} UID(s)): {e}")
+
+            for uid in batch:
+                n_done += 1
+                n = n_done
                 if (
                     n == 1
                     or n == total_p2
-                    or (FULL_FETCH_PROGRESS_INTERVAL > 0 and n % FULL_FETCH_PROGRESS_INTERVAL == 0)
+                    or (
+                        FULL_FETCH_PROGRESS_INTERVAL > 0
+                        and n % FULL_FETCH_PROGRESS_INTERVAL == 0
+                    )
                 ):
                     log.info(f"    … {n}/{total_p2} full fetch")
 
-                _, data = mail.uid("FETCH", uid, "(BODY.PEEK[])")
-                if not data or not isinstance(data[0], tuple):
-                    i += 1; continue
-                raw = data[0][1]
-                if not isinstance(raw, bytes):
-                    i += 1; continue
-
-                msg = email.message_from_bytes(raw)
-
-                if is_bounce(msg):
-                    bounced_addrs = extract_bounced_addresses(msg, sent_addresses)
-                    for addr in bounced_addrs:
-                        if mark_failure(conn, addr):
-                            log.info(f"  [BOUNCE->FAILURE] {addr}")
-                            counts["bounces"] += 1
-                    if bounced_addrs:
-                        _tag_campus_message(mail, uid, GMAIL_LABEL_BOUNCE)
-                    else:
-                        _tag_campus_message(mail, uid, GMAIL_LABEL_BOUNCE_UNMATCHED)
-                else:
-                    reply_from = extract_reply_from_address(msg)
-                    subject    = (msg.get("Subject", "") or "").lower()
-
-                    is_campaign_reply = (
-                        EMAIL_SUBJECT[:20].lower() in subject
-                        or "placementshub" in subject
-                        or "placement" in subject
-                        or any(addr in reply_from for addr in sent_addresses)
-                    )
-
-                    if is_campaign_reply and not is_autoreply(msg):
-                        matched_addr = None
-                        for addr in sent_addresses:
-                            domain = addr.split("@")[-1]
-                            if domain in reply_from:
-                                matched_addr = addr
-                                break
-
-                        if matched_addr or is_campaign_reply:
-                            log.info(f"  [HUMAN REPLY] from: {reply_from}")
-                            if matched_addr:
-                                mark_success(conn, matched_addr)
-                            # REPLY-CAMPUS: forward original to personal inbox (FORWARD_TO)
-                            fwd_ok = forward_email(first_sender, first_pass, msg, reply_from)
-                            if fwd_ok:
-                                log.info(
-                                    f"  [FORWARDED] REPLY-CAMPUS → {FORWARD_TO}"
-                                )
-                                if matched_addr:
-                                    set_forwarded(conn, matched_addr)
-                            ar_ok = send_autoreply(first_sender, first_pass, reply_from)
-                            if ar_ok:
-                                log.info(f"  [AUTOREPLY SENT] to {reply_from}")
-                                if matched_addr:
-                                    set_autoreply_sent(conn, matched_addr)
-                            counts["responses"] += 1
-                            _tag_campus_message(mail, uid, GMAIL_LABEL_REPLY)
-                    elif is_autoreply(msg) and is_campaign_reply:
-                        _tag_campus_message(mail, uid, GMAIL_LABEL_AUTOREPLY)
-                    else:
-                        # Header suggested bounce/reply but body did not match — still label
-                        _tag_campus_message(mail, uid, GMAIL_LABEL_NON_CAMPUS)
-
-                i += 1
-
-            except (ssl.SSLError, OSError, imaplib.IMAP4.abort) as e:
-                if reconnects >= 3:
-                    log.warning(f"  Reconnect limit (pass2); skipping {uid!r}")
-                    i += 1; continue
-                reconnects += 1
-                log.warning(f"  Reconnecting ({reconnects}/3)...")
-                time.sleep(2 * reconnects)
+                raw = bmap.get(uid)
+                if raw is None:
+                    raw = _fetch_full_body(uid)
+                if not raw:
+                    continue
                 try:
-                    mail = _imap_connect(gmail_address, app_password)
-                    ensure_gmail_labels(mail)
-                except Exception: break
-            except Exception as e:
-                log.warning(f"  Could not read msg {uid!r}: {e}")
-                i += 1
+                    _pass2_process_uid(uid, raw)
+                except Exception as e:
+                    log.warning(f"  Pass2 process error {uid!r}: {e}")
+
+            p2_pos += len(batch)
 
         if total_p2:
             log.info(f"  Pass 2 done — {total_p2} full fetch(es) finished.")
@@ -905,8 +994,8 @@ def load_template(institute_name: str = "", domain: str = "") -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Campus Placement CRM – Email Campaign")
-    parser.add_argument("--count",      type=int, default=20,
-                        help="Number of institutes to email this run (default: 20)")
+    parser.add_argument("--count",      type=int, default=30,
+                        help="Number of institutes to email this run (default: 30)")
     parser.add_argument("--check-only", action="store_true",
                         help="Only check bounces/responses; do not send new emails")
     args = parser.parse_args()
@@ -953,19 +1042,24 @@ def main():
         log.info("  No 'Sent' emails yet — skipping inbox check.")
         total_bounces, total_responses = 0, 0
     else:
-        # Filter: only check accounts that actually sent something
-        accounts_to_check = [
-            (addr, pwd) for addr, pwd in profile_list
-            if addr.lower() in active_senders
-        ]
-        log.info(f"  Checking {len(accounts_to_check)}/{len(profile_list)} accounts "
-                 f"(only those that sent emails)")
+        # Filter: only check accounts that actually sent something (order = email_config.json)
+        total_profiles = len(profile_list)
+        n_to_check = sum(
+            1 for addr, _ in profile_list if addr.lower() in active_senders
+        )
+        log.info(
+            f"  Checking {n_to_check}/{total_profiles} accounts "
+            f"(only those that sent emails; order follows JSON)"
+        )
 
         total_bounces   = 0
         total_responses = 0
 
-        for gmail_address, app_password in accounts_to_check:
-            log.info(f"\n  > {gmail_address}")
+        for sr_no, (gmail_address, app_password) in enumerate(profile_list, start=1):
+            if gmail_address.lower() not in active_senders:
+                continue
+            pct = (100.0 * sr_no / total_profiles) if total_profiles else 0.0
+            log.info(f"\n  [{sr_no}/{total_profiles} — {pct:.1f}%] > {gmail_address}")
             counts = check_inbox(
                 gmail_address, app_password,
                 sent_addresses, conn, smtp_profiles
@@ -999,12 +1093,18 @@ def main():
         domain       = row["domain"]
         inst_name    = row["institute_name"] or ""
 
-        # Pick next sender account (round-robin)
-        sender_address, sender_password = profile_list[sender_idx % len(profile_list)]
+        # Pick next sender account (round-robin; index matches JSON profile order)
+        idx0 = sender_idx % len(profile_list)
+        sender_address, sender_password = profile_list[idx0]
         sender_idx += 1
+        send_slot = idx0 + 1
+        tprof = len(profile_list)
+        spct = (100.0 * send_slot / tprof) if tprof else 0.0
 
         log.info(f"\n  [{sr_no:02d}] Sending to: {email_addr}")
-        log.info(f"       From  : {sender_address}")
+        log.info(
+            f"       From [{send_slot}/{tprof} — {spct:.1f}%]: {sender_address}"
+        )
 
         html_body = load_template(institute_name=inst_name, domain=domain)
 

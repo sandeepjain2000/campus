@@ -7,11 +7,12 @@ import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const studentId = await getOrCreateStudentProfileId(session.user.id);
+    const userId = session.user.id || session.user.sub;
+    const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
       return NextResponse.json({ documents: [] });
     }
@@ -34,7 +35,7 @@ export async function GET() {
 export async function DELETE(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -42,7 +43,8 @@ export async function DELETE(req) {
     const docId = searchParams.get('id');
     if (!docId) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const studentId = await getOrCreateStudentProfileId(session.user.id);
+    const userId = session.user.id || session.user.sub;
+    const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
       return NextResponse.json({ error: 'No student profile' }, { status: 404 });
     }

@@ -28,6 +28,12 @@ export function defaultStudentProfile(sessionUser) {
       { label: 'College', value: email },
       { label: 'Personal', value: '' },
     ],
+    address: {
+      line1: '',
+      city: '',
+      state: '',
+      pincode: '',
+    },
     bio: '',
     skills: [],
     expectedSalaryMin: 0,

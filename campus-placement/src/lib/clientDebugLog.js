@@ -54,7 +54,7 @@ export function formatClientDebugLogText() {
     `Build time (UTC): ${process.env.NEXT_PUBLIC_BUILD_TIME || '?'}`,
     `Git SHA: ${process.env.NEXT_PUBLIC_APP_GIT_SHA || '—'}`,
     `Vercel env: ${process.env.NEXT_PUBLIC_VERCEL_ENV || '—'}`,
-    `Deployment id: ${process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID || '—'}`,
+    `Deployment id (unique per deploy): ${process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID || '—'}`,
     '---',
   ].join('\n');
   const body = lines.map((l) => JSON.stringify(l)).join('\n');

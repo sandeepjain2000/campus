@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query, transaction } from '@/lib/db';
-import { validateRegistration } from '@/lib/validators';
+import { validateRegistration, validatePhone } from '@/lib/validators';
 import { slugify } from '@/lib/utils';
 import { generateSurfaceToken, normalizeSurfaceTokenInput } from '@/lib/shardBinding';
 import {
@@ -21,9 +21,16 @@ export async function POST(request) {
       firstName,
       role,
       campusBindingToken: body.campusBindingToken,
+      department: body.department,
     });
     if (!validation.isValid) {
       return NextResponse.json({ error: Object.values(validation.errors)[0] }, { status: 400 });
+    }
+    if (phone && !validatePhone(phone)) {
+      return NextResponse.json(
+        { error: 'Enter a valid mobile number with country code (e.g. +1 4155550100 or +91 9876543210), or leave blank.' },
+        { status: 400 }
+      );
     }
     // Defense-in-depth: keep a route-level role allowlist even if validator logic changes later.
     if (!allowedRoles.has(role)) {

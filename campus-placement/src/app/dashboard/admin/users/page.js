@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getRoleDisplayName } from '@/lib/utils';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
@@ -30,9 +31,28 @@ export default function AdminUsersPage() {
     };
   }, []);
 
+  const getExportRows = () => {
+    const headers = ['User', 'Email', 'Role', 'Status'];
+    const rowsList = users.map(u => [
+      u.name,
+      u.email,
+      getRoleDisplayName(u.role),
+      u.active ? 'Active' : 'Inactive'
+    ]);
+    return { headers, rows: rowsList };
+  };
+
   return (
     <div className="animate-fadeIn">
-      <div className="page-header"><div className="page-header-left"><h1>👥 Manage Users</h1><p>All users across the platform</p></div></div>
+      <div className="page-header">
+        <div className="page-header-left"><h1>👥 Manage Users</h1><p>All users across the platform</p></div>
+        <ExportCsvSplitButton 
+          filenameBase="admin_users" 
+          currentCount={users.length} 
+          fullCount={users.length} 
+          getRows={getExportRows} 
+        />
+      </div>
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>

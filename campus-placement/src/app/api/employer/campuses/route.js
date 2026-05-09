@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -40,6 +40,8 @@ export async function GET() {
           t.slug,
           t.city,
           t.state,
+          t.email,
+          t.phone,
           t.logo_url,
           t.naac_grade,
           t.nirf_rank,
@@ -60,7 +62,7 @@ export async function GET() {
        LEFT JOIN employer_approvals ea ON ea.tenant_id = t.id AND ea.employer_id = $1
        LEFT JOIN placement_drives pd ON pd.tenant_id = t.id AND pd.employer_id = $1
        WHERE t.is_active = true AND t.type = 'college'
-       GROUP BY t.id, t.name, t.slug, t.city, t.state, t.logo_url,
+       GROUP BY t.id, t.name, t.slug, t.city, t.state, t.email, t.phone, t.logo_url,
                 t.naac_grade, t.nirf_rank, t.accreditation, t.website,
                 ea.status, ea.created_at, ea.approved_at
        ORDER BY t.name`,
@@ -88,7 +90,7 @@ export async function GET() {
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

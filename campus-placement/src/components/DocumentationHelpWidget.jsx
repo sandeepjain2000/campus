@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { X, Sparkles, MessageCircleQuestion } from 'lucide-react';
+import { X, Sparkles, MessageCircleQuestion, ExternalLink } from 'lucide-react';
 import { getDevScreenId } from '@/config/devScreenIds';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
 
@@ -20,6 +20,8 @@ export default function DocumentationHelpWidget() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
+
+  const searchDebounceRef = useRef(null);
 
   const loadSuggestions = useCallback(async () => {
     setError('');
@@ -91,7 +93,7 @@ export default function DocumentationHelpWidget() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  const runSearch = async (q) => {
+  const runSearch = useCallback(async (q) => {
     const text = String(q || '').trim();
     if (!text) {
       setMatches([]);
@@ -159,10 +161,38 @@ export default function DocumentationHelpWidget() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [screenTag]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const t = query.trim();
+    if (!t) {
+      setMatches([]);
+      setScope('');
+      return undefined;
+    }
+    if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = window.setTimeout(() => {
+      void runSearch(query);
+    }, 320);
+    return () => {
+      if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
+    };
+  }, [query, open, runSearch]);
+
+  const suggestionRows = useMemo(() => {
+    const t = query.trim().toLowerCase();
+    if (!t) return suggestions;
+    return suggestions.filter((row) => {
+      const qtext = (row.question || '').toLowerCase();
+      const atext = (row.answer || '').toLowerCase();
+      return qtext.includes(t) || atext.includes(t);
+    });
+  }, [suggestions, query]);
 
   const onSubmit = (e) => {
     e.preventDefault();
+    if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
     void runSearch(query);
   };
 
@@ -288,11 +318,13 @@ export default function DocumentationHelpWidget() {
                 </p>
               )}
 
-              {loading && !matches.length && !suggestions.length && <p className="text-tertiary text-sm">Loading…</p>}
+              {loading && !matches.length && suggestions.length === 0 && !query.trim() && (
+                <p className="text-tertiary text-sm">Loading…</p>
+              )}
 
-              {!loading && suggestions.length > 0 && matches.length === 0 && !query && (
+              {suggestionRows.length > 0 && matches.length === 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {suggestions.map((row) => (
+                  {suggestionRows.map((row) => (
                     <button
                       key={row.id}
                       type="button"
@@ -371,6 +403,25 @@ export default function DocumentationHelpWidget() {
                   </button>
                 </div>
               </form>
+
+              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-default)', textAlign: 'center' }}>
+                <a 
+                  href="/dashboard/help" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    color: 'var(--primary-600, #2563eb)',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  <ExternalLink size={16} /> Open Full Help Document
+                </a>
+              </div>
             </div>
           </aside>
         </>

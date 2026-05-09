@@ -6,6 +6,7 @@ import { getInitials } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
 import { defaultStudentProfile } from '@/lib/studentProfileStorage';
+import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -18,6 +19,23 @@ const LINK_KINDS = [
 function newLinkId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return `l-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function deriveCurrentSemester(profile) {
+  const batchYearRaw = profile?.batchYear;
+  const gradYearRaw = profile?.graduationYear;
+  const batchYear = Number.isFinite(Number(batchYearRaw))
+    ? Number(batchYearRaw)
+    : Number.isFinite(Number(gradYearRaw))
+      ? Number(gradYearRaw) - 4
+      : null;
+  if (!Number.isFinite(batchYear)) return '—';
+
+  const now = new Date();
+  const yearDiff = now.getFullYear() - batchYear;
+  const isOddSemesterWindow = now.getMonth() >= 6; // Jul-Dec
+  const semester = Math.max(1, Math.min(8, yearDiff * 2 + (isOddSemesterWindow ? 1 : 2)));
+  return String(semester);
 }
 
 /** Omit local-only / large fields from API save payload. */
@@ -40,6 +58,7 @@ function profilePutBody(p) {
     profileLinks: p.profileLinks,
     phones: p.phones,
     emails: p.emails,
+    address: p.address,
   };
 }
 
@@ -53,6 +72,7 @@ export default function StudentProfilePage() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profile, setProfile] = useState(() => defaultStudentProfile(session?.user));
+  const currentSemester = deriveCurrentSemester(profile);
 
   const loadProfileFromApi = useCallback(
     async (opts) => {
@@ -308,7 +328,8 @@ export default function StudentProfilePage() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const avatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
+  const rawAvatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
+  const avatarSrc = rawAvatarSrc.startsWith('data:') ? rawAvatarSrc : toSignedViewUrl(rawAvatarSrc);
   const skillsList = profile.skills || [];
   const linksList = profile.profileLinks || [];
   const cgpaNum = profile.cgpa === '' || profile.cgpa == null ? NaN : Number(profile.cgpa);
@@ -522,6 +543,10 @@ export default function StudentProfilePage() {
               )}
             </div>
             <div className="drive-info-item">
+              <div className="drive-info-label">Current Semester</div>
+              <div className="drive-info-value">{currentSemester}</div>
+            </div>
+            <div className="drive-info-item">
               <div className="drive-info-label">Gender</div>
               {editing ? (
                 <select className="form-select" value={profile.gender || ''} onChange={(e) => persist({ ...profile, gender: e.target.value })}>
@@ -620,6 +645,69 @@ export default function StudentProfilePage() {
                 <button type="button" className="btn btn-secondary btn-sm" onClick={addPhone}>
                   + Add number
                 </button>
+              )}
+            </div>
+            <div>
+              <div className="drive-info-label" style={{ marginBottom: '0.5rem' }}>
+                Address
+              </div>
+              {editing ? (
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  <input
+                    className="form-input"
+                    placeholder="Address line"
+                    value={profile.address?.line1 || ''}
+                    onChange={(e) =>
+                      persist({
+                        ...profile,
+                        address: { ...(profile.address || {}), line1: e.target.value },
+                      })
+                    }
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <input
+                      className="form-input"
+                      placeholder="City"
+                      value={profile.address?.city || ''}
+                      onChange={(e) =>
+                        persist({
+                          ...profile,
+                          address: { ...(profile.address || {}), city: e.target.value },
+                        })
+                      }
+                    />
+                    <input
+                      className="form-input"
+                      placeholder="State"
+                      value={profile.address?.state || ''}
+                      onChange={(e) =>
+                        persist({
+                          ...profile,
+                          address: { ...(profile.address || {}), state: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <input
+                    className="form-input"
+                    placeholder="Pincode"
+                    value={profile.address?.pincode || ''}
+                    onChange={(e) =>
+                      persist({
+                        ...profile,
+                        address: { ...(profile.address || {}), pincode: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="text-sm">
+                  {(profile.address?.line1 || profile.address?.city || profile.address?.state || profile.address?.pincode)
+                    ? [profile.address?.line1, profile.address?.city, profile.address?.state, profile.address?.pincode]
+                        .filter(Boolean)
+                        .join(', ')
+                    : '—'}
+                </div>
               )}
             </div>
           </div>

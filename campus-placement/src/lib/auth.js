@@ -1,8 +1,21 @@
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { query } from './db';
+import { SEED_DEMO_STUDENT_USER_IDS } from './seedDemoStudentIds';
 
 export const authOptions = {
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        // No maxAge / expires → pure session cookie, cleared when browser closes
+      }
+    }
+  },
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -82,7 +95,9 @@ export const authOptions = {
             avatar: user.avatar_url,
             brandLogoUrl,
             studentPlacementVerified:
-              user.role === 'student' ? Boolean(user.student_placement_verified) : undefined,
+              user.role === 'student'
+                ? Boolean(user.student_placement_verified) || SEED_DEMO_STUDENT_USER_IDS.has(user.id)
+                : undefined,
           };
         } catch (error) {
           console.error('Authentication error:', error.message);
@@ -132,7 +147,8 @@ export const authOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 24 * 60 * 60,
+    // No maxAge → NextAuth issues a session cookie (no Max-Age header).
+    // Browser discards it automatically when closed.
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

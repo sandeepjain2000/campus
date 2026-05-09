@@ -23,7 +23,7 @@ async function saveTenantSettings(tenantId, settings) {
 }
 
 function resolveTenantId(session, searchParams) {
-  if (session?.user?.role === 'college_admin') {
+  if (session?.user?.role === 'college_admin' || session?.user?.role === 'student') {
     return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
   }
   return searchParams.get('campusId');
@@ -32,7 +32,7 @@ function resolveTenantId(session, searchParams) {
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !['college_admin', 'employer', 'super_admin'].includes(session.user.role)) {
+    if (!session?.user || !['college_admin', 'employer', 'super_admin', 'student'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

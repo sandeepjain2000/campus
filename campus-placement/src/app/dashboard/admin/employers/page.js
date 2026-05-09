@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
 export default function AdminEmployersPage() {
   const [employers, setEmployers] = useState([]);
@@ -30,9 +31,28 @@ export default function AdminEmployersPage() {
     };
   }, []);
 
+  const getExportRows = () => {
+    const headers = ['Company', 'Industry', 'Total Hires', 'Verified'];
+    const rowsList = employers.map(e => [
+      e.name,
+      e.industry,
+      String(e.hires),
+      e.verified ? 'Yes' : 'No'
+    ]);
+    return { headers, rows: rowsList };
+  };
+
   return (
     <div className="animate-fadeIn">
-      <div className="page-header"><div className="page-header-left"><h1>🏢 Manage Employers</h1></div></div>
+      <div className="page-header">
+        <div className="page-header-left"><h1>🏢 Manage Employers</h1></div>
+        <ExportCsvSplitButton 
+          filenameBase="admin_employers" 
+          currentCount={employers.length} 
+          fullCount={employers.length} 
+          getRows={getExportRows} 
+        />
+      </div>
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>Company</th><th>Industry</th><th>Total Hires</th><th>Verified</th><th>Actions</th></tr></thead>

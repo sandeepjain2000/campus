@@ -3,22 +3,30 @@
 export const DEMO_SEED_PASSWORD = 'Admin@123';
 
 export const DEMO_LOGINS = [
-  { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu', icon: '🎓', name: 'IIT Madras' },
-  { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu', icon: '🎓', name: 'NIT Trichy' },
-  { label: 'Student (BITS)', email: 'rohan.mehta@bits.edu', icon: '🎓', name: 'BITS Pilani' },
-  { label: 'Employer (TechCorp)', email: 'hr@techcorp.com', icon: '🏢', name: 'TechCorp Solutions' },
-  { label: 'Employer (Infosys)', email: 'hr@infosys.com', icon: '🏢', name: 'Infosys Limited' },
-  { label: 'Admin (IITM)', email: 'admin@iitm.edu', icon: '🏫', name: 'IIT Madras' },
-  { label: 'Admin (NITT)', email: 'admin@nitt.edu', icon: '🏫', name: 'NIT Trichy' },
+  // Students
+  { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu',  icon: '🎓', name: 'Arjun Verma · IIT Madras' },
+  { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu',    icon: '🎓', name: 'Sneha Rao · NIT Trichy' },
+  { label: 'Student (BITS)', email: 'rohan.mehta@bits.edu',  icon: '🎓', name: 'Rohan Mehta · BITS Pilani' },
+  // Employers
+  { label: 'Employer (TechCorp)',    email: 'hr@techcorp.com',          icon: '🏢', name: 'TechCorp Solutions' },
+  { label: 'Employer (GlobalSoft)', email: 'hr@globalsoft.com',         icon: '🏢', name: 'GlobalSoft Technologies' },
+  { label: 'Employer (Infosys)',    email: 'hr@infosys.com',            icon: '🏢', name: 'Infosys Limited' },
+  // College Admins
+  { label: 'Admin (IITM)',  email: 'admin@iitm.edu', icon: '🏫', name: 'IIT Madras' },
+  { label: 'Admin (NITT)',  email: 'admin@nitt.edu', icon: '🏫', name: 'NIT Trichy' },
+  { label: 'Admin (BITS)',  email: 'admin@bits.edu', icon: '🏫', name: 'BITS Pilani' },
+  // Platform
   { label: 'Super Admin', email: 'admin@placementhub.com', icon: '⚙️', name: 'PlacementHub' },
-  {
-    label: 'Placement Committee',
-    email: 'committee@iitm.edu',
-    icon: '🤝',
-    isDummy: true,
-    name: 'IIT Madras',
-  },
 ];
+
+/** Additional seeded employer credentials shown separately on login page. */
+export const SEEDED_EMPLOYER_CREDENTIALS = [
+  { label: 'Employer (Innovent Labs)', email: 'talent@innoventlabs.ai', icon: '🏢', name: 'Innovent Labs' },
+  { label: 'Employer (FinEdge Systems)', email: 'careers@finedge.io', icon: '🏢', name: 'FinEdge Systems' },
+  { label: 'Employer (GreenVolt Mobility)', email: 'hiring@greenvolt.in', icon: '🏢', name: 'GreenVolt Mobility' },
+  { label: 'Employer (DataQuotient Analytics)', email: 'jobs@dataquotient.com', icon: '🏢', name: 'DataQuotient Analytics' },
+];
+
 
 /**
  * Whether to show quick demo account cards on `/login`.

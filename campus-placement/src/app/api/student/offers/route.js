@@ -63,11 +63,14 @@ async function loadStudentOffersRows(studentId) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
 
     const studentQuery = await query(`SELECT id FROM student_profiles WHERE user_id = $1`, [userId]);
     const studentId = studentQuery.rows[0]?.id;
@@ -101,11 +104,14 @@ export async function GET() {
 export async function PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
     const studentQuery = await query(`SELECT id FROM student_profiles WHERE user_id = $1`, [userId]);
     const studentId = studentQuery.rows[0]?.id;
     if (!studentId) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });

@@ -158,7 +158,7 @@ export default function EmployerHiringAssessmentPage() {
         </div>
         <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           <button type="button" className="btn btn-secondary" onClick={downloadOffersImportStarter}>
-            Offers CSV (all students)
+            Download Template (All students)
           </button>
           <ExportCsvSplitButton
             filenameBase="hiring_assessment_from_uploads"

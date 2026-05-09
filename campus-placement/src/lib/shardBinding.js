@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 
-/** 64-char lowercase hex — not derived from institution name */
+/** 8-char friendly alphanumeric string (e.g. CAMPUS-A7X9) */
 export function generateSurfaceToken() {
-  return crypto.randomBytes(32).toString('hex');
+  const bytes = crypto.randomBytes(4).toString('hex').toUpperCase();
+  return `CAMPUS-${bytes}`;
 }
 
 export function normalizeSurfaceTokenInput(raw) {

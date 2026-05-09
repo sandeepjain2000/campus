@@ -21,7 +21,7 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import DevScreenTag from '@/components/DevScreenTag';
 import ScreenSearchBar from '@/components/ScreenSearchBar';
 import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
-import { Moon, Sun, Menu, Mail, Home } from 'lucide-react';
+import { Moon, Sun, Menu, Mail, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
 
 const settingsFetcher = async (url) => {
@@ -37,14 +37,38 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSidebarHidden(localStorage.getItem('placementhub_sidebar_hidden') === '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('placementhub_sidebar_hidden', sidebarHidden ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarHidden]);
   const [employerCampusLabel, setEmployerCampusLabel] = useState(null);
   const [academicYearOverride, setAcademicYearOverride] = useState(null);
-  const academicYearOptions = getAcademicYearOptions(getCurrentAcademicYear(), 3);
-
   const { data: collegeSettings } = useSWR(
     session?.user?.role === 'college_admin' ? '/api/college/settings' : null,
     settingsFetcher,
   );
+  const fallbackAcademicYearOptions = getAcademicYearOptions(getCurrentAcademicYear(), 3);
+  const academicYearOptions = useMemo(() => {
+    if (session?.user?.role !== 'college_admin') return fallbackAcademicYearOptions;
+    const fromServer = Array.isArray(collegeSettings?.academicYearsWithData)
+      ? collegeSettings.academicYearsWithData.filter((v) => typeof v === 'string' && v.trim())
+      : [];
+    return fromServer.length ? fromServer : fallbackAcademicYearOptions;
+  }, [collegeSettings?.academicYearsWithData, fallbackAcademicYearOptions, session?.user?.role]);
 
   const academicYear = useMemo(() => {
     if (academicYearOverride != null && academicYearOverride !== '') return academicYearOverride;
@@ -152,7 +176,7 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="dashboard-layout">
+    <div className={`dashboard-layout ${sidebarHidden ? 'sidebar-hidden' : ''}`}>
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         <Link href={homePath} className="sidebar-logo">
           <div className="sidebar-logo-icon">P</div>
@@ -226,9 +250,24 @@ export default function DashboardLayout({ children }) {
             >
               <Menu size={18} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon"
+              style={{ display: 'none' }}
+              id="sidebar-toggle-desktop"
+              onClick={() => setSidebarHidden((v) => !v)}
+              title={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+              aria-label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+            >
+              {sidebarHidden ? <PanelLeft size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+            </button>
             <style jsx>{`
               @media (max-width: 768px) {
                 #mobile-menu-toggle { display: flex !important; }
+                #sidebar-toggle-desktop { display: none !important; }
+              }
+              @media (min-width: 769px) {
+                #sidebar-toggle-desktop { display: inline-flex !important; align-items: center; justify-content: center; }
               }
             `}</style>
 

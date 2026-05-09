@@ -5,22 +5,33 @@ import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+async function resolveCollegeTenantId(session) {
+  const sessionTenantId = session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
+  if (sessionTenantId) return sessionTenantId;
+  const userId = session?.user?.id || session?.user?.sub || null;
+  if (!userId) return null;
+  const r = await query(`SELECT tenant_id FROM users WHERE id = $1::uuid LIMIT 1`, [userId]);
+  return r.rows[0]?.tenant_id || null;
+}
+
 /** GET — employers tied to this college (from employer_approvals + profile + stats). */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'college_admin') {
+    if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenant_id ?? session.user.tenantId;
+    const tenantId = await resolveCollegeTenantId(session);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
+    }
 
     const result = await query(
       `SELECT
           ea.id AS approval_id,
           ea.status,
           ea.created_at,
-          ea.coordination_poc_user_ids,
           ep.id AS employer_id,
           ep.company_name AS name,
           ep.industry,
@@ -51,6 +62,20 @@ export async function GET() {
       [tenantId],
     );
 
+    // Fetch POC assignments separately to avoid column-missing errors
+    let pocMap = {};
+    try {
+      const pocRes = await query(
+        `SELECT id, COALESCE(coordination_poc_user_ids, '{}') AS poc_ids
+         FROM employer_approvals
+         WHERE tenant_id = $1::uuid`,
+        [tenantId],
+      );
+      pocRes.rows.forEach((r) => { pocMap[r.id] = r.poc_ids || []; });
+    } catch {
+      // Column may not exist in all DB versions — silently skip
+    }
+
     const staff = await query(
       `SELECT id, first_name, last_name, role
        FROM users
@@ -64,7 +89,7 @@ export async function GET() {
     return NextResponse.json({
       employers: result.rows.map((row) => ({
         ...row,
-        coordination_poc_user_ids: row.coordination_poc_user_ids || [],
+        coordination_poc_user_ids: pocMap[row.approval_id] || [],
       })),
       staffDirectory: staff.rows.map((s) => ({
         id: s.id,

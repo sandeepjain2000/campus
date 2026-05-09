@@ -12,20 +12,14 @@ import {
   ArrowRight,
   Mail,
   Database,
-  Download,
 } from 'lucide-react';
-import { appendClientDebugLog, downloadClientDebugLog } from '@/lib/clientDebugLog';
+import { appendClientDebugLog } from '@/lib/clientDebugLog';
 
 export default function LandingPage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '?';
   const buildTimeIso = process.env.NEXT_PUBLIC_BUILD_TIME || '';
   const gitSha = process.env.NEXT_PUBLIC_APP_GIT_SHA || '';
   const deployId = process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID || '';
-  const vercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV || '';
-
-  const buildLabel = buildTimeIso
-    ? `${buildTimeIso.slice(0, 16).replace('T', ' ')} UTC`
-    : '—';
 
   useEffect(() => {
     appendClientDebugLog({
@@ -34,216 +28,166 @@ export default function LandingPage() {
       version: appVersion,
       buildTime: buildTimeIso || null,
       gitSha: gitSha || null,
+      deploymentId: deployId || null,
     });
-  }, [appVersion, buildTimeIso, gitSha]);
+  }, [appVersion, buildTimeIso, gitSha, deployId]);
 
   return (
-    <div style={{ background: '#FFFFFF', color: '#111827', minHeight: '100vh' }}>
-      {/* Top Navbar */}
-      <nav style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 100, borderBottom: '1px solid var(--border-default)', background: '#FFFFFF' }}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: '0.35rem',
-            maxWidth: 'min(380px, 46vw)',
-          }}
-        >
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '36px', height: '36px', background: 'var(--primary-600)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>P</div>
-            PlacementHub
-          </div>
-          <div
-            title="Build baked in at deploy time (NEXT_PUBLIC_* from next.config)"
-            style={{
-              fontSize: '0.625rem',
-              lineHeight: 1.4,
-              color: '#6B7280',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-            }}
-          >
-            v{appVersion}
-            {gitSha ? ` · ${gitSha}` : ''}
-            {vercelEnv ? ` · ${vercelEnv}` : ''}
-            <br />
-            build {buildLabel}
-            {deployId ? ` · deploy ${deployId.slice(0, 10)}…` : ''}
-          </div>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{
-              fontSize: '0.7rem',
-              padding: '0.25rem 0.55rem',
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--border-default)',
-            }}
-            onClick={() => downloadClientDebugLog()}
-          >
-            <Download size={13} aria-hidden />
-            Save debug log
-          </button>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, paddingTop: '0.15rem' }}>
-          <Link href="/data-entry" className="btn btn-ghost" style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Database size={16} /> Data entry
-          </Link>
-          <Link href="/email-notifications" className="btn btn-ghost" style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Mail size={16} /> Email workflows
-          </Link>
-          <Link href="/login" className="btn btn-secondary" style={{ padding: '0.5rem 1.5rem', borderRadius: '0.5rem', fontWeight: 600 }}>
-            Sign In
-          </Link>
-        </div>
-      </nav>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Fixed Demo Links - Bottom Left (Moved away from prime focus) */}
+      <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Demo Tools</div>
+        <Link href="/data-entry" style={{ borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-primary)'}>
+          <Database size={14} /> Data entry
+        </Link>
+        <Link href="/email-notifications" style={{ borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-primary)'}>
+          <Mail size={14} /> Email workflows
+        </Link>
+      </div>
 
-      {/* Hero Section */}
-      <section style={{ paddingTop: '10rem', paddingBottom: '6rem', textAlign: 'center', background: '#FFFFFF' }}>
-        <div className="animate-fadeIn" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 2rem' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-full)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-            <Rocket size={16} className="text-primary-600" /> India&apos;s #1 Campus Recruitment Platform
+      {/* Top Navbar */}
+      <header style={{ borderBottom: '1px solid var(--border-default)', backgroundColor: 'var(--bg-primary)', position: 'sticky', top: 0, zIndex: 40 }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', height: '2.5rem', width: '2.5rem', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', backgroundColor: 'var(--primary-600)', color: '#ffffff', fontWeight: 'bold', fontSize: '1.125rem', boxShadow: '0 4px 6px rgba(79, 70, 229, 0.2)' }}>
+              P
+            </div>
+            <div>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.025em' }}>PlacementHub</h1>
+            </div>
           </div>
-          <h1 style={{ fontSize: '4rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.025em', marginBottom: '1.5rem', color: '#111827' }}>
-            Transform Your <br />
-            <span style={{ color: 'var(--primary-600)' }}>Campus Placements</span>
-          </h1>
-          <p style={{ fontSize: '1.25rem', color: '#4B5563', lineHeight: 1.6, marginBottom: '2.5rem' }}>
-            Connect students, employers, and colleges on a single intelligent platform. 
-            Streamline drives, automate hiring pipelines, and track every offer in real-time.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-            <Link href="/register" className="btn btn-primary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem' }}>
-              Get Started Free <ArrowRight size={20} />
+          
+          <div>
+            <Link href="/login" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
+              Sign In
             </Link>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '3rem', marginTop: '4rem', borderTop: '1px solid var(--border-default)', paddingTop: '3rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827' }}>500+</div>
-              <div style={{ color: '#6B7280', fontWeight: 500 }}>Colleges</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827' }}>10K+</div>
-              <div style={{ color: '#6B7280', fontWeight: 500 }}>Students Placed</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827' }}>200+</div>
-              <div style={{ color: '#6B7280', fontWeight: 500 }}>Employers</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827' }}>₹12L</div>
-              <div style={{ color: '#6B7280', fontWeight: 500 }}>Avg. Package</div>
-            </div>
-          </div>
         </div>
-      </section>
+      </header>
 
-      {/* Features Section */}
-      <section style={{ padding: '6rem 2rem', background: '#F9FAFB' }}>
-        <div style={{ textAlign: 'center', marginBottom: '4rem', maxWidth: '800px', margin: '0 auto 4rem' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1rem', color: '#111827' }}>
-            Everything You Need for <span style={{ color: 'var(--primary-600)' }}>Seamless Placements</span>
-          </h2>
-          <p style={{ color: '#4B5563', fontSize: '1.125rem' }}>
-            From drive scheduling to offer management — one platform to rule them all.
-          </p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <main style={{ flex: 1 }}>
+        {/* Hero Section */}
+        <section style={{ padding: '6rem 1.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          {/* Subtle Light Theme Background Elements */}
+          <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '800px', height: '400px', background: 'radial-gradient(ellipse at top, var(--primary-50) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />
           
-          <div style={{ background: '#FFFFFF', padding: '2rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ width: '48px', height: '48px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-600)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-              <GraduationCap size={24} />
+          <div style={{ maxWidth: '48rem', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', borderRadius: '9999px', border: '1px solid var(--primary-200)', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', padding: '0.375rem 1rem', fontSize: '0.875rem', fontWeight: 600, marginBottom: '2rem' }}>
+              <Rocket size={16} /> India&apos;s #1 Campus Recruitment Platform
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Student Portal
-            </h3>
-            <p style={{ color: '#4B5563', lineHeight: 1.6 }}>
-              Complete profile management, resume builder, skill tracking, document uploads, and one-click applications to placement drives.
+            <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 800, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.1 }}>
+              Transform Your <br />
+              <span style={{ background: 'linear-gradient(135deg, var(--primary-600), #0EA5E9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Campus Placements</span>
+            </h1>
+            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '2.5rem', maxWidth: '42rem', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>
+              Connect students, employers, and colleges on a single intelligent platform. 
+              Streamline drives, automate hiring pipelines, and track every offer in real-time.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <Link href="/register" className="btn btn-primary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem', background: 'linear-gradient(135deg, var(--primary-600), var(--primary-500))', border: 'none' }}>
+                Get Started Free <ArrowRight size={18} />
+              </Link>
+              <Link href="#features" className="btn btn-secondary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem' }}>
+                Explore Features
+              </Link>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', maxWidth: '1000px', margin: '5rem auto 0 auto', paddingTop: '3rem', borderTop: '1px solid var(--border-default)' }}>
+            {[
+              { label: 'Colleges', value: '500+', color: 'var(--primary-600)' },
+              { label: 'Students Placed', value: '10K+', color: '#0EA5E9' },
+              { label: 'Employers', value: '200+', color: 'var(--primary-600)' },
+              { label: 'Avg. Package', value: '₹12L', color: '#10B981' },
+            ].map((stat) => (
+              <div key={stat.label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: stat.color, letterSpacing: '-0.025em' }}>{stat.value}</div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section id="features" style={{ padding: '6rem 1.5rem', backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
+          <div style={{ textAlign: 'center', maxWidth: '42rem', margin: '0 auto 4rem auto' }}>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '1rem', letterSpacing: '-0.025em' }}>
+              Everything You Need for <span style={{ color: 'var(--primary-600)' }}>Seamless Placements</span>
+            </h2>
+            <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)' }}>
+              From drive scheduling to offer management — one platform to rule them all.
             </p>
           </div>
 
-          <div style={{ background: '#FFFFFF', padding: '2rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ width: '48px', height: '48px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-600)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-              <Building2 size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Employer Dashboard
-            </h3>
-            <p style={{ color: '#4B5563', lineHeight: 1.6 }}>
-              Post jobs, set eligibility criteria, schedule drives, manage hiring pipelines, and publish offers — all from one place.
-            </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+            {[
+              {
+                icon: GraduationCap,
+                title: 'Student Portal',
+                desc: 'Complete profile management, resume builder, skill tracking, document uploads, and one-click applications.',
+              },
+              {
+                icon: Building2,
+                title: 'Employer Dashboard',
+                desc: 'Post jobs, set eligibility criteria, schedule drives, manage hiring pipelines, and publish offers.',
+              },
+              {
+                icon: School,
+                title: 'College Management',
+                desc: 'Verify students, configure placement rules, manage calendars, approve employers, and generate reports.',
+              },
+              {
+                icon: BarChart3,
+                title: 'Real-time Analytics',
+                desc: 'Placement rates, salary trends, department-wise stats, employer reliability scores, and year-over-year comparisons.',
+              },
+              {
+                icon: CalendarDays,
+                title: 'Smart Scheduling',
+                desc: 'Calendar integration, conflict detection, academic blocking, buffer days, and facility booking.',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Multi-Tenant & Secure',
+                desc: 'Complete data isolation, role-based access, audit logs, and enterprise-grade security for every college.',
+              },
+            ].map((feature) => (
+              <div key={feature.title} style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-primary)', padding: '2rem', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ marginBottom: '1.25rem', display: 'inline-flex', height: '3.5rem', width: '3.5rem', alignItems: 'center', justifyContent: 'center', borderRadius: '1rem', backgroundColor: 'var(--primary-50)', color: 'var(--primary-600)' }}>
+                  <feature.icon size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>{feature.title}</h3>
+                <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{feature.desc}</p>
+              </div>
+            ))}
           </div>
+        </section>
 
-          <div style={{ background: '#FFFFFF', padding: '2rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ width: '48px', height: '48px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning-600)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-              <School size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              College Management
-            </h3>
-            <p style={{ color: '#4B5563', lineHeight: 1.6 }}>
-              Verify students, configure placement rules, manage calendars, approve employers, and generate comprehensive reports.
+        {/* CTA Section */}
+        <section style={{ padding: '6rem 1.5rem', textAlign: 'center' }}>
+          <div style={{ borderRadius: 'var(--radius-2xl)', border: 'none', background: 'linear-gradient(135deg, var(--primary-900), var(--primary-700))', padding: '4rem 2rem', maxWidth: '56rem', margin: '0 auto', boxShadow: 'var(--shadow-xl)' }}>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ffffff', marginBottom: '1rem', letterSpacing: '-0.025em' }}>
+              Ready to Transform Placements?
+            </h2>
+            <p style={{ fontSize: '1.125rem', color: 'var(--primary-200)', marginBottom: '2.5rem', maxWidth: '42rem', marginLeft: 'auto', marginRight: 'auto' }}>
+              Join 500+ colleges already using PlacementHub to drive better outcomes.
             </p>
+            <Link href="/register" className="btn" style={{ padding: '1rem 2.5rem', fontSize: '1.125rem', backgroundColor: '#ffffff', color: 'var(--primary-800)', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}>
+              Start Your Free Trial
+            </Link>
           </div>
+        </section>
+      </main>
 
-          <div style={{ background: '#FFFFFF', padding: '2rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ width: '48px', height: '48px', background: 'rgba(225, 29, 72, 0.1)', color: 'var(--danger-600)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-              <BarChart3 size={24} />
+      <footer style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)', padding: '3rem 1.5rem', textAlign: 'center' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <div style={{ display: 'flex', height: '1.5rem', width: '1.5rem', alignItems: 'center', justifyContent: 'center', borderRadius: '0.375rem', backgroundColor: 'var(--primary-600)', color: '#ffffff', fontSize: '0.75rem' }}>P</div>
+              PlacementHub
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Real-time Analytics
-            </h3>
-            <p style={{ color: '#4B5563', lineHeight: 1.6 }}>
-              Placement rates, salary trends, department-wise stats, employer reliability scores, and year-over-year comparisons.
-            </p>
-          </div>
-
-          <div style={{ background: '#FFFFFF', padding: '2rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ width: '48px', height: '48px', background: 'rgba(2, 132, 199, 0.1)', color: 'var(--info-600)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-              <CalendarDays size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Smart Scheduling
-            </h3>
-            <p style={{ color: '#4B5563', lineHeight: 1.6 }}>
-              Calendar integration, conflict detection, academic blocking, buffer days, and facility booking for seamless drive management.
-            </p>
-          </div>
-
-          <div style={{ background: '#FFFFFF', padding: '2rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ width: '48px', height: '48px', background: 'rgba(168, 85, 247, 0.1)', color: '#A855F7', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-              <ShieldCheck size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Multi-Tenant & Secure
-            </h3>
-            <p style={{ color: '#4B5563', lineHeight: 1.6 }}>
-              Complete data isolation, role-based access, audit logs, and enterprise-grade security for every college on the platform.
-            </p>
-          </div>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>© 2026 PlacementHub. All rights reserved. | Built with rigorous design intelligence.</p>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section style={{ padding: '6rem 2rem', textAlign: 'center', background: '#FFFFFF', borderTop: '1px solid var(--border-default)' }}>
-        <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', marginBottom: '1rem' }}>
-          Ready to Transform Placements?
-        </h2>
-        <p style={{ color: '#4B5563', fontSize: '1.125rem', marginBottom: '2.5rem', maxWidth: '500px', margin: '0 auto 2.5rem' }}>
-          Join 500+ colleges already using PlacementHub to drive better outcomes.
-        </p>
-        <Link href="/register" className="btn btn-primary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem' }}>
-          Start Free Trial <ArrowRight size={20} />
-        </Link>
-      </section>
-
-      {/* Footer */}
-      <footer style={{ padding: '2.5rem', textAlign: 'center', borderTop: '1px solid var(--border-default)', background: '#F9FAFB', color: '#6B7280', fontSize: '0.875rem' }}>
-        © 2026 PlacementHub. All rights reserved. | Built with rigorous design intelligence.
       </footer>
     </div>
   );

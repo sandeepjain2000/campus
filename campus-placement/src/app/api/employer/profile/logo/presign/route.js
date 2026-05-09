@@ -9,7 +9,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     if (!isS3Configured()) {

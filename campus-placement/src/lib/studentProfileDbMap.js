@@ -1,6 +1,7 @@
 /**
  * Maps between student profile UI state (student profile page) and student_profiles + student_skills + users.phone.
  */
+import { SEED_DEMO_STUDENT_USER_IDS } from '@/lib/seedDemoStudentIds';
 
 function capitalizeGender(g) {
   if (!g || typeof g !== 'string') return '';
@@ -54,6 +55,40 @@ function linksFromColumns(row) {
   return out;
 }
 
+function demoAddressFallback(sp) {
+  const tid = String(sp?.tenant_id || '');
+  if (tid === 'a1000000-0000-0000-0000-000000000001') {
+    return {
+      line1: 'Velachery Main Road',
+      city: 'Chennai',
+      state: 'Tamil Nadu',
+      pincode: '600042',
+    };
+  }
+  if (tid === 'a1000000-0000-0000-0000-000000000002') {
+    return {
+      line1: 'BHEL Nagar',
+      city: 'Trichy',
+      state: 'Tamil Nadu',
+      pincode: '620014',
+    };
+  }
+  if (tid === 'a1000000-0000-0000-0000-000000000003') {
+    return {
+      line1: 'Vidya Vihar Road',
+      city: 'Pilani',
+      state: 'Rajasthan',
+      pincode: '333031',
+    };
+  }
+  return {
+    line1: 'Campus Area',
+    city: '',
+    state: '',
+    pincode: '',
+  };
+}
+
 /**
  * @param {{ sp: object, skills: { skill_name: string }[], accountEmail: string, userPhone: string | null, avatarUrl: string | null }}
  */
@@ -89,6 +124,34 @@ export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl }
   const locs = sp.preferred_locations;
   const preferredLocations = Array.isArray(locs) ? locs.join(', ') : '';
 
+  const rawExpectedMin = sp.expected_salary_min != null ? Number(sp.expected_salary_min) : null;
+  const rawExpectedMax = sp.expected_salary_max != null ? Number(sp.expected_salary_max) : null;
+  const isDemoStudent = SEED_DEMO_STUDENT_USER_IDS.has(sp.user_id);
+  const fallbackExpectedMin = 600000;
+  const fallbackExpectedMax = 1200000;
+  const expectedSalaryMin =
+    rawExpectedMin != null && Number.isFinite(rawExpectedMin) && rawExpectedMin > 0
+      ? rawExpectedMin
+      : isDemoStudent
+        ? fallbackExpectedMin
+        : 0;
+  const expectedSalaryMax =
+    rawExpectedMax != null && Number.isFinite(rawExpectedMax) && rawExpectedMax > 0
+      ? rawExpectedMax
+      : isDemoStudent
+        ? fallbackExpectedMax
+        : 0;
+
+  const rawAddress =
+    aux.address && typeof aux.address === 'object' && !Array.isArray(aux.address) ? aux.address : {};
+  const fallbackAddress = isDemoStudent ? demoAddressFallback(sp) : { line1: '', city: '', state: '', pincode: '' };
+  const address = {
+    line1: String(rawAddress.line1 || '').trim() || fallbackAddress.line1,
+    city: String(rawAddress.city || '').trim() || fallbackAddress.city,
+    state: String(rawAddress.state || '').trim() || fallbackAddress.state,
+    pincode: String(rawAddress.pincode || '').trim() || fallbackAddress.pincode,
+  };
+
   return {
     department: sp.department || '',
     branch: sp.branch || '',
@@ -103,11 +166,12 @@ export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl }
     personalEmail: typeof aux.personalEmail === 'string' ? aux.personalEmail : '',
     phones,
     emails,
+    address,
     bio: sp.bio || '',
     skills: (skills || []).map((s) => s.skill_name).filter(Boolean),
-    expectedSalaryMin: sp.expected_salary_min != null ? Number(sp.expected_salary_min) : 0,
-    expectedSalaryMax: sp.expected_salary_max != null ? Number(sp.expected_salary_max) : 0,
-    preferredLocations,
+    expectedSalaryMin,
+    expectedSalaryMax,
+    preferredLocations: preferredLocations || (isDemoStudent ? 'Bengaluru, Chennai, Hyderabad' : ''),
     willingToRelocate: sp.willing_to_relocate !== false,
     profileLinks,
     avatarUrl: avatarUrl || '',
@@ -151,6 +215,12 @@ function normalizeAuxFromPayload(body) {
     phones,
     emails,
     profileLinks,
+    address: {
+      line1: String(body?.address?.line1 || '').trim(),
+      city: String(body?.address?.city || '').trim(),
+      state: String(body?.address?.state || '').trim(),
+      pincode: String(body?.address?.pincode || '').trim(),
+    },
     personalEmail: personalEmail || null,
   };
 }
@@ -215,6 +285,7 @@ export function payloadToDbParts(body) {
       phones: aux.phones,
       emails: aux.emails,
       profileLinks: aux.profileLinks,
+      address: aux.address,
       personalEmail: aux.personalEmail,
     },
     skills,

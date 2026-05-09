@@ -1,10 +1,14 @@
 import fs from 'fs';
 
+let warnedInsecureTls;
+
 /**
  * PostgreSQL SSL options for `pg` Pool / Client.
  * - Local hosts: TLS off (typical Docker / dev Postgres without SSL).
  * - Remote: verify server cert by default (mitigates MITM).
- * - Opt out only when needed: DATABASE_SSL_REJECT_UNAUTHORIZED=false or DB_SSL_REJECT_UNAUTHORIZED=false
+ * - Opt out: DATABASE_SSL_REJECT_UNAUTHORIZED=false or DB_SSL_REJECT_UNAUTHORIZED=false
+ *   disables verification in any NODE_ENV (logs one warning outside development/test/local).
+ *   Prefer DATABASE_SSL_CA or NODE_EXTRA_CA_CERTS when you have the issuing CA.
  * - Optional CA bundle: DATABASE_SSL_CA=/path/to/ca.pem
  *
  * @param {string} [hostname]
@@ -15,11 +19,20 @@ export function getPgSslOption(hostname) {
   const local = h === 'localhost' || h === '127.0.0.1' || h === '::1';
   if (local) return false;
 
-  const insecure =
+  const insecureEnv =
     process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'false' ||
     process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false';
+  const devLike = ['development', 'test', 'local'].includes(
+    (process.env.NODE_ENV || '').toLowerCase(),
+  );
 
-  if (insecure) {
+  if (insecureEnv) {
+    if (!devLike && !warnedInsecureTls) {
+      warnedInsecureTls = true;
+      console.warn(
+        '[pgSsl] TLS verification disabled for PostgreSQL (DATABASE_SSL_REJECT_UNAUTHORIZED=false). Prefer DATABASE_SSL_CA or NODE_EXTRA_CA_CERTS in production.',
+      );
+    }
     return { rejectUnauthorized: false };
   }
 

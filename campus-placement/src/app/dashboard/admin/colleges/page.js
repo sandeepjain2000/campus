@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
 export default function AdminCollegesPage() {
   const [colleges, setColleges] = useState([]);
@@ -31,9 +32,38 @@ export default function AdminCollegesPage() {
     };
   }, []);
 
+  const getExportRows = () => {
+    const headers = ['College', 'City', 'NAAC', 'Students', 'Placed', 'Rate', 'Status'];
+    const rows = colleges.map(c => [
+      c.name,
+      c.city,
+      c.naac,
+      String(c.students),
+      String(c.placed),
+      c.students > 0 ? `${Math.round(c.placed / c.students * 100)}%` : '0%',
+      c.active ? 'Active' : 'Inactive'
+    ]);
+    return { headers, rows };
+  };
+
   return (
     <div className="animate-fadeIn">
-      <div className="page-header"><div className="page-header-left"><h1>🏫 Manage Colleges</h1><p>All registered colleges on the platform</p></div><div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}><Link className="btn btn-secondary" href="/dashboard/admin/pending-registrations">Pending registrations</Link><Link className="btn btn-primary" href="/data-entry/users">+ Add College</Link></div></div>
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1>🏫 Manage Colleges</h1>
+          <p>All registered colleges on the platform</p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <ExportCsvSplitButton 
+            filenameBase="admin_colleges" 
+            currentCount={colleges.length} 
+            fullCount={colleges.length} 
+            getRows={getExportRows} 
+          />
+          <Link className="btn btn-secondary" href="/dashboard/admin/pending-registrations">Pending registrations</Link>
+          <Link className="btn btn-primary" href="/dashboard/admin/pending-registrations">+ Review/Add College</Link>
+        </div>
+      </div>
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>College</th><th>City</th><th>NAAC</th><th>Students</th><th>Placed</th><th>Rate</th><th>Status</th><th>Actions</th></tr></thead>

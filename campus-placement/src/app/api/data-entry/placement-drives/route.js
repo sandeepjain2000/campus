@@ -43,11 +43,12 @@ export async function POST(request) {
 
     const title = String(body?.title || '').trim();
     const description = String(body?.description || '').trim();
-    const status = String(body?.status || 'scheduled').trim();
     const driveDate = body?.driveDate || null;
     const venue = String(body?.venue || '').trim();
     const maxStudents = body?.maxStudents ? Number(body.maxStudents) : null;
     const employerId = String(body?.employerId || '').trim() || null;
+    const inferredStatus = body?.status || (employerId ? 'requested' : 'scheduled');
+    const status = String(inferredStatus).trim();
 
     if (!tenantId) {
       return NextResponse.json({ error: 'Missing tenant context' }, { status: 400 });

@@ -19,6 +19,18 @@ async function ensureStudentProfileRow(userId) {
   return ins.rows[0]?.id || null;
 }
 
+async function hasAuxProfileColumn() {
+  const res = await query(
+    `SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'student_profiles'
+       AND column_name = 'aux_profile'
+     LIMIT 1`
+  );
+  return res.rows.length > 0;
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -57,15 +69,6 @@ export async function GET() {
     return NextResponse.json({ profile });
   } catch (e) {
     console.error('GET /api/student/profile', e);
-    if (e.message && e.message.includes('aux_profile')) {
-      return NextResponse.json(
-        {
-          error: 'Database migration required',
-          hint: 'Run db/migrations/010_student_profile_aux.sql on your database.',
-        },
-        { status: 503 }
-      );
-    }
     return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 });
   }
 }
@@ -87,6 +90,8 @@ export async function PUT(request) {
 
     await ensureStudentProfileRow(session.user.id);
 
+    const auxProfileAvailable = await hasAuxProfileColumn();
+
     await transaction(async (client) => {
       const idRes = await client.query(`SELECT id FROM student_profiles WHERE user_id = $1::uuid`, [
         session.user.id,
@@ -96,48 +101,91 @@ export async function PUT(request) {
       }
       const studentProfileId = idRes.rows[0].id;
 
-      await client.query(
-        `UPDATE student_profiles SET
-           department = $1,
-           branch = $2,
-           batch_year = $3,
-           graduation_year = $4,
-           cgpa = $5,
-           tenth_percentage = $6,
-           twelfth_percentage = $7,
-           gender = $8,
-           bio = $9,
-           linkedin_url = $10,
-           github_url = $11,
-           portfolio_url = $12,
-           expected_salary_min = $13,
-           expected_salary_max = $14,
-           preferred_locations = $15,
-           willing_to_relocate = $16,
-           aux_profile = $17::jsonb,
-           updated_at = NOW()
-         WHERE user_id = $18::uuid`,
-        [
-          parts.department,
-          parts.branch,
-          parts.batch_year,
-          parts.graduation_year,
-          parts.cgpa,
-          parts.tenth_percentage,
-          parts.twelfth_percentage,
-          parts.gender,
-          parts.bio,
-          parts.linkedin_url,
-          parts.github_url,
-          parts.portfolio_url,
-          parts.expected_salary_min,
-          parts.expected_salary_max,
-          parts.preferred_locations,
-          parts.willing_to_relocate,
-          JSON.stringify(parts.aux_profile),
-          session.user.id,
-        ]
-      );
+      if (auxProfileAvailable) {
+        await client.query(
+          `UPDATE student_profiles SET
+             department = $1,
+             branch = $2,
+             batch_year = $3,
+             graduation_year = $4,
+             cgpa = $5,
+             tenth_percentage = $6,
+             twelfth_percentage = $7,
+             gender = $8,
+             bio = $9,
+             linkedin_url = $10,
+             github_url = $11,
+             portfolio_url = $12,
+             expected_salary_min = $13,
+             expected_salary_max = $14,
+             preferred_locations = $15,
+             willing_to_relocate = $16,
+             aux_profile = $17::jsonb,
+             updated_at = NOW()
+           WHERE user_id = $18::uuid`,
+          [
+            parts.department,
+            parts.branch,
+            parts.batch_year,
+            parts.graduation_year,
+            parts.cgpa,
+            parts.tenth_percentage,
+            parts.twelfth_percentage,
+            parts.gender,
+            parts.bio,
+            parts.linkedin_url,
+            parts.github_url,
+            parts.portfolio_url,
+            parts.expected_salary_min,
+            parts.expected_salary_max,
+            parts.preferred_locations,
+            parts.willing_to_relocate,
+            JSON.stringify(parts.aux_profile),
+            session.user.id,
+          ]
+        );
+      } else {
+        await client.query(
+          `UPDATE student_profiles SET
+             department = $1,
+             branch = $2,
+             batch_year = $3,
+             graduation_year = $4,
+             cgpa = $5,
+             tenth_percentage = $6,
+             twelfth_percentage = $7,
+             gender = $8,
+             bio = $9,
+             linkedin_url = $10,
+             github_url = $11,
+             portfolio_url = $12,
+             expected_salary_min = $13,
+             expected_salary_max = $14,
+             preferred_locations = $15,
+             willing_to_relocate = $16,
+             updated_at = NOW()
+           WHERE user_id = $17::uuid`,
+          [
+            parts.department,
+            parts.branch,
+            parts.batch_year,
+            parts.graduation_year,
+            parts.cgpa,
+            parts.tenth_percentage,
+            parts.twelfth_percentage,
+            parts.gender,
+            parts.bio,
+            parts.linkedin_url,
+            parts.github_url,
+            parts.portfolio_url,
+            parts.expected_salary_min,
+            parts.expected_salary_max,
+            parts.preferred_locations,
+            parts.willing_to_relocate,
+            session.user.id,
+          ]
+        );
+      }
 
       await client.query(`UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2::uuid`, [
         parts.user_phone,
@@ -176,15 +224,6 @@ export async function PUT(request) {
     return NextResponse.json({ profile });
   } catch (e) {
     console.error('PUT /api/student/profile', e);
-    if (e.message && e.message.includes('aux_profile')) {
-      return NextResponse.json(
-        {
-          error: 'Database migration required',
-          hint: 'Run db/migrations/010_student_profile_aux.sql on your database.',
-        },
-        { status: 503 }
-      );
-    }
     return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 });
   }
 }

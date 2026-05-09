@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { FileUp, Eye, Pencil, RotateCcw, Ban, Trash2 } from 'lucide-react';
+import { FileUp, Eye, Pencil, RotateCcw, Ban, Trash2, CheckCircle, Clock, XCircle, Search } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
@@ -21,9 +21,11 @@ export default function EmployerOffersPage() {
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/employer/offers', fetcher);
   const { data: optionsData } = useSWR('/api/employer/offers/options', fetcher);
-  const offers = data?.offers || [];
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortOption, setSortOption] = useState('date_desc');
   const [editId, setEditId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
   const [form, setForm] = useState({
@@ -44,8 +46,29 @@ export default function EmployerOffersPage() {
     deadlineAt: '',
   });
 
+  const offers = Array.isArray(data?.offers) ? data.offers : [];
   const students = Array.isArray(optionsData?.students) ? optionsData.students : [];
   const drives = Array.isArray(optionsData?.drives) ? optionsData.drives : [];
+
+  const filteredOffers = useMemo(() => {
+    const result = offers.filter((o) => {
+      if (statusFilter && o.status !== statusFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const blob = [o.student_name, o.college_name, o.job_title, o.location].filter(Boolean).join(' ').toLowerCase();
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+
+    return result.sort((a, b) => {
+      if (sortOption === 'date_desc') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      if (sortOption === 'date_asc') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      if (sortOption === 'salary_desc') return (Number(b.salary) || 0) - (Number(a.salary) || 0);
+      if (sortOption === 'name_asc') return (a.student_name || '').localeCompare(b.student_name || '');
+      return 0;
+    });
+  }, [offers, search, statusFilter, sortOption]);
 
   const submitCreateOffer = async () => {
     if (!form.studentId || !form.jobTitle.trim()) {
@@ -93,11 +116,7 @@ export default function EmployerOffersPage() {
   };
 
   const reopenOffer = async (id) => {
-    if (
-      !confirm(
-        'Reopen this offer as pending? Clears acceptance / decline timestamps so the student can respond again on My Offers (if applicable).',
-      )
-    ) {
+    if (!confirm('Reopen this offer as pending? Clears acceptance / decline timestamps so the student can respond again.')) {
       return;
     }
     try {
@@ -160,7 +179,7 @@ export default function EmployerOffersPage() {
   };
 
   const deleteOffer = async (id) => {
-    if (!confirm('Delete this offer row permanently? History for that student may show a previous revision as current.')) return;
+    if (!confirm('Delete this offer row permanently?')) return;
     try {
       const res = await fetch('/api/employer/offers', {
         method: 'DELETE',
@@ -181,14 +200,14 @@ export default function EmployerOffersPage() {
   const downloadAssessmentStarter = async () => {
     try {
       await downloadCsvFromApi('/api/employer/offers/assessment-starter', EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME);
-      addToast('CSV lists all master-list students on every approved campus (tenant_id per row). Add job titles, then import.', 'success');
+      addToast('CSV lists all master-list students on every approved campus. Add job titles, then import.', 'success');
     } catch (e) {
       addToast(e.message || 'Download failed', 'error');
     }
   };
 
   const getOffersCsv = useCallback((_scope) => {
-    const list = offers;
+    const list = _scope === 'current' ? filteredOffers : offers;
     const headers = ['Student', 'College', 'Role', 'Salary_INR', 'Salary_display', 'Location', 'Deadline', 'Status', 'Created'];
     const rows = list.map((o) => [
       o.student_name || '—',
@@ -202,7 +221,7 @@ export default function EmployerOffersPage() {
       o.created_at || '',
     ]);
     return { headers, rows };
-  }, [offers]);
+  }, [offers, filteredOffers]);
 
   if (isLoading) {
     return <div className="skeleton skeleton-card" style={{ height: 260, margin: '2rem' }} />;
@@ -227,10 +246,13 @@ export default function EmployerOffersPage() {
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
-          <h1>📨 Offers</h1>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileUp size={22} strokeWidth={1.75} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
+            Offers
+          </h1>
           <p className="text-secondary" style={{ margin: '0.25rem 0 0', lineHeight: 1.55 }}>
-            Manage offers extended to candidates. CSV import defaults to <strong>accepted</strong> (offers already taken outside the app). Use{' '}
-            <strong>Create Offer</strong> below for <strong>pending</strong> rows students accept on <strong>My Offers</strong>.{' '}
+            Manage offers extended to candidates. CSV import defaults to <strong>accepted</strong>. Use{' '}
+            <strong>Create Offer</strong> for <strong>pending</strong> rows students accept on <strong>My Offers</strong>.{' '}
             <Link href="/dashboard/employer/offers-upload" className="link-inline" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
               <FileUp size={14} style={{ verticalAlign: '-0.125em', marginRight: '0.2rem' }} aria-hidden />
               Import offers from CSV
@@ -239,11 +261,11 @@ export default function EmployerOffersPage() {
         </div>
         <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-            Offers CSV (all students)
+            Download Template
           </button>
           <ExportCsvSplitButton
             filenameBase="placement_offers"
-            currentCount={offers.length}
+            currentCount={filteredOffers.length}
             fullCount={offers.length}
             getRows={getOffersCsv}
           />
@@ -262,19 +284,15 @@ export default function EmployerOffersPage() {
       <div className="directive-panel" role="region" aria-label="Offer acceptance">
         <p className="directive-panel__title">Pending vs accepted</p>
         <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-          <strong>Pending</strong> — created here with <strong>Create Offer</strong> (or set <code>status=pending</code> in CSV); students <strong>accept or decline</strong>{' '}
-          on <strong>Dashboard → My Offers</strong>. <strong>Accepted</strong> — use CSV import (default) or set <code>status=accepted</code> when the hire is already
-          confirmed outside the app; those rows skip the student confirmation step.
+          <strong>Pending</strong> — created here (or <code>status=pending</code> in CSV); students <strong>accept or decline</strong>{' '}
+          on <strong>Dashboard → My Offers</strong>. <strong>Accepted</strong> — use CSV import (default) when the hire is already confirmed outside the app.
         </p>
       </div>
 
       <div className="directive-panel" role="region" aria-label="One row per student">
         <p className="directive-panel__title">Why several rows can look the same</p>
         <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-          Each row is <strong>one student</strong>. If five students received the same package, you will see <strong>five lines</strong> with matching role, salary,
-          and location — that is expected. The app hides older <em>revisions</em> for the same student and company (the current one is marked in the database as latest);
-          it does not collapse different students into one template row. If the same student still shows two &quot;current&quot; offers from one company, company naming
-          may be split (e.g. college CSV spelling vs your profile name); use migration 021 and align names, or edit the college-reported row.
+          Each row is <strong>one student</strong>. If five students received the same package, you will see <strong>five lines</strong> — that is expected.
         </p>
       </div>
 
@@ -282,67 +300,37 @@ export default function EmployerOffersPage() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h3 className="card-title">Edit offer</h3>
           <p className="text-sm text-secondary" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            Updates terms for this row. Company text is synced from your employer profile for deduplication. Use <strong>Reopen to pending</strong> in the table to roll
-            back status after accept/decline/revoke.
+            Updates terms for this row. Use <strong>Reopen to pending</strong> in the table to roll back status.
           </p>
           <div className="grid grid-2">
             <div className="form-group">
               <label className="form-label">Drive (optional)</label>
-              <select
-                className="form-select"
-                value={editForm.driveId}
-                onChange={(e) => setEditForm((p) => ({ ...p, driveId: e.target.value }))}
-              >
+              <select className="form-select" value={editForm.driveId} onChange={(e) => setEditForm((p) => ({ ...p, driveId: e.target.value }))}>
                 <option value="">Not linked</option>
                 {drives.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title} {d.drive_date ? `(${formatDate(d.drive_date)})` : ''}
-                  </option>
+                  <option key={d.id} value={d.id}>{d.title} {d.drive_date ? `(${formatDate(d.drive_date)})` : ''}</option>
                 ))}
               </select>
             </div>
             <div className="form-group">
               <label className="form-label">Job title</label>
-              <input
-                className="form-input"
-                value={editForm.jobTitle}
-                onChange={(e) => setEditForm((p) => ({ ...p, jobTitle: e.target.value }))}
-              />
+              <input className="form-input" value={editForm.jobTitle} onChange={(e) => setEditForm((p) => ({ ...p, jobTitle: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Salary (INR annual)</label>
-              <input
-                className="form-input"
-                type="number"
-                value={editForm.salary}
-                onChange={(e) => setEditForm((p) => ({ ...p, salary: e.target.value }))}
-              />
+              <input className="form-input" type="number" value={editForm.salary} onChange={(e) => setEditForm((p) => ({ ...p, salary: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Location</label>
-              <input
-                className="form-input"
-                value={editForm.location}
-                onChange={(e) => setEditForm((p) => ({ ...p, location: e.target.value }))}
-              />
+              <input className="form-input" value={editForm.location} onChange={(e) => setEditForm((p) => ({ ...p, location: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Joining date</label>
-              <input
-                className="form-input"
-                type="date"
-                value={editForm.joiningDate}
-                onChange={(e) => setEditForm((p) => ({ ...p, joiningDate: e.target.value }))}
-              />
+              <input className="form-input" type="date" value={editForm.joiningDate} onChange={(e) => setEditForm((p) => ({ ...p, joiningDate: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Response deadline</label>
-              <input
-                className="form-input"
-                type="date"
-                value={editForm.deadlineAt}
-                onChange={(e) => setEditForm((p) => ({ ...p, deadlineAt: e.target.value }))}
-              />
+              <input className="form-input" type="date" value={editForm.deadlineAt} onChange={(e) => setEditForm((p) => ({ ...p, deadlineAt: e.target.value }))} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
@@ -358,6 +346,9 @@ export default function EmployerOffersPage() {
 
       {showCreate && (
         <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="card-header">
+            <h3 className="card-title">Create offer</h3>
+          </div>
           <div className="grid grid-2">
             <div className="form-group">
               <label className="form-label">Student</label>
@@ -407,9 +398,50 @@ export default function EmployerOffersPage() {
       )}
 
       <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
-        <div className="stats-card green"><div className="stats-card-icon green">✅</div><div className="stats-card-value">{acceptedCount}</div><div className="stats-card-label">Accepted</div></div>
-        <div className="stats-card amber"><div className="stats-card-icon amber">⏳</div><div className="stats-card-value">{pendingCount}</div><div className="stats-card-label">Pending</div></div>
-        <div className="stats-card rose"><div className="stats-card-icon rose">❌</div><div className="stats-card-value">{declinedCount}</div><div className="stats-card-label">Declined</div></div>
+        <div className="stats-card green">
+          <div className="stats-card-icon green"><CheckCircle size={22} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{acceptedCount}</div>
+          <div className="stats-card-label">Accepted</div>
+        </div>
+        <div className="stats-card amber">
+          <div className="stats-card-icon amber"><Clock size={22} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{pendingCount}</div>
+          <div className="stats-card-label">Pending</div>
+        </div>
+        <div className="stats-card rose">
+          <div className="stats-card-icon rose"><XCircle size={22} strokeWidth={1.5} /></div>
+          <div className="stats-card-value">{declinedCount}</div>
+          <div className="stats-card-label">Declined</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
+          <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+          <input
+            className="form-input"
+            placeholder="Search student, college, role..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ paddingLeft: '2.25rem' }}
+          />
+        </div>
+        <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ maxWidth: 200 }}>
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="accepted">Accepted</option>
+          <option value="declined">Declined</option>
+          <option value="rejected">Rejected</option>
+          <option value="revoked">Revoked</option>
+          <option value="expired">Expired</option>
+        </select>
+        <select className="form-select" value={sortOption} onChange={(e) => setSortOption(e.target.value)} style={{ maxWidth: 200 }}>
+          <option value="date_desc">Newest First</option>
+          <option value="date_asc">Oldest First</option>
+          <option value="salary_desc">Highest Salary</option>
+          <option value="name_asc">Name (A-Z)</option>
+        </select>
+        <span className="text-sm text-secondary">{filteredOffers.length} of {offers.length} offers</span>
       </div>
 
       <div className="table-container">
@@ -418,74 +450,62 @@ export default function EmployerOffersPage() {
             <tr><th>Student</th><th>College</th><th>Role</th><th>Salary</th><th>Location</th><th>Deadline</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
-            {offers.map(offer => (
-              <tr key={offer.id}>
-                <td className="font-semibold">{offer.student_name || '—'}</td>
-                <td className="text-sm">{offer.college_name || '—'}</td>
-                <td>{offer.job_title || '—'}</td>
-                <td className="font-bold">{formatCurrency(Number(offer.salary) || 0)}</td>
-                <td>{offer.location || '—'}</td>
-                <td className="text-sm">{offer.deadline_at ? formatDate(offer.deadline_at) : '—'}</td>
-                <td><span className={`badge badge-${getStatusColor(offer.status)} badge-dot`}>{formatStatus(offer.status || 'unknown')}</span></td>
-                <td>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-icon btn-sm"
-                      title="View details"
-                      aria-label="View offer details"
-                      onClick={() => setViewRow(offer)}
-                    >
-                      <Eye size={16} strokeWidth={2} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-icon btn-sm"
-                      title="Edit offer"
-                      aria-label="Edit offer"
-                      onClick={() => openEdit(offer)}
-                    >
-                      <Pencil size={16} strokeWidth={2} aria-hidden />
-                    </button>
-                    {['accepted', 'rejected', 'revoked', 'expired'].includes(offer.status) && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-icon btn-sm"
-                        title="Reopen as pending"
-                        aria-label="Reopen offer as pending"
-                        onClick={() => reopenOffer(offer.id)}
-                      >
-                        <RotateCcw size={16} strokeWidth={2} aria-hidden />
+            {filteredOffers.length > 0 ? (
+              filteredOffers.map(offer => (
+                <tr key={offer.id}>
+                  <td className="font-semibold">{offer.student_name || '—'}</td>
+                  <td className="text-sm">{offer.college_name || '—'}</td>
+                  <td>{offer.job_title || '—'}</td>
+                  <td className="font-bold">{formatCurrency(Number(offer.salary) || 0)}</td>
+                  <td>{offer.location || '—'}</td>
+                  <td className="text-sm">{offer.deadline_at ? formatDate(offer.deadline_at) : '—'}</td>
+                  <td><span className={`badge badge-${getStatusColor(offer.status)} badge-dot`}>{formatStatus(offer.status || 'unknown')}</span></td>
+                  <td>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                      <button type="button" className="btn btn-secondary btn-icon btn-sm" title="View details" aria-label="View offer details" onClick={() => setViewRow(offer)}>
+                        <Eye size={16} strokeWidth={2} aria-hidden />
                       </button>
-                    )}
-                    {offer.status === 'pending' && (
-                      <button
-                        type="button"
-                        className="btn btn-danger btn-icon btn-sm"
-                        title="Revoke offer"
-                        aria-label="Revoke offer"
-                        onClick={() => revokeOffer(offer.id)}
-                      >
-                        <Ban size={16} strokeWidth={2} aria-hidden />
+                      <button type="button" className="btn btn-secondary btn-icon btn-sm" title="Edit offer" aria-label="Edit offer" onClick={() => openEdit(offer)}>
+                        <Pencil size={16} strokeWidth={2} aria-hidden />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-icon btn-sm"
-                      title="Delete offer"
-                      aria-label="Delete offer"
-                      onClick={() => deleteOffer(offer.id)}
-                    >
-                      <Trash2 size={16} strokeWidth={2} aria-hidden />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {['accepted', 'rejected', 'revoked', 'expired'].includes(offer.status) && (
+                        <button type="button" className="btn btn-secondary btn-icon btn-sm" title="Reopen as pending" aria-label="Reopen offer as pending" onClick={() => reopenOffer(offer.id)}>
+                          <RotateCcw size={16} strokeWidth={2} aria-hidden />
+                        </button>
+                      )}
+                      {offer.status === 'pending' && (
+                        <button type="button" className="btn btn-danger btn-icon btn-sm" title="Revoke offer" aria-label="Revoke offer" onClick={() => revokeOffer(offer.id)}>
+                          <Ban size={16} strokeWidth={2} aria-hidden />
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-danger btn-icon btn-sm" title="Delete offer" aria-label="Delete offer" onClick={() => deleteOffer(offer.id)}>
+                        <Trash2 size={16} strokeWidth={2} aria-hidden />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : null}
             {offers.length === 0 && (
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                  No offers found for your employer account.
+                <td colSpan="8" style={{ padding: '3rem 1rem' }}>
+                  <div className="empty-state-container" style={{ textAlign: 'center', maxWidth: '400px', margin: '0 auto' }}>
+                    <div style={{ background: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                      <FileUp size={32} className="text-primary-600" />
+                    </div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No offers uploaded yet</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                      Download the template, fill in the details, and import your first batch of offers.
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                      <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
+                        Download Template
+                      </button>
+                      <Link href="/dashboard/employer/offers-upload" className="btn btn-primary">
+                        Import CSV
+                      </Link>
+                    </div>
+                  </div>
                 </td>
               </tr>
             )}
@@ -494,47 +514,20 @@ export default function EmployerOffersPage() {
       </div>
 
       {viewRow && (
-        <div
-          className="card"
-          style={{
-            marginTop: '1rem',
-            border: '1px solid var(--border)',
-            position: 'sticky',
-            bottom: '1rem',
-            zIndex: 2,
-          }}
-        >
+        <div className="card" style={{ marginTop: '1rem', border: '1px solid var(--border)', position: 'sticky', bottom: '1rem', zIndex: 2 }}>
           <div className="card-header" style={{ justifyContent: 'space-between' }}>
             <h3 className="card-title">Offer detail</h3>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setViewRow(null)}>
-              Close
-            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setViewRow(null)}>Close</button>
           </div>
           <div className="text-sm" style={{ lineHeight: 1.7 }}>
-            <div>
-              <strong>Student:</strong> {viewRow.student_name}
-            </div>
-            <div>
-              <strong>College:</strong> {viewRow.college_name || '—'}
-            </div>
-            <div>
-              <strong>Role:</strong> {viewRow.job_title || '—'}
-            </div>
-            <div>
-              <strong>Salary:</strong> {formatCurrency(Number(viewRow.salary) || 0)}
-            </div>
-            <div>
-              <strong>Location:</strong> {viewRow.location || '—'}
-            </div>
-            <div>
-              <strong>Joining:</strong> {viewRow.joining_date ? formatDate(viewRow.joining_date) : '—'}
-            </div>
-            <div>
-              <strong>Deadline:</strong> {viewRow.deadline_at ? formatDate(viewRow.deadline_at) : '—'}
-            </div>
-            <div>
-              <strong>Status:</strong> {formatStatus(viewRow.status)}
-            </div>
+            <div><strong>Student:</strong> {viewRow.student_name}</div>
+            <div><strong>College:</strong> {viewRow.college_name || '—'}</div>
+            <div><strong>Role:</strong> {viewRow.job_title || '—'}</div>
+            <div><strong>Salary:</strong> {formatCurrency(Number(viewRow.salary) || 0)}</div>
+            <div><strong>Location:</strong> {viewRow.location || '—'}</div>
+            <div><strong>Joining:</strong> {viewRow.joining_date ? formatDate(viewRow.joining_date) : '—'}</div>
+            <div><strong>Deadline:</strong> {viewRow.deadline_at ? formatDate(viewRow.deadline_at) : '—'}</div>
+            <div><strong>Status:</strong> {formatStatus(viewRow.status)}</div>
           </div>
         </div>
       )}

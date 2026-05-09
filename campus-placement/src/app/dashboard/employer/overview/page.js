@@ -1,36 +1,99 @@
 'use client';
+
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight } from 'lucide-react';
+import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight, Building2, MapPin } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import { useToast } from '@/components/ToastProvider';
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url, { credentials: 'include' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Failed to load dashboard');
+  return data;
+};
 
 export default function EmployerOverviewPage() {
   const { data: session } = useSession();
   const { addToast } = useToast();
   const router = useRouter();
   const [activeCampus, setActiveCampus] = useState(null);
+  const [resolvingCampus, setResolvingCampus] = useState(true);
 
   const showNotReady = (label) => {
     addToast(`${label} is not available yet in this build.`, 'info');
   };
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      const stored = sessionStorage.getItem('activeCampus');
-      if (!stored) {
-        router.replace('/dashboard/employer/select-campus');
-      } else {
-        setActiveCampus(JSON.parse(stored));
+    let mounted = true;
+    const resolveCampus = async () => {
+      try {
+        const stored = sessionStorage.getItem('activeCampus');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed?.id) {
+              if (mounted) setActiveCampus(parsed);
+              return;
+            }
+            sessionStorage.removeItem('activeCampus');
+          } catch {
+            sessionStorage.removeItem('activeCampus');
+          }
+        }
+
+        try {
+          const lsRaw = localStorage.getItem('activeCampus');
+          if (lsRaw) {
+            const lsParsed = JSON.parse(lsRaw);
+            if (lsParsed?.id) {
+              sessionStorage.setItem('activeCampus', lsRaw);
+              try { window.dispatchEvent(new Event('placementhub-active-campus')); } catch { /**/ }
+              if (mounted) setActiveCampus(lsParsed);
+              return;
+            }
+            localStorage.removeItem('activeCampus');
+          }
+        } catch { /**/ }
+
+        const res = await fetch('/api/employer/campuses', { credentials: 'include' });
+        const json = await res.json().catch(() => ({}));
+        if (!mounted) return;
+        const approved = Array.isArray(json?.colleges)
+          ? json.colleges.filter((c) => String(c?.approval_status || '').toLowerCase() === 'approved')
+          : [];
+        if (approved.length >= 1) {
+          const campus = approved[0];
+          const campusPayload = {
+            id: campus.id,
+            name: campus.name,
+            slug: campus.slug,
+            city: campus.city,
+            state: campus.state,
+          };
+          const payload = JSON.stringify(campusPayload);
+          sessionStorage.setItem('activeCampus', payload);
+          try { localStorage.setItem('activeCampus', payload); } catch { /**/ }
+          try {
+            window.dispatchEvent(new Event('placementhub-active-campus'));
+          } catch {
+            // ignore
+          }
+          setActiveCampus(campusPayload);
+          return;
+        }
+      } finally {
+        if (mounted) setResolvingCampus(false);
       }
-    }, 0);
-    return () => window.clearTimeout(t);
+    };
+    resolveCampus();
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   const { data, error, isLoading } = useSWR(
@@ -40,14 +103,44 @@ export default function EmployerOverviewPage() {
 
   if (error) return <PageError error={error} />;
 
-  if (!activeCampus || isLoading || !data) {
+  if (resolvingCampus || isLoading || (!data && activeCampus)) {
     return (
-      <div>
-        <div className="skeleton skeleton-heading" />
-        <div className="grid grid-4">
+      <div className="animate-fadeIn" style={{ paddingBottom: '2rem' }}>
+        <div style={{ height: '140px', borderRadius: 'var(--radius-xl)', background: 'var(--bg-secondary)', marginBottom: '2rem' }} className="skeleton" />
+        <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton skeleton-card" />
+            <div key={i} className="skeleton skeleton-card" style={{ height: '120px' }} />
           ))}
+        </div>
+        <div className="grid grid-2">
+          <div className="skeleton skeleton-card" style={{ height: '300px' }} />
+          <div className="skeleton skeleton-card" style={{ height: '300px' }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeCampus) {
+    return (
+      <div className="animate-fadeIn">
+        <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem', maxWidth: '520px', margin: '4rem auto', borderRadius: 'var(--radius-xl)' }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'var(--primary-50)', border: '1px solid var(--primary-200)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 1.5rem',
+          }}>
+            <Building2 size={32} style={{ color: 'var(--primary-600)' }} />
+          </div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.75rem', letterSpacing: '-0.01em' }}>
+            No campus tie-up yet
+          </h3>
+          <p className="text-secondary" style={{ lineHeight: 1.6, marginBottom: '2rem', fontSize: '0.95rem' }}>
+            Request a partnership with one or more colleges to start posting jobs, viewing applications, and managing placement drives.
+          </p>
+          <Link href="/dashboard/employer/select-campus" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }}>
+            Browse &amp; Request Campus Tie-ups
+          </Link>
         </div>
       </div>
     );
@@ -64,81 +157,118 @@ export default function EmployerOverviewPage() {
     stats.offersExtended > 0 ? Math.round(((stats.selectedCount || 0) / stats.offersExtended) * 100) : 0;
 
   return (
-    <div className="animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+      {/* High-Fidelity Glassmorphic Hero Banner */}
+      <div 
+        style={{
+          position: 'relative',
+          background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '2.5rem',
+          color: 'white',
+          overflow: 'hidden',
+          marginBottom: '2rem',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1.5rem',
+        }}
+      >
+        {/* Decorative Elements */}
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
+        <div style={{ position: 'absolute', bottom: '-50px', left: '10%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', borderRadius: '50%' }} />
+
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             Welcome, {session?.user?.tenantName || session?.user?.name?.split(' ')[0]}
           </h1>
-          <p className="text-secondary text-sm">
-            Managing recruitment for{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>{activeCampus.name}</strong>
+          <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            Managing recruitment for <strong style={{ color: 'white', fontWeight: 600 }}>{activeCampus.name}</strong>
           </p>
         </div>
-        <Link href="/dashboard/employer/jobs" className="btn btn-primary">
-          + Post New Job
-        </Link>
-      </div>
-
-      <div className="directive-panel" style={{ marginBottom: '1.25rem' }} role="region" aria-label="Assessment map link">
-        <p className="directive-panel__title">Assessment &amp; hiring results</p>
-        <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-          Round results are maintained under Assessment uploads; Hiring Assessment is a read-only campus summary of the same data.{' '}
-          <Link href="/dashboard/employer/assessment-summary" style={{ fontWeight: 600 }}>
-            Open the Assessment map
-          </Link>{' '}
-          for a one-page guide.
-        </p>
-      </div>
-
-      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-        <div className="stats-card">
-          <div className="stats-card-icon indigo">
-            <Briefcase size={24} strokeWidth={1.5} />
-          </div>
-          <div className="stats-card-value">{stats.activeJobs}</div>
-          <div className="stats-card-label">Active Jobs</div>
-        </div>
-        <div className="stats-card green">
-          <div className="stats-card-icon green">
-            <FileText size={24} strokeWidth={1.5} />
-          </div>
-          <div className="stats-card-value">{stats.totalApplications}</div>
-          <div className="stats-card-label">Total Applications</div>
-          <div className="stats-card-change up">↑ 23 this week</div>
-        </div>
-        <div className="stats-card amber">
-          <div className="stats-card-icon amber">
-            <CheckCircle size={24} strokeWidth={1.5} />
-          </div>
-          <div className="stats-card-value">{stats.shortlisted}</div>
-          <div className="stats-card-label">Shortlisted</div>
-        </div>
-        <div className="stats-card rose">
-          <div className="stats-card-icon rose">
-            <Send size={24} strokeWidth={1.5} />
-          </div>
-          <div className="stats-card-value">{stats.offersExtended}</div>
-          <div className="stats-card-label">Offers Extended</div>
-          <div className="stats-card-change up">{acceptanceRate}% acceptance</div>
+        
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '1rem' }}>
+          <Link href="/dashboard/employer/assessment-summary" className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' }}>
+            Assessment Map
+          </Link>
+          <Link href="/dashboard/employer/jobs" className="btn" style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            + Post New Job
+          </Link>
         </div>
       </div>
 
-      <div className="grid grid-2">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Users size={18} className="text-secondary" /> Hiring Pipeline
+      <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: 'var(--primary-50)', color: 'var(--primary-600)' }}>
+              <Briefcase size={22} strokeWidth={2} />
+            </div>
+            <div style={{ height: '24px' }}></div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats.activeJobs}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Active Jobs</div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: 'rgba(5, 150, 105, 0.1)', color: 'var(--success-600)' }}>
+              <FileText size={22} strokeWidth={2} />
+            </div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--success-600)', background: 'rgba(5, 150, 105, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              ↑ 23 this week
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats.totalApplications}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Total Applications</div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: 'rgba(217, 119, 6, 0.1)', color: 'var(--warning-600)' }}>
+              <CheckCircle size={22} strokeWidth={2} />
+            </div>
+            <div style={{ height: '24px' }}></div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats.shortlisted}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Shortlisted</div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: 'rgba(225, 29, 72, 0.1)', color: 'var(--rose-600)' }}>
+              <Send size={22} strokeWidth={2} />
+            </div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--rose-600)', background: 'rgba(225, 29, 72, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              {acceptanceRate}% acceptance
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats.offersExtended}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Offers Extended</div>
+        </div>
+      </div>
+
+      <div className="grid grid-2" style={{ gap: '2rem', marginBottom: '2rem' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="card-header" style={{ paddingBottom: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-default)' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.15rem' }}>
+              <div style={{ background: 'var(--bg-secondary)', padding: '0.4rem', borderRadius: 'var(--radius-sm)' }}>
+                <Users size={18} className="text-secondary" />
+              </div>
+              Hiring Pipeline
             </h3>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          
+          {/* Stepper Pipeline */}
+          <div style={{ display: 'flex', gap: '0.5rem', position: 'relative', flex: 1, alignItems: 'center' }}>
             {['Applied', 'Shortlisted', 'Interview', 'Selected'].map((stage, i) => {
               const colors = ['var(--info-600)', 'var(--primary-600)', 'var(--warning-600)', 'var(--success-600)'];
               const bgColors = [
-                'rgba(2, 132, 199, 0.05)',
-                'rgba(79, 70, 229, 0.05)',
-                'rgba(217, 119, 6, 0.05)',
-                'rgba(5, 150, 105, 0.05)',
+                'rgba(2, 132, 199, 0.08)',
+                'rgba(79, 70, 229, 0.08)',
+                'rgba(217, 119, 6, 0.08)',
+                'rgba(5, 150, 105, 0.08)',
               ];
               return (
                 <div
@@ -146,13 +276,14 @@ export default function EmployerOverviewPage() {
                   style={{
                     flex: 1,
                     textAlign: 'center',
-                    padding: '1rem',
+                    padding: '1.5rem 0.5rem',
                     borderRadius: 'var(--radius-md)',
                     background: bgColors[i],
+                    position: 'relative',
                   }}
                 >
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: colors[i] }}>{pipelineCounts[i]}</div>
-                  <div className="text-xs font-semibold" style={{ marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: colors[i], lineHeight: 1 }}>{pipelineCounts[i]}</div>
+                  <div className="text-xs font-semibold uppercase" style={{ letterSpacing: '0.05em', marginTop: '0.75rem', color: colors[i], opacity: 0.8 }}>
                     {stage}
                   </div>
                 </div>
@@ -161,105 +292,128 @@ export default function EmployerOverviewPage() {
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Calendar size={18} className="text-secondary" /> Upcoming Drives
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="card-header" style={{ paddingBottom: '1.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-default)' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.15rem' }}>
+              <div style={{ background: 'var(--bg-secondary)', padding: '0.4rem', borderRadius: 'var(--radius-sm)' }}>
+                <Calendar size={18} className="text-secondary" /> 
+              </div>
+              Upcoming Drives
             </h3>
-            <Link href="/dashboard/employer/drives" className="btn btn-ghost btn-sm">
-              View All <ArrowRight size={14} />
+            <Link href="/dashboard/employer/calendar" className="btn btn-ghost btn-sm" style={{ fontWeight: 600 }}>
+              View Calendar <ArrowRight size={14} />
             </Link>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {upcomingDrives.map((drive, index) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflowY: 'auto', maxHeight: '300px', paddingRight: '0.5rem' }}>
+            {upcomingDrives.map((drive) => (
               <div
                 key={drive.id}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '0.875rem 0',
-                  borderTop: index === 0 ? 'none' : '1px solid var(--border-default)',
+                  padding: '1rem',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-default)'
                 }}
               >
                 <div>
-                  <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                    {drive.college} - {drive.role}
+                  <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                    {drive.role}
                   </div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
-                    {formatDate(drive.date)} • {drive.type === 'virtual' ? 'Virtual' : 'On-Campus'}
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <MapPin size={12} /> {drive.college} • {drive.type === 'virtual' ? 'Virtual' : 'On-Campus'}
                   </div>
                 </div>
-                <span className={`badge badge-${getStatusColor(drive.status)}`}>{formatStatus(drive.status)}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                    {formatDate(drive.date)}
+                  </div>
+                  <span className={`badge badge-${getStatusColor(drive.status)}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>{formatStatus(drive.status)}</span>
+                </div>
               </div>
             ))}
             {upcomingDrives.length === 0 && (
               <div
-                className="text-sm text-secondary"
                 style={{
-                  padding: '2rem 1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  padding: '2rem',
                   textAlign: 'center',
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-secondary)'
                 }}
               >
-                No upcoming drives scheduled.
+                <Calendar size={32} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+                <p style={{ margin: 0, fontSize: '0.9rem' }}>No upcoming drives scheduled.</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: '1.5rem', padding: '0', overflow: 'hidden' }}>
-        <div className="card-header" style={{ padding: '1.25rem 1.5rem', marginBottom: 0, borderBottom: '1px solid var(--border-default)' }}>
-          <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileText size={18} className="text-secondary" /> Recent Applications
+      <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div className="card-header" style={{ padding: '1.5rem', marginBottom: 0, borderBottom: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
+          <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.15rem' }}>
+            <div style={{ background: 'white', padding: '0.4rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+              <FileText size={18} className="text-secondary" />
+            </div>
+            Recent Applications
           </h3>
-          <Link href="/dashboard/employer/applications" className="btn btn-ghost btn-sm">
-            View All <ArrowRight size={14} />
+          <Link href="/dashboard/employer/applications" className="btn btn-ghost btn-sm" style={{ background: 'white' }}>
+            View All Pipeline <ArrowRight size={14} />
           </Link>
         </div>
         <div className="table-container" style={{ border: 'none' }}>
           <table className="data-table">
             <thead>
-              <tr>
-                <th>Student</th>
-                <th>Role</th>
-                <th>College</th>
+              <tr style={{ background: 'var(--bg-primary)' }}>
+                <th style={{ paddingLeft: '1.5rem' }}>Candidate</th>
+                <th>Role &amp; Campus</th>
                 <th>CGPA</th>
                 <th>Status</th>
-                <th>Applied</th>
-                <th>Actions</th>
+                <th>Applied On</th>
+                <th style={{ paddingRight: '1.5rem', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {recentApplications.map((app) => (
-                <tr key={app.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div
-                        className="avatar avatar-sm"
-                        style={{
-                          background: 'linear-gradient(135deg, var(--gray-100), var(--gray-200))',
-                          color: 'var(--gray-700)',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {app.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')}
-                      </div>
-                      <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {app.name}
-                      </span>
+                <tr key={app.id} style={{ transition: 'background 0.2s', ':hover': { background: 'var(--bg-secondary)' } }}>
+                  <td style={{ paddingLeft: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                      {(() => {
+                        const appName = String(app?.name || 'Student').trim() || 'Student';
+                        const initials = appName.split(' ').filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+                        return (
+                          <>
+                            <div
+                              className="avatar avatar-sm"
+                              style={{
+                                background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))',
+                                color: 'var(--primary-700)',
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                border: '1px solid var(--primary-300)'
+                              }}
+                            >
+                              {initials || 'S'}
+                            </div>
+                            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                              {appName}
+                            </span>
+                          </>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td>
-                    <span className="text-sm font-medium">{app.role}</span>
-                  </td>
-                  <td>
-                    <span className="text-sm text-secondary">{app.college}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                      <span className="text-sm font-semibold">{app.role}</span>
+                      <span className="text-xs text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Building2 size={10} /> {app.college}</span>
+                    </div>
                   </td>
                   <td>
                     <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -267,21 +421,25 @@ export default function EmployerOverviewPage() {
                     </span>
                   </td>
                   <td>
-                    <span className={`badge badge-${getStatusColor(app.status)} badge-dot`}>{formatStatus(app.status)}</span>
+                    <span className={`badge badge-${getStatusColor(app.status)} badge-dot`} style={{ padding: '0.35rem 0.65rem' }}>{formatStatus(app.status)}</span>
                   </td>
-                  <td className="text-sm text-tertiary">{formatDate(app.appliedAt)}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <Link className="btn btn-ghost btn-sm" href="/dashboard/employer/applications">
-                        View
+                  <td className="text-sm text-secondary">{formatDate(app.appliedAt)}</td>
+                  <td style={{ paddingRight: '1.5rem', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <Link className="btn btn-ghost btn-sm" href={`/dashboard/employer/applications?jobId=${app.jobId}`}>
+                        View Details
                       </Link>
-                      <button className="btn btn-primary btn-sm" onClick={() => showNotReady('Shortlist candidate')}>
-                        Shortlist
-                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {recentApplications.length === 0 && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                    No recent applications to review.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

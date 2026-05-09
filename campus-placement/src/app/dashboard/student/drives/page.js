@@ -6,6 +6,7 @@ import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
 import { loadAppliedDriveIds, saveAppliedDriveIds } from '@/lib/studentProfileStorage';
+import MonthYearPicker from '@/components/MonthYearPicker';
 
 function getTimeLeft(deadline) {
   if (!deadline) return null;
@@ -33,6 +34,32 @@ function startOfDay(d) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
+}
+
+/** Parse drive date to calendar components (local noon anchor for date-only strings). */
+function parseDriveYmd(raw) {
+  if (raw == null || raw === '') return null;
+  const s = String(raw).trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) {
+    const y = +iso[1];
+    const mo = +iso[2];
+    const d = +iso[3];
+    return { y, mo, d, monthKey: `${y}-${String(mo).padStart(2, '0')}` };
+  }
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return null;
+  const x = new Date(t);
+  const y = x.getFullYear();
+  const mo = x.getMonth() + 1;
+  const d = x.getDate();
+  return { y, mo, d, monthKey: `${y}-${String(mo).padStart(2, '0')}` };
+}
+
+function startOfDayFromDriveRaw(raw) {
+  const ymd = parseDriveYmd(raw);
+  if (!ymd) return null;
+  return startOfDay(new Date(ymd.y, ymd.mo - 1, ymd.d, 12, 0, 0, 0));
 }
 
 const fetcher = async (url) => {
@@ -95,32 +122,25 @@ export default function StudentDrivesPage() {
     return Array.isArray(drivesData?.drives) ? drivesData.drives : [];
   }, [drivesData]);
 
-  const monthOptions = useMemo(() => {
-    const opts = [];
-    const nowDate = new Date();
-    const startYear = nowDate.getFullYear() - 1;
-    const endYear = nowDate.getFullYear() + 2;
-    for (let y = startYear; y <= endYear; y++) {
-      for (let m = 0; m < 12; m++) {
-        const key = `${y}-${String(m + 1).padStart(2, '0')}`;
-        const label = new Date(y, m).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        opts.push({ key, label });
-      }
-    }
-    return opts;
+  const monthBounds = useMemo(() => {
+    const y = new Date().getFullYear();
+    return { minYear: y - 1, maxYear: y + 2 };
   }, []);
 
   const filteredDrives = useMemo(() => {
     const todayStart = startOfDay(new Date());
+    const monthActive = datePreset !== 'range' && Boolean(monthFilter);
     return drives.filter((d) => {
       if (search && !d.company.toLowerCase().includes(search.toLowerCase()) && !d.role.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterType && d.type !== filterType) return false;
       if (filterStatus && d.status !== filterStatus) return false;
 
-      const driveDay = startOfDay(new Date(d.date + 'T12:00:00'));
+      const driveDay = startOfDayFromDriveRaw(d.date);
+      if (!driveDay) return false;
 
-      if (monthFilter) {
-        if (!d.date.startsWith(monthFilter)) return false;
+      if (monthActive) {
+        const ymd = parseDriveYmd(d.date);
+        if (!ymd || ymd.monthKey !== monthFilter) return false;
       }
 
       if (datePreset === 'past' && driveDay >= todayStart) return false;
@@ -204,10 +224,38 @@ export default function StudentDrivesPage() {
               <option value="approved">Approved</option>
             </select>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <label className="form-label text-xs">When</label>
-              <select className="form-select" style={{ minWidth: '160px' }} value={datePreset} onChange={(e) => setDatePreset(e.target.value)}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'flex-end',
+              columnGap: '1.5rem',
+              rowGap: '1rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.375rem',
+                flex: '0 0 auto',
+                minWidth: '10rem',
+              }}
+            >
+              <label className="form-label text-xs" htmlFor="drive-when-preset">
+                When
+              </label>
+              <select
+                id="drive-when-preset"
+                className="form-select"
+                style={{ minWidth: '11rem', width: '100%' }}
+                value={datePreset}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDatePreset(v);
+                  if (v === 'range') setMonthFilter('');
+                }}
+              >
                 <option value="">Any date</option>
                 <option value="future">Upcoming only</option>
                 <option value="past">Past drives</option>
@@ -216,28 +264,82 @@ export default function StudentDrivesPage() {
             </div>
             {datePreset === 'range' && (
               <>
-                <div>
-                  <label className="form-label text-xs">From</label>
-                  <input className="form-input" type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', flex: '0 0 auto' }}>
+                  <label className="form-label text-xs" htmlFor="drive-range-from">
+                    From
+                  </label>
+                  <input
+                    id="drive-range-from"
+                    className="form-input"
+                    type="date"
+                    value={rangeFrom}
+                    onChange={(e) => setRangeFrom(e.target.value)}
+                  />
                 </div>
-                <div>
-                  <label className="form-label text-xs">To</label>
-                  <input className="form-input" type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', flex: '0 0 auto' }}>
+                  <label className="form-label text-xs" htmlFor="drive-range-to">
+                    To
+                  </label>
+                  <input
+                    id="drive-range-to"
+                    className="form-input"
+                    type="date"
+                    value={rangeTo}
+                    onChange={(e) => setRangeTo(e.target.value)}
+                  />
                 </div>
               </>
             )}
-            <div>
-              <label className="form-label text-xs">Month</label>
-              <select className="form-select" style={{ minWidth: '200px' }} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
-                <option value="">Any month</option>
-                {monthOptions.map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+            {datePreset !== 'range' && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.375rem',
+                  flex: '0 1 16rem',
+                  minWidth: 'min(100%, 12rem)',
+                  maxWidth: '20rem',
+                }}
+              >
+                <label className="form-label text-xs" htmlFor="drive-month-year-picker">
+                  Month &amp; year
+                </label>
+                <MonthYearPicker
+                  id="drive-month-year-picker"
+                  value={monthFilter}
+                  onChange={setMonthFilter}
+                  minYear={monthBounds.minYear}
+                  maxYear={monthBounds.maxYear}
+                />
+              </div>
+            )}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.375rem',
+                flex: '0 0 auto',
+                minWidth: 'fit-content',
+                marginLeft: 'auto',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <span className="form-label text-xs" style={{ visibility: 'hidden' }} aria-hidden="true">
+                &nbsp;
+              </span>
+              <div
+                className="text-sm text-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  minHeight: '2.5rem',
+                  lineHeight: 1.35,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {filteredDrives.length} drives match
+              </div>
             </div>
-            <div className="text-sm text-secondary">{filteredDrives.length} drives match</div>
           </div>
         </div>
       </div>

@@ -1,7 +1,21 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
+import { validatePhone } from '@/lib/validators';
+
+function buildRegisterPhone(formData) {
+  if (formData.phoneDialCode === PHONE_FULL_E164) {
+    const raw = String(formData.phoneNational || '').trim().replace(/[\s-]/g, '');
+    if (!raw) return '';
+    return raw.startsWith('+') ? raw : `+${raw.replace(/^\++/, '')}`;
+  }
+  const digits = String(formData.phoneNational || '').replace(/\D/g, '');
+  const dial = String(formData.phoneDialCode || '').trim() || '+';
+  if (!digits) return '';
+  return `${dial.startsWith('+') ? dial : `+${dial}`}${digits}`;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,7 +27,8 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    phone: '',
+    phoneDialCode: '+1',
+    phoneNational: '',
     // Student fields
     collegeName: '',
     department: '',
@@ -32,6 +47,19 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    try {
+      const locale = (navigator.language || '').toLowerCase();
+      let dial = '+1';
+      if (locale.endsWith('-in')) dial = '+91';
+      else if (locale === 'en-gb') dial = '+44';
+      setFormData((f) => ({ ...f, phoneDialCode: dial }));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const roles = [
     { id: 'student', label: 'Student', icon: '🎓', desc: 'Looking for placement opportunities' },
     { id: 'employer', label: 'Employer', icon: '🏢', desc: 'Hire talent from campuses' },
@@ -47,17 +75,30 @@ export default function RegisterPage() {
       return;
     }
 
+    const phone = buildRegisterPhone(formData);
+    if (phone && !validatePhone(phone)) {
+      setError('Check your mobile number: use a country code above, or pick “Other” and type a full number starting with +.');
+      return;
+    }
+
     setLoading(true);
+    setError('');
     try {
+      const { phoneDialCode, phoneNational, confirmPassword, ...rest } = formData;
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...rest, phone }),
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
       if (!res.ok) {
-        setError(data.error || 'Registration failed');
+        setError(data.error || `Registration failed (${res.status}). Please try again.`);
         return;
       }
 
@@ -168,9 +209,46 @@ export default function RegisterPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input className="form-input" placeholder="+91 99999 99999" value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                <label className="form-label">Mobile <span className="text-xs text-tertiary">(optional)</span></label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select
+                    className="form-select"
+                    style={{ width: 'auto', minWidth: '10rem', maxWidth: '100%' }}
+                    value={formData.phoneDialCode}
+                    onChange={(e) => setFormData({ ...formData, phoneDialCode: e.target.value, phoneNational: '' })}
+                    aria-label="Country calling code"
+                  >
+                    {PHONE_DIAL_CODES.map((o) => (
+                      <option key={o.code || o.label} value={o.code}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  {formData.phoneDialCode !== PHONE_FULL_E164 ? (
+                    <input
+                      className="form-input"
+                      style={{ flex: '1', minWidth: '140px' }}
+                      placeholder="National number (no leading 0)"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      value={formData.phoneNational}
+                      onChange={(e) => setFormData({ ...formData, phoneNational: e.target.value })}
+                    />
+                  ) : (
+                    <input
+                      className="form-input"
+                      style={{ flex: '1', minWidth: '180px' }}
+                      placeholder="e.g. +44 7911 123456"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={formData.phoneNational}
+                      onChange={(e) => setFormData({ ...formData, phoneNational: e.target.value })}
+                    />
+                  )}
+                </div>
+                <span className="form-hint">
+                  Country defaults from your browser where possible; pick <strong>Other</strong> for any region not listed.
+                </span>
               </div>
 
               {/* Role-specific fields */}
@@ -186,7 +264,7 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, campusBindingToken: e.target.value })}
                     />
                     <span className="form-hint">
-                      Long random code from your college — not your roll number. Ask the placement cell if you do not have it.
+                      Paste the full enrollment key from your college (spaces are ignored; typically 32+ characters). Not your roll number.
                     </span>
                   </div>
                   <div className="form-group">
@@ -207,8 +285,16 @@ export default function RegisterPage() {
                     </div>
                     <div className="form-group">
                       <label className="form-label">Batch Year</label>
-                      <input className="form-input" type="number" placeholder="2025" value={formData.batchYear}
-                        onChange={(e) => setFormData({ ...formData, batchYear: e.target.value })} />
+                      <input
+                        className="form-input"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="2025"
+                        autoComplete="off"
+                        value={formData.batchYear}
+                        onChange={(e) => setFormData({ ...formData, batchYear: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                      />
                     </div>
                   </div>
                 </>
@@ -270,7 +356,11 @@ export default function RegisterPage() {
                     !formData.firstName ||
                     !formData.email ||
                     (formData.role === 'student' &&
-                      formData.campusBindingToken.trim().replace(/\s+/g, '').length < 32)
+                      (formData.campusBindingToken.trim().replace(/\s+/g, '').length < 16 ||
+                        !formData.department ||
+                        formData.department.trim().length < 2)) ||
+                    (formData.role === 'employer' && !String(formData.companyName || '').trim()) ||
+                    (formData.role === 'college_admin' && !String(formData.collegeFullName || '').trim())
                   }
                   onClick={() => setStep(3)}
                 >

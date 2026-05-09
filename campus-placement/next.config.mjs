@@ -23,6 +23,7 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  allowedDevOrigins: ['127.0.0.1'],
   // Helps dev/SSR reliably resolve `next-auth` subpath exports (`next-auth/react`).
   transpilePackages: ['next-auth'],
   async headers() {

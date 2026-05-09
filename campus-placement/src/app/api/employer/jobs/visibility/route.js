@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

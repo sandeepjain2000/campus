@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { getInitials } from '@/lib/utils';
+import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 
 /**
  * Entity logo: uses explicit logoUrl when provided (uploaded / saved URL).
@@ -14,7 +15,7 @@ export default function EntityLogo({
   shape = 'rounded',
   className = '',
 }) {
-  const candidates = [logoUrl].filter(Boolean);
+  const candidates = [logoUrl].filter(Boolean).map((u) => toSignedViewUrl(u));
 
   const [idx, setIdx] = useState(0);
 

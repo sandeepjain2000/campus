@@ -37,7 +37,7 @@ function normalizeContentType(contentType, fileName) {
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'student') {
+    if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -66,8 +66,12 @@ export async function POST(req) {
       );
     }
 
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
     const out = await createStudentDocumentPresign({
-      userId: session.user.id,
+      userId,
       fileName,
       contentType,
     });

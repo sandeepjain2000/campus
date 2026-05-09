@@ -3,10 +3,22 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+function toIsoDateOnly(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return '';
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +40,7 @@ export async function GET() {
     const events = eventsRes.rows.map((r) => ({
       id: r.id,
       title: r.title || 'Placement Drive',
-      date: r.drive_date ? String(r.drive_date).slice(0, 10) : '',
+      date: toIsoDateOnly(r.drive_date),
       time: '',
       type: r.status || 'scheduled',
       mode: r.drive_type || 'on_campus',

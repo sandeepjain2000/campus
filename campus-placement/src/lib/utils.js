@@ -39,6 +39,7 @@ export function formatLPA(amount) {
 export function formatDate(date, options = {}) {
   if (!date) return '—';
   const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'short',

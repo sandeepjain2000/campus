@@ -6,7 +6,7 @@ import { query } from '@/lib/db';
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -14,7 +14,10 @@ export async function GET(request) {
     const campusId = searchParams.get('campusId');
     if (!campusId) return NextResponse.json({ error: 'Campus ID is required' }, { status: 400 });
 
-    const userId = session.user.id;
+    const userId = session.user.id || session.user.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
+    }
     const empQuery = await query(`SELECT id FROM employer_profiles WHERE user_id = $1`, [userId]);
     const employerId = empQuery.rows[0]?.id;
     if (!employerId) throw new Error('Employer profile not found');

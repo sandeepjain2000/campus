@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
+import { OfferService } from '@/lib/domain/offers/service';
 
 function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
@@ -22,7 +23,7 @@ async function getEmployerId(session) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -32,63 +33,8 @@ export async function GET() {
       return NextResponse.json({ offers: [] });
     }
 
-    const baseSql = (latestOnly) => {
-      const clause = latestOnly ? 'AND o.is_latest = 1' : '';
-      return `SELECT
-         o.id,
-         COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student_name,
-         t.name AS college_name,
-         o.job_title,
-         o.salary,
-         o.location,
-         o.joining_date,
-         o.drive_id,
-         o.deadline AS deadline_at,
-         o.status,
-         o.created_at,
-         o.is_latest AS is_latest
-       FROM offers o
-       LEFT JOIN student_profiles sp ON sp.id = o.student_id
-       LEFT JOIN users u ON u.id = sp.user_id
-       LEFT JOIN tenants t ON t.id = sp.tenant_id
-       WHERE o.employer_id = $1 ${clause}
-       ORDER BY o.created_at DESC
-       LIMIT 500`;
-    };
-
-    let offersResult;
-    try {
-      offersResult = await query(baseSql(true), [employerId]);
-    } catch (e) {
-      if (isMissingIsLatestError(e)) {
-        offersResult = await query(
-          `SELECT
-             o.id,
-             COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student_name,
-             t.name AS college_name,
-             o.job_title,
-             o.salary,
-             o.location,
-             o.joining_date,
-             o.drive_id,
-             o.deadline AS deadline_at,
-             o.status,
-             o.created_at
-           FROM offers o
-           LEFT JOIN student_profiles sp ON sp.id = o.student_id
-           LEFT JOIN users u ON u.id = sp.user_id
-           LEFT JOIN tenants t ON t.id = sp.tenant_id
-           WHERE o.employer_id = $1
-           ORDER BY o.created_at DESC
-           LIMIT 500`,
-          [employerId],
-        );
-      } else {
-        throw e;
-      }
-    }
-
-    return NextResponse.json({ offers: offersResult.rows });
+    const offers = await OfferService.getEmployerOffers(employerId);
+    return NextResponse.json({ offers });
   } catch (error) {
     console.error('Failed to load employer offers:', error);
     return NextResponse.json(
@@ -101,7 +47,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const employerId = await getEmployerId(session);
@@ -168,7 +114,7 @@ const REOPEN_FROM_STATUSES = new Set(['accepted', 'rejected', 'revoked', 'expire
 export async function PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const employerId = await getEmployerId(session);
@@ -302,7 +248,7 @@ export async function PATCH(request) {
 export async function DELETE(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== 'employer') {
+    if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const employerId = await getEmployerId(session);
@@ -314,14 +260,10 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
 
-    const del = await query(
-      `DELETE FROM offers WHERE id = $1::uuid AND employer_id = $2::uuid RETURNING student_id`,
-      [id, employerId],
-    );
-    if (!del.rows[0]) {
+    const success = await OfferService.deleteEmployerOffer(id, employerId);
+    if (!success) {
       return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
     }
-    await refreshOfferLatestFlagsForStudent(del.rows[0].student_id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Failed to delete employer offer:', error);

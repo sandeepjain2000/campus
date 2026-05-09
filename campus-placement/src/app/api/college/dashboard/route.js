@@ -7,7 +7,7 @@ export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session || session.user.role !== 'college_admin') {
+    if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -21,7 +21,23 @@ export async function GET(request) {
         (SELECT COUNT(DISTINCT employer_id) FROM placement_drives WHERE tenant_id = $1 AND status IN ('approved', 'scheduled', 'completed')) as "activeEmployers",
         (SELECT COUNT(*) FROM placement_drives WHERE tenant_id = $1 AND status IN ('approved', 'scheduled')) as "activeDrives",
         (SELECT AVG(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1) AND status = 'accepted') as "avgPackage",
-        (SELECT MAX(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1) AND status = 'accepted') as "highestPackage"
+        (SELECT MAX(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1) AND status = 'accepted') as "highestPackage",
+        (
+          SELECT MIN(COALESCE(NULLIF(jp.salary_min, 0), jp.salary_max))
+          FROM job_postings jp
+          INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id
+          WHERE jpv.tenant_id = $1
+            AND jp.status = 'published'
+            AND jp.job_type IN ('full_time', 'part_time')
+        ) as "minJobAmount",
+        (
+          SELECT MIN(COALESCE(NULLIF(jp.salary_min, 0), jp.salary_max))
+          FROM job_postings jp
+          INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id
+          WHERE jpv.tenant_id = $1
+            AND jp.status = 'published'
+            AND jp.job_type = 'internship'
+        ) as "minInternshipAmount"
       FROM student_profiles
       WHERE tenant_id = $1
     `, [tenantId]);
@@ -59,6 +75,8 @@ export async function GET(request) {
         activeDrives: parseInt(s.activeDrives || 0),
         avgPackage: s.avgPackage != null ? Number(s.avgPackage) : 0,
         highestPackage: s.highestPackage != null ? Number(s.highestPackage) : 0,
+        minJobAmount: s.minJobAmount != null ? Number(s.minJobAmount) : 0,
+        minInternshipAmount: s.minInternshipAmount != null ? Number(s.minInternshipAmount) : 0,
       },
       departmentStats: deptQuery.rows.map(d => ({
         dept: d.dept,
