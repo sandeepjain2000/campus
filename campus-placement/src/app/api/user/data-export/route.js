@@ -60,9 +60,12 @@ export async function POST() {
       );
 
       const safeName = `placementhub-export-${session.user.role}-${new Date().toISOString().slice(0, 10)}.json`;
+      const commQuery = await query(`SELECT COALESCE(NULLIF(communication_email, ''), email) as email FROM users WHERE id = $1::uuid`, [session.user.id]);
+      const targetEmail = commQuery.rows[0]?.email || session.user.email;
+
       try {
         await sendMail({
-          to: session.user.email,
+          to: targetEmail,
           subject: 'PlacementHub — your data export is ready',
           text: [
             `Hello,`,

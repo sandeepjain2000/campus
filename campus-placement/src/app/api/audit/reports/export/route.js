@@ -28,7 +28,10 @@ export async function POST(request) {
     const from = parseDate(body?.from, null);
     const to = parseDate(body?.to, null);
     const requestedTenant = String(body?.tenantId || '').trim();
-    const requestedEmail = String(body?.email || session.user.email || '').trim();
+    
+    const commQuery = await query(`SELECT COALESCE(NULLIF(communication_email, ''), email) as email FROM users WHERE id = $1::uuid`, [session.user.id]);
+    const commEmail = commQuery.rows[0]?.email || session.user.email;
+    const requestedEmail = String(body?.email || commEmail || '').trim();
     if (!from || !to) {
       return NextResponse.json({ error: 'from and to dates are required (YYYY-MM-DD)' }, { status: 400 });
     }
