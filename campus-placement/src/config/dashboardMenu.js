@@ -72,7 +72,6 @@ export const menuConfig = {
           { label: 'Dashboard', href: '/dashboard/student/overview', icon: LayoutDashboard },
           { label: 'Getting Started', href: '/dashboard/student/getting-started', icon: Rocket },
           { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
-          { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
       {
@@ -104,7 +103,7 @@ export const menuConfig = {
         title: 'Communication',
         items: [
           { label: 'Clarifications', href: '/dashboard/student/clarifications', icon: HelpCircle },
-          { label: 'Discussions', href: '/dashboard/student/discussions', icon: MessageSquare },
+          { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
