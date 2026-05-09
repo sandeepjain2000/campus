@@ -92,11 +92,11 @@ export const menuConfig = {
         title: 'My Applications',
         items: [
           { label: 'My Drives', href: '/dashboard/student/applications/drives', icon: Target },
-          { label: 'Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
-          { label: 'Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
-          { label: 'Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
-          { label: 'Mentorship', href: '/dashboard/student/applications/mentorship', icon: Users },
-          { label: 'Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
+          { label: 'My Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
+          { label: 'My Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
+          { label: 'My Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
+          { label: 'My Mentorship', href: '/dashboard/student/applications/mentorship', icon: Users },
+          { label: 'My Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
         ],
       },
       {
