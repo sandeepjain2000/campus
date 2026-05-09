@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
-import { DEMO_LOGINS, DEMO_SEED_PASSWORD, SEEDED_EMPLOYER_CREDENTIALS, isDemoLoginsEnabled } from '@/lib/demoLogins';
-import { ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff } from 'lucide-react';
+import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled } from '@/lib/demoLogins';
+import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff } from 'lucide-react';
 
 const ROLE_GROUPS = [
   { key: 'student',   label: 'Students',        icon: GraduationCap, color: 'var(--primary-600)',  bg: 'var(--primary-50)',  border: 'var(--primary-200)' },
@@ -44,7 +44,6 @@ function LoginPageInner() {
   const [showPassword, setShowPassword] = useState(false);
   const [registeredBanner, setRegisteredBanner] = useState('');
   const [showCredentials, setShowCredentials] = useState(false);
-  const [showAllAccounts, setShowAllAccounts] = useState(false);
   const signingOut = useRef(false);
   const toast = useToast();
   const uniqueDemoLogins = useMemo(() => {
@@ -56,30 +55,17 @@ function LoginPageInner() {
       return true;
     });
   }, []);
-  const uniqueAllAccounts = useMemo(() => {
-    const seen = new Set();
-    return SEEDED_EMPLOYER_CREDENTIALS.filter((d) => {
-      const key = String(d?.email || '').trim().toLowerCase();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, []);
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const email = new URLSearchParams(window.location.search).get('email');
     if (email) {
-      const match = uniqueDemoLogins.find((d) => d.email === email && !d.isDummy);
-      if (match) {
-        setFormData((prev) => ({
-          ...prev,
-          email: match.email,
-          password: DEMO_SEED_PASSWORD,
-        }));
-      }
+      setFormData((prev) => ({
+        ...prev,
+        email: email,
+        password: DEMO_SEED_PASSWORD,
+      }));
     }
-  }, [uniqueDemoLogins]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -317,75 +303,32 @@ function LoginPageInner() {
           )}
 
           <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-default)' }}>
-            <button
-              type="button"
-              id="view-employer-credentials-btn"
-              onClick={() => setShowAllAccounts((v) => !v)}
+            <Link
+              href="/demo-accounts"
+              target="_blank"
               style={{
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '0.625rem 0.875rem',
-                background: showAllAccounts ? 'var(--success-50)' : 'var(--bg-secondary)',
-                border: `1px solid ${showAllAccounts ? 'var(--success-300)' : 'var(--border-default)'}`,
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
                 borderRadius: 'var(--radius-md)',
-                cursor: 'pointer',
-                color: showAllAccounts ? 'var(--success-700)' : 'var(--text-primary)',
+                textDecoration: 'none',
+                color: 'var(--text-primary)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 transition: 'all 0.15s',
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Building2 size={15} />
-                All accounts
+                <Users size={15} />
+                View all system accounts
               </span>
-              {showAllAccounts ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
-
-            {showAllAccounts && (
-              <div style={{
-                marginTop: '0.625rem',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  padding: '0.5rem 0.875rem',
-                  background: 'var(--bg-secondary)',
-                  borderBottom: '1px solid var(--border-default)',
-                  fontSize: '0.75rem',
-                  color: 'var(--text-secondary)',
-                }}>
-                  All accounts list is static (not clickable). Password: <code style={{ fontWeight: 700, color: 'var(--text-primary)', background: 'var(--bg-primary)', padding: '0.1rem 0.35rem', borderRadius: 4 }}>{DEMO_SEED_PASSWORD}</code>
-                </div>
-                {uniqueAllAccounts.map((credential, index) => (
-                  <div
-                    key={credential.email}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.5rem 0.875rem',
-                      borderBottom: index < uniqueAllAccounts.length - 1 ? '1px solid var(--border-default)' : 'none',
-                      background: 'var(--bg-primary)',
-                      gap: '0.5rem',
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {credential.label}
-                        {credential.name ? <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {credential.name}</span> : null}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.1rem' }}>{credential.email}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+              <ArrowRight size={16} style={{ color: 'var(--text-secondary)' }} />
+            </Link>
           </div>
-
 
           <form onSubmit={handleSubmit}>
             <div className="form-group" style={{ marginBottom: '1.25rem' }}>

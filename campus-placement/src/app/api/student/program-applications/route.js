@@ -116,6 +116,16 @@ export async function POST(req) {
       [studentId, jobId, notes || null],
     );
 
+    try {
+      await query(
+        `INSERT INTO notifications (user_id, title, message, type, link)
+         VALUES ($1::uuid, $2, $3, 'success', '/dashboard/student/applications')`,
+        [userId, 'Application Submitted', `You have successfully applied for the ${row.job_type}.`]
+      );
+    } catch (err) {
+      console.error('Failed to create notification', err);
+    }
+
     return NextResponse.json({
       success: true,
       id: ins.rows[0].id,
