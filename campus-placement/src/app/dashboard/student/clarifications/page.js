@@ -13,19 +13,91 @@ import {
   FileText,
   Lightbulb,
   Plus,
+  Send,
   X,
 } from 'lucide-react';
+
+/** Per-company inline question form */
+function InlinePostForm({ company, onSuccess }) {
+  const [questionText, setQuestionText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [show, setShow] = useState(false);
+  const { addToast } = useToast();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!questionText.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await publishClarificationBatch({
+        company,
+        postedBy: 'Student',
+        questionTexts: [questionText],
+      });
+      setQuestionText('');
+      setShow(false);
+      addToast('Question posted!', 'success');
+      onSuccess?.();
+    } catch (err) {
+      addToast(err.message || 'Failed to post question', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!show) {
+    return (
+      <button
+        className="btn btn-secondary"
+        style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+        onClick={() => setShow(true)}
+      >
+        <Plus size={14} /> Ask a Question
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{
+      marginTop: '1rem', padding: '1rem', borderRadius: '10px',
+      background: 'var(--primary-50)', border: '1px solid var(--primary-200)',
+      display: 'flex', flexDirection: 'column', gap: '0.75rem',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-700)' }}>
+          Post a question to {company}
+        </span>
+        <button type="button" onClick={() => setShow(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-400)' }}>
+          <X size={16} />
+        </button>
+      </div>
+      <textarea
+        className="form-input"
+        value={questionText}
+        onChange={(e) => setQuestionText(e.target.value)}
+        placeholder={`What would you like to ask ${company}?`}
+        rows={3}
+        required
+        style={{ resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }} onClick={() => setShow(false)}>
+          Cancel
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting || !questionText.trim()}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Send size={13} /> {isSubmitting ? 'Posting…' : 'Post Question'}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export default function StudentClarificationsPage() {
   const [data, setData] = useState({ batches: [] });
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState('');
   const [openBatchIds, setOpenBatchIds] = useState(new Set());
-  const [showPostForm, setShowPostForm] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [questionText, setQuestionText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { addToast } = useToast();
 
   const refresh = useCallback(async () => {
     try {
@@ -60,28 +132,6 @@ export default function StudentClarificationsPage() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
-
-  const handlePostQuestion = async (e) => {
-    e.preventDefault();
-    if (!companyName.trim() || !questionText.trim()) return;
-    setIsSubmitting(true);
-    try {
-      await publishClarificationBatch({
-        company: companyName,
-        postedBy: 'Student',
-        questionTexts: [questionText],
-      });
-      setCompanyName('');
-      setQuestionText('');
-      setShowPostForm(false);
-      addToast('Question posted successfully!', 'success');
-      void refresh();
-    } catch (err) {
-      addToast(err.message || 'Failed to post question', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const exportAsText = (batch) => {
@@ -130,60 +180,10 @@ export default function StudentClarificationsPage() {
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Clarifications</h1>
           </div>
           <p className="text-secondary" style={{ margin: 0, fontSize: '0.9rem' }}>
-            Ask questions about specific companies. Answers will be provided by the company or Placement Office.
+            Expand a company to read Q&amp;A and ask your own questions directly.
           </p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowPostForm((v) => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
-        >
-          {showPostForm ? <X size={16} /> : <Plus size={16} />}
-          {showPostForm ? 'Cancel' : 'Post Question'}
-        </button>
       </div>
-
-      {/* Post Question Form */}
-      {showPostForm && (
-        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--primary-500)' }}>
-          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>New Question</h3>
-          <form onSubmit={handlePostQuestion} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label className="form-label">Company Name</label>
-              <div style={{ position: 'relative' }}>
-                <Building2 size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
-                <input
-                  type="text"
-                  className="form-input"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="e.g. Google, Acme Corp"
-                  required
-                  style={{ paddingLeft: '2.25rem' }}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="form-label">Your Question</label>
-              <textarea
-                className="form-input"
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                placeholder="What would you like to know about this company's process, role, or requirements?"
-                rows={3}
-                required
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowPostForm(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={isSubmitting || !companyName.trim() || !questionText.trim()}>
-                {isSubmitting ? 'Posting...' : 'Post Question'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* Search Filter */}
       <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
@@ -254,7 +254,7 @@ export default function StudentClarificationsPage() {
                       background: 'var(--gray-100)', color: 'var(--gray-600)',
                       fontSize: '0.78rem', fontWeight: 500,
                     }}>
-                      {batch.questions.length} Question{batch.questions.length !== 1 ? 's' : ''}
+                      {batch.questions.length} Q{batch.questions.length !== 1 ? 's' : ''}
                     </span>
                     {answeredCount > 0 && (
                       <span style={{
@@ -272,22 +272,25 @@ export default function StudentClarificationsPage() {
                 {/* Expanded Content */}
                 {isOpen && (
                   <div style={{ padding: '1.25rem', borderTop: '1px solid var(--gray-200)', background: 'var(--surface)' }}>
-                    {/* Export Row */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                        onClick={() => exportAsText(batch)}
-                      >
-                        <FileText size={14} /> Export as Text
-                      </button>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                        onClick={() => exportAsCsv(batch)}
-                      >
-                        <Download size={14} /> Export as CSV
-                      </button>
+                    {/* Toolbar: Export + Ask Question */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+                      <InlinePostForm company={batch.company} onSuccess={refresh} />
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                          onClick={() => exportAsText(batch)}
+                        >
+                          <FileText size={14} /> Export Text
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                          onClick={() => exportAsCsv(batch)}
+                        >
+                          <Download size={14} /> Export CSV
+                        </button>
+                      </div>
                     </div>
 
                     {/* Q&A Thread */}
@@ -363,8 +366,7 @@ export default function StudentClarificationsPage() {
       }}>
         <Lightbulb size={18} color="var(--warning-500, #f59e0b)" style={{ flexShrink: 0, marginTop: '2px' }} />
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--warning-800, #92400e)', lineHeight: '1.6' }}>
-          <strong>Tip:</strong> You can export individual company discussions as Text or CSV for future reference.
-          Answers are provided by the company or the Placement Office during the in-person visit.
+          <strong>Tip:</strong> Expand any company card to ask a question or export the discussion. Answers will appear once provided by the company or Placement Office.
         </p>
       </div>
     </div>
