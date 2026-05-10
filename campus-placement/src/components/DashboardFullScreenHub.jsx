@@ -298,6 +298,13 @@ export default function DashboardFullScreenHub({ role, session }) {
           ))}
         </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .dashboard-nav-hub-actions {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -87,6 +87,15 @@ function LoginPageInner() {
       return true;
     });
   }, []);
+  const demosByGroup = useMemo(() => {
+    const buckets = { student: [], employer: [], admin: [], superadmin: [], dummy: [] };
+    for (const d of uniqueDemoLogins) {
+      const k = getGroupKey(d);
+      if (buckets[k]) buckets[k].push(d);
+    }
+    return buckets;
+  }, [uniqueDemoLogins]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const email = new URLSearchParams(window.location.search).get('email');
@@ -178,14 +187,6 @@ function LoginPageInner() {
     toast.info('Credentials auto-filled — click Sign In.');
   };
 
-  const demosByGroup = useMemo(() => {
-    const buckets = { student: [], employer: [], admin: [], superadmin: [], dummy: [] };
-    for (const d of uniqueDemoLogins) {
-      const k = getGroupKey(d);
-      if (buckets[k]) buckets[k].push(d);
-    }
-    return buckets;
-  }, [uniqueDemoLogins]);
 
   /** One card — same structure as a column on `/demo-accounts`. */
   const renderDemoListCard = (groupKey) => {
@@ -325,7 +326,7 @@ function LoginPageInner() {
           )}
 
           {showDemoLogins && (
-            <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-default)' }}>
+            <div className="hidden-on-mobile" style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-default)' }}>
               <button
                 type="button"
                 id="view-credentials-btn"
@@ -496,7 +497,7 @@ function LoginPageInner() {
             </button>
           </form>
 
-          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-default)' }}>
+          <div className="hidden-on-mobile" style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-default)' }}>
             <Link
               href="/demo-accounts"
               target="_blank"
@@ -530,6 +531,13 @@ function LoginPageInner() {
           Don&apos;t have an account? <Link href="/register" style={{ color: 'var(--primary-600)', fontWeight: 600, textDecoration: 'none' }}>Sign up</Link>
         </div>
 
+        <style>{`
+          @media (max-width: 768px) {
+            .hidden-on-mobile {
+              display: none !important;
+            }
+          }
+        `}</style>
       </div>
     </div>
   );
