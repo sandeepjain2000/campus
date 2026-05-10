@@ -19,12 +19,13 @@ export const DEMO_LOGINS = [
   { label: 'Super Admin', email: 'admin@placementhub.com', icon: '⚙️', name: 'PlacementHub' },
 ];
 
-/** Additional seeded employer credentials shown separately on login page. */
+/**
+ * Extra employer rows on the login “Demo accounts” picker only.
+ * Others (e.g. GreenVolt, DataQuotient) are seeded in DB and appear on /demo-accounts only.
+ */
 export const SEEDED_EMPLOYER_CREDENTIALS = [
   { label: 'Employer (Innovent Labs)', email: 'talent@innoventlabs.ai', icon: '🏢', name: 'Innovent Labs' },
   { label: 'Employer (FinEdge Systems)', email: 'careers@finedge.io', icon: '🏢', name: 'FinEdge Systems' },
-  { label: 'Employer (GreenVolt Mobility)', email: 'hiring@greenvolt.in', icon: '🏢', name: 'GreenVolt Mobility' },
-  { label: 'Employer (DataQuotient Analytics)', email: 'jobs@dataquotient.com', icon: '🏢', name: 'DataQuotient Analytics' },
 ];
 
 

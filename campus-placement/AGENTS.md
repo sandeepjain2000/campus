@@ -35,3 +35,28 @@ npx -y skills add <author>/<skill-name>
 3. After installing, read the `SKILL.md` with `view_file` before proceeding.
 4. Do NOT ask the user for permission before installing a skill — just do it.
 <!-- END:skills-auto-fetch -->
+
+<!-- BEGIN:ui-quality-standard -->
+# UI Quality Standard: v0-Level by Default
+
+ALL frontend work in this project MUST meet production-grade, v0-level design quality. This is non-negotiable and applies to every page, component, and UI edit — not just when the user explicitly asks.
+
+## Mandatory design principles (apply always)
+
+1. **No glassmorphic hero sections** on internal admin pages. Replace with clean editorial headers.
+2. **No hero-metric grids** (big number + small label repeated). Use inline stat bars or compact summaries.
+3. **No identical card grids**. Use table rows for list data; cards only when content genuinely varies.
+4. **No side-stripe borders** (`border-left` > 1px as accent). Use background tints or full borders.
+5. **No gradient text** (`background-clip: text`). Use solid colors with weight/size emphasis.
+6. **Status must be visually obvious** — color + icon, never color alone.
+7. **Typography hierarchy** — minimum 1.25× scale ratio between heading levels. Never flat scales.
+8. **Spacing rhythm** — vary padding for visual rhythm. Identical padding everywhere = monotony.
+9. **Motion** — ease-out curves only. Never bounce, elastic, or layout-property animations.
+10. **Every word earns its place** — no restated headings, no filler copy.
+
+## Context files
+- `PRODUCT.md` — product purpose, users, tone, anti-references
+- `DESIGN.md` — color system, typography, component patterns, layout rules
+
+Read both before writing any significant UI code.
+<!-- END:ui-quality-standard -->

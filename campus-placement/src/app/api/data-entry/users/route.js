@@ -19,7 +19,7 @@ export async function GET(request) {
     const whereRole = role && ALLOWED_ROLES.has(role) ? 'AND role = $2' : '';
     const params = whereRole ? [tenantId, role] : [tenantId];
     const users = await query(
-      `SELECT id, email, role, first_name, last_name, is_verified, is_active, created_at
+      `SELECT id, email, communication_email, role, first_name, last_name, is_verified, is_active, created_at
        FROM users
        WHERE tenant_id = $1 ${whereRole}
        ORDER BY created_at DESC
@@ -58,9 +58,9 @@ export async function POST(request) {
 
     const created = await query(
       `INSERT INTO users (
-        tenant_id, email, password_hash, role, first_name, last_name, is_verified, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-      RETURNING id, email, role, first_name, last_name, is_verified`,
+        tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active
+      ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, true)
+      RETURNING id, email, communication_email, role, first_name, last_name, is_verified`,
       [tenantId, email, passwordHash, role, firstName, lastName || null, isVerified]
     );
 

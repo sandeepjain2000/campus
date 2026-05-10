@@ -7,6 +7,7 @@ export const STUDENT_CSV_HEADERS = [
   'Semester',
   'Name',
   'Roll',
+  'Email',
   'Department',
   'Specialization',
   'Gender',
@@ -87,6 +88,7 @@ export function studentToCsvRow(s) {
       Semester: s.semester,
       Name: s.name,
       Roll: s.roll,
+      Email: s.email,
       Department: s.dept,
       Specialization: s.specialization,
       Gender: s.gender,
@@ -106,6 +108,7 @@ export function studentCsvTemplateExampleRow() {
     CURRENT_SEMESTER,
     'Sample Student',
     'CS2021001',
+    'student@example.com',
     'Computer Science',
     'AI & ML',
     'Female',
@@ -133,8 +136,10 @@ export function parseStudentRow(cells, idx, line) {
 
   const name = g('Name');
   const roll = g('Roll');
+  const email = g('Email').toLowerCase();
   if (!name) return { ok: false, error: `Line ${line}: Name is required` };
   if (!roll) return { ok: false, error: `Line ${line}: Roll is required` };
+  if (!email || !email.includes('@')) return { ok: false, error: `Line ${line}: Valid Email is required` };
 
   const skillsRaw = g('Skills');
   const skills = skillsRaw
@@ -186,6 +191,7 @@ export function parseStudentRow(cells, idx, line) {
       semester: semester || CURRENT_SEMESTER,
       name,
       roll,
+      email,
       dept: g('Department'),
       specialization: g('Specialization'),
       gender: g('Gender'),

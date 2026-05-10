@@ -6,7 +6,36 @@ import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
-import { Target, CheckCircle, XCircle, Download, Video, Building2, ChevronDown, ChevronUp, LayoutList, CalendarDays, X } from 'lucide-react';
+import {
+  Target, CheckCircle, XCircle, Download, Video, Building2,
+  ChevronDown, ChevronUp, LayoutList, CalendarDays, X,
+  Clock, MapPin, Users, CheckCircle2, AlertCircle
+} from 'lucide-react';
+
+const STATUS_META = {
+  requested:   { label: 'Awaiting Approval', color: '#b45309', bg: '#fef3c7', icon: AlertCircle },
+  approved:    { label: 'Approved',           color: '#1d4ed8', bg: '#dbeafe', icon: CheckCircle2 },
+  scheduled:   { label: 'Scheduled',          color: '#6d28d9', bg: '#ede9fe', icon: Clock },
+  in_progress: { label: 'In Progress',        color: '#059669', bg: '#d1fae5', icon: Target },
+  completed:   { label: 'Completed',          color: '#374151', bg: '#f3f4f6', icon: CheckCircle },
+  cancelled:   { label: 'Cancelled',          color: '#dc2626', bg: '#fee2e2', icon: XCircle },
+};
+
+function StatusPill({ status }) {
+  const meta = STATUS_META[status] || { label: status, color: '#374151', bg: '#f3f4f6', icon: AlertCircle };
+  const Icon = meta.icon;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+      padding: '0.25rem 0.65rem', borderRadius: '999px', fontSize: '0.75rem',
+      fontWeight: 600, color: meta.color, background: meta.bg,
+      border: `1px solid ${meta.color}22`
+    }}>
+      <Icon size={11} strokeWidth={2.5} />
+      {meta.label}
+    </span>
+  );
+}
 
 export default function CollegeDrivesPage() {
   const { addToast } = useToast();
@@ -61,7 +90,9 @@ export default function CollegeDrivesPage() {
     return map;
   }, [drives, staffDirectory]);
 
-  const calItems = useMemo(() => drives.map((d) => ({ id: d.id, date: d.date, title: d.company, time: '', meta: `${formatStatus(d.status)} · ${d.role}` })), [drives]);
+  const calItems = useMemo(() => drives.map((d) => ({
+    id: d.id, date: d.date, title: d.company, time: '', meta: `${formatStatus(d.status)} · ${d.role}`
+  })), [drives]);
 
   const getDrivesCsv = useCallback((_scope) => ({
     headers: ['Company', 'Role', 'Date', 'Type', 'Status', 'Venue', 'Registered', 'Selected'],
@@ -135,31 +166,42 @@ export default function CollegeDrivesPage() {
   };
 
   const pendingCount = drives.filter(d => d.status === 'requested').length;
+  const completedCount = drives.filter(d => d.status === 'completed').length;
+  const activeCount = drives.filter(d => ['approved', 'scheduled', 'in_progress'].includes(d.status)).length;
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
-      {/* Glassmorphic Hero */}
-      <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
-        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
-        marginBottom: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
-      }}>
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Target size={28} /> Placement Drives
+
+      {/* Page Header — clean editorial, no gradient hero */}
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.35rem', letterSpacing: '-0.02em' }}>
+            Placement Drives
           </h1>
-          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
-            {drives.length} drives · {pendingCount > 0 && <span style={{ fontWeight: 700 }}>{pendingCount} awaiting approval</span>}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{drives.length} total</span>
+            {pendingCount > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, color: '#b45309', background: '#fef3c7', padding: '0.2rem 0.6rem', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                <AlertCircle size={12} /> {pendingCount} awaiting approval
+              </span>
+            )}
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{activeCount} active · {completedCount} completed</span>
+          </div>
         </div>
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* View Toggle */}
-          <div style={{ display: 'flex', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)' }}>
+
+        {/* Controls */}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
             {[{ id: 'list', icon: LayoutList, label: 'List' }, { id: 'calendar', icon: CalendarDays, label: 'Calendar' }].map(({ id, icon: Icon, label }) => (
-              <button key={id} type="button" onClick={() => setView(id)} style={{ padding: '0.6rem 1.1rem', background: view === id ? 'rgba(255,255,255,0.25)' : 'transparent', color: 'white', border: 'none', cursor: 'pointer', fontWeight: view === id ? 700 : 500, display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', backdropFilter: view === id ? 'blur(4px)' : 'none' }}>
-                <Icon size={15} /> {label}
+              <button key={id} type="button" onClick={() => setView(id)} style={{
+                padding: '0.45rem 0.9rem', background: view === id ? 'var(--bg-elevated)' : 'transparent',
+                color: view === id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer', fontWeight: view === id ? 600 : 400,
+                display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem',
+                boxShadow: view === id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease'
+              }}>
+                <Icon size={14} /> {label}
               </button>
             ))}
           </div>
@@ -167,124 +209,158 @@ export default function CollegeDrivesPage() {
         </div>
       </div>
 
-      {isLoading && <div className="skeleton skeleton-card" style={{ height: 300 }} />}
+      {isLoading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+          {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: i === 1 ? '12px 12px 0 0' : i === 3 ? '0 0 12px 12px' : 0 }} />)}
+        </div>
+      )}
 
       {!isLoading && view === 'calendar' && <EmployerCalendarGrid items={calItems} initialYear={2026} initialMonth={7} />}
 
       {!isLoading && view === 'list' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {drives.length === 0 && (
-            <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-              <Target size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
-              <p className="text-secondary" style={{ margin: 0 }}>No drives found. Employers can request a placement drive from their dashboard.</p>
-            </div>
-          )}
-          {drives.map((drive) => {
-            const isExpanded = expandedId === drive.id;
-            return (
-              <div key={drive.id} className="card" id={`drive-${drive.id}`} style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
-                {/* Drive Header */}
-                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: '1 1 260px', minWidth: 0 }}>
-                    <EntityLogo name={drive.company} size="md" shape="rounded" />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{drive.company}</h3>
-                        <span className={`badge badge-${getStatusColor(drive.status)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(drive.status)}</span>
-                        <span className={`badge badge-${drive.type === 'virtual' ? 'blue' : 'indigo'}`} style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          {drive.type === 'virtual' ? <><Video size={11} /> Virtual</> : <><Building2 size={11} /> On-Campus</>}
+        drives.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '5rem 2rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px dashed var(--border-default)' }}>
+            <Target size={40} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>No drives yet. Employers request placement drives from their dashboard.</p>
+          </div>
+        ) : (
+          <div style={{ border: '1px solid var(--border-default)', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-elevated)' }}>
+            {drives.map((drive, idx) => {
+              const isExpanded = expandedId === drive.id;
+              const isLast = idx === drives.length - 1;
+              return (
+                <div key={drive.id} id={`drive-${drive.id}`} style={{ borderBottom: isLast ? 'none' : '1px solid var(--border-default)' }}>
+
+                  {/* Drive Row */}
+                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+
+                    {/* Logo + Identity */}
+                    <EntityLogo name={drive.company} size="sm" shape="rounded" />
+                    <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {drive.company}
+                      </div>
+                      <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>{drive.role}</div>
+                    </div>
+
+                    {/* Status */}
+                    <div style={{ flex: '0 0 auto' }}>
+                      <StatusPill status={drive.status} />
+                    </div>
+
+                    {/* Type */}
+                    <div style={{ flex: '0 0 auto' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.775rem', fontWeight: 500, color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '0.2rem 0.55rem', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
+                        {drive.type === 'virtual' ? <><Video size={11} /> Virtual</> : <><Building2 size={11} /> On-Campus</>}
+                      </span>
+                    </div>
+
+                    {/* Date + Venue */}
+                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      {drive.date && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <CalendarDays size={12} style={{ flexShrink: 0 }} /> {formatDate(drive.date)}
                         </span>
+                      )}
+                      {drive.venue && (
+                        <span style={{ fontSize: '0.775rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.3rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <MapPin size={11} style={{ flexShrink: 0 }} /> {drive.venue}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Stats */}
+                    <div style={{ flex: '0 0 auto', display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{drive.registered}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>Registered</div>
                       </div>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>{drive.role}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {drive.status === 'requested' && (
-                      <>
-                        <button className="btn btn-primary btn-sm" type="button" onClick={() => approveDrive(drive.id)} disabled={actionBusyId === drive.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <CheckCircle size={14} /> {actionBusyId === drive.id ? 'Approving…' : 'Approve'}
-                        </button>
-                        <button className="btn btn-ghost btn-sm" type="button" onClick={() => rejectDrive(drive.id)} disabled={actionBusyId === drive.id} style={{ color: 'var(--danger-600)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: '1px solid var(--border-default)' }}>
-                          <XCircle size={14} /> {actionBusyId === drive.id ? 'Rejecting…' : 'Reject'}
-                        </button>
-                      </>
-                    )}
-                    {drive.status === 'completed' && (
-                      <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleDownloadReport(drive)} disabled={downloading === drive.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Download size={14} /> {downloading === drive.id ? 'Generating…' : 'Report'}
-                      </button>
-                    )}
-                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => setExpandedId(id => id === drive.id ? null : drive.id)} style={{ border: '1px solid var(--border-default)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                      {isExpanded ? <><ChevronUp size={14} /> Hide</> : <><ChevronDown size={14} /> Details</>}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Drive Quick Stats */}
-                <div style={{ display: 'flex', gap: 0, borderTop: '1px solid var(--border-default)', borderBottom: isExpanded ? '1px solid var(--border-default)' : 'none' }}>
-                  {[
-                    { label: 'Date', value: formatDate(drive.date) },
-                    { label: 'Venue', value: drive.venue || '—' },
-                    { label: 'Registered', value: drive.registered },
-                    { label: 'Selected', value: drive.selected },
-                  ].map(({ label, value }, idx, arr) => (
-                    <div key={label} style={{ flex: 1, padding: '0.875rem 1.25rem', borderRight: idx < arr.length - 1 ? '1px solid var(--border-default)' : 'none', background: 'var(--bg-secondary)' }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{label}</div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Expanded: Staff + Social */}
-                {isExpanded && (
-                  <div style={{ padding: '1.5rem' }}>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Staff Attached to Drive</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                        {drive.staffIds.length === 0 && <span style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>No staff linked yet.</span>}
-                        {drive.staffIds.map((sid) => {
-                          const s = staffDirectory.find((staff) => staff.id === sid);
-                          if (!s) return null;
-                          return (
-                            <span key={sid} className="badge badge-indigo" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.5rem 0.35rem 0.75rem' }}>
-                              {s.name} <span style={{ opacity: 0.75, fontSize: '0.75rem' }}>({s.role})</span>
-                              <button type="button" onClick={() => removeStaff(drive.id, sid)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', color: 'inherit', display: 'flex', alignItems: 'center' }} aria-label={`Remove ${s.name}`}><X size={12} /></button>
-                            </span>
-                          );
-                        })}
-                        <select className="form-select" style={{ width: 'auto', minWidth: 200, fontSize: '0.85rem' }} value="" onChange={(e) => { attachStaff(drive.id, e.target.value); e.target.value = ''; }}>
-                          <option value="">+ Add staff…</option>
-                          {addOptionsForDrive[drive.id]?.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.role}</option>)}
-                        </select>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: drive.selected > 0 ? '#059669' : 'var(--text-tertiary)', lineHeight: 1 }}>{drive.selected}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>Selected</div>
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Social Channels</div>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
-                          const shared = (drive.socialShared || []).includes(id);
-                          return (
-                            <button key={id} type="button" onClick={() => toggleDriveSocialShare(drive.id, id)} title={`${label}${shared ? ' — marked shared' : ' — click to mark shared'}`} aria-pressed={shared} style={{ padding: '0.5rem', borderRadius: 'var(--radius-md)', border: `1px solid ${shared ? 'var(--primary-400)' : 'var(--border-default)'}`, background: shared ? 'var(--primary-50)' : 'var(--bg-primary)', color: shared ? 'var(--primary-600)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Icon size={16} />
-                            </button>
-                          );
-                        })}
-                        {facebookPageShare && (
-                          <button type="button" className="btn btn-secondary btn-sm" disabled={postingFacebookId === drive.id} onClick={() => postDriveToFacebookPage(drive)}>
-                            {postingFacebookId === drive.id ? 'Posting…' : 'Post to FB Page'}
+
+                    {/* Actions */}
+                    <div style={{ flex: '0 0 auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      {drive.status === 'requested' && (
+                        <>
+                          <button className="btn btn-primary btn-sm" type="button" onClick={() => approveDrive(drive.id)} disabled={actionBusyId === drive.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem' }}>
+                            <CheckCircle size={13} /> {actionBusyId === drive.id ? 'Approving…' : 'Approve'}
                           </button>
-                        )}
-                      </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: '0.5rem' }}>
-                        {facebookPageShare ? 'Highlighted channels are planned. "Post to FB Page" sends a live post.' : 'No live posting enabled · highlighted = saved on this drive.'}
-                      </p>
+                          <button className="btn btn-ghost btn-sm" type="button" onClick={() => rejectDrive(drive.id)} disabled={actionBusyId === drive.id} style={{ color: '#dc2626', fontSize: '0.8rem', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <XCircle size={13} /> Reject
+                          </button>
+                        </>
+                      )}
+                      {drive.status === 'completed' && (
+                        <button className="btn btn-ghost btn-sm" type="button" onClick={() => handleDownloadReport(drive)} disabled={downloading === drive.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', border: '1px solid var(--border-default)' }}>
+                          <Download size={13} /> {downloading === drive.id ? 'Generating…' : 'Report'}
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-sm" type="button" onClick={() => setExpandedId(id => id === drive.id ? null : drive.id)} style={{ border: '1px solid var(--border-default)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        {isExpanded ? <><ChevronUp size={13} /> Less</> : <><ChevronDown size={13} /> More</>}
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                  {/* Expanded Panel */}
+                  {isExpanded && (
+                    <div style={{ padding: '1.25rem 1.5rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+
+                        {/* Staff */}
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.825rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Staff Attached</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                            {drive.staffIds.length === 0 && <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>None linked yet.</span>}
+                            {drive.staffIds.map((sid) => {
+                              const s = staffDirectory.find((staff) => staff.id === sid);
+                              if (!s) return null;
+                              return (
+                                <span key={sid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'var(--primary-50)', color: 'var(--primary-700)', border: '1px solid var(--primary-200)', borderRadius: '6px', padding: '0.25rem 0.5rem 0.25rem 0.75rem', fontSize: '0.8rem', fontWeight: 500 }}>
+                                  {s.name} <span style={{ opacity: 0.6 }}>({s.role})</span>
+                                  <button type="button" onClick={() => removeStaff(drive.id, sid)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', display: 'flex', alignItems: 'center' }} aria-label={`Remove ${s.name}`}><X size={11} /></button>
+                                </span>
+                              );
+                            })}
+                            <select className="form-select" style={{ width: 'auto', minWidth: 180, fontSize: '0.825rem' }} value="" onChange={(e) => { attachStaff(drive.id, e.target.value); e.target.value = ''; }}>
+                              <option value="">+ Add staff…</option>
+                              {addOptionsForDrive[drive.id]?.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.role}</option>)}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Social */}
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.825rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Social Channels</div>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            {SOCIAL_PLATFORM_ORDER.map(({ id, label, Icon }) => {
+                              const shared = (drive.socialShared || []).includes(id);
+                              return (
+                                <button key={id} type="button" onClick={() => toggleDriveSocialShare(drive.id, id)} title={`${label}${shared ? ' — shared' : ''}`} aria-pressed={shared} style={{ padding: '0.45rem', borderRadius: '8px', border: `1px solid ${shared ? 'var(--primary-300)' : 'var(--border-default)'}`, background: shared ? 'var(--primary-50)' : 'var(--bg-elevated)', color: shared ? 'var(--primary-600)' : 'var(--text-tertiary)', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center' }}>
+                                  <Icon size={15} />
+                                </button>
+                              );
+                            })}
+                            {facebookPageShare && (
+                              <button type="button" className="btn btn-ghost btn-sm" disabled={postingFacebookId === drive.id} onClick={() => postDriveToFacebookPage(drive)} style={{ fontSize: '0.8rem', border: '1px solid var(--border-default)' }}>
+                                {postingFacebookId === drive.id ? 'Posting…' : 'Post to FB Page'}
+                              </button>
+                            )}
+                          </div>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.5rem', marginBottom: 0 }}>
+                            {facebookPageShare ? 'Highlighted = planned. Post to FB sends a live post.' : 'Highlighted channels are marked as shared on this drive.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );

@@ -10,27 +10,60 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const r = await query(
-      `SELECT
-         cel.id,
-         cel.kind,
-         cel.title,
-         cel.summary,
-         cel.requirements,
-         cel.time_hint,
-         cel.created_at,
-         t.id AS college_id,
-         t.name AS college_name,
-         t.city AS college_city,
-         t.state AS college_state
-       FROM campus_engagement_listings cel
-       INNER JOIN tenants t ON t.id = cel.tenant_id
-       WHERE cel.status = 'published'
-       ORDER BY cel.created_at DESC`
-    );
+    const employerUserId = session.user.id;
+
+    let rows;
+    try {
+      const r = await query(
+        `SELECT
+           cel.id,
+           cel.kind,
+           cel.title,
+           cel.summary,
+           cel.requirements,
+           cel.time_hint,
+           cel.created_at,
+           t.id AS college_id,
+           t.name AS college_name,
+           t.city AS college_city,
+           t.state AS college_state,
+           COALESCE(NULLIF(TRIM(t.communication_email), ''), t.email) AS college_email,
+           cgs.sent_at AS confirmation_sent_at
+         FROM campus_engagement_listings cel
+         INNER JOIN tenants t ON t.id = cel.tenant_id
+         LEFT JOIN campus_guest_confirmation_sends cgs
+           ON cgs.listing_id = cel.id AND cgs.employer_user_id = $1::uuid
+         WHERE cel.status = 'published'
+         ORDER BY cel.created_at DESC`,
+        [employerUserId],
+      );
+      rows = r.rows;
+    } catch (e) {
+      if (e.code !== '42P01') throw e;
+      const r = await query(
+        `SELECT
+           cel.id,
+           cel.kind,
+           cel.title,
+           cel.summary,
+           cel.requirements,
+           cel.time_hint,
+           cel.created_at,
+           t.id AS college_id,
+           t.name AS college_name,
+           t.city AS college_city,
+           t.state AS college_state,
+           COALESCE(NULLIF(TRIM(t.communication_email), ''), t.email) AS college_email
+         FROM campus_engagement_listings cel
+         INNER JOIN tenants t ON t.id = cel.tenant_id
+         WHERE cel.status = 'published'
+         ORDER BY cel.created_at DESC`,
+      );
+      rows = r.rows.map((row) => ({ ...row, confirmation_sent_at: null }));
+    }
 
     return NextResponse.json({
-      listings: r.rows.map((row) => ({
+      listings: rows.map((row) => ({
         id: row.id,
         kind: row.kind,
         title: row.title,
@@ -44,6 +77,8 @@ export async function GET() {
           city: row.college_city,
           state: row.college_state,
         },
+        canConfirm: Boolean(String(row.college_email || '').trim()),
+        confirmationSentAt: row.confirmation_sent_at,
       })),
     });
   } catch (e) {

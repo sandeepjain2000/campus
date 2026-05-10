@@ -21,6 +21,7 @@ CREATE TABLE tenants (
     pincode VARCHAR(10),
     phone VARCHAR(20),
     email VARCHAR(255),
+    communication_email VARCHAR(255),
     accreditation VARCHAR(100),
     naac_grade VARCHAR(10),
     nirf_rank INTEGER,
@@ -33,6 +34,7 @@ CREATE TABLE tenants (
 );
 
 CREATE INDEX idx_tenants_parent ON tenants(parent_tenant_id);
+CREATE INDEX idx_tenants_communication_email ON tenants(communication_email);
 
 -- ============================================
 -- 2. USERS
@@ -41,6 +43,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
+    communication_email VARCHAR(255),
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'college_admin', 'employer', 'student')),
     first_name VARCHAR(100) NOT NULL,
@@ -55,6 +58,7 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_communication_email ON users(communication_email);
 CREATE INDEX idx_users_tenant ON users(tenant_id);
 CREATE INDEX idx_users_role ON users(role);
 
@@ -405,6 +409,12 @@ CREATE TABLE college_settings (
     placement_season_end DATE,
     buffer_days_between_drives INTEGER DEFAULT 1,
     fcfs_enabled BOOLEAN DEFAULT true,
+    sponsorship_cheque_payable_to VARCHAR(280),
+    sponsorship_bank_account_name VARCHAR(280),
+    sponsorship_bank_name VARCHAR(160),
+    sponsorship_bank_account_number VARCHAR(64),
+    sponsorship_bank_ifsc VARCHAR(20),
+    sponsorship_bank_branch VARCHAR(280),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -473,12 +483,35 @@ CREATE TABLE sponsorship_opportunities (
     benefits TEXT[] DEFAULT '{}',
     label VARCHAR(60),
     is_active BOOLEAN DEFAULT true,
+    payments_permitted INTEGER NOT NULL DEFAULT 1 CHECK (payments_permitted >= 1 AND payments_permitted <= 36),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_sponsorship_opportunities_tenant ON sponsorship_opportunities(tenant_id);
 CREATE INDEX idx_sponsorship_opportunities_active ON sponsorship_opportunities(is_active);
+
+CREATE TABLE sponsorship_payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    opportunity_id UUID NOT NULL REFERENCES sponsorship_opportunities(id) ON DELETE CASCADE,
+    employer_profile_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    payment_sequence INTEGER NOT NULL CHECK (payment_sequence >= 1),
+    amount_inr BIGINT NOT NULL CHECK (amount_inr > 0),
+    method VARCHAR(20) NOT NULL CHECK (method IN ('online', 'cheque', 'bank_transfer')),
+    status VARCHAR(40) NOT NULL DEFAULT 'recorded',
+    gateway_provider VARCHAR(80),
+    gateway_reference VARCHAR(200),
+    cheque_mailed_at TIMESTAMPTZ,
+    bank_transfer_confirmed_at TIMESTAMPTZ,
+    proof_attachment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (opportunity_id, employer_profile_id, payment_sequence)
+);
+
+CREATE INDEX idx_sponsorship_payments_tenant_created ON sponsorship_payments(tenant_id, created_at DESC);
+CREATE INDEX idx_sponsorship_payments_employer ON sponsorship_payments(employer_profile_id);
 
 -- ============================================
 -- 21. CLARIFICATION BATCHES + QUESTIONS
@@ -609,3 +642,55 @@ CREATE TABLE platform_feedback_replies (
 );
 
 CREATE INDEX idx_feedback_replies_feedback ON platform_feedback_replies(feedback_id, created_at DESC);
+
+-- ============================================
+-- 28. SYSTEM EMAIL TEMPLATES (Super Admin)
+-- ============================================
+CREATE TABLE system_email_templates (
+    template_key VARCHAR(64) PRIMARY KEY,
+    description TEXT,
+    subject_template TEXT NOT NULL,
+    body_template TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ============================================
+-- 29. CAMPUS GUEST NEED — EMPLOYER CONFIRMATION EMAILS
+-- ============================================
+CREATE TABLE campus_guest_confirmation_sends (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    listing_id UUID NOT NULL REFERENCES campus_engagement_listings(id) ON DELETE CASCADE,
+    employer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_email TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (listing_id, employer_user_id)
+);
+
+CREATE INDEX idx_campus_guest_conf_listing ON campus_guest_confirmation_sends (listing_id);
+CREATE INDEX idx_campus_guest_conf_employer ON campus_guest_confirmation_sends (employer_user_id);
+
+-- ============================================
+-- 30. MAIL DELIVERY LOGS (outbound email audit)
+-- ============================================
+CREATE TABLE mail_delivery_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    context VARCHAR(80),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('sent', 'skipped', 'failed')),
+    skip_reason VARCHAR(80),
+    original_to TEXT,
+    resolved_to TEXT,
+    subject_truncated VARCHAR(500),
+    error_message TEXT,
+    error_code VARCHAR(100),
+    message_id TEXT,
+    smtp_response TEXT,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_mail_delivery_logs_created ON mail_delivery_logs (created_at DESC);
+CREATE INDEX idx_mail_delivery_logs_status ON mail_delivery_logs (status);
+CREATE INDEX idx_mail_delivery_logs_context ON mail_delivery_logs (context);

@@ -3,6 +3,8 @@ import {
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
   CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, FileUp, Rocket,
+  UserPlus,
+  Mail,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -179,6 +181,7 @@ export const menuConfig = {
         title: '💬 Communication & Support',
         items: [
           { label: 'Clarifications & Discussions', href: '/dashboard/employer/discussions', icon: HelpCircle },
+          { label: 'Email templates', href: '/dashboard/employer/communication-templates', icon: Mail },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
@@ -220,7 +223,7 @@ export const menuConfig = {
         title: '👨‍🎓 Students & Applications',
         items: [
           { label: 'Students', href: '/dashboard/college/students', icon: Users },
-          { label: 'Enrollment key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
+          { label: 'Add student', href: '/dashboard/college/students/add', icon: UserPlus },
           { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
           { label: 'Offers', href: '/dashboard/college/offers', icon: Send },
           { label: 'Upload offers (CSV)', href: '/dashboard/college/offers-upload', icon: FileUp },
@@ -236,10 +239,11 @@ export const menuConfig = {
       },
       {
         id: 'college-communication',
-        title: '💬 Communication',
+        title: '💬 Communication & Support',
         items: [
-          { label: 'Clarifications (publish)', href: '/dashboard/college/clarifications', icon: HelpCircle },
+          { label: 'Clarifications', href: '/dashboard/college/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
+          { label: 'Message templates', href: '/dashboard/college/message-templates', icon: FileEdit },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
@@ -256,6 +260,7 @@ export const menuConfig = {
         id: 'college-administration',
         title: '⚙️ Administration',
         items: [
+          { label: 'Enrollment key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
           { label: 'Placement Rules', href: '/dashboard/college/rules', icon: SlidersHorizontal },
           { label: 'Infrastructure', href: '/dashboard/college/infrastructure', icon: Building },
           { label: 'Settings', href: '/dashboard/college/settings', icon: Settings },
@@ -290,6 +295,13 @@ export const menuConfig = {
           { label: 'Colleges', href: '/dashboard/admin/colleges', icon: Building },
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
+        ],
+      },
+      {
+        id: 'admin-communication',
+        title: '💬 Communication & Support',
+        items: [
+          { label: 'Email templates', href: '/dashboard/admin/email-templates', icon: Mail },
         ],
       },
       {

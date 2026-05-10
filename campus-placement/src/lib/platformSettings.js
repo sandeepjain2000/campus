@@ -4,8 +4,9 @@ import { query } from '@/lib/db';
 export const PLATFORM_SETTINGS_DEFAULTS = {
   platformName: 'PlacementHub',
   supportEmail: 'placementhub@yopmail.com',
-  systemNotificationInboxEmail: 'placementhub@yopmail.com',
-  systemNotificationWebmailUrl: 'https://yopmail.com/wm',
+  /** When non-empty, sendMail() delivers every message to this address instead of `to` (dev safety). */
+  systemNotificationInboxEmail: '',
+  systemNotificationWebmailUrl: '',
   systemNotificationSenderName: 'placementhub',
   timezone: 'Asia/Kolkata',
   requireEmailVerification: true,

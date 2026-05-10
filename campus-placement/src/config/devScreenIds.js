@@ -22,6 +22,7 @@ const ROUTES_SORTED = [
   '/dashboard/college/drives',
   '/dashboard/college/enrollment-key',
   '/dashboard/college/guest-engagements',
+  '/dashboard/college/message-templates',
   '/dashboard/college/employers',
   '/dashboard/college/employers/requests',
   '/dashboard/college/events',
@@ -42,6 +43,7 @@ const ROUTES_SORTED = [
   '/dashboard/employer/applications',
   '/dashboard/employer/calendar',
   '/dashboard/employer/campus-guest-needs',
+  '/dashboard/employer/communication-templates',
   '/dashboard/employer/discussions',
   '/dashboard/employer/drives',
   '/dashboard/employer/hiring-assessment',
@@ -83,6 +85,7 @@ const ROUTES_SORTED = [
   '/dashboard/employer/assessment-summary',
   '/dashboard/college/audit-reports',
   '/dashboard/admin/audit-reports',
+  '/dashboard/admin/email-templates',
   '/dashboard/my-exports',
 ];
 

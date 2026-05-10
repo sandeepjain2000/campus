@@ -1,31 +1,50 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { formatStatus } from '@/lib/utils';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { Mic, Plus } from 'lucide-react';
 
 const KIND_LABEL = {
   guest_faculty: 'Guest faculty',
   guest_lecture: 'Guest lecture / session',
 };
 
+const CSV_HEADERS = [
+  'ID',
+  'Type',
+  'Title',
+  'Summary',
+  'Requirements',
+  'Preferred timing',
+  'Status',
+  'Created',
+  'Updated',
+];
+
+function listingToCsvRow(L) {
+  return [
+    L.id,
+    KIND_LABEL[L.kind] || L.kind,
+    L.title,
+    L.summary || '',
+    L.requirements || '',
+    L.time_hint || '',
+    L.status,
+    L.created_at ? new Date(L.created_at).toISOString() : '',
+    L.updated_at ? new Date(L.updated_at).toISOString() : '',
+  ];
+}
+
 export default function CollegeGuestEngagementsPage() {
   const { addToast } = useToast();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [kindFilter, setKindFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [form, setForm] = useState({
-    kind: 'guest_lecture',
-    title: '',
-    summary: '',
-    requirements: '',
-    timeHint: '',
-    publishNow: false,
-  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,41 +64,6 @@ export default function CollegeGuestEngagementsPage() {
     void load();
   }, [load]);
 
-  const create = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/college/engagement-listings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind: form.kind,
-          title: form.title,
-          summary: form.summary,
-          requirements: form.requirements,
-          timeHint: form.timeHint,
-          status: form.publishNow ? 'published' : 'draft',
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed');
-      addToast('Listing saved', 'success');
-      setForm({
-        kind: 'guest_lecture',
-        title: '',
-        summary: '',
-        requirements: '',
-        timeHint: '',
-        publishNow: false,
-      });
-      await load();
-    } catch (e2) {
-      addToast(e2.message || 'Failed', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const setStatus = async (id, status) => {
     try {
       const res = await fetch(`/api/college/engagement-listings/${id}`, {
@@ -95,122 +79,132 @@ export default function CollegeGuestEngagementsPage() {
     }
   };
 
-  const filteredListings = listings.filter((L) => {
-    if (kindFilter && L.kind !== kindFilter) return false;
-    if (statusFilter && L.status !== statusFilter) return false;
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      String(L.title || '').toLowerCase().includes(q) ||
-      String(L.summary || '').toLowerCase().includes(q) ||
-      String(L.requirements || '').toLowerCase().includes(q)
-    );
-  });
+  const filteredListings = useMemo(
+    () =>
+      listings.filter((L) => {
+        if (kindFilter && L.kind !== kindFilter) return false;
+        if (statusFilter && L.status !== statusFilter) return false;
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        return (
+          String(L.title || '').toLowerCase().includes(q) ||
+          String(L.summary || '').toLowerCase().includes(q) ||
+          String(L.requirements || '').toLowerCase().includes(q)
+        );
+      }),
+    [listings, kindFilter, statusFilter, search],
+  );
+
+  const getEngagementsCsv = useCallback(
+    (scope) => {
+      const list = scope === 'current' ? filteredListings : listings;
+      return {
+        headers: [...CSV_HEADERS],
+        rows: list.map(listingToCsvRow),
+      };
+    },
+    [filteredListings, listings],
+  );
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
-      {/* Glassmorphic Hero */}
-      <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
-        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
-        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
-      }}>
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>Guest Faculty & Lectures</h1>
-          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Published posts are visible to employer partners across the platform.</p>
+      <div
+        style={{
+          marginBottom: '2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+          <span
+            style={{
+              display: 'flex',
+              padding: '0.5rem',
+              background: 'var(--primary-50)',
+              borderRadius: '10px',
+              color: 'var(--primary-600)',
+            }}
+            aria-hidden
+          >
+            <Mic size={24} />
+          </span>
+          <div>
+            <h1
+              style={{
+                fontSize: '1.75rem',
+                fontWeight: 800,
+                color: 'var(--text-primary)',
+                margin: '0 0 0.35rem',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Guest faculty & lectures
+            </h1>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+              {listings.length} listing{listings.length === 1 ? '' : 's'}
+              {' · '}
+              Published posts are visible to employer partners.
+            </p>
+          </div>
         </div>
-        <Link href="/dashboard/college/overview" className="btn" style={{ position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' }}>
-          Overview
-        </Link>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <ExportCsvSplitButton
+            filenameBase="guest_engagements"
+            currentCount={filteredListings.length}
+            fullCount={listings.length}
+            getRows={getEngagementsCsv}
+          />
+          <Link
+            href="/dashboard/college/guest-engagements/add"
+            className="btn btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            Add
+          </Link>
+          <Link href="/dashboard/college/overview" className="btn btn-ghost btn-sm">
+            Overview
+          </Link>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
-        <h2 style={{ fontSize: '1rem', marginBottom: '1rem' }}>New listing</h2>
-        <form onSubmit={create} style={{ display: 'grid', gap: '0.75rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Type</label>
-            <select
-              className="form-select"
-              value={form.kind}
-              onChange={(e) => setForm({ ...form, kind: e.target.value })}
-            >
-              <option value="guest_lecture">{KIND_LABEL.guest_lecture}</option>
-              <option value="guest_faculty">{KIND_LABEL.guest_faculty}</option>
-            </select>
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Title</label>
-            <input
-              className="form-input"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Summary</label>
-            <textarea
-              className="form-input"
-              rows={2}
-              value={form.summary}
-              onChange={(e) => setForm({ ...form, summary: e.target.value })}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Requirements / expertise needed</label>
-            <textarea
-              className="form-input"
-              rows={3}
-              value={form.requirements}
-              onChange={(e) => setForm({ ...form, requirements: e.target.value })}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Preferred timing</label>
-            <input
-              className="form-input"
-              placeholder="e.g. March 2026, weekday mornings"
-              value={form.timeHint}
-              onChange={(e) => setForm({ ...form, timeHint: e.target.value })}
-            />
-          </div>
-          <label className="text-sm" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={form.publishNow}
-              onChange={(e) => setForm({ ...form, publishNow: e.target.checked })}
-            />
-            Publish immediately (visible to companies)
-          </label>
-          <button type="submit" className="btn btn-primary" disabled={saving} style={{ justifySelf: 'start' }}>
-            {saving ? 'Saving…' : 'Save listing'}
-          </button>
-        </form>
-      </div>
-
-      <div className="table-container">
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             className="form-input"
-            style={{ width: 260 }}
-            placeholder="Filter by title/summary..."
+            style={{ flex: '1 1 220px', minWidth: 180 }}
+            placeholder="Filter by title, summary, requirements…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select className="form-input" style={{ width: 220 }} value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
+          <select
+            className="form-select"
+            style={{ width: 'auto', minWidth: 200 }}
+            value={kindFilter}
+            onChange={(e) => setKindFilter(e.target.value)}
+          >
             <option value="">All types</option>
             <option value="guest_lecture">{KIND_LABEL.guest_lecture}</option>
             <option value="guest_faculty">{KIND_LABEL.guest_faculty}</option>
           </select>
-          <select className="form-input" style={{ width: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select
+            className="form-select"
+            style={{ width: 'auto', minWidth: 160 }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="">All statuses</option>
             <option value="draft">Draft</option>
             <option value="published">Published</option>
             <option value="closed">Closed</option>
           </select>
         </div>
+      </div>
+
+      <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
@@ -234,7 +228,9 @@ export default function CollegeGuestEngagementsPage() {
                   <td className="font-semibold">{L.title}</td>
                   <td>{KIND_LABEL[L.kind] || L.kind}</td>
                   <td>
-                    <span className={`badge badge-${L.status === 'published' ? 'green' : L.status === 'draft' ? 'amber' : 'gray'}`}>
+                    <span
+                      className={`badge badge-${L.status === 'published' ? 'green' : L.status === 'draft' ? 'amber' : 'gray'}`}
+                    >
                       {formatStatus(L.status)}
                     </span>
                   </td>
@@ -264,7 +260,14 @@ export default function CollegeGuestEngagementsPage() {
             {!loading && filteredListings.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center text-secondary">
-                  No listings yet.
+                  {listings.length === 0 ? (
+                    <>
+                      No listings yet.{' '}
+                      <Link href="/dashboard/college/guest-engagements/add">Add your first engagement</Link>.
+                    </>
+                  ) : (
+                    'No listings match your filters.'
+                  )}
                 </td>
               </tr>
             ) : null}

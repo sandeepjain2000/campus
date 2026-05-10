@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
 
-import { Trophy, FlaskConical, Palette } from 'lucide-react';
+import { Trophy, FlaskConical, Palette, Banknote, FileCheck2 } from 'lucide-react';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -25,13 +25,23 @@ const settingsFetcher = async (url) => {
   return json;
 };
 
+function formatPaymentStatus(status, method) {
+  const s = String(status || '');
+  if (s === 'completed') return 'Paid online (demo gateway)';
+  if (s === 'cheque_mailed') return 'Cheque mailed (employer confirmed)';
+  if (s === 'bank_transfer_submitted') return 'Bank transfer reported';
+  return `${s} · ${method || ''}`;
+}
+
 export default function CollegeSponsorshipsPage() {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('All Categories');
-  const { data, error } = useSWR('/api/college/sponsorships', fetcher);
+  const { data, error, mutate } = useSWR('/api/college/sponsorships', fetcher);
+  const [sendingReceiptFor, setSendingReceiptFor] = useState(null);
   const { data: settingsData } = useSWR('/api/college/settings', settingsFetcher);
 
   const sponsorshipLevels = useMemo(() => (Array.isArray(data?.categories) ? data.categories : []), [data]);
+  const payments = useMemo(() => (Array.isArray(data?.payments) ? data.payments : []), [data]);
   const collegeName = data?.collegeName || 'Your Institution';
   const placementEmail = String(settingsData?.placementOfficer?.email || '').trim();
 
@@ -52,6 +62,36 @@ export default function CollegeSponsorshipsPage() {
     a.remove();
     URL.revokeObjectURL(url);
     addToast('Sponsorship guide downloaded.', 'success');
+  };
+
+  const sendTaxReceipt = async (paymentId) => {
+    setSendingReceiptFor(paymentId);
+    try {
+      const res = await fetch('/api/college/sponsorships/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        addToast(json.error || 'Receipt already sent.', 'info');
+        await mutate();
+        return;
+      }
+      if (!res.ok) {
+        addToast(json.error || 'Could not send receipt', 'warning');
+        return;
+      }
+      addToast(
+        `Receipt ${json.receiptNumber || ''} emailed to ${json.toEmail || 'employer'}.`,
+        'success',
+      );
+      await mutate();
+    } catch {
+      addToast('Network error', 'error');
+    } finally {
+      setSendingReceiptFor(null);
+    }
   };
 
   const scheduleMeeting = () => {
@@ -96,6 +136,84 @@ export default function CollegeSponsorshipsPage() {
             <button className="btn" onClick={scheduleMeeting} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(10px)' }}>Schedule Meeting</button>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '2rem', padding: '1.25rem 1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <Banknote size={20} aria-hidden="true" />
+          <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>Employer payment activity</h2>
+        </div>
+        <p className="text-sm text-secondary" style={{ margin: '0 0 1rem' }}>
+          Cheque mailed confirmations, bank transfer reports (with optional screenshot flag), and Stripes-123 demo payments
+          appear here. Employer-submitted <strong>legal name, PAN, and GSTIN</strong> (from the sponsorship checkout) show
+          under each company for verification before you send mail. Use <strong>Tax receipt</strong> to email a donation /
+          sponsorship acknowledgment to the employer’s account email (wording is template-based; consult compliance for
+          80G and formal invoices).
+        </p>
+        {payments.length === 0 ? (
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>No payments recorded yet.</p>
+        ) : (
+          <div className="table-container" style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Employer</th>
+                  <th>Tier</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                  <th>Ref / #</th>
+                  <th style={{ width: 1 }}>Tax receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id}>
+                    <td className="text-sm">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}</td>
+                    <td>
+                      <div>{p.companyName}</div>
+                      {(p.billingLegalName || p.billingPan || p.billingGstNumber) ? (
+                        <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem', lineHeight: 1.4 }}>
+                          {p.billingLegalName ? <div>Legal: {p.billingLegalName}</div> : null}
+                          {p.billingPan ? <div>PAN: {p.billingPan}</div> : null}
+                          {p.billingGstNumber ? <div>GSTIN: {p.billingGstNumber}</div> : null}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="text-sm">{p.tierName} <span className="text-tertiary">({p.category})</span></td>
+                    <td>{p.method}</td>
+                    <td className="text-sm">{formatPaymentStatus(p.status, p.method)}</td>
+                    <td>{p.amountLabel}</td>
+                    <td className="text-sm text-tertiary">
+                      {p.gatewayReference || `Seq ${p.paymentSequence}`}
+                      {p.hasProof ? ' · proof attached' : ''}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {p.receiptSent ? (
+                        <span className="text-xs text-secondary" title={p.receiptNumber || ''}>
+                          Sent
+                          {p.receiptSentAt ? ` · ${new Date(p.receiptSentAt).toLocaleDateString('en-IN')}` : ''}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          disabled={sendingReceiptFor === p.id}
+                          title="Email donation/sponsorship receipt to employer"
+                          onClick={() => void sendTaxReceipt(p.id)}
+                        >
+                          <FileCheck2 size={14} style={{ marginRight: 4 }} aria-hidden />
+                          {sendingReceiptFor === p.id ? 'Sending…' : 'Send receipt'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="text-center" style={{ marginBottom: '3rem' }}>

@@ -238,3 +238,12 @@ export function getGradientForName(name = '') {
   const hash = [...name].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   return GRADIENTS[hash % GRADIENTS.length];
 }
+
+/**
+ * Display label for feedback tables: first character uppercased (e.g. college_admin → College_admin).
+ */
+export function formatFeedbackRole(role) {
+  if (role == null || role === '') return '—';
+  const s = String(role);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}

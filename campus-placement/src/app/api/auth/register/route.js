@@ -52,8 +52,8 @@ export async function POST(request) {
         const collegeName = body.collegeFullName || `${firstName}'s College`;
         const slug = slugify(collegeName) + '-' + Date.now().toString(36);
         const tenantResult = await client.query(
-          `INSERT INTO tenants (name, slug, city, state, email)
-           VALUES ($1, $2, $3, $4, $5) RETURNING id, name`,
+          `INSERT INTO tenants (name, slug, city, state, email, communication_email)
+           VALUES ($1, $2, $3, $4, $5, $5) RETURNING id, name`,
           [collegeName, slug, body.city || '', body.state || '', email]
         );
         tenantId = tenantResult.rows[0].id;

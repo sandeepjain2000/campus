@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
@@ -11,7 +12,7 @@ import {
   parseStudentRow, normalizeStudentRollKey,
 } from '@/lib/collegeStudentsCsv';
 import { useToast } from '@/components/ToastProvider';
-import { GraduationCap, Search, Download, Upload, X, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, Search, Download, X, CheckCircle2, UserPlus } from 'lucide-react';
 
 function mergeImportedStudents(prev, imported) {
   const byRoll = new Map(prev.map((s) => [normalizeStudentRollKey(s.roll), { ...s, skills: [...s.skills] }]));
@@ -42,6 +43,16 @@ export default function CollegeStudentsPage() {
   const [semesterFilter, setSemesterFilter] = useState('');
   const [detailStudent, setDetailStudent] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
+
+  // Lock background scroll when modal is open
+  useEffect(() => {
+    if (detailStudent) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [detailStudent]);
 
   const reloadStudents = useCallback(async () => {
     setIsLoading(true);
@@ -103,56 +114,73 @@ export default function CollegeStudentsPage() {
   const onImportFile = useCallback(async (file) => {
     setImportBusy(true);
     try {
-      const text = await file.text();
-      const { headers, rows } = parseCsv(text);
-      const check = validateStudentCsvHeaders(headers);
-      if (!check.ok) { addToast(check.error, 'error'); return; }
-      const { idx } = check;
-      const imported = []; const errors = [];
-      rows.forEach((cells, i) => {
-        const r = parseStudentRow(cells, idx, i + 2);
-        if (!r.ok) errors.push(r.error);
-        else imported.push(r.student);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/college/students/bulk-upload', {
+        method: 'POST',
+        body: formData,
       });
-      if (errors.length) { addToast(errors.slice(0, 5).join(' · '), 'error'); if (errors.length > 5) addToast(`…and ${errors.length - 5} more issues`, 'warning'); return; }
-      if (imported.length === 0) { addToast('No data rows found in CSV', 'warning'); return; }
-      const byRollInFile = new Map();
-      for (const row of imported) byRollInFile.set(normalizeStudentRollKey(row.roll), row);
-      const uniqueImported = Array.from(byRollInFile.values());
-      const dups = imported.length - uniqueImported.length;
-      setStudents((prev) => mergeImportedStudents(prev, uniqueImported));
-      addToast(dups > 0 ? `Updated ${uniqueImported.length} unique roll(s); ${dups} duplicate(s) used last value` : `Imported ${uniqueImported.length} row(s)`, dups > 0 ? 'warning' : 'success');
-    } catch { addToast('Could not read CSV file', 'error'); }
-    finally { setImportBusy(false); }
-  }, [addToast]);
+
+      const json = await res.json();
+      if (!res.ok) {
+        const error = new Error(json.error || 'Import failed');
+        error.details = json.details;
+        error.stack = json.stack;
+        throw error;
+      }
+
+      const processed = json.message || `Successfully processed students`;
+      addToast(processed, 'success');
+      
+      if (json.errors?.length) {
+        addToast(`${json.errors.length} rows had issues.`, 'warning', 10000, { rowErrors: json.errors });
+      }
+
+      // Refresh data from server
+      await reloadStudents();
+    } catch (err) {
+      addToast(err.message || 'Could not process CSV file', 'error', 5000, err.details ? { 
+        details: err.details,
+        stack: err.stack,
+        fileName: file.name,
+        fileSize: file.size,
+        timestamp: new Date().toISOString()
+      } : null);
+    } finally {
+      setImportBusy(false);
+    }
+  }, [addToast, reloadStudents]);
 
   const hasFilters = search || deptFilter || jobStatusFilter || internshipStatusFilter || specializationFilter || semesterFilter || skillFilter;
   const clearFilters = () => { setSearch(''); setDeptFilter(''); setJobStatusFilter(''); setInternshipStatusFilter(''); setSpecializationFilter(''); setSemesterFilter(''); setSkillFilter(''); };
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
-      {/* Glassmorphic Hero */}
-      <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
-        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
-        marginBottom: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
-      }}>
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <GraduationCap size={28} /> Manage Students
+
+      {/* Page Header — v0 standard */}
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.35rem', letterSpacing: '-0.02em' }}>
+            Students
           </h1>
-          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
-            AY <strong style={{ color: 'white' }}>{CURRENT_ACADEMIC_YEAR}</strong> · Semester <strong style={{ color: 'white' }}>{CURRENT_SEMESTER}</strong> · {students.length} students enrolled
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+            AY {CURRENT_ACADEMIC_YEAR} · Semester {CURRENT_SEMESTER} · {students.length} enrolled
           </p>
         </div>
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn" onClick={downloadTemplate} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Download size={16} /> Template
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={downloadTemplate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border-default)', fontSize: '0.85rem' }}>
+            <Download size={14} /> Template
           </button>
           <ExportCsvSplitButton filenameBase="students" currentCount={filtered.length} fullCount={students.length} getRows={getStudentCsv} />
           <ImportCsvSplitButton onFileSelected={onImportFile} busy={importBusy} />
+          <Link
+            href="/dashboard/college/students/add"
+            className="btn btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <UserPlus size={15} /> Add Student
+          </Link>
         </div>
       </div>
 
@@ -207,85 +235,143 @@ export default function CollegeStudentsPage() {
       )}
 
       {!isLoading && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
-          <div className="table-container" style={{ border: 'none' }}>
-            <table className="data-table">
-              <thead>
-                <tr style={{ background: 'var(--bg-secondary)' }}>
-                  <th style={{ width: 50, paddingLeft: '1.5rem' }}>#</th>
-                  <th>Student</th>
-                  <th>Roll No.</th>
-                  <th>Department</th>
-                  <th>Specialization</th>
-                  <th>Sem</th>
-                  <th>CGPA</th>
-                  <th>Job Status</th>
-                  <th>Internship</th>
-                  <th style={{ paddingRight: '1.5rem' }}>Verified</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s, index) => {
-                  const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                  return (
-                    <tr key={s.id} role="button" tabIndex={0} style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                      onClick={() => setDetailStudent(s)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailStudent(s); } }}
-                    >
-                      <td style={{ color: 'var(--text-tertiary)', paddingLeft: '1.5rem', fontSize: '0.85rem' }}>{index + 1}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          {s.photo ? (
-                            <img src={s.photo} alt={s.name} width={34} height={34} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }} />
-                          ) : (
-                            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--primary-300)', flexShrink: 0 }}>
-                              {initials || 'S'}
+        <>
+          <div className="desktop-table card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+            <div className="table-container" style={{ border: 'none' }}>
+              <table className="data-table">
+                <thead>
+                  <tr style={{ background: 'var(--bg-secondary)' }}>
+                    <th style={{ width: 50, paddingLeft: '1.5rem' }}>#</th>
+                    <th>System ID</th>
+                    <th>Student</th>
+                    <th>Department</th>
+                    <th>Specialization</th>
+                    <th>Sem</th>
+                    <th>CGPA</th>
+                    <th>Job Status</th>
+                    <th>Internship</th>
+                    <th style={{ paddingRight: '1.5rem' }}>Verified</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((s, index) => {
+                    const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                    return (
+                      <tr key={s.id} role="button" tabIndex={0} style={{ cursor: 'pointer', transition: 'background 0.15s' }}
+                        onClick={() => setDetailStudent(s)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailStudent(s); } }}
+                      >
+                        <td style={{ color: 'var(--text-tertiary)', paddingLeft: '1.5rem', fontSize: '0.85rem' }}>{index + 1}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {s.photo ? (
+                              <img src={s.photo} alt={s.name} width={34} height={34} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }} />
+                            ) : (
+                              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--primary-300)', flexShrink: 0 }}>
+                                {initials || 'S'}
+                              </div>
+                            )}
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{s.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{s.skills.slice(0, 2).join(', ')}</div>
                             </div>
-                          )}
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{s.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{s.skills.slice(0, 2).join(', ')}</div>
                           </div>
-                        </div>
-                      </td>
-                      <td style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-secondary)' }}>{s.roll}</td>
-                      <td style={{ fontSize: '0.9rem' }}>{s.dept}</td>
-                      <td><span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>{s.specialization}</span></td>
-                      <td style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono, monospace)' }}>{s.semester || '—'}</td>
-                      <td>
-                        <span style={{ fontWeight: 700, color: s.cgpa >= 8 ? 'var(--success-600)' : s.cgpa >= 6 ? 'var(--text-primary)' : 'var(--warning-600)' }}>
-                          {s.cgpa ?? '—'}
-                        </span>
-                      </td>
-                      <td><span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(s.jobStatus)}</span></td>
-                      <td><span className={`badge badge-${getStatusColor(s.internshipStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(s.internshipStatus)}</span></td>
-                      <td style={{ paddingRight: '1.5rem' }}>
-                        {s.verified
-                          ? <span className="badge badge-green" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle2 size={12} /> Verified</span>
-                          : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Pending</span>}
+                        </td>
+                        <td style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono, monospace)' }}>
+                          <span style={{ background: 'var(--primary-50)', color: 'var(--primary-700)', border: '1px solid var(--primary-200)', borderRadius: '4px', padding: '0.15rem 0.5rem', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{s.systemId || s.roll}</span>
+                        </td>
+                        <td style={{ fontSize: '0.9rem' }}>{s.dept}</td>
+                        <td><span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>{s.specialization}</span></td>
+                        <td style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono, monospace)' }}>{s.semester || '—'}</td>
+                        <td>
+                          <span style={{ fontWeight: 700, color: s.cgpa >= 8 ? 'var(--success-600)' : s.cgpa >= 6 ? 'var(--text-primary)' : 'var(--warning-600)' }}>
+                            {s.cgpa ?? '—'}
+                          </span>
+                        </td>
+                        <td><span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(s.jobStatus)}</span></td>
+                        <td><span className={`badge badge-${getStatusColor(s.internshipStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(s.internshipStatus)}</span></td>
+                        <td style={{ paddingRight: '1.5rem' }}>
+                          {s.verified
+                            ? <span className="badge badge-green" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle2 size={12} /> Verified</span>
+                            : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Pending</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!isLoading && filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
+                        <GraduationCap size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No students found</div>
+                        <div>Try adjusting your filters or import a student CSV.</div>
                       </td>
                     </tr>
-                  );
-                })}
-                {!isLoading && filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
-                      <GraduationCap size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                      <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No students found</div>
-                      <div>Try adjusting your filters or import a student CSV.</div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* Mobile view cards */}
+          <div className="mobile-cards">
+            {filtered.map((s, index) => {
+              const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <div key={s.id} style={{ border: '1px solid var(--border-default)', borderRadius: '12px', padding: '1rem', background: 'var(--bg-elevated)', marginBottom: '0.75rem', cursor: 'pointer' }} onClick={() => setDetailStudent(s)}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    {s.photo ? (
+                      <img src={s.photo} alt={s.name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }} />
+                    ) : (
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, border: '1px solid var(--primary-300)', flexShrink: 0 }}>
+                        {initials || 'S'}
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{s.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono, monospace)' }}>{s.systemId || s.roll}</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{s.dept || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CGPA</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: s.cgpa >= 8 ? 'var(--success-600)' : s.cgpa >= 6 ? 'var(--text-primary)' : 'var(--warning-600)' }}>{s.cgpa ?? '—'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>Job: {formatStatus(s.jobStatus)}</span>
+                    {s.internshipStatus !== 'none' && <span className={`badge badge-${getStatusColor(s.internshipStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>Intern: {formatStatus(s.internshipStatus)}</span>}
+                    {s.verified ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{marginRight: 4}}/> Verified</span> : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Unverified</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {!isLoading && filtered.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-tertiary)', border: '1px solid var(--border-default)', borderRadius: '12px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No students found</div>
+                <div style={{ fontSize: '0.85rem' }}>Try adjusting filters</div>
+              </div>
+            )}
+          </div>
+          
+          <style>{`
+            .mobile-cards { display: none; }
+            @media (max-width: 768px) {
+              .desktop-table { display: none !important; }
+              .mobile-cards { display: block; }
+            }
+          `}</style>
+        </>
       )}
 
       {/* Student Detail Modal */}
       {detailStudent && (
-        <div className="modal-overlay" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setDetailStudent(null); }}>
-          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="student-detail-title" style={{ borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+        <div className="modal-overlay" role="presentation" style={{ overflowY: 'auto', alignItems: 'flex-start' }} onClick={(e) => { if (e.target === e.currentTarget) setDetailStudent(null); }}>
+          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="student-detail-title" style={{ borderRadius: 'var(--radius-xl)', margin: 'auto' }}>
             {/* Modal Header */}
             <div style={{ padding: '1.5rem 2rem', background: 'linear-gradient(135deg, var(--primary-900), var(--primary-700))', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -309,7 +395,9 @@ export default function CollegeStudentsPage() {
             <div className="modal-body" style={{ padding: '2rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                 {[
-                  { label: 'Department', value: detailStudent.dept },
+                  { label: 'System ID', value: detailStudent.systemId },
+                   { label: 'Roll No.', value: detailStudent.roll },
+                   { label: 'Department', value: detailStudent.dept },
                   { label: 'Specialization', value: detailStudent.specialization },
                   { label: 'CGPA', value: detailStudent.cgpa },
                   { label: 'Semester', value: detailStudent.semester },
@@ -355,6 +443,7 @@ export default function CollegeStudentsPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

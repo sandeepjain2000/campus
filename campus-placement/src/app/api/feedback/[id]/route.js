@@ -23,9 +23,15 @@ export async function GET(req, { params }) {
       `SELECT f.id, f.title, f.category, f.description, f.status, f.created_at, f.updated_at,
               u.email AS user_email,
               TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS user_name,
-              u.role AS user_role
+              u.role AS user_role,
+              CASE
+                WHEN u.role = 'employer' THEN ep.company_name
+                ELSE t.name
+              END AS organization_name
        FROM platform_feedback f
        LEFT JOIN users u ON u.id = f.user_id
+       LEFT JOIN tenants t ON t.id = u.tenant_id
+       LEFT JOIN employer_profiles ep ON ep.user_id = u.id AND u.role = 'employer'
        WHERE ${where}
        LIMIT 1`,
       args,

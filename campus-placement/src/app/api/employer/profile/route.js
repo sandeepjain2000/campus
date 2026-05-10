@@ -6,6 +6,37 @@ import { EMPLOYER_COMPANY_TYPE_OPTIONS } from '@/lib/employerCompanyTypeLabels';
 
 const ALLOWED_COMPANY_TYPES = new Set(EMPLOYER_COMPANY_TYPE_OPTIONS.map((o) => o.value));
 
+function normalizeBillingPatch(body) {
+  const legalRaw = String(body?.billingLegalName ?? body?.billing_legal_name ?? '').trim();
+  const legal = legalRaw.length > 280 ? legalRaw.slice(0, 280) : legalRaw;
+  const legalOut = legal || null;
+
+  let panRaw = String(body?.billingPan ?? body?.billing_pan ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+  if (panRaw.length > 10) panRaw = panRaw.slice(0, 10);
+  if (panRaw && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panRaw)) {
+    return { error: 'PAN must be 10 characters in format AAAAA9999A' };
+  }
+  const panOut = panRaw || null;
+
+  let gstRaw = String(body?.billingGstNumber ?? body?.billing_gst_number ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+  if (gstRaw.length > 18) gstRaw = gstRaw.slice(0, 18);
+  if (gstRaw && gstRaw.length !== 15) {
+    return { error: 'GSTIN must be exactly 15 characters when provided' };
+  }
+  if (gstRaw && !/^[0-9]{2}[A-Z0-9]{13}$/.test(gstRaw)) {
+    return { error: 'GSTIN format looks invalid' };
+  }
+  const gstOut = gstRaw || null;
+
+  return { legal: legalOut, pan: panOut, gst: gstOut };
+}
+
 async function getEmployerByUser(userId) {
   const res = await query(
     `SELECT
@@ -24,7 +55,10 @@ async function getEmployerByUser(userId) {
        ep.contact_email,
        ep.contact_phone,
        ep.total_hires,
-       ep.reliability_score
+       ep.reliability_score,
+       ep.billing_legal_name,
+       ep.billing_pan,
+       ep.billing_gst_number
      FROM employer_profiles ep
      WHERE ep.user_id = $1
      LIMIT 1`,
@@ -95,6 +129,21 @@ export async function PATCH(request) {
           .map((x) => x.trim())
           .filter(Boolean);
 
+    const billingKeys = ['billingLegalName', 'billing_legal_name', 'billingPan', 'billing_pan', 'billingGstNumber', 'billing_gst_number'];
+    const hasBillingPatch = billingKeys.some((k) => Object.prototype.hasOwnProperty.call(body || {}, k));
+    let billingLegal = null;
+    let billingPan = null;
+    let billingGst = null;
+    if (hasBillingPatch) {
+      const b = normalizeBillingPatch(body);
+      if ('error' in b) {
+        return NextResponse.json({ error: b.error }, { status: 400 });
+      }
+      billingLegal = b.legal;
+      billingPan = b.pan;
+      billingGst = b.gst;
+    }
+
     await query(
       `UPDATE employer_profiles
        SET description = $1,
@@ -109,6 +158,9 @@ export async function PATCH(request) {
            company_type = $10,
            company_size = $11,
            founded_year = $12,
+           billing_legal_name = CASE WHEN $14::boolean THEN $15 ELSE billing_legal_name END,
+           billing_pan = CASE WHEN $14::boolean THEN $16 ELSE billing_pan END,
+           billing_gst_number = CASE WHEN $14::boolean THEN $17 ELSE billing_gst_number END,
            updated_at = NOW()
        WHERE id = $13`,
       [
@@ -125,6 +177,10 @@ export async function PATCH(request) {
         companySize || null,
         foundedYear,
         profile.id,
+        hasBillingPatch,
+        billingLegal,
+        billingPan,
+        billingGst,
       ]
     );
 

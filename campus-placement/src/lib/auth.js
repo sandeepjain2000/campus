@@ -87,6 +87,7 @@ export const authOptions = {
           return {
             id: user.id,
             email: user.email,
+            communication_email: user.communication_email || user.email,
             name: `${user.first_name} ${user.last_name || ''}`.trim(),
             role: user.role,
             tenantId: user.tenant_id,
@@ -110,6 +111,8 @@ export const authOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
+        token.email = user.email;
+        token.communication_email = user.communication_email || user.email;
         token.role = user.role;
         token.tenantId = user.tenantId;
         token.tenantName = user.tenantName;
@@ -128,6 +131,8 @@ export const authOptions = {
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
+        session.user.email = token.email;
+        session.user.communication_email = token.communication_email || token.email;
         session.user.role = token.role;
         session.user.tenantId = token.tenantId;
         session.user.tenant_id = token.tenantId ?? null;

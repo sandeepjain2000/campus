@@ -7,6 +7,7 @@ import { useToast } from '@/components/ToastProvider';
 import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
 import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
+import TagPicker from '@/components/TagPicker';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -68,7 +69,6 @@ export default function StudentProfilePage() {
   const { addToast } = useToast();
   const email = session?.user?.email || '';
   const [editing, setEditing] = useState(false);
-  const [newSkill, setNewSkill] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -137,20 +137,6 @@ export default function StudentProfilePage() {
     } finally {
       setProfileSaving(false);
     }
-  };
-
-  const handleAddSkill = (e) => {
-    e.preventDefault();
-    const skills = profile.skills || [];
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      persist({ ...profile, skills: [...skills, newSkill.trim()] });
-    }
-    setNewSkill('');
-  };
-
-  const handleRemoveSkill = (skillToRemove) => {
-    const skills = profile.skills || [];
-    persist({ ...profile, skills: skills.filter((s) => s !== skillToRemove) });
   };
 
   const addProfileLink = () => {
@@ -742,39 +728,35 @@ export default function StudentProfilePage() {
           <div className="card-header">
             <h3 className="card-title">💡 Skills</h3>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {skillsList.map((skill, i) => (
-              <span
-                key={i}
-                className="badge badge-indigo"
-                style={{ padding: '0.375rem 0.875rem', fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                {skill}
-                {editing && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSkill(skill)}
-                    style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.7, fontSize: '0.75rem' }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-          {editing && (
-            <form onSubmit={handleAddSkill} style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-              <input
-                className="form-input"
-                placeholder="Type skill & press Enter..."
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                style={{ flex: 1, padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
+          {editing ? (
+            <>
+              <TagPicker
+                tags={skillsList}
+                onChange={(skills) => setProfile((p) => ({ ...p, skills }))}
+                placeholder="Type a skill and press Enter…"
               />
-              <button type="submit" className="btn btn-secondary btn-sm">
-                Add
-              </button>
-            </form>
+              <p className="text-sm" style={{ marginTop: '0.5rem', color: 'var(--text-tertiary)' }}>
+                Press Enter or comma to add a tag. Backspace removes the last tag when the field is empty.
+              </p>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {skillsList.length ? (
+                skillsList.map((skill, i) => (
+                  <span
+                    key={`${skill}-${i}`}
+                    className="badge badge-indigo"
+                    style={{ padding: '0.375rem 0.875rem', fontSize: '0.8125rem' }}
+                  >
+                    {skill}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  No skills yet. Edit profile to add some.
+                </span>
+              )}
+            </div>
           )}
         </div>
 

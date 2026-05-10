@@ -9,6 +9,52 @@ function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
 }
 
+/** Older DBs may not have run db/migrations/012_employer_poc_drive_social_shared.sql yet. */
+async function loadDrivesForTenant(tenantId) {
+  const baseFrom = `
+      FROM placement_drives d
+      LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
+      WHERE d.tenant_id = $1::uuid
+      ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC`;
+  try {
+    return await query(
+      `SELECT
+        d.id,
+        ep.company_name AS company,
+        d.title AS role,
+        d.drive_date AS date,
+        d.drive_type AS type,
+        d.status,
+        d.registered_count AS registered,
+        d.selected_count AS selected,
+        d.venue,
+        COALESCE(d.social_shared, ARRAY[]::text[]) AS social_shared
+      ${baseFrom}`,
+      [tenantId],
+    );
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (err?.code === '42703' && msg.includes('social_shared')) {
+      const slim = await query(
+        `SELECT
+        d.id,
+        ep.company_name AS company,
+        d.title AS role,
+        d.drive_date AS date,
+        d.drive_type AS type,
+        d.status,
+        d.registered_count AS registered,
+        d.selected_count AS selected,
+        d.venue
+      ${baseFrom}`,
+        [tenantId],
+      );
+      return { rows: slim.rows.map((r) => ({ ...r, social_shared: [] })) };
+    }
+    throw err;
+  }
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -21,24 +67,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
 
-    const drives = await query(
-      `SELECT
-        d.id,
-        ep.company_name AS company,
-        d.title AS role,
-        d.drive_date AS date,
-        d.drive_type AS type,
-        d.status,
-        d.registered_count AS registered,
-        d.selected_count AS selected,
-        d.venue,
-        COALESCE(d.social_shared, '{}') AS social_shared
-      FROM placement_drives d
-      LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-      WHERE d.tenant_id = $1::uuid
-      ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC`,
-      [tenantId]
-    );
+    const drives = await loadDrivesForTenant(tenantId);
 
     const staff = await query(
       `SELECT id, first_name, last_name, role
@@ -64,7 +93,11 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Failed to load college drives:', error);
-    return NextResponse.json({ error: 'Failed to load college drives' }, { status: 500 });
+    const body = { error: 'Failed to load college drives' };
+    if (process.env.NODE_ENV === 'development') {
+      body.details = error?.message || String(error);
+    }
+    return NextResponse.json(body, { status: 500 });
   }
 }
 

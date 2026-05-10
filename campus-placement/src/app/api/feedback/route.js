@@ -5,33 +5,98 @@ import { query } from '@/lib/db';
 
 const ALLOWED_CATEGORIES = new Set(['Feature Request', 'Bug Report', 'General Feedback']);
 
-export async function GET() {
+const EMPTY_STATUS_COUNTS = () => ({
+  Submitted: 0,
+  'Under Review': 0,
+  Planned: 0,
+  Closed: 0,
+});
+
+function mergeStatusCounts(rows) {
+  const out = EMPTY_STATUS_COUNTS();
+  for (const r of rows || []) {
+    if (Object.prototype.hasOwnProperty.call(out, r.status)) {
+      out[r.status] = Number(r.n) || 0;
+    }
+  }
+  return out;
+}
+
+export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const url = new URL(req.url);
+    const pageParam = url.searchParams.get('page');
+    const pageSizeParam = url.searchParams.get('pageSize');
+    const paginate = pageParam != null || pageSizeParam != null;
+    const page = Math.max(1, Number.parseInt(pageParam || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(pageSizeParam || '10', 10) || 10));
+
     const isSuperAdmin = session.user.role === 'super_admin';
     const params = [];
     const where = isSuperAdmin ? '' : 'WHERE f.user_id = $1';
     if (!isSuperAdmin) params.push(session.user.id);
+
+    const fromJoins = `
+      FROM platform_feedback f
+      LEFT JOIN users u ON u.id = f.user_id
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN employer_profiles ep ON ep.user_id = u.id AND u.role = 'employer'
+    `;
+
+    const totalRes = await query(
+      `SELECT COUNT(*)::int AS total ${fromJoins} ${where}`,
+      [...params],
+    );
+    const total = totalRes.rows[0]?.total ?? 0;
+
+    const statusRes = await query(
+      `SELECT f.status, COUNT(*)::int AS n ${fromJoins} ${where} GROUP BY f.status`,
+      [...params],
+    );
+    const statusCounts = mergeStatusCounts(statusRes.rows);
+
+    const replyCountExpr = `COALESCE((SELECT COUNT(*)::int FROM platform_feedback_replies r WHERE r.feedback_id = f.id), 0)`;
+
+    const limitOffset = paginate
+      ? `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
+      : '';
+
+    const listParams = paginate ? [...params, pageSize, (page - 1) * pageSize] : [...params];
 
     const res = await query(
       `SELECT f.id, f.title, f.category, f.description, f.status, f.created_at, f.updated_at,
               u.email AS user_email,
               TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS user_name,
               u.role AS user_role,
-              COALESCE((SELECT COUNT(*) FROM platform_feedback_replies r WHERE r.feedback_id = f.id), 0) AS reply_count,
+              CASE
+                WHEN u.role = 'employer' THEN ep.company_name
+                ELSE t.name
+              END AS organization_name,
+              ${replyCountExpr} AS reply_count,
               (SELECT r.message FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1) AS latest_reply,
               (SELECT r.created_at FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1) AS latest_reply_at
-       FROM platform_feedback f
-       LEFT JOIN users u ON u.id = f.user_id
+       ${fromJoins}
        ${where}
-       ORDER BY f.created_at DESC`,
-      params,
+       ORDER BY (${replyCountExpr} > 0) DESC, f.created_at DESC
+       ${limitOffset}`,
+      listParams,
     );
-    return NextResponse.json({ items: res.rows });
+
+    const payload = {
+      items: res.rows,
+      total,
+      statusCounts,
+    };
+    if (paginate) {
+      payload.page = page;
+      payload.pageSize = pageSize;
+    }
+    return NextResponse.json(payload);
   } catch (e) {
     console.error('GET /api/feedback', e);
     if (e.code === '42P01') {

@@ -36,6 +36,7 @@ export default function EmployerProfilePage() {
     };
     return {
       companyName: str(p.company_name),
+      companyNameRaw: (p.company_name != null && String(p.company_name).trim() !== '') ? String(p.company_name).trim() : '',
       industry: str(p.industry),
       companyTypeLabel: labelEmployerCompanyType(p.company_type),
       companySize: str(p.company_size),
@@ -54,6 +55,14 @@ export default function EmployerProfilePage() {
       contactPhone: str(p.contact_phone),
       totalHires: numOrNull(p.total_hires),
       reliabilityScore: numOrNull(p.reliability_score),
+      billingLegalName: (p.billing_legal_name != null && String(p.billing_legal_name).trim() !== '')
+        ? String(p.billing_legal_name).trim()
+        : '',
+      billingPan: (p.billing_pan != null && String(p.billing_pan).trim() !== '') ? String(p.billing_pan).trim() : '',
+      billingGstNumber:
+        (p.billing_gst_number != null && String(p.billing_gst_number).trim() !== '')
+          ? String(p.billing_gst_number).trim()
+          : '',
     };
   }, [data?.profile]);
 
@@ -72,6 +81,9 @@ export default function EmployerProfilePage() {
         companyType: profile.companyTypeRaw,
         companySize: profile.companySizeRaw,
         foundedYear: profile.foundedRaw,
+        billingLegalName: profile.billingLegalName || profile.companyNameRaw || '',
+        billingPan: profile.billingPan,
+        billingGstNumber: profile.billingGstNumber,
       });
     }
     setEditing((v) => !v);
@@ -96,6 +108,9 @@ export default function EmployerProfilePage() {
           companyType: form.companyType,
           companySize: form.companySize,
           foundedYear: form.foundedYear === '' ? null : form.foundedYear,
+          billingLegalName: form.billingLegalName,
+          billingPan: form.billingPan,
+          billingGstNumber: form.billingGstNumber,
         }),
       });
       const json = await res.json();
@@ -364,6 +379,34 @@ export default function EmployerProfilePage() {
               )}
             </div>
           </div>
+
+          <div className="card card-hover">
+            <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+                <FileText size={18} className="text-primary-600" /> Sponsorship receipts (legal / tax)
+              </h3>
+            </div>
+            {profile.billingLegalName || profile.billingPan || profile.billingGstNumber ? (
+              <div className="drive-info-grid" style={{ gap: '1rem' }}>
+                <div className="drive-info-item">
+                  <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legal name</div>
+                  <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.billingLegalName || '—'}</div>
+                </div>
+                <div className="drive-info-item">
+                  <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAN</div>
+                  <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace' }}>{profile.billingPan || '—'}</div>
+                </div>
+                <div className="drive-info-item">
+                  <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>GSTIN</div>
+                  <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace' }}>{profile.billingGstNumber || '—'}</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-secondary text-sm" style={{ margin: 0, lineHeight: 1.55 }}>
+                Not set yet. These appear on college-issued sponsorship acknowledgments. Add them when you sponsor a campus tier, or edit your company profile.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -473,6 +516,43 @@ export default function EmployerProfilePage() {
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">All Office Locations</label>
                   <input className="form-input" value={form.locations} onChange={(e) => setForm((p) => ({ ...p, locations: e.target.value }))} placeholder="Comma separated list of cities" />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <hr style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0 1rem' }} />
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.35rem' }}>Sponsorship receipts (legal / tax)</h4>
+                  <p className="text-xs text-secondary" style={{ margin: '0 0 1rem', lineHeight: 1.45 }}>
+                    Used when colleges email donation or sponsorship acknowledgments. PAN: AAAAA9999A. GSTIN: 15 characters.
+                  </p>
+                </div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Legal name</label>
+                  <input
+                    className="form-input"
+                    value={form.billingLegalName}
+                    onChange={(e) => setForm((p) => ({ ...p, billingLegalName: e.target.value }))}
+                    placeholder="Registered name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">PAN</label>
+                  <input
+                    className="form-input"
+                    value={form.billingPan}
+                    onChange={(e) => setForm((p) => ({ ...p, billingPan: e.target.value.toUpperCase() }))}
+                    placeholder="ABCDE1234F"
+                    maxLength={10}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">GSTIN</label>
+                  <input
+                    className="form-input"
+                    value={form.billingGstNumber}
+                    onChange={(e) => setForm((p) => ({ ...p, billingGstNumber: e.target.value.toUpperCase() }))}
+                    placeholder="15-character GSTIN"
+                    maxLength={15}
+                  />
                 </div>
               </div>
             </div>

@@ -87,7 +87,7 @@ export async function getClient() {
   const timeout = setTimeout(() => {
     console.error('Client has been checked out for too long!');
     client.release();
-  }, 30000);
+  }, 120000);
 
   client.release = () => {
     clearTimeout(timeout);

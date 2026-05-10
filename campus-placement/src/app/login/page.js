@@ -5,16 +5,47 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
-import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled } from '@/lib/demoLogins';
+import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled, SEEDED_EMPLOYER_CREDENTIALS } from '@/lib/demoLogins';
 import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff } from 'lucide-react';
 
-const ROLE_GROUPS = [
-  { key: 'student',   label: 'Students',        icon: GraduationCap, color: 'var(--primary-600)',  bg: 'var(--primary-50)',  border: 'var(--primary-200)' },
-  { key: 'employer',  label: 'Employers',       icon: Building2,     color: 'var(--success-600)', bg: 'var(--success-50)', border: 'var(--success-200)' },
-  { key: 'admin',     label: 'College Admins',  icon: School,        color: 'var(--warning-600)', bg: 'var(--warning-50)', border: 'var(--warning-200)' },
-  { key: 'superadmin',label: 'Platform Admin',  icon: ShieldCheck,   color: 'var(--danger-600)',  bg: 'var(--danger-50)',  border: 'var(--danger-200)' },
-  { key: 'dummy',     label: 'Coming Soon',     icon: Users,         color: 'var(--text-tertiary)',bg: 'var(--bg-secondary)',border: 'var(--border-default)' },
-];
+/** Match `/demo-accounts` three-column grouping: Students | Employers | (Super + College admins). */
+const DEMO_GROUP_META = {
+  student: {
+    label: 'Students',
+    icon: GraduationCap,
+    color: 'var(--primary-700)',
+    bg: 'var(--primary-50)',
+    border: 'var(--primary-200)',
+  },
+  employer: {
+    label: 'Employers',
+    icon: Building2,
+    color: 'var(--success-700)',
+    bg: 'var(--success-50)',
+    border: 'var(--success-200)',
+  },
+  admin: {
+    label: 'College Admins',
+    icon: School,
+    color: 'var(--warning-700)',
+    bg: 'var(--warning-50)',
+    border: 'var(--warning-200)',
+  },
+  superadmin: {
+    label: 'Super Admins',
+    icon: ShieldCheck,
+    color: 'var(--danger-700)',
+    bg: 'var(--danger-50)',
+    border: 'var(--danger-200)',
+  },
+  dummy: {
+    label: 'Coming Soon',
+    icon: Users,
+    color: 'var(--text-tertiary)',
+    bg: 'var(--bg-secondary)',
+    border: 'var(--border-default)',
+  },
+};
 
 function getGroupKey(demo) {
   if (demo.isDummy) return 'dummy';
@@ -48,7 +79,8 @@ function LoginPageInner() {
   const toast = useToast();
   const uniqueDemoLogins = useMemo(() => {
     const seen = new Set();
-    return DEMO_LOGINS.filter((d) => {
+    const merged = [...DEMO_LOGINS, ...SEEDED_EMPLOYER_CREDENTIALS];
+    return merged.filter((d) => {
       const key = String(d?.email || '').trim().toLowerCase();
       if (!key || seen.has(key)) return false;
       seen.add(key);
@@ -146,11 +178,124 @@ function LoginPageInner() {
     toast.info('Credentials auto-filled — click Sign In.');
   };
 
+  const demosByGroup = useMemo(() => {
+    const buckets = { student: [], employer: [], admin: [], superadmin: [], dummy: [] };
+    for (const d of uniqueDemoLogins) {
+      const k = getGroupKey(d);
+      if (buckets[k]) buckets[k].push(d);
+    }
+    return buckets;
+  }, [uniqueDemoLogins]);
+
+  /** One card — same structure as a column on `/demo-accounts`. */
+  const renderDemoListCard = (groupKey) => {
+    const items = demosByGroup[groupKey] || [];
+    if (items.length === 0) return null;
+    const meta = DEMO_GROUP_META[groupKey];
+    const Icon = meta.icon;
+    return (
+      <div
+        key={groupKey}
+        style={{
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+          boxShadow: 'var(--shadow-sm)',
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            background: meta.bg,
+            borderBottom: `1px solid ${meta.border}`,
+            padding: '0.5rem 0.65rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            color: meta.color,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            fontSize: '0.65rem',
+          }}
+        >
+          <Icon size={13} aria-hidden />
+          {meta.label} ({items.length})
+        </div>
+        <div>
+          {items.map((demo, i) => (
+            <div
+              key={demo.email}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.45rem 0.6rem',
+                borderBottom: i < items.length - 1 ? '1px solid var(--border-default)' : 'none',
+                background: 'var(--bg-primary)',
+                gap: '0.4rem',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: demo.isDummy ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {demo.label}
+                  {demo.name ? (
+                    <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {demo.name}</span>
+                  ) : null}
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.68rem',
+                    color: 'var(--text-tertiary)',
+                    fontFamily: 'monospace',
+                    marginTop: '0.06rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {demo.email}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => fillCredential(demo)}
+                disabled={demo.isDummy}
+                style={{
+                  flexShrink: 0,
+                  padding: '0.2rem 0.45rem',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius-sm)',
+                  border: `1px solid ${demo.isDummy ? 'var(--border-default)' : meta.border}`,
+                  background: demo.isDummy ? 'var(--bg-secondary)' : meta.bg,
+                  color: demo.isDummy ? 'var(--text-tertiary)' : meta.color,
+                  cursor: demo.isDummy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {demo.isDummy ? 'Soon' : 'Use →'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
       
-      <div style={{ width: '100%', maxWidth: '420px' }}>
+      <div style={{ width: '100%', maxWidth: showCredentials && showDemoLogins ? 'min(960px, 100%)' : '420px', transition: 'max-width 0.2s ease' }}>
         
         {/* Modern Centered Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -209,126 +354,78 @@ function LoginPageInner() {
               </button>
 
               {showCredentials && (
-                <div style={{
-                  marginTop: '0.625rem',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)',
-                  overflow: 'hidden',
-                }}>
-                  {/* Password note */}
-                  <div style={{
-                    padding: '0.5rem 0.875rem',
-                    background: 'var(--bg-secondary)',
-                    borderBottom: '1px solid var(--border-default)',
-                    fontSize: '0.75rem',
-                    color: 'var(--text-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                  }}>
-                    Demo accounts share password: <code style={{ fontWeight: 700, color: 'var(--text-primary)', background: 'var(--bg-primary)', padding: '0.1rem 0.35rem', borderRadius: 4 }}>{DEMO_SEED_PASSWORD}</code>
+                <div
+                  style={{
+                    marginTop: '0.625rem',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '0.5rem 0.875rem',
+                      background: 'var(--bg-secondary)',
+                      borderBottom: '1px solid var(--border-default)',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    Same layout as <strong>View all system accounts</strong> — password:{' '}
+                    <code
+                      style={{
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        background: 'var(--bg-primary)',
+                        padding: '0.1rem 0.35rem',
+                        borderRadius: 4,
+                      }}
+                    >
+                      {DEMO_SEED_PASSWORD}
+                    </code>
                   </div>
 
-                  {ROLE_GROUPS.map((group) => {
-                    const Icon = group.icon;
-                    const items = uniqueDemoLogins.filter((d) => getGroupKey(d) === group.key);
-                    if (items.length === 0) return null;
-                    return (
-                      <div key={group.key}>
-                        {/* Group header */}
-                        <div style={{
-                          padding: '0.375rem 0.875rem',
-                          background: group.bg,
-                          borderBottom: `1px solid ${group.border}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          letterSpacing: '0.05em',
-                          textTransform: 'uppercase',
-                          color: group.color,
-                        }}>
-                          <Icon size={12} aria-hidden />
-                          {group.label}
-                        </div>
-                        {/* Credential rows */}
-                        {items.map((demo, i) => (
-                          <div
-                            key={demo.email}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '0.5rem 0.875rem',
-                              borderBottom: i < items.length - 1 ? '1px solid var(--border-default)' : 'none',
-                              background: 'var(--bg-primary)',
-                              gap: '0.5rem',
-                            }}
-                          >
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: demo.isDummy ? 'var(--text-tertiary)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {demo.label}
-                                {demo.name ? <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {demo.name}</span> : null}
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '0.1rem' }}>{demo.email}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => fillCredential(demo)}
-                              disabled={demo.isDummy}
-                              style={{
-                                flexShrink: 0,
-                                padding: '0.25rem 0.625rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                borderRadius: 'var(--radius-sm)',
-                                border: `1px solid ${demo.isDummy ? 'var(--border-default)' : group.border}`,
-                                background: demo.isDummy ? 'var(--bg-secondary)' : group.bg,
-                                color: demo.isDummy ? 'var(--text-tertiary)' : group.color,
-                                cursor: demo.isDummy ? 'not-allowed' : 'pointer',
-                                transition: 'opacity 0.15s',
-                              }}
-                            >
-                              {demo.isDummy ? 'Soon' : 'Use →'}
-                            </button>
-                          </div>
-                        ))}
+                  <div
+                    style={{
+                      padding: '0.75rem',
+                      background: 'var(--bg-primary)',
+                    }}
+                  >
+                    <div
+                      className="login-demo-accounts-grid"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                        gap: '0.75rem',
+                        alignItems: 'start',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {renderDemoListCard('student')}
+                        {renderDemoListCard('dummy')}
                       </div>
-                    );
-                  })}
+                      <div style={{ minWidth: 0 }}>{renderDemoListCard('employer')}</div>
+                      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {renderDemoListCard('superadmin')}
+                        {renderDemoListCard('admin')}
+                      </div>
+                    </div>
+                  </div>
+                  <style>{`
+                    @media (max-width: 720px) {
+                      .login-demo-accounts-grid {
+                        grid-template-columns: 1fr !important;
+                      }
+                    }
+                  `}</style>
                 </div>
               )}
             </div>
           )}
-
-          <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-default)' }}>
-            <Link
-              href="/demo-accounts"
-              target="_blank"
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.625rem 0.875rem',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                textDecoration: 'none',
-                color: 'var(--text-primary)',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                transition: 'all 0.15s',
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Users size={15} />
-                View all system accounts
-              </span>
-              <ArrowRight size={16} style={{ color: 'var(--text-secondary)' }} />
-            </Link>
-          </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group" style={{ marginBottom: '1.25rem' }}>
@@ -398,7 +495,35 @@ function LoginPageInner() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-          
+
+          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-default)' }}>
+            <Link
+              href="/demo-accounts"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.625rem 0.875rem',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                textDecoration: 'none',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Users size={15} />
+                View all system accounts
+              </span>
+              <ArrowRight size={16} style={{ color: 'var(--text-secondary)' }} />
+            </Link>
+          </div>
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
