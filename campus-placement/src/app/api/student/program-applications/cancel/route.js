@@ -32,8 +32,8 @@ export async function POST(req) {
     // Withdraw the application
     await query(`
       UPDATE program_applications 
-      SET status = 'withdrawn', notes = CONCAT(notes, '\nWithdrawal Reason: ', $1), updated_at = NOW()
-      WHERE id = $2
+      SET status = 'withdrawn', notes = COALESCE(notes, '') || '\nWithdrawal Reason: ' || $1::text, updated_at = NOW()
+      WHERE id = $2::uuid
     `, [withdrawal_reason || 'Student cancelled', application_id]);
 
     return NextResponse.json({ 
