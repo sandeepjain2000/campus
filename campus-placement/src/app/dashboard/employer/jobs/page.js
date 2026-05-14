@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
-import { Briefcase, Plus, DollarSign, Users, FileText, GraduationCap, ArrowRight, X, Building2, AlignLeft, CheckCircle2 } from 'lucide-react';
+import { Briefcase, Plus, DollarSign, Users, FileText, GraduationCap, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List } from 'lucide-react';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -99,6 +99,8 @@ export default function EmployerJobsPage() {
   const [form, setForm] = useState(emptyForm);
   const [selectedTenantIds, setSelectedTenantIds] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [closingJobId, setClosingJobId] = useState(null);
+  const [viewMode, setViewMode] = useState('card');
 
   const jobsList = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
   const placementDrives = useMemo(() => {
@@ -180,10 +182,19 @@ export default function EmployerJobsPage() {
     document.body.style.overflow = 'hidden';
   };
 
+  const resetTenantSelection = useCallback(() => {
+    const sel = {};
+    approvedCampuses.forEach((c) => {
+      sel[c.id] = true;
+    });
+    setSelectedTenantIds(sel);
+  }, [approvedCampuses]);
+
   const closeModal = () => {
     setShowModal(false);
     setEditingJob(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
+    resetTenantSelection();
     document.body.style.overflow = '';
   };
 
@@ -245,6 +256,29 @@ export default function EmployerJobsPage() {
     }
   };
 
+  const closePublishedJob = async (job) => {
+    if (!job?.id) return;
+    setClosingJobId(job.id);
+    try {
+      const res = await fetch('/api/employer/jobs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'close', id: job.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(json.error || 'Could not close job', 'error');
+        return;
+      }
+      addToast('Job posting closed. It will stay visible under Closed for your records.', 'success');
+      mutateJobs();
+    } catch {
+      addToast('Network error', 'error');
+    } finally {
+      setClosingJobId(null);
+    }
+  };
+
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* High-Fidelity Glassmorphic Hero Banner */}
@@ -290,112 +324,238 @@ export default function EmployerJobsPage() {
         </div>
       </div>
 
-      {/* Pill-based Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        {[
-          { id: '', label: `All Jobs (${tabCounts.all})` },
-          { id: 'published', label: `Published (${tabCounts.published})` },
-          { id: 'draft', label: `Drafts (${tabCounts.draft})` },
-          { id: 'closed', label: `Closed (${tabCounts.closed})` },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setFilter(t.id)}
-            style={{
-              padding: '0.5rem 1.25rem',
-              borderRadius: '999px',
-              fontWeight: 600,
-              fontSize: '0.95rem',
-              transition: 'all 0.2s ease',
-              border: 'none',
-              cursor: 'pointer',
-              background: filter === t.id ? 'var(--primary-600)' : 'var(--bg-secondary)',
-              color: filter === t.id ? 'white' : 'var(--text-secondary)',
-              boxShadow: filter === t.id ? '0 4px 10px rgba(79, 70, 229, 0.2)' : 'none',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Filter Tabs + View Toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {[
+            { id: '', label: `All Jobs (${tabCounts.all})` },
+            { id: 'published', label: `Published (${tabCounts.published})` },
+            { id: 'draft', label: `Drafts (${tabCounts.draft})` },
+            { id: 'closed', label: `Closed (${tabCounts.closed})` },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setFilter(t.id)}
+              style={{
+                padding: '0.5rem 1.25rem',
+                borderRadius: '999px',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                transition: 'all 0.2s ease',
+                border: 'none',
+                cursor: 'pointer',
+                background: filter === t.id ? 'var(--primary-600)' : 'var(--bg-secondary)',
+                color: filter === t.id ? 'white' : 'var(--text-secondary)',
+                boxShadow: filter === t.id ? '0 4px 10px rgba(79, 70, 229, 0.2)' : 'none',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {/* View Toggle */}
+        <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '10px', padding: '3px', gap: '2px', border: '1px solid var(--border-default)' }}>
+          {[{ mode: 'card', icon: LayoutGrid, label: 'Card view' }, { mode: 'list', icon: List, label: 'List view' }].map(({ mode, icon: Icon, label }) => (
+            <button
+              key={mode}
+              title={label}
+              aria-label={label}
+              onClick={() => setViewMode(mode)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.35rem',
+                padding: '0.4rem 0.85rem', borderRadius: '7px', border: 'none',
+                cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                transition: 'all 0.15s ease',
+                background: viewMode === mode ? 'var(--bg-primary)' : 'transparent',
+                color: viewMode === mode ? 'var(--primary-600)' : 'var(--text-tertiary)',
+                boxShadow: viewMode === mode ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              <Icon size={15} />
+              <span style={{ display: 'none' }}>{label}</span>
+              {mode === 'card' ? 'Cards' : 'List'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Job Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
-        {filtered.map((job) => (
-          <div key={job.id} className="card card-hover" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', height: '100%', border: '1px solid var(--border-default)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem', letterSpacing: '-0.01em' }}>{job.title}</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <span className={`badge badge-${getStatusColor(job.status)}`} style={{ padding: '0.2rem 0.5rem' }}>{formatStatus(job.status)}</span>
-                  <span className="badge badge-gray" style={{ padding: '0.2rem 0.5rem' }}>{formatStatus(job.type)}</span>
+      {/* ── Card View ── */}
+      {viewMode === 'card' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
+          {filtered.map((job) => (
+            <div key={job.id} className="card card-hover" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', height: '100%', border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem', letterSpacing: '-0.01em' }}>{job.title}</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span className={`badge badge-${getStatusColor(job.status)}`} style={{ padding: '0.2rem 0.5rem' }}>{formatStatus(job.status)}</span>
+                    <span className="badge badge-gray" style={{ padding: '0.2rem 0.5rem' }}>{formatStatus(job.type)}</span>
+                  </div>
+                </div>
+                <div style={{ background: 'var(--primary-50)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
+                  <Briefcase size={20} className="text-primary-600" />
                 </div>
               </div>
-              <div style={{ background: 'var(--primary-50)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
-                <Briefcase size={20} className="text-primary-600" />
+              {job.placementDriveId ? (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', background: 'var(--indigo-50)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
+                  <Building2 size={16} className="text-indigo-600" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--indigo-800)', lineHeight: 1.4 }}>Drive: {driveLabel(job.placementDriveId).replace(/^— Not linked —$/, '—')}</span>
+                </div>
+              ) : null}
+              {job.keywords ? (
+                <p className="text-xs" style={{ margin: '0 0 1rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                  <span className="font-semibold text-tertiary">Keywords:</span> {job.keywords}
+                </p>
+              ) : null}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto', padding: '1rem 0', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    <DollarSign size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    {job.salaryMin != null && job.salaryMax != null ? `${formatCurrency(job.salaryMin)} – ${formatCurrency(job.salaryMax)}` : 'Salary TBD'}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    <Users size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    {job.vacancies} vacancies
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    <GraduationCap size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    CGPA: {job.cgpa ?? '—'}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--primary-700)', fontWeight: 600, background: 'var(--primary-50)', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-sm)', width: 'fit-content' }}>
+                    <FileText size={14} />
+                    {job.applications} Apps
+                  </span>
+                </div>
               </div>
-            </div>
-
-            {job.placementDriveId ? (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', background: 'var(--indigo-50)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
-                <Building2 size={16} className="text-indigo-600" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-                <span className="text-sm font-semibold" style={{ color: 'var(--indigo-800)', lineHeight: 1.4 }}>
-                  Drive: {driveLabel(job.placementDriveId).replace(/^— Not linked —$/, '—')}
-                </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button className="btn btn-secondary" style={{ flex: 1, padding: '0.6rem' }} onClick={(e) => { e.stopPropagation(); handleEdit(job); }}>Edit Job</button>
+                  <a className="btn btn-primary" href={`/dashboard/employer/applications?jobId=${job.id}`} style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}>View Pipeline</a>
+                </div>
+                {job.status === 'published' && (
+                  <button type="button" className="btn btn-ghost" style={{ width: '100%', padding: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--text-secondary)' }} disabled={closingJobId === job.id} onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}>
+                    <Ban size={16} aria-hidden />{closingJobId === job.id ? 'Closing…' : 'Close posting'}
+                  </button>
+                )}
               </div>
-            ) : null}
-
-            {job.keywords ? (
-              <p className="text-xs" style={{ margin: '0 0 1rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                <span className="font-semibold text-tertiary">Keywords:</span> {job.keywords}
-              </p>
-            ) : null}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto', padding: '1rem 0', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  <DollarSign size={14} style={{ color: 'var(--text-tertiary)' }} />
-                  {job.salaryMin != null && job.salaryMax != null ? `${formatCurrency(job.salaryMin)} – ${formatCurrency(job.salaryMax)}` : 'Salary TBD'}
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  <Users size={14} style={{ color: 'var(--text-tertiary)' }} />
-                  {job.vacancies} vacancies
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  <GraduationCap size={14} style={{ color: 'var(--text-tertiary)' }} />
-                  CGPA: {job.cgpa ?? '—'}
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--primary-700)', fontWeight: 600, background: 'var(--primary-50)', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-sm)', width: 'fit-content' }}>
-                  <FileText size={14} />
-                  {job.applications} Apps
-                </span>
-              </div>
+              <div className="text-xs text-tertiary" style={{ textAlign: 'center', marginTop: '1rem' }}>Created {job.createdAt ? formatDate(job.createdAt) : '—'}</div>
             </div>
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', padding: '4rem 2rem', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-default)' }}>
+              <Briefcase size={48} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Jobs Found</h3>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>There are no job postings matching the current filter.</p>
+            </div>
+          )}
+        </div>
+      )}
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
-              <button className="btn btn-secondary" style={{ flex: 1, padding: '0.6rem' }} onClick={(e) => { e.stopPropagation(); handleEdit(job); }}>
-                Edit Job
-              </button>
-              <a className="btn btn-primary" href={`/dashboard/employer/applications?jobId=${job.id}`} style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}>
-                View Pipeline
-              </a>
-            </div>
-            
-            <div className="text-xs text-tertiary" style={{ textAlign: 'center', marginTop: '1rem' }}>
-              Created {job.createdAt ? formatDate(job.createdAt) : '—'}
-            </div>
+      {/* ── List View ── */}
+      {viewMode === 'list' && (
+        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          {/* Table header */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 0.7fr 0.7fr 1.1fr 0.6fr 0.6fr 0.5fr auto', gap: '0', background: 'var(--bg-secondary)', padding: '0.65rem 1.25rem', borderBottom: '1px solid var(--border-default)' }}>
+            {['Job Title', 'Type', 'Status', 'Salary', 'Vacancies', 'CGPA', 'Apps', 'Actions'].map((h) => (
+              <span key={h} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>{h}</span>
+            ))}
           </div>
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', padding: '4rem 2rem', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-default)' }}>
-            <Briefcase size={48} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Jobs Found</h3>
-            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>There are no job postings matching the current filter.</p>
-          </div>
-        )}
-      </div>
+
+          {filtered.length === 0 && (
+            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+              <Briefcase size={40} style={{ margin: '0 auto 1rem', opacity: 0.3, display: 'block', color: 'var(--text-tertiary)' }} />
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>No jobs match this filter.</p>
+            </div>
+          )}
+
+          {filtered.map((job, idx) => (
+            <div
+              key={job.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 0.7fr 0.7fr 1.1fr 0.6fr 0.6fr 0.5fr auto',
+                gap: '0',
+                alignItems: 'center',
+                padding: '0.9rem 1.25rem',
+                borderBottom: idx < filtered.length - 1 ? '1px solid var(--border-default)' : 'none',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              {/* Title + keywords */}
+              <div style={{ minWidth: 0, paddingRight: '1rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.975rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                {job.keywords && (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.keywords}</div>
+                )}
+                {job.placementDriveId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--primary-600)', marginTop: '0.2rem' }}>
+                    <Building2 size={11} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{driveLabel(job.placementDriveId).replace(/^— Not linked —$/, '')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Type */}
+              <span className="badge badge-gray" style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{formatStatus(job.type)}</span>
+
+              {/* Status */}
+              <span className={`badge badge-${getStatusColor(job.status)}`} style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{formatStatus(job.status)}</span>
+
+              {/* Salary */}
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                {job.salaryMin != null && job.salaryMax != null ? `${formatCurrency(job.salaryMin)} – ${formatCurrency(job.salaryMax)}` : '—'}
+              </span>
+
+              {/* Vacancies */}
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Users size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />{job.vacancies ?? '—'}
+              </span>
+
+              {/* CGPA */}
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{job.cgpa ?? '—'}</span>
+
+              {/* Apps */}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-700)', background: 'var(--primary-50)', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-sm)', whiteSpace: 'nowrap' }}>
+                <FileText size={12} />{job.applications}
+              </span>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '0.75rem' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                  onClick={(e) => { e.stopPropagation(); handleEdit(job); }}
+                >
+                  Edit
+                </button>
+                <a
+                  className="btn btn-primary"
+                  href={`/dashboard/employer/applications?jobId=${job.id}`}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  Pipeline <ArrowRight size={13} />
+                </a>
+                {job.status === 'published' && (
+                  <button
+                    type="button"
+                    title="Close posting"
+                    className="btn btn-ghost"
+                    style={{ padding: '0.35rem 0.5rem', color: 'var(--text-tertiary)' }}
+                    disabled={closingJobId === job.id}
+                    onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}
+                  >
+                    <Ban size={15} aria-hidden />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* High-Fidelity Job Creation Modal */}
       {showModal && (
