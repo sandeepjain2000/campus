@@ -23,23 +23,38 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const campusId = searchParams.get('campusId');
 
-    const drives = await query(
-      `SELECT d.id, t.name AS college, d.title AS role, d.drive_date AS date, d.drive_type AS type,
-              d.status, d.venue, d.registered_count AS registered
-       FROM placement_drives d
-       JOIN tenants t ON t.id = d.tenant_id
-       WHERE d.employer_id = $1::uuid
-         AND ($2::uuid IS NULL OR d.tenant_id = $2::uuid)
-       ORDER BY d.drive_date NULLS LAST, d.created_at DESC`,
-      [emp.id, campusId || null],
-    );
+    const baseSelect = `
+      SELECT d.id, t.name AS college, d.title AS role, d.drive_date AS date, d.drive_type AS type,
+             d.status, d.venue, d.registered_count AS registered`;
+    const baseFrom = `
+      FROM placement_drives d
+      JOIN tenants t ON t.id = d.tenant_id
+      WHERE d.employer_id = $1::uuid
+        AND ($2::uuid IS NULL OR d.tenant_id = $2::uuid)
+      ORDER BY d.drive_date NULLS LAST, d.created_at DESC`;
+    const params = [emp.id, campusId || null];
 
-    return NextResponse.json({ drives: drives.rows, companyName: emp.company_name });
+    let rows;
+    try {
+      const res = await query(`${baseSelect}, d.ctc_breakup AS ctc_breakup ${baseFrom}`, params);
+      rows = res.rows;
+    } catch (err) {
+      if (err?.code === '42703' && String(err?.message || '').includes('ctc_breakup')) {
+        // Column not yet migrated — return without it
+        const res = await query(`${baseSelect} ${baseFrom}`, params);
+        rows = res.rows.map((r) => ({ ...r, ctc_breakup: null }));
+      } else {
+        throw err;
+      }
+    }
+
+    return NextResponse.json({ drives: rows, companyName: emp.company_name });
   } catch (e) {
     console.error('GET /api/employer/drives', e);
     return NextResponse.json({ error: 'Failed to load drives' }, { status: 500 });
   }
 }
+
 
 export async function POST(request) {
   try {
@@ -60,9 +75,13 @@ export async function POST(request) {
       driveDate = null,
       venue: venueIn,
       jobId = null,
+      ctcBreakup: ctcBreakupIn,
     } = body;
     const venue =
       typeof venueIn === 'string' && venueIn.trim().length > 0 ? venueIn.trim() : null;
+    const ctcBreakupRaw = ctcBreakupIn != null ? String(ctcBreakupIn) : '';
+    const ctcBreakup =
+      ctcBreakupRaw.trim().length > 0 ? ctcBreakupRaw.trim().slice(0, 10000) : null;
 
     if (!tenantId || !title?.trim()) {
       return NextResponse.json({ error: 'tenantId and title are required' }, { status: 400 });
@@ -100,13 +119,13 @@ export async function POST(request) {
       const ins = await client.query(
         `INSERT INTO placement_drives (
            tenant_id, employer_id, job_id, title, description, drive_type, drive_date,
-           start_time, end_time, venue, status, max_students, registered_count
+           start_time, end_time, venue, ctc_breakup, status, max_students, registered_count
          ) VALUES (
            $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7::date,
-           NULL, NULL, $8, 'requested', 100, 0
+           NULL, NULL, $8, $9, 'requested', 100, 0
          )
          RETURNING id, title, drive_date, tenant_id`,
-        [tenantId, emp.id, jobId || null, title.trim(), description || '', driveType, driveDate || null, venue],
+        [tenantId, emp.id, jobId || null, title.trim(), description || '', driveType, driveDate || null, venue, ctcBreakup],
       );
 
       const row = ins.rows[0];
@@ -140,6 +159,7 @@ export async function POST(request) {
           status: 'requested',
           registered: 0,
           venue,
+          ctcBreakup,
         },
       };
     });
@@ -162,6 +182,12 @@ export async function POST(request) {
     return NextResponse.json(result);
   } catch (e) {
     console.error('POST /api/employer/drives', e);
+    if (e.code === '42703' && String(e.message || '').includes('ctc_breakup')) {
+      return NextResponse.json(
+        { error: 'Run db/migrations/038_placement_drives_ctc_breakup.sql on your database.' },
+        { status: 503 },
+      );
+    }
     const code = e.statusCode || 500;
     const safeMsg = code >= 500 ? 'Failed to create drive' : (e.message || 'Failed to create drive');
     return NextResponse.json({ error: safeMsg }, { status: code });

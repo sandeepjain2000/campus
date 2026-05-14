@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { Target, Plus, Video, Building2, Calendar, Users, Filter } from 'lucide-react';
+import { Target, Plus, Video, Building2, Calendar, Users, ChevronDown, Check } from 'lucide-react';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -21,36 +21,59 @@ const emptyForm = {
 
 export default function EmployerDrivesPage() {
   const { addToast } = useToast();
-  const [activeCampus, setActiveCampus] = useState(null);
+  // selectedCampusIds: Set of campus IDs checked; empty = all
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [modalCampusId, setModalCampusId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const dropdownRef = useRef(null);
 
-  // Restore last selected campus from sessionStorage (optional filter only)
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('activeCampus');
-      setActiveCampus(raw ? JSON.parse(raw) : null);
-    } catch {
-      setActiveCampus(null);
-    }
-  }, []);
-
-  // Always fetch ALL drives; optionally narrow by campus
-  const swrKey = activeCampus?.id
-    ? `/api/employer/drives?campusId=${activeCampus.id}`
-    : '/api/employer/drives';
-  const { data, isLoading, mutate } = useSWR(swrKey, fetcher, { revalidateOnFocus: true });
-
-  // Campus list for filter pills
+  // Campus list
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: false });
   const approvedCampuses = (campusData?.colleges || []).filter((c) => c.approval_status === 'approved');
 
+  // Build SWR key — no filter if none/all selected
+  const swrKey = (() => {
+    if (selectedIds.size === 0 || selectedIds.size === approvedCampuses.length) {
+      return '/api/employer/drives';
+    }
+    const params = [...selectedIds].map((id) => `campusId=${id}`).join('&');
+    return `/api/employer/drives?${params}`;
+  })();
+
+  const { data, isLoading, mutate } = useSWR(swrKey, fetcher, { revalidateOnFocus: true });
   const drives = Array.isArray(data?.drives) ? data.drives : [];
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggleCampus = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const filterLabel = selectedIds.size === 0 || selectedIds.size === approvedCampuses.length
+    ? 'All campuses'
+    : selectedIds.size === 1
+      ? approvedCampuses.find((c) => selectedIds.has(c.id))?.name ?? '1 campus'
+      : `${selectedIds.size} campuses`;
+
+
+
   const submitDrive = useCallback(async () => {
-    if (!activeCampus?.id) {
-      addToast('Select a campus filter first, or choose a campus from the campus directory.', 'warning');
+    if (!modalCampusId) {
+      addToast('Select a campus for this drive.', 'warning');
       return;
     }
     if (!form.title.trim()) {
@@ -63,7 +86,7 @@ export default function EmployerDrivesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tenantId: activeCampus.id,
+          tenantId: modalCampusId,
           title: form.title.trim(),
           description: form.description,
           driveType: form.driveType,
@@ -80,13 +103,14 @@ export default function EmployerDrivesPage() {
       addToast('Drive saved. College admins were notified.', 'success');
       setShowModal(false);
       setForm(emptyForm);
+      setModalCampusId('');
       mutate();
     } catch {
       addToast('Network error', 'error');
     } finally {
       setSubmitting(false);
     }
-  }, [activeCampus, form, addToast, mutate]);
+  }, [modalCampusId, form, addToast, mutate]);
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -146,37 +170,86 @@ export default function EmployerDrivesPage() {
         </div>
       </div>
 
-      {/* ── Campus filter pills (optional) ── */}
+      {/* ── Campus dropdown filter ── */}
       {approvedCampuses.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            <Filter size={12} /> Campus
-          </span>
-          <button
-            onClick={() => setActiveCampus(null)}
-            style={{
-              padding: '0.35rem 1rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
-              fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.15s ease',
-              background: !activeCampus ? 'var(--primary-600)' : 'var(--bg-secondary)',
-              color: !activeCampus ? 'white' : 'var(--text-secondary)',
-              boxShadow: !activeCampus ? '0 2px 8px rgba(79,70,229,0.25)' : 'none',
-            }}
-          >All campuses</button>
-          {approvedCampuses.map((c) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Filter by campus</span>
+          <div ref={dropdownRef} style={{ position: 'relative' }}>
             <button
-              key={c.id}
-              onClick={() => setActiveCampus(c)}
+              type="button"
+              onClick={() => setDropdownOpen((p) => !p)}
               style={{
-                padding: '0.35rem 1rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.15s ease',
-                background: activeCampus?.id === c.id ? 'var(--primary-600)' : 'var(--bg-secondary)',
-                color: activeCampus?.id === c.id ? 'white' : 'var(--text-secondary)',
-                boxShadow: activeCampus?.id === c.id ? '0 2px 8px rgba(79,70,229,0.25)' : 'none',
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.45rem 1rem', borderRadius: '8px',
+                border: '1px solid var(--border-default)',
+                background: selectedIds.size > 0 && selectedIds.size < approvedCampuses.length
+                  ? 'var(--primary-50)' : 'var(--bg-secondary)',
+                color: selectedIds.size > 0 && selectedIds.size < approvedCampuses.length
+                  ? 'var(--primary-700)' : 'var(--text-primary)',
+                fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+                transition: 'all 0.15s ease',
               }}
-            >{c.name}</button>
-          ))}
+            >
+              {filterLabel}
+              <ChevronDown size={15} style={{ transition: 'transform 0.15s', transform: dropdownOpen ? 'rotate(180deg)' : 'none' }} />
+            </button>
+
+            {dropdownOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+                background: 'var(--bg-primary)', border: '1px solid var(--border-default)',
+                borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                padding: '0.5rem', zIndex: 50, minWidth: '240px',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    width: '100%', padding: '0.5rem 0.75rem', border: 'none',
+                    background: 'transparent', cursor: 'pointer', borderRadius: '6px',
+                    fontSize: '0.875rem', fontWeight: 600,
+                    color: selectedIds.size === 0 ? 'var(--primary-600)' : 'var(--text-secondary)',
+                  }}
+                >
+                  <span style={{ width: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {selectedIds.size === 0 && <Check size={14} />}
+                  </span>
+                  All campuses
+                </button>
+                <div style={{ height: '1px', background: 'var(--border-default)', margin: '0.25rem 0' }} />
+                {approvedCampuses.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleCampus(c.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      width: '100%', padding: '0.5rem 0.75rem', border: 'none',
+                      background: selectedIds.has(c.id) ? 'var(--primary-50)' : 'transparent',
+                      cursor: 'pointer', borderRadius: '6px',
+                      fontSize: '0.875rem', fontWeight: 500, textAlign: 'left',
+                      color: selectedIds.has(c.id) ? 'var(--primary-700)' : 'var(--text-primary)',
+                    }}
+                  >
+                    <span style={{
+                      width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                      border: `2px solid ${selectedIds.has(c.id) ? 'var(--primary-500)' : 'var(--border-default)'}`,
+                      background: selectedIds.has(c.id) ? 'var(--primary-500)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.12s ease',
+                    }}>
+                      {selectedIds.has(c.id) && <Check size={10} color="white" strokeWidth={3} />}
+                    </span>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
+
 
       {/* ── Loading skeletons ── */}
       {isLoading && (
@@ -283,9 +356,9 @@ export default function EmployerDrivesPage() {
                 No placement drives found
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '420px', margin: '0 auto 1.5rem', lineHeight: 1.6 }}>
-                {activeCampus
-                  ? `No drives found for ${activeCampus.name}. Switch to "All campuses" or request a new drive.`
-                  : 'No drives have been scheduled yet. Request a placement drive with one of your approved partner campuses.'}
+                {selectedIds.size > 0 && selectedIds.size < approvedCampuses.length
+                  ? `No drives found for the selected campus${selectedIds.size > 1 ? 'es' : ''}. Try a different filter or request a new drive.`
+                  : 'No drives scheduled yet. Request a placement drive with one of your approved partner campuses.'}
               </p>
               <button className="btn btn-primary" type="button" onClick={() => setShowModal(true)}>
                 Request New Drive
@@ -313,11 +386,8 @@ export default function EmployerDrivesPage() {
                 <label className="form-label">Campus <span style={{ color: 'red' }}>*</span></label>
                 <select
                   className="form-select"
-                  value={activeCampus?.id || ''}
-                  onChange={(e) => {
-                    const found = approvedCampuses.find((c) => c.id === e.target.value);
-                    setActiveCampus(found || null);
-                  }}
+                  value={modalCampusId}
+                  onChange={(e) => setModalCampusId(e.target.value)}
                 >
                   <option value="">— Select a campus —</option>
                   {approvedCampuses.map((c) => (
