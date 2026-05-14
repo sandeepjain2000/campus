@@ -51,10 +51,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Valid role is required' }, { status: 400 });
     }
 
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existing.rows.length > 0) {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
-    }
+
 
     const passwordHash = await bcrypt.hash(password, 10);
     const bindingInput = normalizeSurfaceTokenInput(body.campusBindingToken);
@@ -65,6 +62,11 @@ export async function POST(request) {
       let tenantId = null;
 
       if (role === 'college_admin') {
+        const existing = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (existing.rows.length > 0) {
+          throw new Error('EMAIL_EXISTS');
+        }
+
         const collegeName = body.collegeFullName || `${firstName}'s College`;
         const slug = slugify(collegeName) + '-' + Date.now().toString(36);
         const tenantResult = await client.query(
@@ -118,40 +120,50 @@ export async function POST(request) {
         }
         tenantId = bind.rows[0].ref_scope_id;
 
+        const rollNum = (body.rollNumber || '').trim();
+        if (!rollNum) {
+          throw new Error('MISSING_ROLL');
+        }
+
+        const existingProfile = await client.query(
+          `SELECT sp.id as profile_id, sp.user_id, u.email 
+           FROM student_profiles sp 
+           JOIN users u ON u.id = sp.user_id 
+           WHERE sp.tenant_id = $1 AND LOWER(sp.roll_number) = LOWER($2)`,
+          [tenantId, rollNum]
+        );
+
+        if (existingProfile.rows.length === 0) {
+          throw new Error('ROLL_NOT_FOUND');
+        }
+
+        const profile = existingProfile.rows[0];
+        if (profile.email.toLowerCase() !== email.toLowerCase()) {
+          throw new Error('EMAIL_MISMATCH');
+        }
+
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active, email_verification_token, email_verification_expires_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, email, role`,
+          `UPDATE users 
+           SET password_hash = $1, first_name = $2, last_name = $3, phone = $4, is_active = true, is_verified = true 
+           WHERE id = $5 RETURNING id, email, role`,
           [
-            tenantId,
-            email,
-            email,
             passwordHash,
-            role,
             firstName,
             lastName || '',
             phone || '',
-            false,
-            false,
-            verifyToken,
-            verifyExpires,
+            profile.user_id
           ]
         );
 
         const user = userResult.rows[0];
 
+        // Ensure department is updated to what they chose during registration
         const batchY = parseInt(body.batchYear, 10);
         await client.query(
-          `INSERT INTO student_profiles (user_id, tenant_id, roll_number, department, batch_year, graduation_year, is_verified)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            user.id,
-            tenantId,
-            body.rollNumber || '',
-            resolvedDepartmentName,
-            batchY,
-            batchY + 4,
-            false,
-          ]
+          `UPDATE student_profiles 
+           SET department = $1, batch_year = $2, graduation_year = $3 
+           WHERE id = $4`,
+          [resolvedDepartmentName, batchY, batchY + 4, profile.profile_id]
         );
 
         const tname = await client.query(`SELECT name FROM tenants WHERE id = $1`, [tenantId]);
@@ -167,6 +179,11 @@ export async function POST(request) {
       }
 
       if (role === 'employer') {
+        const existing = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (existing.rows.length > 0) {
+          throw new Error('EMAIL_EXISTS');
+        }
+
         const userResult = await client.query(
           `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active, email_verification_token, email_verification_expires_at)
            VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, email, role`,
@@ -252,9 +269,30 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    if (error.message === 'EMAIL_EXISTS') {
+      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+    }
     if (error.message === 'INVALID_CAMPUS_KEY') {
       return NextResponse.json(
         { error: 'Campus enrollment key was not recognized. Check with your institution.' },
+        { status: 400 }
+      );
+    }
+    if (error.message === 'MISSING_ROLL') {
+      return NextResponse.json(
+        { error: 'Roll number is required.' },
+        { status: 400 }
+      );
+    }
+    if (error.message === 'ROLL_NOT_FOUND') {
+      return NextResponse.json(
+        { error: 'Roll number not found in college records. Please verify with your college administrator.' },
+        { status: 400 }
+      );
+    }
+    if (error.message === 'EMAIL_MISMATCH') {
+      return NextResponse.json(
+        { error: 'This roll number is registered with a different email address. Please use the email your college provided.' },
         { status: 400 }
       );
     }

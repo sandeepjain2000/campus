@@ -45,11 +45,11 @@ export const authOptions = {
 
           const user = result.rows[0];
           if (!user) {
-            throw new Error('Invalid email or password.');
+            throw new Error('Account not found. Please check your email or register.');
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password_hash);
-          if (!isValid) throw new Error('Invalid password');
+          if (!isValid) throw new Error('Incorrect password. If your college just created your account, please check your email for the temporary password or use Forgot Password.');
 
           if (!user.email_verified_at) {
             throw new Error(
