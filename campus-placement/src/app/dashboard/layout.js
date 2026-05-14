@@ -348,27 +348,7 @@ export default function DashboardLayout({ children }) {
                 </>
               )}
 
-              {role === 'employer' && (
-                <>
-                  <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
-                  <div className="topbar-campus-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Campus:</span>
-                    <Link
-                      href="/dashboard/employer/select-campus"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                        padding: '0.25rem 0.75rem', borderRadius: '4px',
-                        background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                        fontSize: '0.875rem', color: 'var(--text-primary)', textDecoration: 'none',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {employerCampusLabel || 'Choose or request tie-up'}
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)' }}>▼</span>
-                    </Link>
-                  </div>
-                </>
-              )}
+
             </div>
           </div>
 
