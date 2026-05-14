@@ -290,7 +290,7 @@ export default function DashboardLayout({ children }) {
               >
                 <Home size={16} aria-hidden="true" /> Home
               </Link>
-              <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
+              <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, maxWidth: 'min(100%, 22rem)' }}>
                 <div className="avatar avatar-sm" style={{ width: '32px', height: '32px', fontSize: '0.875rem', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <EntityLogo
@@ -316,8 +316,8 @@ export default function DashboardLayout({ children }) {
 
               {role === 'college_admin' && (
                 <>
-                  <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
+                  <div className="topbar-session-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Session:</span>
                     <select
                       className="form-input"
@@ -350,8 +350,8 @@ export default function DashboardLayout({ children }) {
 
               {role === 'employer' && (
                 <>
-                  <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
+                  <div className="topbar-campus-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Campus:</span>
                     <Link
                       href="/dashboard/employer/select-campus"

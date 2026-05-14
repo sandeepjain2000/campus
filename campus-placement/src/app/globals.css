@@ -139,7 +139,7 @@
 
   --text-primary: #F1F5F9;
   --text-secondary: #CBD5E1;
-  --text-tertiary: #94A3B8;
+  --text-tertiary: #B0BEC5;
   --text-inverse: #0F172A;
   --text-link: #818CF8;
 
@@ -177,6 +177,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -185,6 +187,8 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 a { color: var(--text-link); text-decoration: none; transition: color var(--transition-fast); }
@@ -2966,6 +2970,40 @@ h2.dashboard-nav-hub-category-title {
 
   .main-content {
     margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Topbar: compact on mobile */
+  .topbar {
+    padding: 0.5rem 0.75rem;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .topbar-left {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* Hide verbose topbar items on small screens */
+  .topbar-campus-selector,
+  .topbar-session-selector,
+  .topbar-divider-mobile-hide {
+    display: none !important;
+  }
+
+  .topbar-right {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .page-content {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .landing-title { font-size: 2.25rem; }

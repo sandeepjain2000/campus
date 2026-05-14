@@ -12,7 +12,9 @@ export const authOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        // No maxAge / expires → pure session cookie, cleared when browser closes
+        // 30-day persistent cookie — prevents mobile browsers from clearing the
+        // session when switching apps or backgrounding the browser.
+        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
       }
     }
   },
@@ -48,6 +50,12 @@ export const authOptions = {
 
           const isValid = await bcrypt.compare(credentials.password, user.password_hash);
           if (!isValid) throw new Error('Invalid password');
+
+          if (!user.email_verified_at) {
+            throw new Error(
+              'Please verify your email address before signing in. Check your inbox for the verification link from PlacementHub.'
+            );
+          }
 
           if (!user.is_active) {
             if (['college_admin', 'employer'].includes(user.role)) {
@@ -152,8 +160,9 @@ export const authOptions = {
   },
   session: {
     strategy: 'jwt',
-    // No maxAge → NextAuth issues a session cookie (no Max-Age header).
-    // Browser discards it automatically when closed.
+    // 30-day session to match the persistent cookie above.
+    // Mobile browsers clear pure session cookies aggressively (on app switch / background).
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
