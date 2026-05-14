@@ -166,9 +166,7 @@ export default function AlertsEmailPage() {
               Empty trash
             </button>
           ) : null}
-          <button className="btn btn-primary" disabled title="Coming soon">
-            Compose Alert
-          </button>
+
         </div>
       </div>
 
@@ -219,9 +217,7 @@ export default function AlertsEmailPage() {
           <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} disabled title="Coming soon">
             ⭐ Starred
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} disabled title="Coming soon">
-            📤 Sent
-          </button>
+
           <button
             type="button"
             className="btn btn-ghost"
