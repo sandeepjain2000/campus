@@ -3,9 +3,41 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { randomUUID } from 'crypto';
+import { sendAutomatedSponsorshipPaymentEmails } from '@/lib/sponsorshipAutoEmails';
 
 const METHODS = new Set(['online', 'cheque', 'bank_transfer']);
 const MAX_PROOF_CHARS = 450_000;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Best-effort row for sponsorship_payment_error_logs (migration 037). */
+async function logSponsorshipPaymentFailure({ userId, opportunityId, method, error }) {
+  let oppId = null;
+  if (opportunityId && UUID_RE.test(String(opportunityId).trim())) {
+    oppId = String(opportunityId).trim();
+  }
+  const detail = {
+    name: error?.name,
+    stack:
+      typeof error?.stack === 'string' ? error.stack.split('\n').slice(0, 14).join('\n') : undefined,
+  };
+  try {
+    await query(
+      `INSERT INTO sponsorship_payment_error_logs (user_id, opportunity_id, method, error_code, error_message, detail)
+       VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb)`,
+      [
+        userId || null,
+        oppId,
+        method ? String(method).slice(0, 24) : null,
+        error?.code != null ? String(error.code) : null,
+        error?.message != null ? String(error.message).slice(0, 8000) : 'unknown',
+        JSON.stringify(detail),
+      ],
+    );
+  } catch (e) {
+    console.warn('[employer/sponsorships/payment] error log insert skipped:', e.message);
+  }
+}
 
 /** @returns {{ legal: string|null, pan: string|null, gst: string|null } | { error: string }} */
 function normalizeBilling(body) {
@@ -40,15 +72,18 @@ function normalizeBilling(body) {
 }
 
 export async function POST(request) {
+  let session = null;
+  let opportunityId = null;
+  let method = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json().catch(() => ({}));
-    const opportunityId = String(body.opportunityId || '').trim();
-    const method = String(body.method || '').trim();
+    opportunityId = String(body.opportunityId || '').trim();
+    method = String(body.method || '').trim();
     const proofDataUrl = body.proofDataUrl != null ? String(body.proofDataUrl) : '';
 
     if (!opportunityId || !METHODS.has(method)) {
@@ -130,7 +165,14 @@ export async function POST(request) {
           billing.gst,
         ],
       );
-      return NextResponse.json({ payment: ins.rows[0] }, { status: 201 });
+      const payment = ins.rows[0];
+      try {
+        const emails = await sendAutomatedSponsorshipPaymentEmails(payment.id);
+        return NextResponse.json({ payment, sponsorshipEmails: emails }, { status: 201 });
+      } catch (e) {
+        console.error('[employer sponsorship payment] automated emails error', e);
+        return NextResponse.json({ payment, sponsorshipEmails: { error: 'email_step_failed' } }, { status: 201 });
+      }
     }
 
     if (method === 'cheque') {
@@ -154,7 +196,14 @@ export async function POST(request) {
           billing.gst,
         ],
       );
-      return NextResponse.json({ payment: ins.rows[0] }, { status: 201 });
+      const payment = ins.rows[0];
+      try {
+        const emails = await sendAutomatedSponsorshipPaymentEmails(payment.id);
+        return NextResponse.json({ payment, sponsorshipEmails: emails }, { status: 201 });
+      } catch (e) {
+        console.error('[employer sponsorship payment] automated emails error', e);
+        return NextResponse.json({ payment, sponsorshipEmails: { error: 'email_step_failed' } }, { status: 201 });
+      }
     }
 
     const proof = proofDataUrl.trim() || null;
@@ -179,18 +228,59 @@ export async function POST(request) {
         billing.gst,
       ],
     );
-    return NextResponse.json({ payment: ins.rows[0] }, { status: 201 });
+    const payment = ins.rows[0];
+    try {
+      const emails = await sendAutomatedSponsorshipPaymentEmails(payment.id);
+      return NextResponse.json({ payment, sponsorshipEmails: emails }, { status: 201 });
+    } catch (e) {
+      console.error('[employer sponsorship payment] automated emails error', e);
+      return NextResponse.json({ payment, sponsorshipEmails: { error: 'email_step_failed' } }, { status: 201 });
+    }
   } catch (error) {
     console.error('POST /api/employer/sponsorships/payment', error);
+    const userId = session?.user?.id;
+    await logSponsorshipPaymentFailure({
+      userId,
+      opportunityId,
+      method,
+      error,
+    });
+
     if (error.code === '23505') {
       return NextResponse.json({ error: 'Duplicate payment sequence — refresh and try again' }, { status: 409 });
     }
-    if (error.code === '42P01' || error.message?.includes('sponsorship_payments')) {
+    if (error.code === '42703') {
       return NextResponse.json(
-        { error: 'Sponsorship payments table missing — run db/migrations/026_sponsorship_payments.sql' },
+        {
+          error:
+            'Database schema is missing columns required for sponsorship payments (billing fields). Run db/migrations/035_sponsorship_billing_legal.sql, then retry.',
+          dbCode: '42703',
+        },
         { status: 503 },
       );
     }
-    return NextResponse.json({ error: 'Failed to record payment' }, { status: 500 });
+    if (error.code === '42P01') {
+      return NextResponse.json(
+        {
+          error:
+            'A required database table or relation is missing. Apply pending migrations (e.g. 026, 034–037). See server logs for the exact relation name.',
+          dbCode: '42P01',
+        },
+        { status: 503 },
+      );
+    }
+    if (error.message?.includes('sponsorship_payments')) {
+      return NextResponse.json(
+        { error: 'Sponsorship payments table missing — run db/migrations/026_sponsorship_payments.sql', dbCode: '42P01' },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: 'Failed to record payment',
+        ...(error.code ? { dbCode: String(error.code) } : {}),
+      },
+      { status: 500 },
+    );
   }
 }

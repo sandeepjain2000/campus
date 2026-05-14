@@ -20,6 +20,14 @@ export function defaultStudentProfile(sessionUser) {
     cgpa: '',
     tenthPercentage: '',
     twelfthPercentage: '',
+    diplomaPercentage: '',
+    backlogsActive: 0,
+    backlogsHistory: 0,
+    educationDetails: {
+      tenth: { institution: '', board: '', year: '', notes: '' },
+      twelfth: { institution: '', board: '', year: '', notes: '' },
+      diploma: { institution: '', board: '', year: '', notes: '' },
+    },
     gender: '',
     collegeEmail: email,
     personalEmail: '',
@@ -42,12 +50,21 @@ export function defaultStudentProfile(sessionUser) {
     willingToRelocate: true,
     /** @type {{ id: string, kind: string, url: string, title: string, description: string }[]} */
     profileLinks: [],
-    /** HTTPS URL from S3 after upload (also on users.avatar_url) */
+    /** URL from server after upload (also on users.avatar_url) */
     avatarUrl: sessionUser?.avatar || '',
     avatarDataUrl: '',
     avatarName: '',
+    resumeUrl: '',
     cvFileName: '',
     cvDataUrl: '',
+    projects: [],
+    internships: [],
+    otherWork: [],
+    workExperience: [],
+    responsibilities: [],
+    accomplishments: [],
+    volunteering: [],
+    extracurriculars: [],
   };
 }
 

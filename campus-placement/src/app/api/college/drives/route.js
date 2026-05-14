@@ -121,9 +121,9 @@ export async function PATCH(request) {
     const nextStatus = action === 'approve' ? 'approved' : 'cancelled';
     const updated = await query(
       `UPDATE placement_drives
-       SET status = $1,
-           approved_by = CASE WHEN $1 = 'approved' THEN $2::uuid ELSE approved_by END,
-           approved_at = CASE WHEN $1 = 'approved' THEN NOW() ELSE approved_at END,
+       SET status = $1::varchar,
+           approved_by = CASE WHEN $1::varchar = 'approved' THEN $2::uuid ELSE approved_by END,
+           approved_at = CASE WHEN $1::varchar = 'approved' THEN NOW() ELSE approved_at END,
            updated_at = NOW()
        WHERE id = $3::uuid
          AND tenant_id = $4::uuid
@@ -133,7 +133,20 @@ export async function PATCH(request) {
     );
 
     if (!updated.rows.length) {
-      return NextResponse.json({ error: 'Requested drive not found' }, { status: 404 });
+      const meta = await query(
+        `SELECT status FROM placement_drives WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+        [driveId, tenantId],
+      );
+      if (!meta.rows[0]) {
+        return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
+      }
+      return NextResponse.json(
+        {
+          error: 'This drive is not awaiting approval.',
+          currentStatus: meta.rows[0].status,
+        },
+        { status: 409 },
+      );
     }
 
     const row = updated.rows[0];
@@ -163,6 +176,6 @@ export async function PATCH(request) {
     return NextResponse.json({ success: true, drive: { id: row.id, status: row.status } });
   } catch (error) {
     console.error('Failed to update drive status:', error);
-    return NextResponse.json({ error: 'Failed to update drive status' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update drive status: ' + (error?.message || String(error)) }, { status: 500 });
   }
 }

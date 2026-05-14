@@ -177,15 +177,43 @@ export async function POST(request) {
     });
   } catch (e) {
     console.error('POST /api/college/sponsorships/receipt', e);
-    if (e.message?.includes('sponsorship_donation_receipt_sends')) {
+    const msg = String(e.message || '');
+    const code = e.code;
+
+    // Undefined column (e.g. billing_* on sponsorship_payments) — often confused with 034.
+    if (code === '42703') {
       return NextResponse.json(
-        { error: 'Database migration required (034_sponsorship_donation_receipt.sql).' },
+        {
+          error:
+            'Database is missing sponsorship billing columns. Run db/migrations/035_sponsorship_billing_legal.sql on the same DATABASE_URL as Vercel.',
+          dbCode: '42703',
+        },
         { status: 503 },
       );
     }
-    if (e.code === '23505') {
+
+    // Undefined table — only this case is fixed by 034.
+    if (code === '42P01' && /sponsorship_donation_receipt_sends/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error:
+            'Receipt table is missing on this database. Run db/migrations/034_sponsorship_donation_receipt.sql using the exact DATABASE_URL configured in Vercel (Settings → Environment Variables), then redeploy if the URL was wrong.',
+          dbCode: '42P01',
+        },
+        { status: 503 },
+      );
+    }
+
+    if (code === '23505') {
       return NextResponse.json({ error: 'Receipt already recorded for this payment.' }, { status: 409 });
     }
-    return NextResponse.json({ error: e.message || 'Failed to send receipt' }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: msg || 'Failed to send receipt',
+        dbCode: code != null ? String(code) : undefined,
+      },
+      { status: 500 },
+    );
   }
 }

@@ -2,15 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { createStudentAvatarPresign, isS3Configured } from '@/lib/s3';
-
-const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-]);
-
-const MAX_BYTES = 2 * 1024 * 1024;
+import { normalizeStudentAvatarContentType, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
 
 export async function POST(req) {
   try {
@@ -22,8 +14,8 @@ export async function POST(req) {
     if (!isS3Configured()) {
       return NextResponse.json(
         {
-          error: 'S3 not configured',
-          hint: 'Set AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME on the server.',
+          error: 'Cloud storage not configured',
+          hint: 'Your administrator can enable server-side file storage. Until then, your browser may save small images locally where supported.',
         },
         { status: 503 },
       );
@@ -31,14 +23,12 @@ export async function POST(req) {
 
     const body = await req.json();
     const fileName = String(body.fileName || 'photo');
-    const contentType = String(body.contentType || 'application/octet-stream');
+    const contentType = normalizeStudentAvatarContentType(body.contentType);
     const fileSize = Number(body.fileSize || 0);
 
-    if (fileSize > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image too large (max 2MB)' }, { status: 400 });
-    }
-    if (!ALLOWED_TYPES.has(contentType)) {
-      return NextResponse.json({ error: 'Use JPEG, PNG, WebP, or GIF' }, { status: 400 });
+    const check = validateStudentAvatarFile({ type: contentType, size: fileSize });
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 400 });
     }
 
     const userId = session.user.id || session.user.sub;

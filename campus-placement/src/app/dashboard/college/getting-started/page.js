@@ -1,9 +1,14 @@
-import GettingStartedPage from '@/components/GettingStartedPage';
+'use client';
 
-export const metadata = {
-  title: 'Getting Started - College Dashboard',
-};
+import ResponsiveWrapper from '@/components/mobile/ResponsiveWrapper';
+import dt_GettingStarted from './dt_GettingStarted';
+import mb_GettingStarted from './mb_GettingStarted';
 
-export default function CollegeGettingStarted() {
-  return <GettingStartedPage />;
+export default function CollegeGettingStartedPage() {
+  return (
+    <ResponsiveWrapper
+      desktopView={<dt_GettingStarted />}
+      mobileView={<mb_GettingStarted />}
+    />
+  );
 }

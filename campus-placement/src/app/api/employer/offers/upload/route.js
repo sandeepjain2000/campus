@@ -150,6 +150,7 @@ export async function POST(request) {
       if (!OFFER_STATUSES.has(status)) status = 'accepted';
 
       const acceptedAt = status === 'accepted' ? new Date().toISOString() : null;
+      const rejectedAt = status === 'rejected' ? new Date().toISOString() : null;
 
       const insertBase = [
         studentId,
@@ -167,18 +168,18 @@ export async function POST(request) {
           await query(
             `INSERT INTO offers (
              student_id, drive_id, employer_id, job_title, salary, location, status,
-             joining_date, deadline, salary_currency, reported_company_name, accepted_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'INR', $10, $11)`,
-            [...insertBase, employerCompanyName, acceptedAt],
+             joining_date, deadline, salary_currency, reported_company_name, accepted_at, rejected_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'INR', $10, $11, $12)`,
+            [...insertBase, employerCompanyName, acceptedAt, rejectedAt],
           );
         } catch (e) {
           if (!isMissingReportedCompanyColumnError(e)) throw e;
           await query(
             `INSERT INTO offers (
              student_id, drive_id, employer_id, job_title, salary, location, status,
-             joining_date, deadline, salary_currency, accepted_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'INR', $10)`,
-            [...insertBase, acceptedAt],
+             joining_date, deadline, salary_currency, accepted_at, rejected_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'INR', $10, $11)`,
+            [...insertBase, acceptedAt, rejectedAt],
           );
         }
         accepted += 1;

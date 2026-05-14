@@ -89,10 +89,80 @@ function demoAddressFallback(sp) {
   };
 }
 
+function resumeFileNameFromUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  try {
+    const pathname = new URL(raw).pathname;
+    const last = decodeURIComponent(pathname.split('/').filter(Boolean).pop() || '');
+    return last.replace(/^[0-9a-f-]{36}-/i, '');
+  } catch {
+    return '';
+  }
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeEducationDetails(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const normalizeRow = (row) => {
+    const raw = row && typeof row === 'object' && !Array.isArray(row) ? row : {};
+    return {
+      institution: String(raw.institution || '').trim(),
+      board: String(raw.board || '').trim(),
+      year: raw.year === '' || raw.year == null ? '' : Number(raw.year),
+      notes: String(raw.notes || '').trim(),
+    };
+  };
+  return {
+    tenth: normalizeRow(source.tenth),
+    twelfth: normalizeRow(source.twelfth),
+    diploma: normalizeRow(source.diploma),
+  };
+}
+
+function normalizeProjects(value) {
+  const dateOnly = (raw) => {
+    if (!raw) return null;
+    if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw.toISOString().slice(0, 10);
+    const text = String(raw || '').trim();
+    return text ? text.slice(0, 10) : null;
+  };
+  return normalizeArray(value)
+    .map((project) => ({
+      title: String(project?.title || '').trim(),
+      description: String(project?.description || '').trim(),
+      techStack: normalizeArray(project?.techStack || project?.tech_stack)
+        .flatMap((item) => String(item || '').split(','))
+        .map((item) => item.trim())
+        .filter(Boolean),
+      projectUrl: String(project?.projectUrl || project?.project_url || '').trim(),
+      githubUrl: String(project?.githubUrl || project?.github_url || '').trim(),
+      startDate: dateOnly(project?.startDate || project?.start_date),
+      endDate: dateOnly(project?.endDate || project?.end_date),
+    }))
+    .filter((project) => project.title || project.description || project.techStack.length || project.projectUrl || project.githubUrl)
+    .slice(0, 20);
+}
+
+function normalizeActivityRows(value) {
+  return normalizeArray(value)
+    .map((item) => ({
+      title: String(item?.title || '').trim(),
+      organization: String(item?.organization || item?.issuer || '').trim(),
+      period: String(item?.period || item?.year || '').trim(),
+      description: String(item?.description || '').trim(),
+    }))
+    .filter((item) => item.title || item.organization || item.period || item.description)
+    .slice(0, 30);
+}
+
 /**
- * @param {{ sp: object, skills: { skill_name: string }[], accountEmail: string, userPhone: string | null, avatarUrl: string | null }}
+ * @param {{ sp: object, skills: { skill_name: string }[], projects?: object[], accountEmail: string, userPhone: string | null, avatarUrl: string | null }}
  */
-export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl, communicationEmail }) {
+export function profileFromDb({ sp, skills, projects, accountEmail, userPhone, avatarUrl, communicationEmail }) {
   const aux =
     sp.aux_profile && typeof sp.aux_profile === 'object' && !Array.isArray(sp.aux_profile)
       ? sp.aux_profile
@@ -161,9 +231,13 @@ export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl, 
     cgpa: sp.cgpa != null ? Number(sp.cgpa) : '',
     tenthPercentage: sp.tenth_percentage != null ? Number(sp.tenth_percentage) : '',
     twelfthPercentage: sp.twelfth_percentage != null ? Number(sp.twelfth_percentage) : '',
+    diplomaPercentage: sp.diploma_percentage != null ? Number(sp.diploma_percentage) : '',
+    backlogsActive: sp.backlogs_active != null ? Number(sp.backlogs_active) : 0,
+    backlogsHistory: sp.backlogs_history != null ? Number(sp.backlogs_history) : 0,
+    educationDetails: normalizeEducationDetails(aux.educationDetails),
     gender: capitalizeGender(sp.gender),
     collegeEmail: accountEmail || '',
-    communicationEmail: communicationEmail || '',
+    communicationEmail: (communicationEmail && String(communicationEmail).trim()) || accountEmail || '',
     personalEmail: typeof aux.personalEmail === 'string' ? aux.personalEmail : '',
     phones,
     emails,
@@ -178,8 +252,19 @@ export function profileFromDb({ sp, skills, accountEmail, userPhone, avatarUrl, 
     avatarUrl: avatarUrl || '',
     avatarDataUrl: '',
     avatarName: '',
-    cvFileName: '',
+    resumeUrl: sp.resume_url || '',
+    cvFileName: typeof aux.cvFileName === 'string' && aux.cvFileName.trim()
+      ? aux.cvFileName.trim()
+      : resumeFileNameFromUrl(sp.resume_url),
     cvDataUrl: '',
+    projects: normalizeProjects(projects || []),
+    internships: normalizeActivityRows(aux.internships || aux.workExperience),
+    otherWork: normalizeActivityRows(aux.otherWork),
+    workExperience: normalizeActivityRows(aux.workExperience),
+    responsibilities: normalizeActivityRows(aux.responsibilities),
+    accomplishments: normalizeActivityRows(aux.accomplishments),
+    volunteering: normalizeActivityRows(aux.volunteering),
+    extracurriculars: normalizeActivityRows(aux.extracurriculars),
   };
 }
 
@@ -222,6 +307,14 @@ function normalizeAuxFromPayload(body) {
       state: String(body?.address?.state || '').trim(),
       pincode: String(body?.address?.pincode || '').trim(),
     },
+    educationDetails: normalizeEducationDetails(body.educationDetails),
+    internships: normalizeActivityRows(body.internships || body.workExperience),
+    otherWork: normalizeActivityRows(body.otherWork),
+    workExperience: normalizeActivityRows(body.workExperience),
+    responsibilities: normalizeActivityRows(body.responsibilities),
+    accomplishments: normalizeActivityRows(body.accomplishments),
+    volunteering: normalizeActivityRows(body.volunteering),
+    extracurriculars: normalizeActivityRows(body.extracurriculars),
     personalEmail: personalEmail || null,
   };
 }
@@ -239,6 +332,11 @@ export function payloadToDbParts(body) {
   const cgpa = body.cgpa === '' || body.cgpa == null ? null : Number(body.cgpa);
   const tenth = body.tenthPercentage === '' || body.tenthPercentage == null ? null : Number(body.tenthPercentage);
   const twelfth = body.twelfthPercentage === '' || body.twelfthPercentage == null ? null : Number(body.twelfthPercentage);
+  const diploma = body.diplomaPercentage === '' || body.diplomaPercentage == null ? null : Number(body.diplomaPercentage);
+  const activeBacklogs =
+    body.backlogsActive === '' || body.backlogsActive == null ? 0 : Math.max(0, parseInt(body.backlogsActive, 10) || 0);
+  const historyBacklogs =
+    body.backlogsHistory === '' || body.backlogsHistory == null ? 0 : Math.max(0, parseInt(body.backlogsHistory, 10) || 0);
   const gradYear =
     body.graduationYear === '' || body.graduationYear == null ? null : parseInt(body.graduationYear, 10);
   const batchYear =
@@ -274,6 +372,9 @@ export function payloadToDbParts(body) {
     cgpa,
     tenth_percentage: tenth,
     twelfth_percentage: twelfth,
+    diploma_percentage: diploma,
+    backlogs_active: activeBacklogs,
+    backlogs_history: historyBacklogs,
     gender,
     bio,
     linkedin_url: linkedin_url || null,
@@ -288,8 +389,17 @@ export function payloadToDbParts(body) {
       emails: aux.emails,
       profileLinks: aux.profileLinks,
       address: aux.address,
+      educationDetails: aux.educationDetails,
+      internships: aux.internships,
+      otherWork: aux.otherWork,
+      workExperience: aux.workExperience,
+      responsibilities: aux.responsibilities,
+      accomplishments: aux.accomplishments,
+      volunteering: aux.volunteering,
+      extracurriculars: aux.extracurriculars,
       personalEmail: aux.personalEmail,
     },
+    projects: normalizeProjects(body.projects),
     skills,
     user_phone: primaryPhone || null,
     user_communication_email: commEmail,

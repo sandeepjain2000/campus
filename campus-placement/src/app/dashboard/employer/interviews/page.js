@@ -1,7 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { formatDate } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
@@ -20,9 +19,9 @@ function formatTimeDisplay(t) {
 
 export default function EmployerInterviewsPage() {
   const { addToast } = useToast();
-  const router = useRouter();
   const [rows, setRows] = useState([]);
   const [activeCampus, setActiveCampus] = useState(null);
+  const [campusLoadAttempted, setCampusLoadAttempted] = useState(false);
   const [view, setView] = useState('list');
   const [form, setForm] = useState({
     campus: '',
@@ -38,22 +37,26 @@ export default function EmployerInterviewsPage() {
     try {
       const stored = sessionStorage.getItem('activeCampus');
       if (!stored) {
-        router.replace('/dashboard/employer/select-campus');
+        setActiveCampus(null);
+        setCampusLoadAttempted(true);
         return;
       }
       const campus = JSON.parse(stored);
       if (!campus?.id) {
         sessionStorage.removeItem('activeCampus');
-        router.replace('/dashboard/employer/select-campus');
+        setActiveCampus(null);
+        setCampusLoadAttempted(true);
         return;
       }
       setActiveCampus(campus);
       setForm((p) => ({ ...p, campus: campus?.name || '' }));
     } catch {
       sessionStorage.removeItem('activeCampus');
-      router.replace('/dashboard/employer/select-campus');
+      setActiveCampus(null);
+    } finally {
+      setCampusLoadAttempted(true);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -151,7 +154,7 @@ export default function EmployerInterviewsPage() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem', borderLeft: '4px solid var(--primary-500)' }}>
+      <div className="card" style={{ marginBottom: '1rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-default)' }}>
         <p className="text-sm text-secondary" style={{ margin: 0 }}>
           Round results from your CSV uploads are edited under Assessment uploads;{' '}
           <Link href="/dashboard/employer/hiring-assessment" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
@@ -161,13 +164,24 @@ export default function EmployerInterviewsPage() {
         </p>
       </div>
 
+      {campusLoadAttempted && !activeCampus?.id && (
+        <div className="card" style={{ marginBottom: '1rem', background: 'var(--warning-50)', border: '1px solid var(--warning-200)' }}>
+          <p className="text-sm" style={{ margin: 0, color: 'var(--text-primary)' }}>
+            <strong>Choose an active campus</strong> to load and create interview slots for that partnership.{' '}
+            <Link href="/dashboard/employer/select-campus" className="btn btn-primary btn-sm" style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}>
+              Select campus
+            </Link>
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-2">
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Create Slot</h3>
           </div>
-          <form onSubmit={create} style={{ display: 'grid', gap: '0.65rem' }}>
-            <input className="form-input" placeholder="Campus" value={form.campus} onChange={(e) => setForm((p) => ({ ...p, campus: e.target.value }))} />
+          <form onSubmit={create} style={{ display: 'grid', gap: '0.65rem', opacity: activeCampus?.id ? 1 : 0.55, pointerEvents: activeCampus?.id ? 'auto' : 'none' }} aria-disabled={!activeCampus?.id}>
+            <input className="form-input" placeholder="Campus" value={form.campus} onChange={(e) => setForm((p) => ({ ...p, campus: e.target.value }))} readOnly={!!activeCampus?.id} title={activeCampus?.id ? 'From active campus' : ''} />
             <input className="form-input" placeholder="Round name" value={form.round} onChange={(e) => setForm((p) => ({ ...p, round: e.target.value }))} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <input className="form-input" type="date" min={new Date().toISOString().split('T')[0]} value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />

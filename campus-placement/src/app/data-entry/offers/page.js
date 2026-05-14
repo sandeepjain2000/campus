@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function DataEntryOffersPage() {
   const [options, setOptions] = useState({ studentProfiles: [], drives: [], employers: [] });
@@ -146,7 +147,7 @@ export default function DataEntryOffersPage() {
             <p>Super-admin backfill only — same <code>offers</code> table as dashboards, but not the primary &quot;offer management&quot; flow.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" className="btn btn-primary" onClick={openAdd}>+ Add Offer</button>
+            <StandardTableIconAction action="add" variant="primary" onClick={openAdd} />
             <button type="button" className="btn btn-secondary" onClick={loadData}>Refresh</button>
             <Link href="/data-entry" className="btn btn-secondary">Back to list</Link>
           </div>
@@ -258,9 +259,11 @@ export default function DataEntryOffersPage() {
                     <td>{row.status}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setViewRow(row)}>View</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => openEdit(row)}>Edit</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleDelete(row.id)}>Delete</button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                          <StandardTableIconAction action="view" onClick={() => setViewRow(row)} />
+                          <StandardTableIconAction action="edit" onClick={() => openEdit(row)} />
+                          <StandardTableIconAction action="delete" variant="danger" onClick={() => handleDelete(row.id)} />
+                        </div>
                       </div>
                     </td>
                   </tr>

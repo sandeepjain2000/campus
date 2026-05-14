@@ -1,8 +1,11 @@
 import { query } from '@/lib/db';
+import { canonicalizeTimezoneId } from '@/lib/timezoneUi';
 
 /** Defaults merged with DB `platform_settings.settings` (super admin /api/admin/settings). */
 export const PLATFORM_SETTINGS_DEFAULTS = {
   platformName: 'PlacementHub',
+  /** Public brochure / marketing site (Wix, etc.). Empty = use in-app /features, /about, /contact. */
+  marketingWebsiteUrl: '',
   supportEmail: 'placementhub@yopmail.com',
   /** When non-empty, sendMail() delivers every message to this address instead of `to` (dev safety). */
   systemNotificationInboxEmail: '',
@@ -36,7 +39,9 @@ export async function getPlatformSettings() {
     const r = await query('SELECT settings FROM platform_settings WHERE id = 1');
     const stored = r.rows[0]?.settings;
     const obj = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
-    cache.data = { ...PLATFORM_SETTINGS_DEFAULTS, ...obj };
+    const merged = { ...PLATFORM_SETTINGS_DEFAULTS, ...obj };
+    merged.timezone = canonicalizeTimezoneId(merged.timezone);
+    cache.data = merged;
   } catch {
     cache.data = { ...PLATFORM_SETTINGS_DEFAULTS };
   }

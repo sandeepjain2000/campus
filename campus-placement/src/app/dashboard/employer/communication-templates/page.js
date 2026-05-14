@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
-import { Mail, ArrowLeft, Eye, Pencil, Trash2, X } from 'lucide-react';
+import { Mail, ArrowLeft, X } from 'lucide-react';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import {
   EDITABLE_SYSTEM_EMAIL_TEMPLATE_KEYS,
   SYSTEM_EMAIL_TEMPLATE_META,
@@ -103,38 +104,26 @@ export default function EmployerCommunicationTemplatesPage() {
                   {row.summary}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    aria-label={`View ${row.name}`}
-                    title="View details"
-                    onClick={() => setViewRow(row)}
-                  >
-                    <Eye size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    aria-label={`Edit ${row.name}`}
-                    title="Edit template"
-                    onClick={() =>
-                      addToast(
-                        'Only Super Admins can edit platform templates. Ask your PlacementHub administrator, or use Admin → Communication & Support → Email templates.',
-                        'info',
-                      )
-                    }
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    aria-label={`Delete ${row.name}`}
-                    title="Delete template"
-                    onClick={() => addToast('System templates cannot be deleted.', 'info')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                    <StandardTableIconAction action="view" variant="ghost" showLabel={false} onClick={() => setViewRow(row)} />
+                    <StandardTableIconAction
+                      action="edit"
+                      variant="ghost"
+                      showLabel={false}
+                      onClick={() =>
+                        addToast(
+                          'Only Super Admins can edit platform templates. Ask your PlacementHub administrator, or use Admin → Communication & Support → Email templates.',
+                          'info',
+                        )
+                      }
+                    />
+                    <StandardTableIconAction
+                      action="delete"
+                      variant="danger"
+                      showLabel={false}
+                      onClick={() => addToast('System templates cannot be deleted.', 'info')}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}

@@ -139,8 +139,8 @@ export async function POST(req) {
             const tempPass = randomBytes(10).toString('hex');
             const passHash = await hash(tempPass, 10);
             const newUser = await client.query(
-              `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active)
-               VALUES ($1, $2, $2, $3, 'student', $4, $5, true, true) RETURNING id`,
+              `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active, email_verified_at)
+               VALUES ($1, $2, $2, $3, 'student', $4, $5, true, true, NOW()) RETURNING id`,
               [tenantId, email, passHash, firstName || 'Student', lastName]
             );
             userId = newUser.rows[0].id;

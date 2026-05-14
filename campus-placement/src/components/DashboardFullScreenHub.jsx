@@ -62,6 +62,7 @@ function getQuickActions(role, employerHasCampus) {
   }
   if (role === 'super_admin') {
     return [
+      { label: 'Pending sign-ups', href: '/dashboard/admin/pending-registrations' },
       { label: 'Colleges', href: '/dashboard/admin/colleges' },
       { label: 'Users', href: '/dashboard/admin/users' },
       { label: 'Employers', href: '/dashboard/admin/employers' },

@@ -5,30 +5,14 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { ImportCsvSplitButton } from '@/components/import/ImportCsvSplitButton';
-import { parseCsv, downloadCsvFromRows } from '@/lib/csvExport';
+import { downloadCsvFromRows } from '@/lib/csvExport';
 import {
   CURRENT_ACADEMIC_YEAR, CURRENT_SEMESTER, STUDENT_CSV_HEADERS,
-  studentToCsvRow, studentCsvTemplateExampleRow, validateStudentCsvHeaders,
-  parseStudentRow, normalizeStudentRollKey,
+  studentToCsvRow, studentCsvTemplateExampleRow,
 } from '@/lib/collegeStudentsCsv';
 import { useToast } from '@/components/ToastProvider';
-import { GraduationCap, Search, Download, X, CheckCircle2, UserPlus } from 'lucide-react';
-
-function mergeImportedStudents(prev, imported) {
-  const byRoll = new Map(prev.map((s) => [normalizeStudentRollKey(s.roll), { ...s, skills: [...s.skills] }]));
-  let maxId = prev.reduce((m, s) => Math.max(m, s.id), 0);
-  for (const u of imported) {
-    const key = normalizeStudentRollKey(u.roll);
-    if (byRoll.has(key)) {
-      const ex = byRoll.get(key);
-      byRoll.set(key, { ...ex, ...u, id: ex.id, skills: [...u.skills] });
-    } else {
-      maxId += 1;
-      byRoll.set(key, { ...u, id: maxId, skills: [...u.skills] });
-    }
-  }
-  return Array.from(byRoll.values());
-}
+import { GraduationCap, Search, Download, X, CheckCircle2, CircleAlert, UserPlus } from 'lucide-react';
+import StudentDetailModal, { getCompletedSectionCount } from './StudentDetailModal';
 
 export default function DesktopCollegeStudents() {
   const { addToast } = useToast();
@@ -95,9 +79,7 @@ export default function DesktopCollegeStudents() {
     return { headers: [...STUDENT_CSV_HEADERS], rows: list.map((s) => studentToCsvRow(s)) };
   }, [filtered, students]);
 
-  const uniqueSpecializations = useMemo(() => Array.from(new Set(students.map((s) => s.specialization))), [students]);
   const uniqueDepartments = useMemo(() => Array.from(new Set(students.map((s) => s.dept).filter(Boolean))), [students]);
-  const uniqueSemesters = useMemo(() => Array.from(new Set(students.map((s) => s.semester).filter(Boolean))), [students]);
 
   const downloadTemplate = useCallback(() => {
     downloadCsvFromRows('students_import_template', [...STUDENT_CSV_HEADERS], [studentCsvTemplateExampleRow()]);
@@ -220,10 +202,13 @@ export default function DesktopCollegeStudents() {
                 <thead>
                   <tr style={{ background: 'var(--bg-secondary)' }}>
                     <th style={{ width: 50, paddingLeft: '1.5rem' }}>#</th>
-                    <th>System ID</th>
                     <th>Student</th>
+                    <th>Email</th>
+                    <th>Comm. email</th>
+                    <th>System ID</th>
                     <th>Department</th>
                     <th>CGPA</th>
+                    <th>Sections</th>
                     <th>Job Status</th>
                     <th style={{ paddingRight: '1.5rem' }}>Verified</th>
                   </tr>
@@ -252,6 +237,10 @@ export default function DesktopCollegeStudents() {
                             </div>
                           </div>
                         </td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>{s.email || '—'}</td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
+                          {(s.communicationEmail && String(s.communicationEmail).trim()) || s.email || '—'}
+                        </td>
                         <td style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono, monospace)' }}>
                           <span style={{ background: 'var(--primary-50)', color: 'var(--primary-700)', border: '1px solid var(--primary-200)', borderRadius: '4px', padding: '0.15rem 0.5rem', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{s.systemId || s.roll}</span>
                         </td>
@@ -261,11 +250,16 @@ export default function DesktopCollegeStudents() {
                             {s.cgpa ?? '—'}
                           </span>
                         </td>
+                        <td>
+                          <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
+                            {getCompletedSectionCount(s)}/{s.sectionCompletion?.total || 6}
+                          </span>
+                        </td>
                         <td><span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(s.jobStatus)}</span></td>
                         <td style={{ paddingRight: '1.5rem' }}>
                           {s.verified
                             ? <span className="badge badge-green" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle2 size={12} /> Verified</span>
-                            : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Pending</span>}
+                            : <span className="badge badge-amber" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CircleAlert size={12} /> Pending</span>}
                         </td>
                       </tr>
                     );
@@ -288,81 +282,11 @@ export default function DesktopCollegeStudents() {
         </>
       )}
 
-      {/* Student Detail Modal */}
-      {detailStudent && (
-        <div className="modal-overlay" role="presentation" style={{ overflowY: 'auto', alignItems: 'flex-start' }} onClick={(e) => { if (e.target === e.currentTarget) setDetailStudent(null); }}>
-          <div className="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="student-detail-title" style={{ borderRadius: 'var(--radius-xl)', margin: 'auto' }}>
-            {/* Modal Header */}
-            <div style={{ padding: '1.5rem 2rem', background: 'linear-gradient(135deg, var(--primary-900), var(--primary-700))', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {detailStudent.photo ? (
-                  <img src={detailStudent.photo} alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.3)' }} />
-                ) : (
-                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 700, border: '2px solid rgba(255,255,255,0.3)' }}>
-                    {detailStudent.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <h2 id="student-detail-title" style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800 }}>{detailStudent.name}</h2>
-                  <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', marginTop: '0.2rem', fontFamily: 'monospace' }}>{detailStudent.roll}</div>
-                </div>
-              </div>
-              <button type="button" onClick={() => setDetailStudent(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem' }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="modal-body" style={{ padding: '2rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                {[
-                  { label: 'System ID', value: detailStudent.systemId },
-                   { label: 'Roll No.', value: detailStudent.roll },
-                   { label: 'Department', value: detailStudent.dept },
-                  { label: 'Specialization', value: detailStudent.specialization },
-                  { label: 'CGPA', value: detailStudent.cgpa },
-                  { label: 'Semester', value: detailStudent.semester },
-                  { label: 'Academic Year', value: detailStudent.academicYear },
-                  { label: 'Gender', value: detailStudent.gender },
-                  { label: 'Disability Status', value: detailStudent.disabilityStatus },
-                  { label: 'Diversity Category', value: detailStudent.diversityCategory },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>{label}</div>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{value || '—'}</div>
-                  </div>
-                ))}
-                <div style={{ gridColumn: '1 / -1', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Skills</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {detailStudent.skills.length ? detailStudent.skills.map(sk => (
-                      <span key={sk} className="badge badge-indigo" style={{ fontSize: '0.8rem' }}>{sk}</span>
-                    )) : <span className="text-tertiary text-sm">No skills listed.</span>}
-                  </div>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Job Status</div>
-                  <span className={`badge badge-${getStatusColor(detailStudent.jobStatus)} badge-dot`}>{formatStatus(detailStudent.jobStatus)}</span>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Internship Status</div>
-                  <span className={`badge badge-${getStatusColor(detailStudent.internshipStatus)} badge-dot`}>{formatStatus(detailStudent.internshipStatus)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-footer" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'flex-end', padding: '1.25rem 2rem', borderTop: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
-              {detailStudent.verified ? (
-                <button type="button" className="btn btn-ghost" onClick={() => setStudentVerified(detailStudent.id, false)}>Clear Verification</button>
-              ) : (
-                <button type="button" className="btn btn-primary" onClick={() => setStudentVerified(detailStudent.id, true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <CheckCircle2 size={16} /> Approve & Verify Student
-                </button>
-              )}
-              <button type="button" className="btn btn-secondary" onClick={() => setDetailStudent(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <StudentDetailModal
+        student={detailStudent}
+        onClose={() => setDetailStudent(null)}
+        onVerify={setStudentVerified}
+      />
 
     </div>
   );

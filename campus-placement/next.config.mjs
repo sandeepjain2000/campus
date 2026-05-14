@@ -23,7 +23,10 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
-  allowedDevOrigins: ['127.0.0.1'],
+  // Allow mobile devices on the local network to connect for testing.
+  // NEXTAUTH_URL and NEXT_PUBLIC_APP_URL in .env.local must also be updated
+  // to your LAN IP for session cookies to work.
+  allowedDevOrigins: ['127.0.0.1', '192.168.1.102'],
   // Helps dev/SSR reliably resolve `next-auth` subpath exports (`next-auth/react`).
   transpilePackages: ['next-auth'],
   async headers() {

@@ -2,13 +2,13 @@
 
 import ResponsiveWrapper from '@/components/mobile/ResponsiveWrapper';
 import DesktopInternships from './DesktopInternships';
-import MobileInternships from './MobileInternships';
+import mb_Internships from './mb_Internships';
 
 export default function CollegeInternshipsPage() {
   return (
     <ResponsiveWrapper 
       desktopView={<DesktopInternships />}
-      mobileView={<MobileInternships />}
+      mobileView={<mb_Internships />}
     />
   );
 }

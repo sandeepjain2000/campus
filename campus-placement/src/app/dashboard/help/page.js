@@ -179,7 +179,7 @@ const SECTIONS = [
       {
         id: 'employer-engagement',
         title: 'Sponsorships, guest needs, discussions',
-        content: `Sponsorships — manage sponsorship opportunities you offer campuses.\n\nCampus guest needs — coordinate lectures or guest sessions.\n\nClarifications & Discussions — answer official clarification batches and join discussions as your college enables.`,
+        content: `Sponsorships — manage sponsorship opportunities you offer campuses.\n\nCampus guest needs — coordinate lectures or guest sessions.\n\nClarifications — answer official Q&A batches from the placement committee.\n\nDiscussions — message threads with your active campus when the college enables them.`,
       },
     ],
   },
@@ -476,7 +476,7 @@ export default function HelpDocument() {
                 <Search size={48} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>No results found</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>
-                  We couldn't find any documentation matching &quot;<strong>{searchQuery}</strong>&quot;.
+                  We couldn&apos;t find any documentation matching &quot;<strong>{searchQuery}</strong>&quot;.
                 </p>
               </div>
             ) : (

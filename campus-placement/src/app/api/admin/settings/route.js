@@ -5,6 +5,8 @@ import { adminSettingsAuditSummary, validateAdminSettingsNormalized } from '@/li
 import { getRequestClientIp, writeAuditLog } from '@/lib/auditLog';
 import { query } from '@/lib/db';
 import { invalidatePlatformSettingsCache, PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
+import { normalizeMarketingWebsiteUrl } from '@/lib/marketingWebsiteUrl';
+import { canonicalizeTimezoneId } from '@/lib/timezoneUi';
 
 /** Respect explicit empty strings (e.g. clear platform name); only fall back when key absent or null. */
 function pickString(payload, key, defaultVal) {
@@ -45,7 +47,10 @@ export async function GET() {
     }
 
     const merged = await loadPlatformSettingsRow();
-    return NextResponse.json(merged);
+    return NextResponse.json({
+      ...merged,
+      timezone: canonicalizeTimezoneId(merged.timezone),
+    });
   } catch (error) {
     console.error('Failed to load admin settings:', error);
     return NextResponse.json({ error: 'Failed to load admin settings' }, { status: 500 });
@@ -62,6 +67,7 @@ export async function POST(request) {
     const payload = await request.json();
     const normalized = {
       platformName: pickString(payload, 'platformName', PLATFORM_SETTINGS_DEFAULTS.platformName),
+      marketingWebsiteUrl: normalizeMarketingWebsiteUrl(pickString(payload, 'marketingWebsiteUrl', '')),
       supportEmail: pickString(payload, 'supportEmail', PLATFORM_SETTINGS_DEFAULTS.supportEmail),
       systemNotificationInboxEmail: pickString(
         payload,
@@ -78,7 +84,7 @@ export async function POST(request) {
         'systemNotificationSenderName',
         PLATFORM_SETTINGS_DEFAULTS.systemNotificationSenderName,
       ),
-      timezone: pickString(payload, 'timezone', PLATFORM_SETTINGS_DEFAULTS.timezone),
+      timezone: canonicalizeTimezoneId(pickString(payload, 'timezone', PLATFORM_SETTINGS_DEFAULTS.timezone)),
       requireEmailVerification: Boolean(payload?.requireEmailVerification),
       enableTwoFactorAuth: Boolean(payload?.enableTwoFactorAuth),
       sessionTimeoutValue: Number(payload?.sessionTimeoutValue || PLATFORM_SETTINGS_DEFAULTS.sessionTimeoutValue),

@@ -22,7 +22,7 @@ export async function POST(req) {
       SELECT pa.id
       FROM program_applications pa
       JOIN student_profiles sp ON pa.student_id = sp.id
-      WHERE pa.id = $1 AND sp.user_id = $2
+      WHERE pa.id = $1::uuid AND sp.user_id = $2::uuid
     `, [application_id, userId]);
 
     if (appQuery.rowCount === 0) {

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { isUuid } from '@/lib/tenantContext';
+import { writeEmployerAssessmentAudit } from '@/lib/employerAssessmentAudit';
 
 async function getEmployerProfileId(session) {
   const userId = session?.user?.id;
@@ -129,6 +130,17 @@ export async function POST(request, { params }) {
           [uploadId],
         );
       }
+
+      await writeEmployerAssessmentAudit(client, {
+        tenantId: upload.tenant_id,
+        userId: session.user.id || null,
+        uploadId,
+        kind: 'row_add',
+        summary: wasNew
+          ? `Added student (roll ${roll}) to assessment upload`
+          : `Updated student (roll ${roll}) via manual add`,
+        details: { college_roll_no: roll, created: wasNew },
+      });
 
       return { wasNew };
     });

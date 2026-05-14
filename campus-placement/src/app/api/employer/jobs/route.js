@@ -271,6 +271,31 @@ export async function PATCH(request) {
     if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
     const body = await request.json().catch(() => ({}));
+
+    if (body?.action === 'close') {
+      const closeId = String(body.id || '').trim();
+      if (!closeId) {
+        return NextResponse.json({ error: 'Job id is required' }, { status: 400 });
+      }
+      const closed = await query(
+        `UPDATE job_postings
+         SET status = 'closed', updated_at = NOW()
+         WHERE id = $1::uuid AND employer_id = $2::uuid AND status = 'published'
+         RETURNING id, title, job_type, status`,
+        [closeId, emp.id],
+      );
+      if (!closed.rows.length) {
+        return NextResponse.json(
+          {
+            error:
+              'Job not found, or it is not published. Only published postings can be closed from this action.',
+          },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json({ ok: true, job: closed.rows[0] });
+    }
+
     const {
       id,
       title,

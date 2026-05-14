@@ -54,11 +54,12 @@ export default function AdminPendingRegistrationsPage() {
   };
 
   const getExportRows = () => {
-    const headers = ['Party', 'Contact Name', 'Email', 'Role', 'Requested Date'];
+    const headers = ['Party', 'Contact Name', 'Email', 'Email verified', 'Role', 'Requested Date'];
     const rowsList = rows.map(r => [
       r.label,
       `${r.firstName} ${r.lastName}`,
       r.email,
+      r.emailVerified ? 'Yes' : 'No',
       r.role === 'college_admin' ? 'College' : 'Employer',
       r.createdAt ? new Date(r.createdAt).toLocaleString() : ''
     ]);
@@ -92,6 +93,7 @@ export default function AdminPendingRegistrationsPage() {
               <th>Party</th>
               <th>Contact</th>
               <th>Role</th>
+              <th>Email verified</th>
               <th>Requested</th>
               <th />
             </tr>
@@ -107,6 +109,11 @@ export default function AdminPendingRegistrationsPage() {
                 <td>
                   <span className={`badge badge-${r.role === 'college_admin' ? 'indigo' : 'green'}`}>
                     {r.role === 'college_admin' ? 'College' : 'Employer'}
+                  </span>
+                </td>
+                <td>
+                  <span className={`badge badge-${r.emailVerified ? 'green' : 'amber'}`} style={{ fontSize: '0.75rem' }}>
+                    {r.emailVerified ? 'Yes' : 'Pending'}
                   </span>
                 </td>
                 <td className="text-sm text-secondary">
@@ -135,7 +142,7 @@ export default function AdminPendingRegistrationsPage() {
             ))}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center text-secondary">
+                <td colSpan={6} className="text-center text-secondary">
                   No accounts awaiting approval.
                 </td>
               </tr>

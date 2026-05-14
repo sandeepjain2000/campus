@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function AdminEmployersPage() {
   const [employers, setEmployers] = useState([]);
@@ -59,7 +60,9 @@ export default function AdminEmployersPage() {
           <tbody>{employers.map((e,i) => (
             <tr key={i}><td className="font-semibold">{e.name}</td><td>{e.industry}</td><td>{e.hires}</td>
             <td>{e.verified ? <span className="badge badge-green">✅ Verified</span> : <span className="badge badge-amber">Pending</span>}</td>
-            <td><button className="btn btn-ghost btn-sm" disabled title="Coming soon">View</button></td></tr>
+            <td>
+              <StandardTableIconAction action="view" disabled tooltip="Coming soon" />
+            </td></tr>
           ))}
           {!isLoading && employers.length === 0 ? (
             <tr>

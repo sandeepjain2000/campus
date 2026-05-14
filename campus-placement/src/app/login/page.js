@@ -110,11 +110,27 @@ function LoginPageInner() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const q = new URLSearchParams(window.location.search).get('registered');
+    const params = new URLSearchParams(window.location.search);
+    const verify = params.get('verify');
+    if (verify === 'success') {
+      setRegisteredBanner('Email verified. You can sign in below with your password.');
+      return;
+    }
+    if (verify === 'expired') {
+      setRegisteredBanner('That verification link has expired. Register again or contact support if you need help.');
+      return;
+    }
+    if (verify === 'invalid' || verify === 'error') {
+      setRegisteredBanner('That verification link is invalid or was already used.');
+      return;
+    }
+    const q = params.get('registered');
     if (q === 'pending-platform') {
       setRegisteredBanner(
-        'Registration received. Your account will be activated after platform approval — watch your inbox for email confirmation.',
+        'Registration received. Verify your email from our message, then wait for platform approval before signing in.',
       );
+    } else if (q === 'check-email') {
+      setRegisteredBanner('Check your email and click the verification link before you sign in.');
     } else if (q === 'true') {
       setRegisteredBanner('Account created. You can sign in below.');
     }

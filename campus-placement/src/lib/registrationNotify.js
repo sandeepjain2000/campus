@@ -86,6 +86,7 @@ export async function notifyRegistrationSubmitted({ role, email, firstName, tena
         <div style="padding: 20px;">
           <p>Hi ${firstName},</p>
           <p>Thanks for registering on PlacementHub. Your account is currently <strong>pending approval</strong> by the platform team to ensure security and validity.</p>
+          <p><strong>Important:</strong> use the <em>Verify your email</em> link we sent in a separate message. Platform approval can only be completed after your email is verified.</p>
           <p>You will receive another email as soon as your account is activated and ready to use.</p>
           <p style="margin-top: 30px; font-size: 13px; color: #6b7280;">If you did not sign up, you can safely ignore this message.</p>
         </div>
@@ -94,7 +95,7 @@ export async function notifyRegistrationSubmitted({ role, email, firstName, tena
     await sendMail({
       to: email,
       subject: '[PlacementHub] We received your registration',
-      text: `Hi ${firstName},\n\nThanks for registering on PlacementHub. Your account is pending approval by the platform team.\nYou will receive another email when your account is activated.\n\nIf you did not sign up, you can ignore this message.`,
+      text: `Hi ${firstName},\n\nThanks for registering on PlacementHub. Your account is pending approval by the platform team.\nVerify your email using the separate message we sent, then wait for activation.\nYou will receive another email when your account is activated.\n\nIf you did not sign up, you can ignore this message.`,
       html,
     });
   }
@@ -152,10 +153,11 @@ export async function notifyStudentRegistered({ studentEmail, firstName, tenantI
       </div>
       <div style="padding: 20px;">
         <p>Hi ${firstName},</p>
-        <p>Your student account was successfully created for <strong>${collegeName || 'your institution'}</strong>.</p>
-        <p><em>Note: Your placement office may need to verify your account before all placement features unlock.</em></p>
-        <p>You can sign in now with the email and password you used at registration.</p>
-        <a href="${loginAbs}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Sign In</a>
+        <p>Your student account was created for <strong>${collegeName || 'your institution'}</strong>.</p>
+        <p><strong>Next step:</strong> open the <em>Verify your email</em> message we sent you and click the link. You can sign in only after your email is verified.</p>
+        <p><em>Your placement office may still need to verify your profile before all placement features unlock.</em></p>
+        <p style="font-size: 13px; color: #6b7280;">After you verify your email, you can use the PlacementHub login page with the password you chose.</p>
+        <a href="${loginAbs}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Open login page</a>
       </div>
     </div>
   `;
@@ -163,7 +165,7 @@ export async function notifyStudentRegistered({ studentEmail, firstName, tenantI
   await sendMail({
     to: studentEmail,
     subject: '[PlacementHub] Registration received',
-    text: `Hi ${firstName},\n\nYour student account was created for ${collegeName || 'your institution'}.\nYour placement office may need to verify you before all placement features unlock.\n\nYou can sign in with the email and password you used at registration.`,
+    text: `Hi ${firstName},\n\nYour student account was created for ${collegeName || 'your institution'}.\n\nVerify your email using the link we sent you, then sign in with your password.\nYour placement office may still need to verify you before all placement features unlock.\n`,
     html,
   });
 

@@ -23,7 +23,7 @@ export async function POST(req) {
       FROM applications a
       JOIN student_profiles sp ON a.student_id = sp.id
       JOIN placement_drives d ON a.drive_id = d.id
-      WHERE a.id = $1 AND sp.user_id = $2
+      WHERE a.id = $1::uuid AND sp.user_id = $2::uuid
     `, [application_id, userId]);
 
     if (appQuery.rowCount === 0) {

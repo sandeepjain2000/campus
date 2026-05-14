@@ -79,7 +79,7 @@ export async function GET() {
       }
 
       progress.steps = [
-        { id: 'profile', title: 'Complete Company Profile', completed: !!hasProfile, href: '/dashboard/employer/settings' },
+        { id: 'profile', title: 'Complete Company Profile', completed: !!hasProfile, href: '/dashboard/employer/profile' },
         { id: 'drive', title: 'Create Placement Drive', completed: !!hasDrives, href: '/dashboard/employer/drives' },
         { id: 'offers', title: 'Upload Offer Letters', completed: !!hasOffers, href: '/dashboard/employer/offers' },
       ];
@@ -96,7 +96,12 @@ export async function GET() {
     } else {
       // Basic static steps for super admin
       progress.steps = [
-        { id: 'colleges', title: 'Onboard New Colleges', completed: false, href: '/dashboard/admin/colleges' },
+        {
+          id: 'colleges',
+          title: 'Onboard New Colleges',
+          completed: false,
+          href: '/dashboard/admin/pending-registrations',
+        },
         { id: 'employers', title: 'Verify Employers', completed: false, href: '/dashboard/admin/employers' },
         { id: 'settings', title: 'Platform Settings', completed: false, href: '/dashboard/admin/settings' },
       ];

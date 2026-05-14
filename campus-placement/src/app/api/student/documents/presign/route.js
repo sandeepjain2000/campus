@@ -44,8 +44,8 @@ export async function POST(req) {
     if (!isS3Configured()) {
       return NextResponse.json(
         {
-          error: 'S3 not configured',
-          hint: 'Set AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME on the server.',
+          error: 'Cloud storage not configured',
+          hint: 'Your administrator can enable server-side file storage for document uploads.',
         },
         { status: 503 },
       );

@@ -20,22 +20,21 @@ const fetcher = async (url) => {
 };
 
 const STATUS_META = {
-  pending:   { label: 'Pending',   color: '#b45309', bg: '#fef3c7', icon: Clock },
-  approved:  { label: 'Approved',  color: '#059669', bg: '#d1fae5', icon: CheckCircle2 },
-  rejected:  { label: 'Rejected',  color: '#dc2626', bg: '#fee2e2', icon: XCircle },
-  revoked:   { label: 'Revoked',   color: '#6b7280', bg: '#f3f4f6', icon: AlertCircle },
+  pending:   { label: 'Pending',   badgeClass: 'badge-amber', icon: Clock },
+  approved:  { label: 'Approved',  badgeClass: 'badge-green', icon: CheckCircle2 },
+  rejected:  { label: 'Rejected',  badgeClass: 'badge-red',   icon: XCircle },
+  revoked:   { label: 'Revoked',   badgeClass: 'badge-gray',  icon: AlertCircle },
 };
 
+function getStatusMeta(status) {
+  return STATUS_META[status] || { label: formatStatus(status), badgeClass: 'badge-gray', icon: AlertCircle };
+}
+
 function StatusPill({ status }) {
-  const meta = STATUS_META[status] || { label: formatStatus(status), color: '#6b7280', bg: '#f3f4f6', icon: AlertCircle };
+  const meta = getStatusMeta(status);
   const Icon = meta.icon;
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-      padding: '0.25rem 0.65rem', borderRadius: '999px', fontSize: '0.75rem',
-      fontWeight: 600, color: meta.color, background: meta.bg,
-      border: `1px solid ${meta.color}22`, whiteSpace: 'nowrap',
-    }}>
+    <span className={`badge ${meta.badgeClass}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem' }}>
       <Icon size={11} strokeWidth={2.5} />
       {meta.label}
     </span>
@@ -173,7 +172,7 @@ export default function MobileEmployers() {
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPocModal(emp)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border-default)', fontSize: '0.8rem' }}>
                           <Users size={13} /> POCs
                         </button>
-                        <button type="button" className="btn btn-ghost btn-sm" style={{ color: '#dc2626', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem' }} onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={processingId === emp.employer_id}>
+                        <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem' }} onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={processingId === emp.employer_id}>
                           <X size={13} /> {processingId === emp.employer_id ? 'Blocking…' : 'Block'}
                         </button>
                       </>

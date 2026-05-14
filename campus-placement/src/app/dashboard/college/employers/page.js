@@ -2,13 +2,13 @@
 
 import ResponsiveWrapper from '@/components/mobile/ResponsiveWrapper';
 import DesktopEmployers from './DesktopEmployers';
-import MobileEmployers from './MobileEmployers';
+import mb_Employers from './mb_Employers';
 
 export default function CollegeEmployersPage() {
   return (
     <ResponsiveWrapper 
       desktopView={<DesktopEmployers />}
-      mobileView={<MobileEmployers />}
+      mobileView={<mb_Employers />}
     />
   );
 }

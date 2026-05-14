@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function AdminCollegesPage() {
   const [colleges, setColleges] = useState([]);
@@ -60,8 +61,9 @@ export default function AdminCollegesPage() {
             fullCount={colleges.length} 
             getRows={getExportRows} 
           />
-          <Link className="btn btn-secondary" href="/dashboard/admin/pending-registrations">Pending registrations</Link>
-          <Link className="btn btn-primary" href="/dashboard/admin/pending-registrations">+ Review/Add College</Link>
+          <Link className="btn btn-primary" href="/dashboard/admin/pending-registrations" title="Colleges self-register and await platform approval here.">
+            + Review / Add College
+          </Link>
         </div>
       </div>
       <div className="table-container">
@@ -74,8 +76,10 @@ export default function AdminCollegesPage() {
                 <td>{c.students}</td><td>{c.placed}</td><td className="font-bold">{c.students > 0 ? Math.round(c.placed / c.students * 100) : 0}%</td>
                 <td><span className="badge badge-green badge-dot">{c.active ? 'Active' : 'Inactive'}</span></td>
                 <td>
-                  <button className="btn btn-ghost btn-sm" disabled title="Coming soon">View</button>
-                  <button className="btn btn-ghost btn-sm" disabled title="Coming soon">Edit</button>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                    <StandardTableIconAction action="view" disabled tooltip="Coming soon" />
+                    <StandardTableIconAction action="edit" disabled tooltip="Coming soon" />
+                  </div>
                 </td>
               </tr>
             ))}

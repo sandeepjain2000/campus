@@ -58,8 +58,11 @@ async function getEmployerByUser(userId) {
        ep.reliability_score,
        ep.billing_legal_name,
        ep.billing_pan,
-       ep.billing_gst_number
+       ep.billing_gst_number,
+       u.email AS account_email,
+       u.communication_email
      FROM employer_profiles ep
+     INNER JOIN users u ON u.id = ep.user_id
      WHERE ep.user_id = $1
      LIMIT 1`,
     [userId]
@@ -142,6 +145,18 @@ export async function PATCH(request) {
       billingLegal = b.legal;
       billingPan = b.pan;
       billingGst = b.gst;
+    }
+
+    const hasCommunicationEmailPatch = Object.prototype.hasOwnProperty.call(body || {}, 'communicationEmail');
+    if (hasCommunicationEmailPatch) {
+      const commRaw = String(body.communicationEmail ?? '').trim().toLowerCase();
+      if (commRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(commRaw)) {
+        return NextResponse.json({ error: 'Communication email must be a valid address' }, { status: 400 });
+      }
+      await query(`UPDATE users SET communication_email = $1, updated_at = NOW() WHERE id = $2::uuid`, [
+        commRaw || null,
+        session.user.id,
+      ]);
     }
 
     await query(

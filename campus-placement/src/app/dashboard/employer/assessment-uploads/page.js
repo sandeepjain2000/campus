@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
-import { formatDate } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { AssessmentCsvUploadForm } from '@/components/employer/AssessmentSpreadsheetUploadPanel';
+import { isUuid } from '@/lib/tenantContext';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -14,18 +16,14 @@ const fetcher = async (url) => {
   return data;
 };
 
-export default function EmployerAssessmentUploadsPage() {
+function EmployerAssessmentUploadsContent() {
   const { addToast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
-  const [targetType, setTargetType] = useState('drive');
-  const [driveId, setDriveId] = useState('');
-  const [jobId, setJobId] = useState('');
-  const [tenantId, setTenantId] = useState('');
-  const [file, setFile] = useState(null);
-  const [rounds, setRounds] = useState(['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5']);
-  const [submitting, setSubmitting] = useState(false);
-  const [lastResult, setLastResult] = useState(null);
-  const [showAllErrors, setShowAllErrors] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [lastUploadResult, setLastUploadResult] = useState(null);
+  const [showAllUploadErrors, setShowAllUploadErrors] = useState(false);
   const [editorUploadId, setEditorUploadId] = useState(null);
   const [draftRows, setDraftRows] = useState([]);
   const [savingRows, setSavingRows] = useState(false);
@@ -33,8 +31,6 @@ export default function EmployerAssessmentUploadsPage() {
   const [addRemarks, setAddRemarks] = useState('');
   const [addingRow, setAddingRow] = useState(false);
 
-  const { data: drivesData } = useSWR('/api/employer/drives', fetcher);
-  const { data: jobsData } = useSWR('/api/employer/jobs', fetcher);
   const { data: uploadsData, mutate: mutateUploads, error, isLoading } = useSWR('/api/employer/assessments?limit=20', fetcher);
   const {
     data: detailData,
@@ -64,6 +60,41 @@ export default function EmployerAssessmentUploadsPage() {
     if (!Array.isArray(detailData.rows)) return;
     setDraftRows(detailData.rows.map((r) => ({ ...r })));
   }, [editorUploadId, rowsSig, detailData?.upload?.id, detailData?.rows]);
+
+  useEffect(() => {
+    const edit = searchParams.get('edit');
+    if (edit && isUuid(edit)) {
+      setEditorUploadId(edit);
+      setAddRoll('');
+      setAddRemarks('');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('upload') === '1') {
+      setUploadModalOpen(true);
+      router.replace('/dashboard/employer/assessment-uploads', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (!uploadModalOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setUploadModalOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [uploadModalOpen]);
+
+  const {
+    data: auditData,
+    error: auditError,
+    isLoading: auditLoading,
+    mutate: mutateAudit,
+  } = useSWR(editorUploadId ? `/api/employer/assessments/${editorUploadId}/audit` : null, fetcher, {
+    revalidateOnFocus: false,
+  });
+  const auditEntries = auditData?.entries || [];
 
   const roundLabels = useMemo(() => {
     const roundsMeta = Array.isArray(detailData?.rounds) ? detailData.rounds : [];
@@ -107,6 +138,7 @@ export default function EmployerAssessmentUploadsPage() {
       addToast('Assessment rows saved.', 'success');
       await mutateDetail();
       await mutateUploads();
+      await mutateAudit();
     } catch (e) {
       addToast(e.message || 'Save failed', 'error');
     } finally {
@@ -136,6 +168,7 @@ export default function EmployerAssessmentUploadsPage() {
       setAddRemarks('');
       await mutateDetail();
       await mutateUploads();
+      await mutateAudit();
     } catch (e) {
       addToast(e.message || 'Could not add row', 'error');
     } finally {
@@ -143,66 +176,7 @@ export default function EmployerAssessmentUploadsPage() {
     }
   };
 
-  const drives = Array.isArray(drivesData?.drives) ? drivesData.drives : [];
-  const jobs = Array.isArray(jobsData?.jobs) ? jobsData.jobs : [];
   const uploads = uploadsData?.uploads || [];
-  const selectedDrive = useMemo(() => drives.find((d) => d.id === driveId), [drives, driveId]);
-
-  const downloadTemplate = () => {
-    window.location.href = '/api/employer/assessments/template';
-  };
-
-  const onUpload = async () => {
-    if (!file) {
-      addToast('Please select a CSV file first.', 'warning');
-      return;
-    }
-    const lowerName = String(file.name || '').toLowerCase();
-    if (!lowerName.endsWith('.csv')) {
-      addToast('Please upload a .csv file.', 'warning');
-      return;
-    }
-    if (targetType === 'job' && !jobId) {
-      addToast('Select a job.', 'warning');
-      return;
-    }
-    if (targetType === 'job' && !tenantId.trim()) {
-      addToast('Tenant ID is required for job-level upload.', 'warning');
-      return;
-    }
-    if (rounds.some((r) => !String(r || '').trim())) {
-      addToast('Please provide names for all 5 rounds.', 'warning');
-      return;
-    }
-
-    setSubmitting(true);
-    setLastResult(null);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      if (targetType === 'drive' && driveId) form.append('driveId', driveId);
-      if (targetType === 'job') {
-        form.append('jobId', jobId);
-        form.append('tenantId', tenantId.trim());
-      }
-      rounds.forEach((r, i) => form.append(`round_${i + 1}_name`, r || `Round ${i + 1}`));
-
-      const res = await fetch('/api/employer/assessments/upload', {
-        method: 'POST',
-        body: form,
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
-      setLastResult(json);
-      setShowAllErrors(false);
-      addToast('Assessment CSV uploaded.', 'success');
-      await mutateUploads();
-    } catch (e) {
-      addToast(e.message || 'Upload failed', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div className="animate-fadeIn">
@@ -241,7 +215,7 @@ export default function EmployerAssessmentUploadsPage() {
               ]),
             })}
           />
-          <button className="btn btn-secondary" type="button" onClick={downloadTemplate}>Download Template</button>
+          <button className="btn btn-secondary" type="button" onClick={() => { window.location.href = '/api/employer/assessments/template'; }}>Download Template</button>
         </div>
       </div>
 
@@ -249,11 +223,11 @@ export default function EmployerAssessmentUploadsPage() {
         <p className="directive-panel__title">What to do (in order)</p>
         <ol className="directive-steps">
           <li>
-            <strong>Use the section below</strong> — choose <strong>drive or job</strong>, attach the <strong>CSV</strong>, and name the five rounds (those names are labels for your team; the file still uses{' '}
-            <code>round_1</code>…<code>round_5</code>).
+            <strong>Click “Open upload &amp; column mapping”</strong> below — in the dialog, choose <strong>drive or job</strong>, set <strong>round display names</strong> next to each{' '}
+            <code>round_1</code>…<code>round_5</code> column, attach the CSV, then upload.
           </li>
           <li>
-            <strong>Press “Upload CSV”</strong> — the summary shows accepted vs rejected rows. Fix the sheet and upload again if something failed.
+            <strong>Check the upload summary</strong> — accepted vs rejected rows. Fix the sheet and upload again if something failed.
           </li>
           <li>
             <strong>In Upload history, click “View / edit”</strong> — change any result, then <strong>Save changes</strong>. Adding one extra student by roll at the bottom is <strong>optional</strong>.
@@ -267,127 +241,94 @@ export default function EmployerAssessmentUploadsPage() {
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <h3 className="card-title" style={{ marginBottom: '0.35rem' }}>
-          1 · Upload spreadsheet
+          1 · Upload spreadsheet &amp; column mapping
         </h3>
-        <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
-          Most teams only need this block. Download the template if you are unsure about columns.
+        <p className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
+          The <strong>round mapping</strong> table (your labels ↔ <code>round_1</code>…<code>round_5</code>), tenant line, and CSV file picker are in the dialog — this keeps the main page uncluttered.
         </p>
-        <div className="grid grid-3">
-          <div className="form-group">
-            <label className="form-label">Target</label>
-            <select className="form-select" value={targetType} onChange={(e) => setTargetType(e.target.value)}>
-              <option value="drive">Placement Drive</option>
-              <option value="job">Job</option>
-            </select>
-            <p className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-              Only placement drives/jobs are supported. Internships/projects are blocked.
-            </p>
-          </div>
-
-          {targetType === 'drive' ? (
-            <div className="form-group">
-              <label className="form-label">Drive</label>
-              <select className="form-select" value={driveId} onChange={(e) => { setDriveId(e.target.value); setTenantId(''); }}>
-                <option value="">Select drive</option>
-                {drives.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {(d.role || d.title || d.college || 'Drive') + (d.date ? ` (${formatDate(d.date)})` : '')}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div className="form-group">
-              <label className="form-label">Job</label>
-              <select className="form-select" value={jobId} onChange={(e) => setJobId(e.target.value)}>
-                <option value="">Select job</option>
-                {jobs.map((j) => (
-                  <option key={j.id} value={j.id}>{j.title}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label className="form-label">CSV file</label>
-            <input className="form-input" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <p className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-              Key must be <strong>college_roll_no</strong>. Template includes <strong>placement_drive_id</strong> (optional
-              if you choose the drive above; required on every row if you leave the dropdown empty). Use the same UUID for
-              all rows. Column <strong>remarks</strong> (last column) is optional — panel notes, up to 4000 characters. Students
-              outside the college master list are rejected.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-3" style={{ marginTop: '0.5rem' }}>
-          <div className="form-group">
-            <label className="form-label">Round 1 name</label>
-            <input className="form-input" value={rounds[0]} onChange={(e) => setRounds((r) => [e.target.value, r[1], r[2], r[3], r[4]])} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Round 2 name</label>
-            <input className="form-input" value={rounds[1]} onChange={(e) => setRounds((r) => [r[0], e.target.value, r[2], r[3], r[4]])} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Round 3 name</label>
-            <input className="form-input" value={rounds[2]} onChange={(e) => setRounds((r) => [r[0], r[1], e.target.value, r[3], r[4]])} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Round 4 name</label>
-            <input className="form-input" value={rounds[3]} onChange={(e) => setRounds((r) => [r[0], r[1], r[2], e.target.value, r[4]])} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Round 5 name</label>
-            <input className="form-input" value={rounds[4]} onChange={(e) => setRounds((r) => [r[0], r[1], r[2], r[3], e.target.value])} />
-          </div>
-          {targetType === 'job' ? (
-            <div className="form-group">
-              <label className="form-label">Tenant ID (required for job)</label>
-              <input className="form-input" value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="College tenant UUID" />
-            </div>
-          ) : (
-            <div className="form-group">
-              <label className="form-label">Tenant context</label>
-              <input className="form-input" disabled value={selectedDrive?.tenant_id || 'Auto from selected drive'} />
-            </div>
-          )}
-        </div>
-        <p className="text-sm text-secondary" style={{ marginTop: '0.5rem' }}>
-          System columns are <code>round_1</code>…<code>round_5</code> plus optional <code>remarks</code>. Round names above are display labels only.
-          After upload, open <strong>View / edit</strong> — the grid’s rightmost column is <strong>Remarks</strong> (same field).
-        </p>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-          <button className="btn btn-primary" disabled={submitting} onClick={onUpload}>
-            {submitting ? 'Uploading...' : 'Upload CSV'}
-          </button>
-        </div>
+        <button type="button" className="btn btn-primary" onClick={() => setUploadModalOpen(true)}>
+          Open upload &amp; column mapping
+        </button>
       </div>
 
-      {lastResult && (
+      {lastUploadResult && (
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h3 className="card-title">Latest upload summary</h3>
           <p>
-            Total: <strong>{lastResult.totalRows}</strong> | Accepted: <strong>{lastResult.acceptedRows}</strong> | Rejected:{' '}
-            <strong>{lastResult.rejectedRows}</strong>
+            Total: <strong>{lastUploadResult.totalRows}</strong> | Accepted: <strong>{lastUploadResult.acceptedRows}</strong> | Rejected:{' '}
+            <strong>{lastUploadResult.rejectedRows}</strong>
           </p>
-          {Array.isArray(lastResult.errors) && lastResult.errors.length > 0 && (
+          {Array.isArray(lastUploadResult.errors) && lastUploadResult.errors.length > 0 && (
             <div className="text-sm text-secondary" style={{ marginTop: '0.5rem', maxHeight: 160, overflowY: 'auto' }}>
-              {(showAllErrors ? lastResult.errors : lastResult.errors.slice(0, 20)).map((e) => (
+              {(showAllUploadErrors ? lastUploadResult.errors : lastUploadResult.errors.slice(0, 20)).map((e) => (
                 <div key={e}>• {e}</div>
               ))}
-              {lastResult.errors.length > 20 && (
+              {lastUploadResult.errors.length > 20 && (
                 <button
                   className="btn btn-ghost btn-sm"
                   style={{ marginTop: '0.5rem' }}
-                  onClick={() => setShowAllErrors((v) => !v)}
+                  onClick={() => setShowAllUploadErrors((v) => !v)}
                 >
-                  {showAllErrors ? 'Show less' : `Show all ${lastResult.errors.length} errors`}
+                  {showAllUploadErrors ? 'Show less' : `Show all ${lastUploadResult.errors.length} errors`}
                 </button>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {uploadModalOpen && (
+        <div
+          role="presentation"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: '1.5rem',
+            overflowY: 'auto',
+          }}
+          onClick={() => setUploadModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assessment-upload-dialog-title"
+            className="card"
+            style={{
+              maxWidth: 'min(100%, 52rem)',
+              width: '100%',
+              marginTop: '2vh',
+              marginBottom: '2vh',
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+              <h2 id="assessment-upload-dialog-title" className="card-title" style={{ margin: 0 }}>
+                1 · Upload spreadsheet &amp; column mapping
+              </h2>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUploadModalOpen(false)} aria-label="Close">
+                Close
+              </button>
+            </div>
+            <AssessmentCsvUploadForm
+              onUploaded={async (json) => {
+                setLastUploadResult(json);
+                setShowAllUploadErrors(false);
+                setUploadModalOpen(false);
+                await mutateUploads();
+                if (json?.uploadId && isUuid(json.uploadId)) {
+                  setEditorUploadId(json.uploadId);
+                  setAddRoll('');
+                  setAddRemarks('');
+                }
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -453,6 +394,7 @@ export default function EmployerAssessmentUploadsPage() {
       </div>
 
       {editorUploadId && (
+        <>
         <div className="card" style={{ marginTop: '1rem' }}>
           <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
             <h3 className="card-title">3 · Results for this upload — edit &amp; save</h3>
@@ -566,7 +508,61 @@ export default function EmployerAssessmentUploadsPage() {
             </>
           )}
         </div>
+
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <h3 className="card-title" style={{ marginBottom: '0.35rem' }}>
+            4 · Activity log (audit)
+          </h3>
+          <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
+            CSV uploads, saves from this grid, and manual row adds are recorded here. Campus administrators can see the same events under{' '}
+            <strong>Audit Reports</strong> (filter by action <code>ASSESS_CSV</code>, <code>ASSESS_SAVE</code>, or <code>ASSESS_ADD</code>; entity type{' '}
+            <code>employer_assessment</code>).
+          </p>
+          {auditError && <p style={{ color: 'var(--danger-600)' }}>{auditError.message}</p>}
+          {auditLoading ? (
+            <div className="skeleton skeleton-card" style={{ height: 140 }} />
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Summary</th>
+                    <th>By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditEntries.map((e) => (
+                    <tr key={e.id}>
+                      <td>{e.created_at ? new Date(e.created_at).toLocaleString() : '—'}</td>
+                      <td><code className="text-sm">{e.action}</code></td>
+                      <td className="text-sm">{e.summary}</td>
+                      <td className="text-sm">{(e.actor_name && e.actor_name.trim()) || e.actor_email || '—'}</td>
+                    </tr>
+                  ))}
+                  {auditEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        No activity logged yet for this upload.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </>
       )}
     </div>
+  );
+}
+
+export default function EmployerAssessmentUploadsPage() {
+  return (
+    <Suspense fallback={<div className="skeleton skeleton-card" style={{ height: 320, marginTop: '1rem' }} />}>
+      <EmployerAssessmentUploadsContent />
+    </Suspense>
   );
 }

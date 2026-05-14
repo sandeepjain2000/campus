@@ -85,14 +85,15 @@ export async function POST(req) {
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 2);
     const job = await query(
-      `SELECT jp.id, jp.job_type, jp.status
+      `SELECT jp.id, jp.job_type, jp.status, jp.min_cgpa, sp.cgpa AS student_cgpa
        FROM job_postings jp
+       CROSS JOIN student_profiles sp
        INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
        INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
        INNER JOIN employer_approvals ea
          ON ea.employer_id = ep.id AND ea.tenant_id = jpv.tenant_id AND ea.status = 'approved'
-       WHERE jp.id = $1::uuid`,
-      [jobId, ...tenantInParams],
+       WHERE jp.id = $1::uuid AND sp.id = $${tenantInParams.length + 2}::uuid`,
+      [jobId, ...tenantInParams, studentId],
     );
 
     if (!job.rowCount) {
@@ -105,6 +106,30 @@ export async function POST(req) {
     }
     if (!PROGRAM_TYPES.has(row.job_type)) {
       return NextResponse.json({ error: 'Invalid program type' }, { status: 400 });
+    }
+
+    if (row.min_cgpa != null) {
+      const reqCgpa = Number(row.min_cgpa);
+      const myCgpa = Number(row.student_cgpa);
+
+      if (isNaN(myCgpa)) {
+        return NextResponse.json({ error: 'Please update your CGPA in your profile to apply.' }, { status: 400 });
+      }
+
+      let isEligible = false;
+      if (reqCgpa > 10 && myCgpa <= 10) {
+        isEligible = (myCgpa * 9.5) >= reqCgpa;
+      } else if (reqCgpa <= 10 && myCgpa > 10) {
+        isEligible = myCgpa >= (reqCgpa * 9.5);
+      } else {
+        isEligible = myCgpa >= reqCgpa;
+      }
+
+      if (!isEligible) {
+        return NextResponse.json({ 
+          error: `Cannot apply: Need minimum ${reqCgpa} CGPA, your current is ${myCgpa}. Scale mismatch resolved.`
+        }, { status: 400 });
+      }
     }
 
     const ins = await query(

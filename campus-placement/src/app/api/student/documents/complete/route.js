@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { transaction } from '@/lib/db';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 
 const DOC_TYPES = new Set(['resume', 'id_proof', 'academic', 'certificate', 'other']);
@@ -32,14 +32,30 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Could not create student profile (missing tenant?)' }, { status: 400 });
     }
 
-    const ins = await query(
-      `INSERT INTO student_documents (student_id, document_type, document_name, file_url, file_size, is_verified)
-       VALUES ($1, $2, $3, $4, $5, false)
-       RETURNING id, document_type, document_name, file_url, file_size, is_verified, uploaded_at`,
-      [studentId, document_type, document_name, file_url, file_size],
-    );
+    const document = await transaction(async (client) => {
+      const ins = await client.query(
+        `INSERT INTO student_documents (student_id, document_type, document_name, file_url, file_size, is_verified)
+         VALUES ($1, $2, $3, $4, $5, true)
+         RETURNING id, document_type, document_name, file_url, file_size, is_verified, uploaded_at`,
+        [studentId, document_type, document_name, file_url, file_size],
+      );
 
-    return NextResponse.json({ document: ins.rows[0] }, { status: 201 });
+      if (document_type === 'resume') {
+        await client.query(
+          `UPDATE student_profiles
+           SET
+             resume_url = $1,
+             aux_profile = COALESCE(aux_profile, '{}'::jsonb) || jsonb_build_object('cvFileName', $2),
+             updated_at = NOW()
+           WHERE id = $3::uuid`,
+          [file_url, document_name, studentId],
+        );
+      }
+
+      return ins.rows[0];
+    });
+
+    return NextResponse.json({ document }, { status: 201 });
   } catch (e) {
     console.error('POST /api/student/documents/complete', e);
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });

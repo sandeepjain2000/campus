@@ -78,17 +78,56 @@ export async function POST(req) {
     const notes = location_preference ? `Preferred Location: ${location_preference}` : null;
 
     try {
+      const meta = await query(
+        `SELECT d.id, d.job_id, j.min_cgpa, sp.cgpa AS student_cgpa
+         FROM placement_drives d
+         LEFT JOIN job_postings j ON d.job_id = j.id
+         CROSS JOIN student_profiles sp
+         WHERE d.id = $1 AND sp.id = $2`,
+        [drive_id, studentId]
+      );
+
+      if (meta.rowCount === 0) {
+        return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
+      }
+
+      const { job_id, min_cgpa, student_cgpa } = meta.rows[0];
+
+      if (min_cgpa != null) {
+        const reqCgpa = Number(min_cgpa);
+        const myCgpa = Number(student_cgpa);
+
+        if (isNaN(myCgpa)) {
+          return NextResponse.json({ error: 'Please update your CGPA in your profile to apply.' }, { status: 400 });
+        }
+
+        let isEligible = false;
+        if (reqCgpa > 10 && myCgpa <= 10) {
+          // Employer asked for percentage (e.g. 60), student gave CGPA (e.g. 6.5)
+          isEligible = (myCgpa * 9.5) >= reqCgpa;
+        } else if (reqCgpa <= 10 && myCgpa > 10) {
+          // Employer asked for CGPA, student gave percentage
+          isEligible = myCgpa >= (reqCgpa * 9.5);
+        } else {
+          isEligible = myCgpa >= reqCgpa;
+        }
+
+        if (!isEligible) {
+          return NextResponse.json({ 
+            error: `Cannot apply to drive: Need minimum ${reqCgpa} CGPA, your current is ${myCgpa}. Scale mismatch resolved.`
+          }, { status: 400 });
+        }
+      }
+
       const ins = await query(
         `
         INSERT INTO applications (student_id, drive_id, job_id, status, notes)
-        SELECT $1, d.id, d.job_id, 'applied', $3
-        FROM placement_drives d
-        WHERE d.id = $2
+        VALUES ($1, $2, $3, 'applied', $4)
         ON CONFLICT (student_id, drive_id)
-        DO UPDATE SET status = 'applied', notes = EXCLUDED.notes, updated_at = NOW()
+        DO UPDATE SET status = 'applied', notes = COALESCE(EXCLUDED.notes, applications.notes), updated_at = NOW()
         RETURNING id
       `,
-        [studentId, drive_id, notes],
+        [studentId, drive_id, job_id, notes],
       );
 
       if (ins.rowCount === 0) {

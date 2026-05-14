@@ -3,33 +3,9 @@
 import Link from 'next/link';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { formatStatus, getStatusColor } from '@/lib/utils';
-import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { ImportCsvSplitButton } from '@/components/import/ImportCsvSplitButton';
-import { parseCsv, downloadCsvFromRows } from '@/lib/csvExport';
-import {
-  CURRENT_ACADEMIC_YEAR, CURRENT_SEMESTER, STUDENT_CSV_HEADERS,
-  studentToCsvRow, studentCsvTemplateExampleRow, validateStudentCsvHeaders,
-  parseStudentRow, normalizeStudentRollKey,
-} from '@/lib/collegeStudentsCsv';
 import { useToast } from '@/components/ToastProvider';
-import { GraduationCap, Search, Download, X, CheckCircle2, UserPlus } from 'lucide-react';
+import { Search, X, CheckCircle2, UserPlus } from 'lucide-react';
 import MobileHeader from '@/components/mobile/MobileHeader';
-
-function mergeImportedStudents(prev, imported) {
-  const byRoll = new Map(prev.map((s) => [normalizeStudentRollKey(s.roll), { ...s, skills: [...s.skills] }]));
-  let maxId = prev.reduce((m, s) => Math.max(m, s.id), 0);
-  for (const u of imported) {
-    const key = normalizeStudentRollKey(u.roll);
-    if (byRoll.has(key)) {
-      const ex = byRoll.get(key);
-      byRoll.set(key, { ...ex, ...u, id: ex.id, skills: [...u.skills] });
-    } else {
-      maxId += 1;
-      byRoll.set(key, { ...u, id: maxId, skills: [...u.skills] });
-    }
-  }
-  return Array.from(byRoll.values());
-}
 
 export default function MobileCollegeStudents() {
   const { addToast } = useToast();
@@ -39,7 +15,6 @@ export default function MobileCollegeStudents() {
   const [deptFilter, setDeptFilter] = useState('');
   const [jobStatusFilter, setJobStatusFilter] = useState('');
   const [detailStudent, setDetailStudent] = useState(null);
-  const [importBusy, setImportBusy] = useState(false);
 
   // Lock background scroll when modal is open
   useEffect(() => {
@@ -91,59 +66,7 @@ export default function MobileCollegeStudents() {
     return true;
   }), [students, search, deptFilter, jobStatusFilter]);
 
-  const getStudentCsv = useCallback((scope) => {
-    const list = scope === 'current' ? filtered : students;
-    return { headers: [...STUDENT_CSV_HEADERS], rows: list.map((s) => studentToCsvRow(s)) };
-  }, [filtered, students]);
-
-  const uniqueSpecializations = useMemo(() => Array.from(new Set(students.map((s) => s.specialization))), [students]);
   const uniqueDepartments = useMemo(() => Array.from(new Set(students.map((s) => s.dept).filter(Boolean))), [students]);
-  const uniqueSemesters = useMemo(() => Array.from(new Set(students.map((s) => s.semester).filter(Boolean))), [students]);
-
-  const downloadTemplate = useCallback(() => {
-    downloadCsvFromRows('students_import_template', [...STUDENT_CSV_HEADERS], [studentCsvTemplateExampleRow()]);
-  }, []);
-
-  const onImportFile = useCallback(async (file) => {
-    setImportBusy(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/college/students/bulk-upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        const error = new Error(json.error || 'Import failed');
-        error.details = json.details;
-        error.stack = json.stack;
-        throw error;
-      }
-
-      const processed = json.message || `Successfully processed students`;
-      addToast(processed, 'success');
-      
-      if (json.errors?.length) {
-        addToast(`${json.errors.length} rows had issues.`, 'warning', 10000, { rowErrors: json.errors });
-      }
-
-      // Refresh data from server
-      await reloadStudents();
-    } catch (err) {
-      addToast(err.message || 'Could not process CSV file', 'error', 5000, err.details ? { 
-        details: err.details,
-        stack: err.stack,
-        fileName: file.name,
-        fileSize: file.size,
-        timestamp: new Date().toISOString()
-      } : null);
-    } finally {
-      setImportBusy(false);
-    }
-  }, [addToast, reloadStudents]);
 
   const hasFilters = search || deptFilter || jobStatusFilter;
   const clearFilters = () => { setSearch(''); setDeptFilter(''); setJobStatusFilter(''); };
@@ -208,7 +131,7 @@ export default function MobileCollegeStudents() {
 
           {/* Mobile view cards */}
           <div className="mobile-cards">
-            {filtered.map((s, index) => {
+            {filtered.map((s) => {
               const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
               return (
                 <div key={s.id} style={{ border: '1px solid var(--border-default)', borderRadius: '12px', padding: '1rem', background: 'var(--bg-elevated)', marginBottom: '0.75rem', cursor: 'pointer' }} onClick={() => setDetailStudent(s)}>
@@ -232,7 +155,9 @@ export default function MobileCollegeStudents() {
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>Job: {formatStatus(s.jobStatus)}</span>
-                    {s.verified ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{marginRight: 4}}/> Verified</span> : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Unverified</span>}
+                    {s.verified
+                      ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{ marginRight: 4 }} /> Verified</span>
+                      : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Unverified</span>}
                   </div>
                 </div>
               );
@@ -277,8 +202,13 @@ export default function MobileCollegeStudents() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                 {[
                   { label: 'System ID', value: detailStudent.systemId },
-                   { label: 'Roll No.', value: detailStudent.roll },
-                   { label: 'Department', value: detailStudent.dept },
+                  { label: 'Roll No.', value: detailStudent.roll },
+                  { label: 'Login email', value: detailStudent.email },
+                  {
+                    label: 'Communication email',
+                    value: (detailStudent.communicationEmail && String(detailStudent.communicationEmail).trim()) || detailStudent.email,
+                  },
+                  { label: 'Department', value: detailStudent.dept },
                   { label: 'Specialization', value: detailStudent.specialization },
                   { label: 'CGPA', value: detailStudent.cgpa },
                   { label: 'Semester', value: detailStudent.semester },

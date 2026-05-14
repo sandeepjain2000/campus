@@ -166,12 +166,21 @@ export default function EmployerSponsorshipsPage() {
         addToast(json.error || 'Could not record payment', 'warning');
         return;
       }
+      const se = json.sponsorshipEmails;
+      if (se && se.receipt !== 'sent' && se.receipt !== 'already_sent') {
+        addToast(
+          se.receipt === 'skipped_smtp'
+            ? 'Payment recorded. Emails need SMTP to be configured — receipt may not have been sent.'
+            : 'Payment recorded. The thank-you email may have been sent, but the receipt email did not complete. Check spam or ask the college to resend from their dashboard.',
+          'warning',
+        );
+      }
       addToast(
         method === 'online'
-          ? 'Payment successful via Stripes-123 (demo). The college has been notified.'
+          ? 'Payment successful via Stripes-123 (demo). You should receive two emails: thank-you and receipt.'
           : method === 'cheque'
-            ? 'Cheque mailed — the college can see this in their sponsorship dashboard.'
-            : 'Bank transfer submitted — the college can see this with your optional proof.',
+            ? 'Recorded. You should receive two emails: thank-you and receipt.'
+            : 'Recorded. You should receive two emails: thank-you and receipt.',
         'success',
       );
       await loadColleges();

@@ -164,7 +164,7 @@ export default function StudentOffersPage() {
                     color: 'var(--text-secondary)',
                   }}
                 >
-                  You declined this offer.
+                  You declined this offer{offer.rejectedAt ? ` on ${formatDate(offer.rejectedAt)}` : ''}.
                 </div>
               )}
 

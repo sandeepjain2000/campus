@@ -23,7 +23,7 @@ export async function buildUserDataExportPayload(sessionUser) {
 
     const [drives, jobs, apps, uploads, rowCounts] = await Promise.all([
       query(
-        `SELECT d.id, t.name AS college, d.title, d.drive_date, d.drive_type, d.status, d.venue, d.registered_count
+        `SELECT d.id, t.name AS college, d.title, d.drive_date, d.drive_type, d.status, d.venue, d.registered_count, d.ctc_breakup
          FROM placement_drives d
          JOIN tenants t ON t.id = d.tenant_id
          WHERE d.employer_id = $1::uuid

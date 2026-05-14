@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { buildSortedTimezoneIds, canonicalizeTimezoneId } from '@/lib/timezoneUi';
 
 const FALLBACK_TIMEZONES = [
   'UTC',
@@ -23,8 +24,9 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [platformName, setPlatformName] = useState('');
+  const [marketingWebsiteUrl, setMarketingWebsiteUrl] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
-  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [requireEmailVerification, setRequireEmailVerification] = useState(true);
   const [enableTwoFactorAuth, setEnableTwoFactorAuth] = useState(false);
   const [sessionTimeoutValue, setSessionTimeoutValue] = useState(24);
@@ -46,12 +48,12 @@ export default function AdminSettingsPage() {
     if (typeof Intl !== 'undefined' && Intl.supportedValuesOf) {
       try {
         const list = Intl.supportedValuesOf('timeZone');
-        if (Array.isArray(list) && list.length > 0) return list;
+        if (Array.isArray(list) && list.length > 0) return buildSortedTimezoneIds(list);
       } catch {
         // ignore and use fallback
       }
     }
-    return FALLBACK_TIMEZONES;
+    return buildSortedTimezoneIds(FALLBACK_TIMEZONES);
   }, []);
 
   useEffect(() => {
@@ -63,10 +65,12 @@ export default function AdminSettingsPage() {
         if (!res.ok) throw new Error(json?.error || 'Failed to load settings');
         if (!mounted) return;
         setPlatformName(json.platformName ?? '');
+        setMarketingWebsiteUrl(json.marketingWebsiteUrl ?? '');
         setSupportEmail(json.supportEmail ?? '');
         setTimezone(
-          json.timezone ??
-            (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+          canonicalizeTimezoneId(
+            json.timezone ?? 'Asia/Kolkata'
+          ),
         );
         setRequireEmailVerification(Boolean(json.requireEmailVerification));
         setEnableTwoFactorAuth(Boolean(json.enableTwoFactorAuth));
@@ -98,8 +102,9 @@ export default function AdminSettingsPage() {
     try {
       const payload = {
         platformName,
+        marketingWebsiteUrl,
         supportEmail,
-        timezone,
+        timezone: canonicalizeTimezoneId(timezone),
         requireEmailVerification,
         enableTwoFactorAuth,
         sessionTimeoutValue,
@@ -133,8 +138,9 @@ export default function AdminSettingsPage() {
   const exportSettings = () => {
     const payload = {
       platformName,
+      marketingWebsiteUrl,
       supportEmail,
-      timezone,
+      timezone: canonicalizeTimezoneId(timezone),
       requireEmailVerification,
       enableTwoFactorAuth,
       sessionTimeoutValue,
@@ -223,6 +229,19 @@ export default function AdminSettingsPage() {
         <div className="card">
           <div className="card-header"><h3 className="card-title">🌐 General</h3></div>
           <div className="form-group"><label className="form-label">Platform Name</label><input className="form-input" placeholder="Set platform name" value={platformName} onChange={(e) => setPlatformName(e.target.value)} /></div>
+          <div className="form-group">
+            <label className="form-label">Public marketing website</label>
+            <input
+              className="form-input"
+              type="url"
+              placeholder="https://example.com/placementhub"
+              value={marketingWebsiteUrl}
+              onChange={(e) => setMarketingWebsiteUrl(e.target.value)}
+            />
+            <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
+              When set, the home page Features / About / Contact links and the <code>/features</code>, <code>/about</code>, and <code>/contact</code> routes open this URL (stored in the database). Leave empty to use built-in pages.
+            </p>
+          </div>
           <div className="form-group"><label className="form-label">Support Email</label><input className="form-input" placeholder="Set support email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} /></div>
           <div className="form-group">
             <label className="form-label">Default Timezone</label>

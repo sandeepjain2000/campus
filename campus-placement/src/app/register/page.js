@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
-import { validatePhone } from '@/lib/validators';
+import { validatePhone, validateEmail, validatePersonName, validateBatchYear } from '@/lib/validators';
 
 function buildRegisterPhone(formData) {
   if (formData.phoneDialCode === PHONE_FULL_E164) {
@@ -31,7 +31,7 @@ export default function RegisterPage() {
     phoneNational: '',
     // Student fields
     collegeName: '',
-    department: '',
+    departmentId: '',
     rollNumber: '',
     batchYear: '',
     // Employer fields
@@ -46,6 +46,24 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDepts = async () => {
+      try {
+        const res = await fetch('/api/public/departments');
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && Array.isArray(data.departments)) setDepartments(data.departments);
+      } catch {
+        if (!cancelled) setDepartments([]);
+      }
+    };
+    void loadDepts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof navigator === 'undefined') return;
@@ -69,6 +87,32 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const fnErr = validatePersonName(formData.firstName, { required: true, label: 'First name' });
+    if (fnErr) {
+      setError(fnErr);
+      return;
+    }
+    const lnErr = validatePersonName(formData.lastName, { required: false, label: 'Last name' });
+    if (lnErr) {
+      setError(lnErr);
+      return;
+    }
+    if (!validateEmail(formData.email)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    if (formData.role === 'student') {
+      const bErr = validateBatchYear(formData.batchYear, { required: true });
+      if (bErr) {
+        setError(bErr);
+        return;
+      }
+      if (!formData.departmentId) {
+        setError('Please select your department.');
+        return;
+      }
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -105,7 +149,7 @@ export default function RegisterPage() {
       if (data.pendingPlatformApproval) {
         router.push('/login?registered=pending-platform');
       } else {
-        router.push('/login?registered=true');
+        router.push('/login?registered=check-email');
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');
@@ -193,12 +237,12 @@ export default function RegisterPage() {
                 <div className="form-group">
                   <label className="form-label">First Name <span className="required">*</span></label>
                   <input className="form-input" placeholder="First name" value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value.replace(/\d/g, '') })} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Last Name</label>
                   <input className="form-input" placeholder="Last name" value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value.replace(/\d/g, '') })} />
                 </div>
               </div>
 
@@ -232,7 +276,9 @@ export default function RegisterPage() {
                       inputMode="numeric"
                       autoComplete="tel-national"
                       value={formData.phoneNational}
-                      onChange={(e) => setFormData({ ...formData, phoneNational: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phoneNational: e.target.value.replace(/\D/g, '') })
+                      }
                     />
                   ) : (
                     <input
@@ -264,18 +310,25 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, campusBindingToken: e.target.value })}
                     />
                     <span className="form-hint">
-                      Paste the full enrollment key from your college (spaces are ignored; typically 32+ characters). Not your roll number.
+                      Paste the full enrollment key from your college (spaces are ignored; typically 15 characters). Not your roll number.
                     </span>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Department <span className="required">*</span></label>
-                    <input
-                      className="form-input"
-                      placeholder="Enter your department (e.g. Aerospace, Chemical, Pharmacy)"
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    />
-                    <span className="form-hint">Department names vary by institution, so this is entered as free text.</span>
+                    <select
+                      className="form-select"
+                      value={formData.departmentId}
+                      onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                      required
+                    >
+                      <option value="">Select department</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="form-hint">Choose the program that matches your official enrollment.</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div className="form-group">
@@ -284,7 +337,7 @@ export default function RegisterPage() {
                         onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Batch Year</label>
+                      <label className="form-label">Batch Year <span className="required">*</span></label>
                       <input
                         className="form-input"
                         type="text"
@@ -295,6 +348,7 @@ export default function RegisterPage() {
                         value={formData.batchYear}
                         onChange={(e) => setFormData({ ...formData, batchYear: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                       />
+                      <span className="form-hint">4-digit admission batch year (validated on continue).</span>
                     </div>
                   </div>
                 </>
@@ -356,13 +410,48 @@ export default function RegisterPage() {
                     !formData.firstName ||
                     !formData.email ||
                     (formData.role === 'student' &&
-                      (formData.campusBindingToken.trim().replace(/\s+/g, '').length < 16 ||
-                        !formData.department ||
-                        formData.department.trim().length < 2)) ||
+                      (formData.campusBindingToken.trim().replace(/\s+/g, '').length < 15 ||
+                        !formData.departmentId ||
+                        !String(formData.batchYear || '').trim())) ||
                     (formData.role === 'employer' && !String(formData.companyName || '').trim()) ||
                     (formData.role === 'college_admin' && !String(formData.collegeFullName || '').trim())
                   }
-                  onClick={() => setStep(3)}
+                  onClick={() => {
+                    setError('');
+                    const fnErr = validatePersonName(formData.firstName, { required: true, label: 'First name' });
+                    if (fnErr) {
+                      setError(fnErr);
+                      return;
+                    }
+                    const lnErr = validatePersonName(formData.lastName, { required: false, label: 'Last name' });
+                    if (lnErr) {
+                      setError(lnErr);
+                      return;
+                    }
+                    if (!validateEmail(formData.email)) {
+                      setError('Enter a valid email address.');
+                      return;
+                    }
+                    if (formData.role === 'student') {
+                      const bErr = validateBatchYear(formData.batchYear, { required: true });
+                      if (bErr) {
+                        setError(bErr);
+                        return;
+                      }
+                      if (!formData.departmentId) {
+                        setError('Please select your department.');
+                        return;
+                      }
+                    }
+                    const phone = buildRegisterPhone(formData);
+                    if (phone && !validatePhone(phone)) {
+                      setError(
+                        'Check your mobile number: use a country code above, or pick “Other” and type a full number starting with +.',
+                      );
+                      return;
+                    }
+                    setStep(3);
+                  }}
                 >
                   Continue →
                 </button>

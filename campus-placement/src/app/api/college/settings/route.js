@@ -59,7 +59,7 @@ export async function GET() {
 
     const res = await query(
       `SELECT
-        name, website, logo_url, email, phone, address, city, state, pincode,
+        name, website, logo_url, email, communication_email, phone, address, city, state, pincode,
         accreditation, naac_grade, nirf_rank, settings
        FROM tenants
        WHERE id = $1::uuid`,
@@ -110,6 +110,7 @@ export async function GET() {
       institution: {
         collegeName: t.name || '',
         email: t.email || '',
+        communicationEmail: t.communication_email || t.email || '',
         phone: t.phone || fallback.phone,
       },
       address: {
@@ -197,6 +198,9 @@ export async function POST(request) {
       },
     };
 
+    const comm = String(institution.communicationEmail ?? '').trim().toLowerCase();
+    const primaryEmail = String(institution.email ?? '').trim().toLowerCase();
+
     await query(
       `UPDATE tenants
        SET
@@ -204,22 +208,24 @@ export async function POST(request) {
          website = $2,
          logo_url = $3,
          email = $4,
-         phone = $5,
-         address = $6,
-         city = $7,
-         state = $8,
-         pincode = $9,
-         accreditation = $10,
-         naac_grade = $11,
-         nirf_rank = $12,
-         settings = $13::jsonb,
+         communication_email = $5,
+         phone = $6,
+         address = $7,
+         city = $8,
+         state = $9,
+         pincode = $10,
+         accreditation = $11,
+         naac_grade = $12,
+         nirf_rank = $13,
+         settings = $14::jsonb,
          updated_at = NOW()
-       WHERE id = $14::uuid`,
+       WHERE id = $15::uuid`,
       [
         institution.collegeName || '',
         website || '',
         logoUrl || '',
-        institution.email || '',
+        primaryEmail || '',
+        comm || primaryEmail || '',
         institution.phone || '',
         address.address || '',
         address.city || '',

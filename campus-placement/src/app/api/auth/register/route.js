@@ -8,23 +8,37 @@ import {
   notifyRegistrationSubmitted,
   notifyStudentRegistered,
 } from '@/lib/registrationNotify';
+import { newEmailVerificationToken, sendSignupVerificationEmail } from '@/lib/emailVerification';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { role, firstName, lastName, email, password, phone } = body;
+    const { role, firstName, lastName, password, phone } = body;
+    const email = String(body.email || '').trim().toLowerCase();
     const allowedRoles = new Set(['college_admin', 'student', 'employer']);
 
     const validation = validateRegistration({
       email,
       password,
       firstName,
+      lastName,
       role,
       campusBindingToken: body.campusBindingToken,
-      department: body.department,
+      departmentId: body.departmentId,
+      batchYear: body.batchYear,
     });
     if (!validation.isValid) {
       return NextResponse.json({ error: Object.values(validation.errors)[0] }, { status: 400 });
+    }
+
+    let resolvedDepartmentName = '';
+    if (role === 'student') {
+      const did = String(body.departmentId || '').trim();
+      const dep = await query(`SELECT name FROM reference_departments WHERE id = $1::uuid`, [did]);
+      if (!dep.rows.length) {
+        return NextResponse.json({ error: 'Select a valid department from the list.' }, { status: 400 });
+      }
+      resolvedDepartmentName = dep.rows[0].name;
     }
     if (phone && !validatePhone(phone)) {
       return NextResponse.json(
@@ -44,6 +58,8 @@ export async function POST(request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const bindingInput = normalizeSurfaceTokenInput(body.campusBindingToken);
+    const verifyToken = newEmailVerificationToken();
+    const verifyExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
     const result = await transaction(async (client) => {
       let tenantId = null;
@@ -68,8 +84,8 @@ export async function POST(request) {
         );
 
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, role`,
+          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active, email_verification_token, email_verification_expires_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, email, role`,
           [
             tenantId,
             email,
@@ -81,6 +97,8 @@ export async function POST(request) {
             phone || '',
             false,
             false,
+            verifyToken,
+            verifyExpires,
           ]
         );
 
@@ -101,8 +119,8 @@ export async function POST(request) {
         tenantId = bind.rows[0].ref_scope_id;
 
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, role`,
+          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active, email_verification_token, email_verification_expires_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, email, role`,
           [
             tenantId,
             email,
@@ -113,12 +131,15 @@ export async function POST(request) {
             lastName || '',
             phone || '',
             false,
-            true,
+            false,
+            verifyToken,
+            verifyExpires,
           ]
         );
 
         const user = userResult.rows[0];
 
+        const batchY = parseInt(body.batchYear, 10);
         await client.query(
           `INSERT INTO student_profiles (user_id, tenant_id, roll_number, department, batch_year, graduation_year, is_verified)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -126,9 +147,9 @@ export async function POST(request) {
             user.id,
             tenantId,
             body.rollNumber || '',
-            body.department || '',
-            parseInt(body.batchYear, 10) || new Date().getFullYear(),
-            (parseInt(body.batchYear, 10) || new Date().getFullYear()) + 4,
+            resolvedDepartmentName,
+            batchY,
+            batchY + 4,
             false,
           ]
         );
@@ -147,9 +168,21 @@ export async function POST(request) {
 
       if (role === 'employer') {
         const userResult = await client.query(
-          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active)
-           VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, email, role`,
-          [email, email, passwordHash, role, firstName, lastName || '', phone || '', false, false]
+          `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active, email_verification_token, email_verification_expires_at)
+           VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, email, role`,
+          [
+            email,
+            email,
+            passwordHash,
+            role,
+            firstName,
+            lastName || '',
+            phone || '',
+            false,
+            false,
+            verifyToken,
+            verifyExpires,
+          ]
         );
 
         const user = userResult.rows[0];
@@ -194,14 +227,26 @@ export async function POST(request) {
       await notifyStudentRegistered(result.studentNotify);
     }
 
+    try {
+      await sendSignupVerificationEmail({
+        to: email,
+        firstName,
+        token: verifyToken,
+        role,
+      });
+    } catch (mailErr) {
+      console.error('Verification email failed:', mailErr);
+    }
+
     const pendingPlatform = role === 'college_admin' || role === 'employer';
 
     return NextResponse.json(
       {
         message: pendingPlatform
-          ? 'Registration received. Your account will be activated after platform approval.'
-          : 'Account created successfully',
+          ? 'Check your email to verify your address. After verification, our team can approve your account.'
+          : 'Check your email to verify your address. You can sign in only after you click the verification link.',
         pendingPlatformApproval: pendingPlatform,
+        requiresEmailVerification: true,
         user: { id: userRow.id, email: userRow.email, role: userRow.role },
       },
       { status: 201 }

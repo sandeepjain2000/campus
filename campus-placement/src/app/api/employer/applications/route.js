@@ -2,18 +2,15 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getEmployerProfileId, isUsableResumeUrl } from '@/lib/employerApplicationAccess';
 
 export const dynamic = 'force-dynamic';
-
-async function getEmployerProfileId(userId) {
-  const r = await query(`SELECT id FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
-  return r.rows[0]?.id || null;
-}
 
 /** @param {import('pg').QueryResultRow} row */
 function mapRow(row) {
   const first = row.first_name || '';
   const last = row.last_name || '';
+  const hasResume = Boolean(row.resume_document_id || isUsableResumeUrl(row.resume_url));
   return {
     id: row.id,
     sourceKind: row.source_kind,
@@ -26,7 +23,9 @@ function mapRow(row) {
     collegeName: row.college_name || '—',
     branch: row.branch || row.department || '—',
     cgpa: row.cgpa != null ? Number(row.cgpa) : null,
-    resumeUrl: row.resume_url || null,
+    hasResume,
+    resumeUrl: hasResume ? `/api/employer/applications/resume?studentId=${encodeURIComponent(row.student_id)}` : null,
+    resumeFileName: row.resume_document_name || null,
     openingTitle: row.opening_title || '—',
     jobType: row.job_type || null,
     driveId: row.drive_id,
@@ -92,6 +91,9 @@ export async function GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           resume_doc.id AS resume_document_id,
+           resume_doc.document_name AS resume_document_name,
+           resume_doc.file_url AS resume_document_url,
            COALESCE(jp.title, d.title) AS opening_title,
            COALESCE(jp.job_type::text, 'placement_drive') AS job_type,
            d.id AS drive_id,
@@ -103,6 +105,14 @@ export async function GET(request) {
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
+         LEFT JOIN LATERAL (
+           SELECT sd.id, sd.document_name, sd.file_url
+           FROM student_documents sd
+           WHERE sd.student_id = sp.id
+             AND sd.document_type = 'resume'
+           ORDER BY sd.uploaded_at DESC
+           LIMIT 1
+         ) resume_doc ON TRUE
          WHERE ep.id = $1::uuid
          ORDER BY a.applied_at DESC`,
         [employerId],
@@ -124,6 +134,9 @@ export async function GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           resume_doc.id AS resume_document_id,
+           resume_doc.document_name AS resume_document_name,
+           resume_doc.file_url AS resume_document_url,
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
@@ -134,6 +147,14 @@ export async function GET(request) {
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
+         LEFT JOIN LATERAL (
+           SELECT sd.id, sd.document_name, sd.file_url
+           FROM student_documents sd
+           WHERE sd.student_id = sp.id
+             AND sd.document_type = 'resume'
+           ORDER BY sd.uploaded_at DESC
+           LIMIT 1
+         ) resume_doc ON TRUE
          WHERE ep.id = $1::uuid AND jp.job_type = 'internship'
          ORDER BY pa.applied_at DESC`,
         [employerId],
@@ -155,6 +176,9 @@ export async function GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           resume_doc.id AS resume_document_id,
+           resume_doc.document_name AS resume_document_name,
+           resume_doc.file_url AS resume_document_url,
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
@@ -165,6 +189,14 @@ export async function GET(request) {
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
+         LEFT JOIN LATERAL (
+           SELECT sd.id, sd.document_name, sd.file_url
+           FROM student_documents sd
+           WHERE sd.student_id = sp.id
+             AND sd.document_type = 'resume'
+           ORDER BY sd.uploaded_at DESC
+           LIMIT 1
+         ) resume_doc ON TRUE
          WHERE ep.id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')
          ORDER BY pa.applied_at DESC`,
         [employerId],

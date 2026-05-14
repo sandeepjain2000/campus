@@ -39,14 +39,14 @@ export async function GET() {
         j.eligible_branches AS branch,
         COALESCE(j.salary_min, 0) AS salary_min,
         COALESCE(j.salary_max, 0) AS salary_max,
-        a.id IS NOT NULL AS applied
+        a.status AS application_status,
+        (a.status IS NOT NULL AND a.status IN ('applied', 'shortlisted', 'in_progress', 'selected', 'on_hold')) AS applied
       FROM placement_drives d
       JOIN employer_profiles ep ON d.employer_id = ep.id
       LEFT JOIN job_postings j ON d.job_id = j.id
       LEFT JOIN applications a
         ON a.drive_id = d.id
        AND a.student_id = $1
-       AND a.status <> 'withdrawn'
       WHERE d.tenant_id = $2
         AND d.status IN ('approved', 'scheduled')
       ORDER BY d.drive_date ASC, d.created_at DESC
@@ -71,6 +71,7 @@ export async function GET() {
         registered: row.registered ?? 0,
         deadline: null,
         applied: Boolean(row.applied),
+        applicationStatus: row.application_status || null,
       })),
     });
   } catch (error) {

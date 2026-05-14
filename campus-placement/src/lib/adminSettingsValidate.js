@@ -2,6 +2,18 @@ const TIME_UNITS = new Set(['minutes', 'hours', 'days']);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function isValidHttpUrlForMarketing(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return true;
+  if (s.length > 2048) return false;
+  try {
+    const u = new URL(s);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * @param {object} n — normalized admin settings object (POST body after pickString/Number)
  * @returns {{ ok: true } | { ok: false, error: string }}
@@ -11,6 +23,10 @@ export function validateAdminSettingsNormalized(n) {
 
   if (String(n.platformName || '').length > 200) {
     return { ok: false, error: 'platformName must be at most 200 characters' };
+  }
+
+  if (!isValidHttpUrlForMarketing(n.marketingWebsiteUrl)) {
+    return { ok: false, error: 'marketingWebsiteUrl must be empty or a valid http(s) URL' };
   }
 
   const support = String(n.supportEmail || '').trim();
@@ -103,5 +119,6 @@ export function adminSettingsAuditSummary(n) {
     maxUploadSizeMb: n.maxUploadSizeMb,
     systemInboxConfigured: Boolean(String(n.systemNotificationInboxEmail || '').trim()),
     webmailUrlSet: Boolean(String(n.systemNotificationWebmailUrl || '').trim()),
+    marketingWebsiteConfigured: Boolean(String(n.marketingWebsiteUrl || '').trim()),
   };
 }

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { queryCollegeOffersForTenant } from '@/lib/collegeOffersListQuery';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 
 const OFFER_STATUSES = new Set(['pending', 'accepted', 'rejected', 'expired', 'revoked']);
 const REOPEN_FROM_STATUSES = new Set(['accepted', 'rejected', 'revoked', 'expired']);
@@ -119,11 +120,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Student is not in your campus master list' }, { status: 403 });
     }
 
+    const { acceptedAt, rejectedAt } = offerDecisionTimestampsForInsert(status);
+
     const ins = await query(
       `INSERT INTO offers (
          student_id, employer_id, job_title, salary, location, status,
-         joining_date, deadline, salary_currency, reported_company_name
-       ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, 'INR', $8)
+         joining_date, deadline, salary_currency, reported_company_name,
+         accepted_at, rejected_at
+       ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, 'INR', $8, $9, $10)
        RETURNING id`,
       [
         studentId,
@@ -134,6 +138,8 @@ export async function POST(request) {
         joiningDate || null,
         deadline && !Number.isNaN(deadline.getTime()) ? deadline.toISOString() : null,
         reportedCompanyName,
+        acceptedAt,
+        rejectedAt,
       ],
     );
 
@@ -211,12 +217,21 @@ export async function PATCH(request) {
       let st = String(body.status).trim().toLowerCase();
       if (st === 'declined') st = 'rejected';
       if (OFFER_STATUSES.has(st)) {
-        push('status =', st);
         const prev = String(metaRow.rows[0]?.status || '');
+        push('status =', st);
         if (st === 'pending' && REOPEN_FROM_STATUSES.has(prev)) {
           push('accepted_at =', null);
           push('rejected_at =', null);
           push('rejection_reason =', null);
+        } else if (st !== prev) {
+          const t = new Date().toISOString();
+          if (st === 'accepted') {
+            push('accepted_at =', t);
+            push('rejected_at =', null);
+          } else if (st === 'rejected') {
+            push('rejected_at =', t);
+            push('accepted_at =', null);
+          }
         }
       }
     }

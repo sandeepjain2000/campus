@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Rocket,
@@ -20,6 +20,20 @@ export default function LandingPage() {
   const buildTimeIso = process.env.NEXT_PUBLIC_BUILD_TIME || '';
   const gitSha = process.env.NEXT_PUBLIC_APP_GIT_SHA || '';
   const deployId = process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID || '';
+  const [marketingUrl, setMarketingUrl] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/public/site-config')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d?.marketingWebsiteUrl) setMarketingUrl(String(d.marketingWebsiteUrl));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     appendClientDebugLog({
@@ -31,6 +45,21 @@ export default function LandingPage() {
       deploymentId: deployId || null,
     });
   }, [appVersion, buildTimeIso, gitSha, deployId]);
+
+  function MarketingNavLink({ internalHref, children, ...rest }) {
+    if (marketingUrl) {
+      return (
+        <a href={marketingUrl} target="_blank" rel="noopener noreferrer" {...rest}>
+          {children}
+        </a>
+      );
+    }
+    return (
+      <Link href={internalHref} {...rest}>
+        {children}
+      </Link>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', display: 'flex', flexDirection: 'column' }}>
@@ -57,11 +86,20 @@ export default function LandingPage() {
               <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, lineHeight: 1, letterSpacing: '-0.025em' }}>PlacementHub</h1>
             </div>
           </div>
-          
-          <div>
-            <Link href="/login" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
-              Sign In
-            </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }} aria-label="Primary">
+              <MarketingNavLink internalHref="/features" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Features</MarketingNavLink>
+              <MarketingNavLink internalHref="/about" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>About</MarketingNavLink>
+              <MarketingNavLink internalHref="/contact" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact</MarketingNavLink>
+            </nav>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Link href="/register" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                Register
+              </Link>
+              <Link href="/login" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -78,7 +116,7 @@ export default function LandingPage() {
             </div>
             <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 800, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.1 }}>
               Transform Your <br />
-              <span style={{ background: 'linear-gradient(135deg, var(--primary-600), #0EA5E9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Campus Placements</span>
+              <span style={{ color: 'var(--primary-600)' }}>Campus Placements</span>
             </h1>
             <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '2.5rem', maxWidth: '42rem', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>
               Connect students, employers, and colleges on a single intelligent platform. 
@@ -88,9 +126,9 @@ export default function LandingPage() {
               <Link href="/register" className="btn btn-primary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem', background: 'linear-gradient(135deg, var(--primary-600), var(--primary-500))', border: 'none' }}>
                 Get Started Free <ArrowRight size={18} />
               </Link>
-              <Link href="#features" className="btn btn-secondary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem' }}>
+              <MarketingNavLink internalHref="/features" className="btn btn-secondary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem' }}>
                 Explore Features
-              </Link>
+              </MarketingNavLink>
             </div>
           </div>
 
@@ -180,13 +218,20 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)', padding: '3rem 1.5rem', textAlign: 'center' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+      <footer style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)', padding: '3rem 1.5rem' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', height: '1.5rem', width: '1.5rem', alignItems: 'center', justifyContent: 'center', borderRadius: '0.375rem', backgroundColor: 'var(--primary-600)', color: '#ffffff', fontSize: '0.75rem' }}>P</div>
               PlacementHub
             </div>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>© 2026 PlacementHub. All rights reserved. | Built with rigorous design intelligence.</p>
+            <nav style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }} aria-label="Footer">
+              <MarketingNavLink internalHref="/features" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Features</MarketingNavLink>
+              <MarketingNavLink internalHref="/about" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>About</MarketingNavLink>
+              <MarketingNavLink internalHref="/contact" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact</MarketingNavLink>
+              <Link href="/register" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Register</Link>
+              <Link href="/login" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Sign in</Link>
+            </nav>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center', margin: 0 }}>© 2026 PlacementHub. All rights reserved.</p>
         </div>
       </footer>
     </div>

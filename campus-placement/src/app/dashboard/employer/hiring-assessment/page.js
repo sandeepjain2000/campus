@@ -157,6 +157,9 @@ export default function EmployerHiringAssessmentPage() {
           </p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <Link href="/dashboard/employer/assessment-uploads?upload=1" className="btn btn-primary">
+            Open upload &amp; mapping
+          </Link>
           <button type="button" className="btn btn-secondary" onClick={downloadOffersImportStarter}>
             Download Template (All students)
           </button>

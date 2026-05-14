@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
+import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { formatDate } from '@/lib/utils';
 
 const fetcher = async (url) => {
@@ -28,6 +29,11 @@ export default function StudentInterviewsPage() {
     [myInterviews],
   );
 
+  const { initialYear, initialMonth } = useMemo(
+    () => getInitialCalendarCursorFromIsoDates(myInterviews.map((i) => i.date)),
+    [myInterviews],
+  );
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -48,7 +54,7 @@ export default function StudentInterviewsPage() {
       </div>
 
       {view === 'calendar' ? (
-        <EmployerCalendarGrid items={calItems} initialYear={2026} initialMonth={8} />
+        <EmployerCalendarGrid items={calItems} initialYear={initialYear} initialMonth={initialMonth} />
       ) : (
         <div className="table-container">
           <table className="data-table">

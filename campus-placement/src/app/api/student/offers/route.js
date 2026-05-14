@@ -24,7 +24,7 @@ function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField
            ${companyExpr} AS company,
            o.job_title as role,
            o.salary, o.salary_currency as currency, o.location, o.joining_date as "joiningDate",
-           o.status, o.deadline, o.created_at as "createdAt", o.accepted_at as "acceptedAt"
+           o.status, o.deadline, o.created_at as "createdAt", o.accepted_at as "acceptedAt", o.rejected_at as "rejectedAt"
            ${latestSel}
     FROM offers o
     LEFT JOIN employer_profiles ep ON o.employer_id = ep.id
@@ -128,9 +128,10 @@ export async function PATCH(request) {
       `UPDATE offers
        SET status = $1,
            accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
+           rejected_at = CASE WHEN $1 = 'rejected' THEN NOW() ELSE rejected_at END,
            updated_at = NOW()
        WHERE id = $2 AND student_id = $3 AND status = 'pending'
-       RETURNING id, status`,
+       RETURNING id, status, accepted_at, rejected_at`,
       [nextStatus, id, studentId],
     );
 
@@ -138,7 +139,15 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Offer not found or not pending' }, { status: 404 });
     }
 
-    return NextResponse.json({ offer: result.rows[0] });
+    const row = result.rows[0];
+    return NextResponse.json({
+      offer: {
+        id: row.id,
+        status: row.status,
+        acceptedAt: row.accepted_at,
+        rejectedAt: row.rejected_at,
+      },
+    });
   } catch (error) {
     console.error('Failed to update student offer:', error);
     return NextResponse.json({ error: 'Failed to update offer status' }, { status: 500 });

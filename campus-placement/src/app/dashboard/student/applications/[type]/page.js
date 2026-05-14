@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate as swrMutate } from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import PageError from '@/components/PageError';
@@ -8,6 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { ClipboardList, Eye, X } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { use } from 'react';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -27,7 +28,8 @@ function roundLabel(item) {
 
 const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons', 'drives'];
 
-import { use } from 'react';
+const WITHDRAW_REAPPLY_NOTICE =
+  'If you withdraw, you can apply again from Browse Drives while the drive stays open. If you wait 2 or more days, your college or the company may have closed applications — re-apply may no longer be possible. Continue with withdrawal?';
 
 export default function StudentApplicationsPage({ params }) {
   const unwrappedParams = use(params);
@@ -93,9 +95,12 @@ export default function StudentApplicationsPage({ params }) {
   };
 
   const handleWithdraw = async (applicationId) => {
+    if (typeof window !== 'undefined' && !window.confirm(WITHDRAW_REAPPLY_NOTICE)) {
+      return;
+    }
     setWithdrawingId(applicationId);
     try {
-      const cancelEndpoint = ['internships', 'projects', 'mentorship', 'hackathons'].includes(type) ? '/api/student/program-applications/cancel' : '/api/student/applications/cancel';
+      const cancelEndpoint = type === 'drives' ? '/api/student/applications/cancel' : '/api/student/program-applications/cancel';
       const res = await fetch(cancelEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +110,10 @@ export default function StudentApplicationsPage({ params }) {
       if (!res.ok) throw new Error(json?.error || 'Failed to withdraw application');
       addToast('Application withdrawn successfully.', 'success');
       setSelectedApp(null);
-      mutate();
+      await mutate();
+      if (type === 'drives') {
+        await swrMutate('/api/student/drives');
+      }
     } catch (e) {
       addToast(e.message || 'Failed to withdraw application', 'error');
     } finally {

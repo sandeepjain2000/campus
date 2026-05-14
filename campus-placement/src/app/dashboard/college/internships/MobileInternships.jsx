@@ -140,6 +140,7 @@ export default function MobileInternships() {
           </div>
         ))}
       </div>
+      </div>
     </>
   );
 }

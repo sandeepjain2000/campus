@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
+import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 
 function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
@@ -87,6 +88,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Student profile not in this tenant' }, { status: 400 });
     }
 
+    const { acceptedAt, rejectedAt } = offerDecisionTimestampsForInsert(status);
+
     const insertParams = [
       studentId,
       driveId,
@@ -96,19 +99,22 @@ export async function POST(request) {
       Number.isFinite(salary) ? salary : 0,
       status,
       joiningDate || null,
+      acceptedAt,
+      rejectedAt,
     ];
     let created;
     try {
       created = await query(
         `INSERT INTO offers (
         student_id, drive_id, employer_id, job_title, location, salary, status, joining_date, salary_currency,
-        reported_company_name
+        reported_company_name, accepted_at, rejected_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, 'INR',
         CASE
           WHEN $3::uuid IS NOT NULL THEN (SELECT company_name FROM employer_profiles WHERE id = $3::uuid LIMIT 1)
           ELSE NULL
-        END
+        END,
+        $9, $10
       )
       RETURNING id, student_id, drive_id, employer_id, job_title, salary, status`,
         insertParams,
@@ -117,8 +123,9 @@ export async function POST(request) {
       if (!isMissingReportedCompanyColumnError(e)) throw e;
       created = await query(
         `INSERT INTO offers (
-        student_id, drive_id, employer_id, job_title, location, salary, status, joining_date, salary_currency
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'INR')
+        student_id, drive_id, employer_id, job_title, location, salary, status, joining_date, salary_currency,
+        accepted_at, rejected_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'INR', $9, $10)
       RETURNING id, student_id, drive_id, employer_id, job_title, salary, status`,
         insertParams,
       );
@@ -153,13 +160,51 @@ export async function PUT(request) {
     if (!id || !jobTitle || !ALLOWED_STATUS.has(status)) {
       return NextResponse.json({ error: 'id, jobTitle and valid status are required' }, { status: 400 });
     }
+
+    const existing = await query(
+      `SELECT status FROM offers WHERE id = $1 AND student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $2)`,
+      [id, tenantId],
+    );
+    if (!existing.rows[0]) return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
+    const prev = String(existing.rows[0].status || '');
+    const REOPEN_FROM = new Set(['accepted', 'rejected', 'revoked', 'expired']);
+
+    const sets = [];
+    const params = [];
+    const push = (frag, val) => {
+      params.push(val);
+      sets.push(`${frag} $${params.length}`);
+    };
+
+    push('drive_id =', driveId);
+    push('employer_id =', employerId);
+    push('job_title =', jobTitle);
+    push('location =', location || null);
+    push('salary =', Number.isFinite(salary) ? salary : 0);
+    push('status =', status);
+    push('joining_date =', joiningDate || null);
+
+    if (status !== prev) {
+      const t = new Date().toISOString();
+      if (status === 'pending' && REOPEN_FROM.has(prev)) {
+        push('accepted_at =', null);
+        push('rejected_at =', null);
+      } else if (status === 'accepted') {
+        push('accepted_at =', t);
+        push('rejected_at =', null);
+      } else if (status === 'rejected') {
+        push('rejected_at =', t);
+        push('accepted_at =', null);
+      }
+    }
+
+    params.push(id, tenantId);
     const updated = await query(
-      `UPDATE offers
-       SET drive_id = $1, employer_id = $2, job_title = $3, location = $4, salary = $5, status = $6, joining_date = $7, updated_at = NOW()
-       WHERE id = $8
-         AND student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $9)
+      `UPDATE offers SET ${sets.join(', ')}, updated_at = NOW()
+       WHERE id = $${params.length - 1}
+         AND student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $${params.length})
        RETURNING id, student_id, drive_id, employer_id, job_title, salary, status`,
-      [driveId, employerId, jobTitle, location || null, Number.isFinite(salary) ? salary : 0, status, joiningDate || null, id, tenantId]
+      params,
     );
     if (!updated.rows[0]) return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
     return NextResponse.json({ offer: updated.rows[0] });

@@ -53,6 +53,18 @@ export default function EmployerProfilePage() {
       contactPerson: str(p.contact_person),
       contactEmail: str(p.contact_email),
       contactPhone: str(p.contact_phone),
+      accountEmail:
+        p.account_email != null && String(p.account_email).trim() !== '' ? String(p.account_email).trim() : '—',
+      accountEmailRaw:
+        p.account_email != null && String(p.account_email).trim() !== '' ? String(p.account_email).trim() : '',
+      communicationEmailRaw:
+        p.communication_email != null && String(p.communication_email).trim() !== ''
+          ? String(p.communication_email).trim()
+          : '',
+      communicationEmailDisplay:
+        p.communication_email != null && String(p.communication_email).trim() !== ''
+          ? String(p.communication_email).trim()
+          : 'Same as login email',
       totalHires: numOrNull(p.total_hires),
       reliabilityScore: numOrNull(p.reliability_score),
       billingLegalName: (p.billing_legal_name != null && String(p.billing_legal_name).trim() !== '')
@@ -84,6 +96,7 @@ export default function EmployerProfilePage() {
         billingLegalName: profile.billingLegalName || profile.companyNameRaw || '',
         billingPan: profile.billingPan,
         billingGstNumber: profile.billingGstNumber,
+        communicationEmail: profile.communicationEmailRaw,
       });
     }
     setEditing((v) => !v);
@@ -111,6 +124,7 @@ export default function EmployerProfilePage() {
           billingLegalName: form.billingLegalName,
           billingPan: form.billingPan,
           billingGstNumber: form.billingGstNumber,
+          communicationEmail: form.communicationEmail,
         }),
       });
       const json = await res.json();
@@ -355,6 +369,29 @@ export default function EmployerProfilePage() {
                 </div>
               </div>
               <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Login email</div>
+                <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem' }}>
+                  {profile.accountEmail}
+                </div>
+              </div>
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Communication email</div>
+                <div
+                  className="drive-info-value"
+                  style={{
+                    fontWeight: 500,
+                    fontFamily: profile.communicationEmailRaw ? 'ui-monospace, monospace' : undefined,
+                    fontSize: '0.9rem',
+                    color: profile.communicationEmailRaw ? undefined : 'var(--text-secondary)',
+                  }}
+                >
+                  {profile.communicationEmailDisplay}
+                </div>
+                <p className="text-xs text-tertiary" style={{ margin: '0.35rem 0 0', lineHeight: 1.4 }}>
+                  Used for platform mail (e.g. sponsorship thank-you and receipts). Leave blank in edit mode to use your login email.
+                </p>
+              </div>
+              <div className="drive-info-item">
                 <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</div>
                 <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPhone}</div>
               </div>
@@ -501,6 +538,33 @@ export default function EmployerProfilePage() {
                 <div className="form-group">
                   <label className="form-label">Contact Email</label>
                   <input className="form-input" type="email" value={form.contactEmail} onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))} placeholder="email@company.com" />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Login email</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    value={profile.accountEmailRaw}
+                    disabled
+                    readOnly
+                    style={{ opacity: 0.85 }}
+                  />
+                  <span className="form-hint">Used to sign in. To change it, contact your administrator.</span>
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Communication email</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    value={form.communicationEmail}
+                    onChange={(e) => setForm((p) => ({ ...p, communicationEmail: e.target.value }))}
+                    placeholder={profile.accountEmailRaw ? `Leave empty to use ${profile.accountEmailRaw}` : 'you@company.com'}
+                  />
+                  <span className="form-hint">
+                    Receives system messages such as sponsorship thank-you and tax receipts. If empty, mail goes to your login email.
+                  </span>
                 </div>
 
                 <div className="form-group">

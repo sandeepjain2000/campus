@@ -24,25 +24,17 @@ const SHARED_DASHBOARD_ROUTES = [
   '/dashboard/my-exports',
 ];
 
-const DATA_ENTRY_ROLES = new Set(['super_admin', 'college_admin']);
-
 /**
  * Middleware enforces:
- *  1. /data-entry — restricted to ops roles
+ *  1. /data-entry — open (demo hub); individual /api/data-entry/* routes enforce auth as needed
  *  2. /login — authenticated users are redirected to their home
  *  3. /dashboard/* — each role can only reach its own prefix (or shared routes)
  */
 export default async function proxy(request) {
   const { pathname } = request.nextUrl;
 
-  // ── /data-entry ────────────────────────────────────────────────────────────
+  // ── /data-entry — public demo tools from landing; APIs still gate writes ───
   if (pathname.startsWith('/data-entry')) {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.role) return NextResponse.redirect(new URL('/login', request.url));
-    if (!DATA_ENTRY_ROLES.has(token.role)) {
-      const dest = ROLE_HOME_PATHS[token.role] || '/dashboard';
-      return NextResponse.redirect(new URL(dest, request.url));
-    }
     return NextResponse.next();
   }
 

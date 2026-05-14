@@ -52,6 +52,9 @@ CREATE TABLE users (
     avatar_url TEXT,
     is_active BOOLEAN DEFAULT true,
     is_verified BOOLEAN DEFAULT false,
+    email_verified_at TIMESTAMP,
+    email_verification_token VARCHAR(64),
+    email_verification_expires_at TIMESTAMP,
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -61,6 +64,17 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_communication_email ON users(communication_email);
 CREATE INDEX idx_users_tenant ON users(tenant_id);
 CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_email_verification_token ON users(email_verification_token) WHERE email_verification_token IS NOT NULL;
+
+-- Reference departments (registration dropdown; global catalog)
+CREATE TABLE IF NOT EXISTS reference_departments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(120) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT reference_departments_name_unique UNIQUE (name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reference_departments_sort ON reference_departments (sort_order, name);
 
 -- ============================================
 -- 3. STUDENT PROFILES
@@ -261,6 +275,7 @@ CREATE TABLE placement_drives (
     requires_ppt BOOLEAN DEFAULT false,
     ppt_completed BOOLEAN DEFAULT false,
     notes TEXT,
+    ctc_breakup TEXT,
     social_shared TEXT[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -550,11 +565,13 @@ CREATE TABLE notifications (
     type VARCHAR(30) DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error', 'drive', 'offer', 'application')),
     link VARCHAR(255),
     is_read BOOLEAN DEFAULT false,
+    deleted_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_notif_user ON notifications(user_id);
 CREATE INDEX idx_notif_read ON notifications(is_read);
+CREATE INDEX idx_notif_user_trash ON notifications (user_id, created_at DESC) WHERE deleted_at IS NOT NULL;
 
 -- ============================================
 -- 23. AUDIT LOGS

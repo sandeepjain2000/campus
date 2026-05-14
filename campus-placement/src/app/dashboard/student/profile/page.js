@@ -1,12 +1,15 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useCallback, useEffect, useState } from 'react';
-import { getInitials } from '@/lib/utils';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
+import { formatDate, getInitials } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
 import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
+import { studentAvatarAcceptAttr, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
 import TagPicker from '@/components/TagPicker';
 
 const LINK_KINDS = [
@@ -15,6 +18,19 @@ const LINK_KINDS = [
   { value: 'website', label: 'Website' },
   { value: 'project', label: 'Project / portfolio' },
   { value: 'other', label: 'Other' },
+];
+
+const PROFILE_TABS = [
+  { key: 'academics', label: 'Academics' },
+  { key: 'contact', label: 'Contact' },
+  { key: 'skills', label: 'Skills' },
+  { key: 'projects', label: 'Projects' },
+  { key: 'internships', label: 'Internships' },
+  { key: 'otherWork', label: 'Other work' },
+  { key: 'activities', label: 'Activities' },
+  { key: 'preferences', label: 'Preferences' },
+  { key: 'links', label: 'Links' },
+  { key: 'about', label: 'About' },
 ];
 
 function newLinkId() {
@@ -49,6 +65,10 @@ function profilePutBody(p) {
     cgpa: p.cgpa,
     tenthPercentage: p.tenthPercentage,
     twelfthPercentage: p.twelfthPercentage,
+    diplomaPercentage: p.diplomaPercentage,
+    backlogsActive: p.backlogsActive,
+    backlogsHistory: p.backlogsHistory,
+    educationDetails: p.educationDetails,
     gender: p.gender,
     bio: p.bio,
     skills: p.skills,
@@ -61,19 +81,117 @@ function profilePutBody(p) {
     emails: p.emails,
     communicationEmail: p.communicationEmail,
     address: p.address,
+    projects: p.projects,
+    internships: p.internships,
+    otherWork: p.otherWork,
+    workExperience: p.workExperience,
+    responsibilities: p.responsibilities,
+    accomplishments: p.accomplishments,
+    volunteering: p.volunteering,
+    extracurriculars: p.extracurriculars,
   };
+}
+
+function blankProject() {
+  return {
+    title: '',
+    description: '',
+    techStack: [],
+    projectUrl: '',
+    githubUrl: '',
+    startDate: '',
+    endDate: '',
+  };
+}
+
+function blankActivity() {
+  return {
+    title: '',
+    organization: '',
+    period: '',
+    description: '',
+  };
+}
+
+function asList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+/** Expected salary stored as ₹/year (same unit as preferences UI). */
+const MAX_EXPECTED_SALARY = 50_000_000;
+
+function validateExpectedSalary(p) {
+  const min = p.expectedSalaryMin === '' || p.expectedSalaryMin == null ? null : Number(p.expectedSalaryMin);
+  const max = p.expectedSalaryMax === '' || p.expectedSalaryMax == null ? null : Number(p.expectedSalaryMax);
+  if (min != null) {
+    if (!Number.isFinite(min) || min < 0) {
+      return 'Expected salary minimum must be zero or a positive number.';
+    }
+    if (min > MAX_EXPECTED_SALARY) {
+      return 'Expected salary minimum is above the allowed maximum.';
+    }
+  }
+  if (max != null) {
+    if (!Number.isFinite(max) || max < 0) {
+      return 'Expected salary maximum must be zero or a positive number.';
+    }
+    if (max > MAX_EXPECTED_SALARY) {
+      return 'Expected salary maximum is above the allowed maximum.';
+    }
+  }
+  if (min != null && max != null && min > max) {
+    return 'Expected salary minimum cannot be greater than the maximum.';
+  }
+  return null;
+}
+
+function parseSalaryInput(value) {
+  if (value === '' || value == null) return '';
+  const n = typeof value === 'number' ? value : parseFloat(String(value));
+  if (!Number.isFinite(n)) return '';
+  if (n < 0) return 0;
+  if (n > MAX_EXPECTED_SALARY) return MAX_EXPECTED_SALARY;
+  return n;
 }
 
 export default function StudentProfilePage() {
   const { data: session, status, update } = useSession();
   const { addToast } = useToast();
   const email = session?.user?.email || '';
-  const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState('academics');
+  const [editingTab, setEditingTab] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [cvUploading, setCvUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profile, setProfile] = useState(() => defaultStudentProfile(session?.user));
   const currentSemester = deriveCurrentSemester(profile);
+  const editingHeader = editingTab === 'header';
+  const editing = editingTab === activeTab;
+
+  const calendarFetcher = useCallback(async (url) => {
+    const res = await fetch(url);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json?.error || 'Failed to load calendar');
+    return json;
+  }, []);
+  const { data: placementCalData, isLoading: placementCalLoading } = useSWR('/api/student/calendar', calendarFetcher);
+  const upcomingPlacementDates = useMemo(() => {
+    const events = Array.isArray(placementCalData?.events) ? placementCalData.events : [];
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayYmd = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    return events
+      .map((e) => ({
+        id: e.id,
+        title: e.title,
+        ymd: String(e.date || '').slice(0, 10),
+      }))
+      .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.ymd))
+      .sort((a, b) => a.ymd.localeCompare(b.ymd))
+      .filter((e) => e.ymd >= todayYmd)
+      .slice(0, 5);
+  }, [placementCalData]);
 
   const loadProfileFromApi = useCallback(
     async (opts) => {
@@ -117,6 +235,12 @@ export default function StudentProfilePage() {
   }, []);
 
   const handleSave = async () => {
+    const salaryErr = validateExpectedSalary(profile);
+    if (salaryErr) {
+      addToast(salaryErr, 'warning');
+      return;
+    }
+    const savedSummary = editingTab === 'header';
     setProfileSaving(true);
     try {
       const res = await fetch('/api/student/profile', {
@@ -130,8 +254,8 @@ export default function StudentProfilePage() {
         return;
       }
       if (data.profile) setProfile(data.profile);
-      setEditing(false);
-      addToast('Profile saved.', 'success');
+      setEditingTab(null);
+      addToast(savedSummary ? 'Profile summary saved.' : 'Profile saved.', 'success');
     } catch {
       addToast('Save failed (network).', 'warning');
     } finally {
@@ -158,6 +282,51 @@ export default function StudentProfilePage() {
   const removeLink = (id) => {
     const prevLinks = profile.profileLinks || [];
     persist({ ...profile, profileLinks: prevLinks.filter((l) => l.id !== id) });
+  };
+
+  const updateEducationDetail = (key, patch) => {
+    persist({
+      ...profile,
+      educationDetails: {
+        ...(profile.educationDetails || {}),
+        [key]: {
+          ...((profile.educationDetails || {})[key] || {}),
+          ...patch,
+        },
+      },
+    });
+  };
+
+  const addProject = () => {
+    persist({ ...profile, projects: [...asList(profile.projects), blankProject()] });
+  };
+
+  const updateProject = (index, patch) => {
+    const projects = [...asList(profile.projects)];
+    projects[index] = { ...projects[index], ...patch };
+    persist({ ...profile, projects });
+  };
+
+  const removeProject = (index) => {
+    const projects = [...asList(profile.projects)];
+    projects.splice(index, 1);
+    persist({ ...profile, projects });
+  };
+
+  const addActivity = (key) => {
+    persist({ ...profile, [key]: [...asList(profile[key]), blankActivity()] });
+  };
+
+  const updateActivity = (key, index, patch) => {
+    const rows = [...asList(profile[key])];
+    rows[index] = { ...rows[index], ...patch };
+    persist({ ...profile, [key]: rows });
+  };
+
+  const removeActivity = (key, index) => {
+    const rows = [...asList(profile[key])];
+    rows.splice(index, 1);
+    persist({ ...profile, [key]: rows });
   };
 
   const addPhone = () => {
@@ -202,35 +371,47 @@ export default function StudentProfilePage() {
   };
 
   const persistLocalAvatarDataUrl = useCallback(
-    (file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result;
-        if (typeof dataUrl === 'string' && dataUrl.length > 1_200_000) {
-          addToast('Image too large for offline storage. Use a smaller file (~900KB) or configure S3.', 'warning');
-          return;
-        }
-        setProfile((prev) => ({
-          ...prev,
-          avatarDataUrl: typeof dataUrl === 'string' ? dataUrl : '',
-          avatarUrl: '',
-          avatarName: file.name,
-        }));
-        addToast('Photo saved in this browser only (S3 not configured).', 'info');
-      };
-      reader.readAsDataURL(file);
-    },
+    (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          if (typeof dataUrl !== 'string') {
+            addToast('Could not read the image file.', 'warning');
+            reject(new Error('invalid read'));
+            return;
+          }
+          if (dataUrl.length > 1_200_000) {
+            addToast('Image too large for offline storage. Use a smaller file (~900KB).', 'warning');
+            reject(new Error('too large'));
+            return;
+          }
+          setProfile((prev) => ({
+            ...prev,
+            avatarDataUrl: dataUrl,
+            avatarUrl: '',
+            avatarName: file.name,
+          }));
+          addToast('Photo saved in this browser only (cloud upload not available).', 'info');
+          resolve();
+        };
+        reader.onerror = () => {
+          addToast('Could not read the image file.', 'warning');
+          reject(new Error('read error'));
+        };
+        reader.readAsDataURL(file);
+      }),
     [addToast],
   );
 
   const onAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
 
-    const maxS3 = 2 * 1024 * 1024;
-    if (file.size > maxS3) {
-      addToast('Image too large (max 2MB).', 'warning');
+    const validated = validateStudentAvatarFile(file);
+    if (!validated.ok) {
+      addToast(validated.error, 'warning');
       return;
     }
 
@@ -241,14 +422,14 @@ export default function StudentProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileName: file.name,
-          contentType: file.type || 'application/octet-stream',
+          contentType: validated.contentType,
           fileSize: file.size,
         }),
       });
       const presign = await presignRes.json();
 
-      if (presignRes.status === 503 && presign.error === 'S3 not configured') {
-        persistLocalAvatarDataUrl(file);
+      if (presignRes.status === 503 && (presign.error === 'Cloud storage not configured' || presign.error === 'S3 not configured')) {
+        await persistLocalAvatarDataUrl(file);
         return;
       }
       if (!presignRes.ok) {
@@ -266,7 +447,7 @@ export default function StudentProfilePage() {
         const code = (raw.match(/<Code>([^<]+)<\/Code>/) || [])[1];
         const msg = (raw.match(/<Message>([^<]+)<\/Message>/) || [])[1];
         const hint = code || msg ? `${code || 'Error'}${msg ? `: ${msg}` : ''}` : raw.slice(0, 140);
-        addToast(`Photo upload failed (${putRes.status}). ${hint || 'Check CORS and IAM.'}`, 'warning');
+        addToast(`Photo upload failed (${putRes.status}). ${hint || 'Please try again.'}`, 'warning');
         return;
       }
 
@@ -289,17 +470,74 @@ export default function StudentProfilePage() {
       }));
       await update({ avatar: presign.fileUrl });
       addToast('Photo saved to cloud storage.', 'info');
-    } catch {
-      addToast('Upload failed (network).', 'warning');
+    } catch (err) {
+      if (err?.message !== 'too large' && err?.message !== 'invalid read' && err?.message !== 'read error') {
+        addToast('Upload failed (network).', 'warning');
+      }
     } finally {
       setAvatarUploading(false);
     }
   };
 
-  const onCvChange = (e) => {
+  const onCvChange = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    persist({ ...profile, cvFileName: file.name, cvDataUrl: '' });
+
+    setCvUploading(true);
+    try {
+      const presignRes = await fetch('/api/student/documents/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+        }),
+      });
+      const presign = await presignRes.json();
+      if (!presignRes.ok) {
+        addToast(presign.error + (presign.hint ? ` — ${presign.hint}` : ''), 'warning');
+        return;
+      }
+
+      const putHeaders = {};
+      if (presign.contentType) {
+        putHeaders['Content-Type'] = String(presign.contentType).split(';')[0].trim();
+      }
+      const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: putHeaders, body: file });
+      if (!putRes.ok) {
+        const raw = (await putRes.text()).replace(/\s+/g, ' ').trim();
+        const code = (raw.match(/<Code>([^<]+)<\/Code>/) || [])[1];
+        const msg = (raw.match(/<Message>([^<]+)<\/Message>/) || [])[1];
+        const hint = code || msg ? `${code || 'Error'}${msg ? `: ${msg}` : ''}` : raw.slice(0, 140);
+        addToast(`CV upload failed (${putRes.status}). ${hint || 'Please try again.'}`, 'warning');
+        return;
+      }
+
+      const completeRes = await fetch('/api/student/documents/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          document_type: 'resume',
+          document_name: file.name,
+          file_url: presign.fileUrl,
+          file_size: file.size,
+        }),
+      });
+      const complete = await completeRes.json();
+      if (!completeRes.ok) {
+        addToast(complete.error || 'CV uploaded but could not be saved to profile', 'warning');
+        return;
+      }
+
+      persist({ ...profile, resumeUrl: presign.fileUrl, cvFileName: file.name, cvDataUrl: '' });
+      addToast('CV uploaded and saved.', 'success');
+    } catch {
+      addToast('CV upload failed (network).', 'warning');
+    } finally {
+      setCvUploading(false);
+    }
   };
 
   const displayPhones = profile.phones?.length ? profile.phones : [{ label: 'Primary', value: profile.phone || '' }];
@@ -319,6 +557,15 @@ export default function StudentProfilePage() {
   const avatarSrc = rawAvatarSrc.startsWith('data:') ? rawAvatarSrc : toSignedViewUrl(rawAvatarSrc);
   const skillsList = profile.skills || [];
   const linksList = profile.profileLinks || [];
+  const projectsList = asList(profile.projects);
+  const internshipsList = asList(profile.internships?.length ? profile.internships : profile.workExperience);
+  const otherWorkList = asList(profile.otherWork);
+  const activitySections = [
+    { key: 'responsibilities', title: 'Positions of Responsibility', empty: 'No responsibilities added yet.' },
+    { key: 'accomplishments', title: 'Accomplishments', empty: 'No accomplishments added yet.' },
+    { key: 'volunteering', title: 'Volunteering', empty: 'No volunteering added yet.' },
+    { key: 'extracurriculars', title: 'Extra-curricular Activities', empty: 'No activities added yet.' },
+  ];
   const cgpaNum = profile.cgpa === '' || profile.cgpa == null ? NaN : Number(profile.cgpa);
   const hasSalary =
     (profile.expectedSalaryMin != null && Number(profile.expectedSalaryMin) > 0) ||
@@ -335,80 +582,343 @@ export default function StudentProfilePage() {
   return (
     <div className="animate-fadeIn">
       <div className="profile-header">
-        <div className="profile-avatar" style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}>
-          {avatarSrc ? (
-            <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            getInitials(session?.user?.name)
-          )}
-        </div>
-        <div className="profile-info" style={{ position: 'relative', zIndex: 1 }}>
-          <h2>{session?.user?.name}</h2>
-          <p>
-            {[profile.branch, profile.batchYear !== '' && profile.batchYear != null ? `Batch ${profile.batchYear}` : '']
-              .filter(Boolean)
-              .join(' | ') || '—'}
-          </p>
-          <div className="profile-meta">
-            <div className="profile-meta-item">🎓 {profile.rollNumber || '—'}</div>
-            <div className="profile-meta-item">
-              📊 CGPA: {Number.isFinite(cgpaNum) ? `${cgpaNum}` : '—'}
-            </div>
-            {displayEmails
-              .filter((x) => x.value)
-              .map((x, i) => (
-                <div key={i} className="profile-meta-item">
-                  📧 {x.label}: {x.value}
-                </div>
-              ))}
-            {displayPhones
-              .filter((x) => x.value)
-              .slice(0, 2)
-              .map((x, i) => (
-                <div key={i} className="profile-meta-item">
-                  📱 {x.label}: {x.value}
-                </div>
-              ))}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.4rem',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <div className="profile-avatar" style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}>
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              getInitials(session?.user?.name)
+            )}
           </div>
-        </div>
-        <div style={{ marginLeft: 'auto', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-          {editing && (
-            <>
-              <label
-                className={`btn btn-secondary btn-sm${avatarUploading ? ' disabled' : ''}`}
-                style={{ cursor: avatarUploading ? 'wait' : 'pointer', margin: 0, opacity: avatarUploading ? 0.7 : 1 }}
-              >
-                {avatarUploading ? '⏳ Uploading…' : '📷 Photo'}
-                <input type="file" accept="image/*" hidden disabled={avatarUploading} onChange={onAvatarChange} />
-              </label>
-              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
-                📄 CV / Resume
-                <input type="file" accept=".pdf,.doc,.docx" hidden onChange={onCvChange} />
-              </label>
-            </>
-          )}
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => {
-              if (editing) {
-                void loadProfileFromApi({ silent: true });
-                setEditing(false);
-              } else setEditing(true);
+          <label
+            aria-label={avatarUploading ? 'Uploading profile photo' : 'Change profile photo'}
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              padding: '0.3rem 0.55rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(255,255,255,0.18)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              color: 'white',
+              cursor: avatarUploading ? 'wait' : 'pointer',
+              opacity: avatarUploading ? 0.8 : 1,
+              margin: 0,
+              textAlign: 'center',
             }}
           >
-            {editing ? '✕ Cancel' : '✏️ Edit Profile'}
-          </button>
+            {avatarUploading ? 'Uploading…' : 'Change photo'}
+            <input
+              type="file"
+              accept={studentAvatarAcceptAttr()}
+              hidden
+              disabled={avatarUploading}
+              onChange={onAvatarChange}
+            />
+          </label>
+        </div>
+        <div className="profile-info" style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0 }}>{session?.user?.name}</h2>
+            {!editingHeader ? (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditingTab('header')}>
+                Edit summary
+              </button>
+            ) : null}
+          </div>
+          {!editingHeader ? (
+            <>
+              <p style={{ margin: '0.35rem 0 0' }}>
+                {[profile.branch, profile.batchYear !== '' && profile.batchYear != null ? `Batch ${profile.batchYear}` : '']
+                  .filter(Boolean)
+                  .join(' | ') || '—'}
+              </p>
+              <div className="profile-meta">
+                <div className="profile-meta-item">🎓 {profile.rollNumber || '—'}</div>
+                <div className="profile-meta-item">
+                  📊 CGPA: {Number.isFinite(cgpaNum) ? `${cgpaNum}` : '—'}
+                </div>
+                {displayEmails
+                  .filter((x) => x.value)
+                  .map((x, i) => (
+                    <div key={i} className="profile-meta-item">
+                      📧 {x.label}: {x.value}
+                    </div>
+                  ))}
+                <div className="profile-meta-item">
+                  ✉️ Notifications:{' '}
+                  {(profile.communicationEmail && String(profile.communicationEmail).trim()) || email || '—'}
+                </div>
+                {displayPhones
+                  .filter((x) => x.value)
+                  .slice(0, 2)
+                  .map((x, i) => (
+                    <div key={i} className="profile-meta-item">
+                      📱 {x.label}: {x.value}
+                    </div>
+                  ))}
+              </div>
+            </>
+          ) : (
+            <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <input
+                  className="form-input"
+                  style={{ minWidth: '140px', flex: '1 1 140px' }}
+                  placeholder="Branch / specialisation"
+                  value={profile.branch}
+                  onChange={(e) => persist({ ...profile, branch: e.target.value })}
+                />
+                <input
+                  className="form-input"
+                  type="number"
+                  placeholder="Batch year"
+                  style={{ width: '8rem' }}
+                  value={profile.batchYear === '' || profile.batchYear == null ? '' : profile.batchYear}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '') {
+                      persist({ ...profile, batchYear: '' });
+                      return;
+                    }
+                    const n = parseInt(v, 10);
+                    persist({ ...profile, batchYear: Number.isFinite(n) ? n : '' });
+                  }}
+                />
+              </div>
+              <div className="drive-info-item" style={{ margin: 0 }}>
+                <div className="drive-info-label">Roll number</div>
+                <div className="drive-info-value" title="Assigned by your college">
+                  {profile.rollNumber || '—'}
+                  <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
+                    Set by placement office — not editable here
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
+                  CGPA
+                </div>
+                <input
+                  className="form-input"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  style={{ maxWidth: '10rem' }}
+                  value={profile.cgpa === '' ? '' : profile.cgpa}
+                  onChange={(e) =>
+                    persist({
+                      ...profile,
+                      cgpa: e.target.value === '' ? '' : e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
+                  Communication email (notifications)
+                </div>
+                <input
+                  className="form-input"
+                  type="email"
+                  placeholder="email@example.com"
+                  value={profile.communicationEmail || ''}
+                  onChange={(e) => persist({ ...profile, communicationEmail: e.target.value })}
+                />
+              </div>
+              <div>
+                <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
+                  Email addresses
+                </div>
+                {displayEmails.map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      className="form-input"
+                      style={{ maxWidth: '120px' }}
+                      placeholder="Label"
+                      value={row.label}
+                      onChange={(e) => updateEmailRow(i, { label: e.target.value })}
+                    />
+                    <input
+                      className="form-input"
+                      style={{ flex: '1 1 180px', minWidth: 0 }}
+                      type="email"
+                      placeholder="email@example.com"
+                      value={row.value}
+                      onChange={(e) => updateEmailRow(i, { value: e.target.value })}
+                    />
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeEmailRow(i)} aria-label="Remove email">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-secondary btn-sm" onClick={addEmailRow}>
+                  + Add email
+                </button>
+              </div>
+              <div>
+                <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
+                  Phone numbers
+                </div>
+                {displayPhones.map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      className="form-input"
+                      style={{ maxWidth: '120px' }}
+                      placeholder="Label"
+                      value={row.label}
+                      onChange={(e) => updatePhone(i, { label: e.target.value })}
+                    />
+                    <input
+                      className="form-input"
+                      style={{ flex: '1 1 180px', minWidth: 0 }}
+                      placeholder="+91 …"
+                      value={row.value}
+                      onChange={(e) => updatePhone(i, { value: e.target.value })}
+                    />
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removePhone(i)} aria-label="Remove phone">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-secondary btn-sm" onClick={addPhone}>
+                  + Add number
+                </button>
+              </div>
+              <p className="text-xs text-tertiary" style={{ margin: 0 }}>
+                Use Save below. Full address and labels are also under the Contact tab.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {profile.cvFileName && (
         <p className="text-sm text-secondary" style={{ margin: '-0.5rem 0 1rem' }}>
-          Résumé on file: <strong>{profile.cvFileName}</strong> (stored locally on this device)
+          Résumé on file: <strong>{profile.cvFileName}</strong> {profile.resumeUrl ? '(saved to your account)' : '(saved on this device)'}
         </p>
       )}
 
-      <div className="grid grid-2">
+      <div
+        className="card"
+        style={{
+          marginBottom: '1rem',
+          padding: '1rem 1.25rem',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-default)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            gap: '0.5rem',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Upcoming placement dates</h3>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Link href="/dashboard/student/calendar" className="btn btn-secondary btn-sm">
+              Full calendar
+            </Link>
+            <Link href="/dashboard/student/interviews" className="btn btn-ghost btn-sm">
+              Interviews
+            </Link>
+          </div>
+        </div>
+        {placementCalLoading ? (
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>
+            Loading campus calendar…
+          </p>
+        ) : upcomingPlacementDates.length === 0 ? (
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>
+            No upcoming drives on your campus calendar yet.{' '}
+            <Link href="/dashboard/student/drives">Browse drives</Link> to find companies and apply.
+          </p>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.35rem' }}>
+            {upcomingPlacementDates.map((ev) => (
+              <li key={ev.id} style={{ fontSize: '0.9rem' }}>
+                <strong>{formatDate(ev.ymd)}</strong> — {ev.title}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.1rem' }} role="tablist" aria-label="Profile sections">
+          {PROFILE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              className={activeTab === tab.key ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+              onClick={() => {
+                if (editingTab && editingTab !== tab.key) {
+                  void loadProfileFromApi({ silent: true });
+                  setEditingTab(null);
+                }
+                setActiveTab(tab.key);
+              }}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+            {editingHeader ? 'Profile summary' : PROFILE_TABS.find((tab) => tab.key === activeTab)?.label}
+          </h3>
+          <p className="text-sm text-secondary" style={{ margin: '0.25rem 0 0' }}>
+            {editingHeader
+              ? 'These details appear in the card at the top of your profile.'
+              : 'Edit this section independently from the rest of your profile.'}
+          </p>
+        </div>
+        {editing || editingHeader ? (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={profileSaving}
+              onClick={() => {
+                void loadProfileFromApi({ silent: true });
+                setEditingTab(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary" disabled={profileSaving} onClick={() => void handleSave()}>
+              {profileSaving ? 'Saving…' : editingHeader ? 'Save summary' : 'Save section'}
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="btn btn-secondary" onClick={() => setEditingTab(activeTab)}>
+            ✏️ Edit section
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {activeTab === 'academics' && (
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">🎓 Academic Information</h3>
@@ -510,6 +1020,27 @@ export default function StudentProfilePage() {
               )}
             </div>
             <div className="drive-info-item">
+              <div className="drive-info-label">Diploma %</div>
+              {editing ? (
+                <input
+                  className="form-input"
+                  type="number"
+                  step="0.01"
+                  value={profile.diplomaPercentage === '' ? '' : profile.diplomaPercentage}
+                  onChange={(e) =>
+                    persist({
+                      ...profile,
+                      diplomaPercentage: e.target.value === '' ? '' : parseFloat(e.target.value),
+                    })
+                  }
+                />
+              ) : (
+                <div className="drive-info-value">
+                  {profile.diplomaPercentage === '' || profile.diplomaPercentage == null ? '—' : `${profile.diplomaPercentage}%`}
+                </div>
+              )}
+            </div>
+            <div className="drive-info-item">
               <div className="drive-info-label">Graduation year</div>
               {editing ? (
                 <input
@@ -534,6 +1065,34 @@ export default function StudentProfilePage() {
               <div className="drive-info-value">{currentSemester}</div>
             </div>
             <div className="drive-info-item">
+              <div className="drive-info-label">Active Backlogs</div>
+              {editing ? (
+                <input
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  value={profile.backlogsActive ?? 0}
+                  onChange={(e) => persist({ ...profile, backlogsActive: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })}
+                />
+              ) : (
+                <div className="drive-info-value">{profile.backlogsActive ?? 0}</div>
+              )}
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label">Total Backlogs</div>
+              {editing ? (
+                <input
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  value={profile.backlogsHistory ?? 0}
+                  onChange={(e) => persist({ ...profile, backlogsHistory: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })}
+                />
+              ) : (
+                <div className="drive-info-value">{profile.backlogsHistory ?? 0}</div>
+              )}
+            </div>
+            <div className="drive-info-item">
               <div className="drive-info-label">Gender</div>
               {editing ? (
                 <select className="form-select" value={profile.gender || ''} onChange={(e) => persist({ ...profile, gender: e.target.value })}>
@@ -548,8 +1107,40 @@ export default function StudentProfilePage() {
               )}
             </div>
           </div>
+          <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.875rem' }}>
+            {[
+              ['tenth', '10th Standard'],
+              ['twelfth', '12th Standard'],
+              ['diploma', 'Diploma'],
+            ].map(([key, label]) => {
+              const row = (profile.educationDetails || {})[key] || {};
+              const hasDetails = row.institution || row.board || row.year || row.notes;
+              return (
+                <div key={key} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.875rem', background: 'var(--bg-secondary)' }}>
+                  <div className="drive-info-label" style={{ marginBottom: '0.6rem' }}>{label} Details</div>
+                  {editing ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.6rem' }}>
+                      <input className="form-input" placeholder="School / institution" value={row.institution || ''} onChange={(e) => updateEducationDetail(key, { institution: e.target.value })} />
+                      <input className="form-input" placeholder="Board / university" value={row.board || ''} onChange={(e) => updateEducationDetail(key, { board: e.target.value })} />
+                      <input className="form-input" type="number" placeholder="Passing year" value={row.year || ''} onChange={(e) => updateEducationDetail(key, { year: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <textarea className="form-textarea" rows={2} style={{ gridColumn: '1 / -1' }} placeholder="Notes, stream, achievements, or subjects" value={row.notes || ''} onChange={(e) => updateEducationDetail(key, { notes: e.target.value })} />
+                    </div>
+                  ) : hasDetails ? (
+                    <div className="text-sm" style={{ lineHeight: 1.6 }}>
+                      {[row.institution, row.board, row.year].filter(Boolean).join(' · ')}
+                      {row.notes && <div className="text-secondary" style={{ marginTop: '0.25rem' }}>{row.notes}</div>}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-tertiary">No details added yet.</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
+        )}
 
+        {activeTab === 'contact' && (
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">📇 Contact</h3>
@@ -723,7 +1314,9 @@ export default function StudentProfilePage() {
             </div>
           </div>
         </div>
+        )}
 
+        {activeTab === 'skills' && (
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">💡 Skills</h3>
@@ -759,7 +1352,188 @@ export default function StudentProfilePage() {
             </div>
           )}
         </div>
+        )}
 
+        {activeTab === 'projects' && (
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h3 className="card-title">🧩 Projects</h3>
+            {editing && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={addProject}>
+                + Add project
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gap: '0.875rem' }}>
+            {projectsList.length === 0 && <p className="text-sm text-secondary">No projects added yet.</p>}
+            {projectsList.map((project, index) => (
+              <div key={index} className="card" style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
+                {editing ? (
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <input className="form-input" placeholder="Project title" value={project.title || ''} onChange={(e) => updateProject(index, { title: e.target.value })} />
+                    <textarea className="form-textarea" rows={3} placeholder="What did you build? What problem did it solve?" value={project.description || ''} onChange={(e) => updateProject(index, { description: e.target.value })} />
+                    <input
+                      className="form-input"
+                      placeholder="Tech stack, comma-separated"
+                      value={asList(project.techStack).join(', ')}
+                      onChange={(e) => updateProject(index, { techStack: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
+                    />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                      <input className="form-input" type="url" placeholder="Project URL" value={project.projectUrl || ''} onChange={(e) => updateProject(index, { projectUrl: e.target.value })} />
+                      <input className="form-input" type="url" placeholder="GitHub URL" value={project.githubUrl || ''} onChange={(e) => updateProject(index, { githubUrl: e.target.value })} />
+                      <input className="form-input" type="date" value={project.startDate || ''} onChange={(e) => updateProject(index, { startDate: e.target.value })} />
+                      <input className="form-input" type="date" value={project.endDate || ''} onChange={(e) => updateProject(index, { endDate: e.target.value })} />
+                    </div>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeProject(index)} style={{ justifySelf: 'start' }}>
+                      Remove project
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{project.title || 'Untitled project'}</div>
+                    {(project.startDate || project.endDate) && (
+                      <div className="text-xs text-tertiary" style={{ marginTop: '0.2rem' }}>
+                        {[project.startDate, project.endDate || 'Present'].filter(Boolean).join(' - ')}
+                      </div>
+                    )}
+                    {project.description && <p className="text-sm text-secondary" style={{ lineHeight: 1.6, margin: '0.5rem 0' }}>{project.description}</p>}
+                    {asList(project.techStack).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                        {project.techStack.map((tech) => <span key={tech} className="badge badge-indigo">{tech}</span>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {activeTab === 'internships' && (
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h3 className="card-title">💼 Internships</h3>
+            {editing && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => addActivity('internships')}>
+                + Add internship
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gap: '0.9rem' }}>
+            {internshipsList.length === 0 && <p className="text-sm text-secondary">No internships added yet.</p>}
+            {internshipsList.map((row, index) => (
+              <div key={index} className="card" style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
+                {editing ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.7rem' }}>
+                    <input className="form-input" placeholder="Role / title" value={row.title || ''} onChange={(e) => updateActivity('internships', index, { title: e.target.value })} />
+                    <input className="form-input" placeholder="Company / organization" value={row.organization || ''} onChange={(e) => updateActivity('internships', index, { organization: e.target.value })} />
+                    <input className="form-input" placeholder="Duration, e.g. May-Jul 2025" value={row.period || ''} onChange={(e) => updateActivity('internships', index, { period: e.target.value })} />
+                    <textarea className="form-textarea" rows={4} style={{ gridColumn: '1 / -1' }} placeholder="Describe your work, responsibilities, tools used, and outcomes." value={row.description || ''} onChange={(e) => updateActivity('internships', index, { description: e.target.value })} />
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeActivity('internships', index)} style={{ justifySelf: 'start' }}>
+                      Remove internship
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{row.title || 'Untitled internship'}</div>
+                    <div className="text-xs text-tertiary">{[row.organization, row.period].filter(Boolean).join(' · ')}</div>
+                    {row.description && <p className="text-sm text-secondary" style={{ margin: '0.5rem 0 0', lineHeight: 1.6 }}>{row.description}</p>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {activeTab === 'otherWork' && (
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h3 className="card-title">🛠️ Other Work</h3>
+            {editing && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => addActivity('otherWork')}>
+                + Add work
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gap: '0.9rem' }}>
+            {otherWorkList.length === 0 && <p className="text-sm text-secondary">No part-time, freelance, research, or other work added yet.</p>}
+            {otherWorkList.map((row, index) => (
+              <div key={index} className="card" style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
+                {editing ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.7rem' }}>
+                    <input className="form-input" placeholder="Role / work title" value={row.title || ''} onChange={(e) => updateActivity('otherWork', index, { title: e.target.value })} />
+                    <input className="form-input" placeholder="Organization / client" value={row.organization || ''} onChange={(e) => updateActivity('otherWork', index, { organization: e.target.value })} />
+                    <input className="form-input" placeholder="Duration / year" value={row.period || ''} onChange={(e) => updateActivity('otherWork', index, { period: e.target.value })} />
+                    <textarea className="form-textarea" rows={4} style={{ gridColumn: '1 / -1' }} placeholder="Describe the work, scope, contribution, and impact." value={row.description || ''} onChange={(e) => updateActivity('otherWork', index, { description: e.target.value })} />
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeActivity('otherWork', index)} style={{ justifySelf: 'start' }}>
+                      Remove work
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{row.title || 'Untitled work'}</div>
+                    <div className="text-xs text-tertiary">{[row.organization, row.period].filter(Boolean).join(' · ')}</div>
+                    {row.description && <p className="text-sm text-secondary" style={{ margin: '0.5rem 0 0', lineHeight: 1.6 }}>{row.description}</p>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {activeTab === 'activities' && (
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-header">
+            <h3 className="card-title">🏅 Activities</h3>
+          </div>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {activitySections.map((section) => {
+              const rows = asList(profile[section.key]);
+              return (
+                <div key={section.key} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '1rem', background: 'var(--bg-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{section.title}</div>
+                    {editing && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => addActivity(section.key)}>
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                  {rows.length === 0 && <p className="text-sm text-secondary" style={{ margin: 0 }}>{section.empty}</p>}
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {rows.map((row, index) => (
+                      <div key={index} style={{ borderTop: index === 0 ? 'none' : '1px solid var(--border-default)', paddingTop: index === 0 ? 0 : '0.75rem' }}>
+                        {editing ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.6rem' }}>
+                            <input className="form-input" placeholder="Title" value={row.title || ''} onChange={(e) => updateActivity(section.key, index, { title: e.target.value })} />
+                            <input className="form-input" placeholder="Organization / issuer" value={row.organization || ''} onChange={(e) => updateActivity(section.key, index, { organization: e.target.value })} />
+                            <input className="form-input" placeholder="Period / year" value={row.period || ''} onChange={(e) => updateActivity(section.key, index, { period: e.target.value })} />
+                            <textarea className="form-textarea" rows={2} style={{ gridColumn: '1 / -1' }} placeholder="Details, responsibility, outcome, or impact" value={row.description || ''} onChange={(e) => updateActivity(section.key, index, { description: e.target.value })} />
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeActivity(section.key, index)} style={{ justifySelf: 'start' }}>
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ fontWeight: 700 }}>{row.title || 'Untitled'}</div>
+                            <div className="text-xs text-tertiary">{[row.organization, row.period].filter(Boolean).join(' · ')}</div>
+                            {row.description && <p className="text-sm text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.5 }}>{row.description}</p>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        )}
+
+        {activeTab === 'preferences' && (
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">🎯 Placement preferences</h3>
@@ -773,11 +1547,14 @@ export default function StudentProfilePage() {
                     className="form-input"
                     type="number"
                     placeholder="Min"
+                    min={0}
+                    step={10000}
+                    max={MAX_EXPECTED_SALARY}
                     value={profile.expectedSalaryMin === '' || profile.expectedSalaryMin == null ? '' : profile.expectedSalaryMin}
                     onChange={(e) =>
                       persist({
                         ...profile,
-                        expectedSalaryMin: e.target.value === '' ? '' : parseFloat(e.target.value),
+                        expectedSalaryMin: parseSalaryInput(e.target.value === '' ? '' : e.target.value),
                       })
                     }
                   />
@@ -785,11 +1562,14 @@ export default function StudentProfilePage() {
                     className="form-input"
                     type="number"
                     placeholder="Max"
+                    min={0}
+                    step={10000}
+                    max={MAX_EXPECTED_SALARY}
                     value={profile.expectedSalaryMax === '' || profile.expectedSalaryMax == null ? '' : profile.expectedSalaryMax}
                     onChange={(e) =>
                       persist({
                         ...profile,
-                        expectedSalaryMax: e.target.value === '' ? '' : parseFloat(e.target.value),
+                        expectedSalaryMax: parseSalaryInput(e.target.value === '' ? '' : e.target.value),
                       })
                     }
                   />
@@ -843,7 +1623,9 @@ export default function StudentProfilePage() {
             </div>
           </div>
         </div>
+        )}
 
+        {activeTab === 'links' && (
         <div className="card" style={{ gridColumn: '1 / -1' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             <h3 className="card-title">🔗 Profiles, projects & websites</h3>
@@ -925,31 +1707,39 @@ export default function StudentProfilePage() {
             ))}
           </div>
         </div>
+        )}
       </div>
 
+      {activeTab === 'about' && (
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
           <h3 className="card-title">📝 About me</h3>
         </div>
         {editing ? (
-          <div>
-            <textarea className="form-textarea" value={profile.bio} onChange={(e) => persist({ ...profile, bio: e.target.value })} rows={4} />
-            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={profileSaving}
-                onClick={() => {
-                  void loadProfileFromApi({ silent: true });
-                  setEditing(false);
-                }}
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <label
+                className={`btn btn-secondary btn-sm${avatarUploading ? ' disabled' : ''}`}
+                style={{ cursor: avatarUploading ? 'wait' : 'pointer', margin: 0, opacity: avatarUploading ? 0.7 : 1 }}
               >
-                Cancel
-              </button>
-              <button type="button" className="btn btn-primary" disabled={profileSaving} onClick={() => void handleSave()}>
-                {profileSaving ? 'Saving…' : 'Save changes'}
-              </button>
+                {avatarUploading ? '⏳ Uploading photo…' : '📷 Update photo'}
+                <input
+                  type="file"
+                  accept={studentAvatarAcceptAttr()}
+                  hidden
+                  disabled={avatarUploading}
+                  onChange={onAvatarChange}
+                />
+              </label>
+              <label
+                className={`btn btn-secondary btn-sm${cvUploading ? ' disabled' : ''}`}
+                style={{ cursor: cvUploading ? 'wait' : 'pointer', margin: 0, opacity: cvUploading ? 0.7 : 1 }}
+              >
+                {cvUploading ? '⏳ Uploading CV…' : '📄 Upload CV / Resume'}
+                <input type="file" accept=".pdf,.doc,.docx" hidden disabled={cvUploading} onChange={onCvChange} />
+              </label>
             </div>
+            <textarea className="form-textarea" value={profile.bio} onChange={(e) => persist({ ...profile, bio: e.target.value })} rows={4} />
           </div>
         ) : (
           <p className="text-sm" style={{ lineHeight: 1.7 }}>
@@ -957,6 +1747,7 @@ export default function StudentProfilePage() {
           </p>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { parseCsv } from '@/lib/csvExport';
 import { query, transaction } from '@/lib/db';
 import { isS3Configured, putObjectText } from '@/lib/s3';
 import { isUuid } from '@/lib/tenantContext';
+import { writeEmployerAssessmentAudit } from '@/lib/employerAssessmentAudit';
 
 const DISALLOWED_JOB_TYPES = new Set(['internship', 'short_project', 'hackathon']);
 const REQUIRED_HEADERS = ['college_roll_no'];
@@ -326,6 +327,21 @@ export async function POST(request) {
          WHERE id = $3::uuid`,
         [accepted, parsed.rows.length - accepted, uploadId],
       );
+
+      const fileLabel = String(file.name || 'results.csv');
+      await writeEmployerAssessmentAudit(client, {
+        tenantId,
+        userId: session.user.id || null,
+        uploadId,
+        kind: 'csv_upload',
+        summary: `CSV upload: ${fileLabel} — ${accepted} accepted, ${parsed.rows.length - accepted} rejected`,
+        details: {
+          original_file_name: fileLabel,
+          total_rows: parsed.rows.length,
+          accepted_rows: accepted,
+          rejected_rows: parsed.rows.length - accepted,
+        },
+      });
 
       return { uploadId, accepted };
     });

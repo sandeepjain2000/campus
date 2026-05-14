@@ -161,6 +161,7 @@ export const menuConfig = {
           { label: 'Job Postings', href: '/dashboard/employer/jobs', icon: Briefcase },
           { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Hiring Assessment', href: '/dashboard/employer/hiring-assessment', icon: ListChecks },
+          { label: 'Assessment uploads', href: '/dashboard/employer/assessment-uploads', icon: FileText },
           { label: 'Interview Scheduling', href: '/dashboard/employer/interviews', icon: Calendar },
           { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
         ],
@@ -180,7 +181,8 @@ export const menuConfig = {
         id: 'employer-communication',
         title: '💬 Communication & Support',
         items: [
-          { label: 'Clarifications & Discussions', href: '/dashboard/employer/discussions', icon: HelpCircle },
+          { label: 'Clarifications', href: '/dashboard/employer/clarifications', icon: HelpCircle },
+          { label: 'Discussions', href: '/dashboard/employer/discussions', icon: MessageSquare },
           { label: 'Email templates', href: '/dashboard/employer/communication-templates', icon: Mail },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
@@ -213,6 +215,7 @@ export const menuConfig = {
         id: 'college-programs',
         title: '🎓 Programs & Drives',
         items: [
+          { label: 'Jobs', href: '/dashboard/college/jobs', icon: Briefcase },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },

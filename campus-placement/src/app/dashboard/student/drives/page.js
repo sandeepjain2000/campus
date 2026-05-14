@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import useSWR from 'swr';
+import { useState, useEffect, useMemo } from 'react';
+import useSWR, { mutate as swrMutate } from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
-import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
-import { loadAppliedDriveIds, saveAppliedDriveIds } from '@/lib/studentProfileStorage';
 import MonthYearPicker from '@/components/MonthYearPicker';
 
 function getTimeLeft(deadline) {
@@ -72,11 +70,8 @@ const fetcher = async (url) => {
 };
 
 export default function StudentDrivesPage() {
-  const { data: session } = useSession();
-  const email = session?.user?.email || '';
   const { addToast } = useToast();
   const { data: drivesData, error: drivesError, isLoading: drivesLoading } = useSWR('/api/student/drives', fetcher);
-  const { data: applicationsData } = useSWR('/api/student/applications', fetcher);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -85,8 +80,6 @@ export default function StudentDrivesPage() {
   const [rangeFrom, setRangeFrom] = useState('');
   const [rangeTo, setRangeTo] = useState('');
   const [now, setNow] = useState(Date.now());
-  const [appliedIds, setAppliedIds] = useState(() => new Set());
-
   const [applyingTo, setApplyingTo] = useState(null);
   const [locationPref, setLocationPref] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,28 +88,6 @@ export default function StudentDrivesPage() {
     const t = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(t);
   }, []);
-
-  useEffect(() => {
-    if (Array.isArray(applicationsData?.items)) {
-      const dbSet = new Set(
-        applicationsData.items
-          .filter((item) => item.status !== 'withdrawn')
-          .map((item) => item.drive_id),
-      );
-      setAppliedIds(dbSet);
-      if (email) saveAppliedDriveIds(email, dbSet);
-      return;
-    }
-    if (email) setAppliedIds(loadAppliedDriveIds(email));
-  }, [applicationsData, email]);
-
-  const persistApplied = useCallback(
-    (set) => {
-      setAppliedIds(set);
-      if (email) saveAppliedDriveIds(email, set);
-    },
-    [email]
-  );
 
   const drives = useMemo(() => {
     return Array.isArray(drivesData?.drives) ? drivesData.drives : [];
@@ -162,7 +133,7 @@ export default function StudentDrivesPage() {
   }, [drives, search, filterType, filterStatus, datePreset, monthFilter, rangeFrom, rangeTo]);
 
   const openApplyModal = (drive) => {
-    if (appliedIds.has(drive.id)) return;
+    if (drive.applied) return;
     setApplyingTo(drive);
     setLocationPref('');
   };
@@ -181,9 +152,8 @@ export default function StudentDrivesPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok || data.success) {
-        const next = new Set(appliedIds);
-        next.add(applyingTo.id);
-        persistApplied(next);
+        await swrMutate('/api/student/drives');
+        await swrMutate('/api/student/applications');
         addToast(`Applied to ${applyingTo.company}. Good luck!`, 'info');
       } else {
         addToast(data.error || 'Could not record application. Try again.', 'warning');
@@ -360,13 +330,16 @@ export default function StudentDrivesPage() {
         {filteredDrives.map((drive) => {
           const isExpired = drive.deadline ? new Date(drive.deadline) < now : false;
           const timeLeft = getTimeLeft(drive.deadline);
-          const applied = appliedIds.has(drive.id);
+          const activeApplication = Boolean(drive.applied);
+          const st = drive.applicationStatus ? String(drive.applicationStatus).toLowerCase() : '';
+          const hasPriorApplication = st === 'withdrawn' || st === 'rejected';
+          const applyLabel = isExpired ? 'Closed' : hasPriorApplication ? (st === 'withdrawn' ? 'Withdrawn' : 'Rejected') : 'Apply now';
 
           return (
             <div
               key={drive.id}
-              className={`card card-hover ${isExpired && !applied ? 'card-disabled' : ''}`}
-              style={{ cursor: 'default', opacity: isExpired && !applied ? 0.75 : 1 }}
+              className={`card card-hover ${isExpired && !activeApplication ? 'card-disabled' : ''}`}
+              style={{ cursor: 'default', opacity: isExpired && !activeApplication ? 0.75 : 1 }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                 <div>
@@ -381,11 +354,15 @@ export default function StudentDrivesPage() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                  {applied ? (
+                  {activeApplication ? (
                     <span className="badge badge-green">Applied</span>
                   ) : (
-                    <button className={`btn ${isExpired ? 'btn-outline' : 'btn-primary'} btn-sm`} disabled={isExpired} onClick={() => openApplyModal(drive)}>
-                      {isExpired ? 'Closed' : 'Apply now'}
+                    <button
+                      className={`btn ${isExpired || hasPriorApplication ? 'btn-outline' : 'btn-primary'} btn-sm`}
+                      disabled={isExpired || hasPriorApplication}
+                      onClick={() => openApplyModal(drive)}
+                    >
+                      {applyLabel}
                     </button>
                   )}
                   {timeLeft && (
@@ -454,7 +431,12 @@ export default function StudentDrivesPage() {
           }}
         >
           <div className="card" style={{ width: '100%', maxWidth: '400px', margin: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>Apply to {applyingTo.company}</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>
+              {(() => {
+                const st = applyingTo.applicationStatus ? String(applyingTo.applicationStatus).toLowerCase() : '';
+                return `Apply to ${applyingTo.company}`;
+              })()}
+            </h3>
             <p className="text-secondary" style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
               Confirm application for <strong>{applyingTo.role}</strong>. You can note a location preference if the role has multiple bases.
             </p>

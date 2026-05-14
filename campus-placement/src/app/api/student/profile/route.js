@@ -57,10 +57,18 @@ export async function GET() {
       `SELECT skill_name FROM student_skills WHERE student_id = $1::uuid ORDER BY created_at ASC`,
       [sp.id]
     );
+    const projects = await query(
+      `SELECT title, description, tech_stack, project_url, github_url, start_date, end_date
+       FROM student_projects
+       WHERE student_id = $1::uuid
+       ORDER BY COALESCE(end_date, start_date) DESC NULLS LAST, created_at DESC`,
+      [sp.id]
+    );
 
     const profile = profileFromDb({
       sp,
       skills: skills.rows,
+      projects: projects.rows,
       accountEmail: sp.account_email,
       communicationEmail: sp.communication_email,
       userPhone: sp.user_phone,
@@ -89,6 +97,29 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'CGPA must be between 0 and 10' }, { status: 400 });
     }
 
+    const MAX_EXPECTED_SALARY = 50_000_000; // ₹5 Cr / year — sanity cap
+    const smin = parts.expected_salary_min;
+    const smax = parts.expected_salary_max;
+    if (smin != null) {
+      if (!Number.isFinite(smin) || smin < 0) {
+        return NextResponse.json({ error: 'Expected salary minimum must be a non‑negative number' }, { status: 400 });
+      }
+      if (smin > MAX_EXPECTED_SALARY) {
+        return NextResponse.json({ error: 'Expected salary minimum is above the allowed maximum' }, { status: 400 });
+      }
+    }
+    if (smax != null) {
+      if (!Number.isFinite(smax) || smax < 0) {
+        return NextResponse.json({ error: 'Expected salary maximum must be a non‑negative number' }, { status: 400 });
+      }
+      if (smax > MAX_EXPECTED_SALARY) {
+        return NextResponse.json({ error: 'Expected salary maximum is above the allowed maximum' }, { status: 400 });
+      }
+    }
+    if (smin != null && smax != null && smin > smax) {
+      return NextResponse.json({ error: 'Expected salary minimum cannot be greater than maximum' }, { status: 400 });
+    }
+
     await ensureStudentProfileRow(session.user.id);
 
     const auxProfileAvailable = await hasAuxProfileColumn();
@@ -112,18 +143,21 @@ export async function PUT(request) {
              cgpa = $5,
              tenth_percentage = $6,
              twelfth_percentage = $7,
-             gender = $8,
-             bio = $9,
-             linkedin_url = $10,
-             github_url = $11,
-             portfolio_url = $12,
-             expected_salary_min = $13,
-             expected_salary_max = $14,
-             preferred_locations = $15,
-             willing_to_relocate = $16,
-             aux_profile = $17::jsonb,
+             diploma_percentage = $8,
+             backlogs_active = $9,
+             backlogs_history = $10,
+             gender = $11,
+             bio = $12,
+             linkedin_url = $13,
+             github_url = $14,
+             portfolio_url = $15,
+             expected_salary_min = $16,
+             expected_salary_max = $17,
+             preferred_locations = $18,
+             willing_to_relocate = $19,
+             aux_profile = $20::jsonb,
              updated_at = NOW()
-           WHERE user_id = $18::uuid`,
+           WHERE user_id = $21::uuid`,
           [
             parts.department,
             parts.branch,
@@ -132,6 +166,9 @@ export async function PUT(request) {
             parts.cgpa,
             parts.tenth_percentage,
             parts.twelfth_percentage,
+            parts.diploma_percentage,
+            parts.backlogs_active,
+            parts.backlogs_history,
             parts.gender,
             parts.bio,
             parts.linkedin_url,
@@ -155,17 +192,20 @@ export async function PUT(request) {
              cgpa = $5,
              tenth_percentage = $6,
              twelfth_percentage = $7,
-             gender = $8,
-             bio = $9,
-             linkedin_url = $10,
-             github_url = $11,
-             portfolio_url = $12,
-             expected_salary_min = $13,
-             expected_salary_max = $14,
-             preferred_locations = $15,
-             willing_to_relocate = $16,
+             diploma_percentage = $8,
+             backlogs_active = $9,
+             backlogs_history = $10,
+             gender = $11,
+             bio = $12,
+             linkedin_url = $13,
+             github_url = $14,
+             portfolio_url = $15,
+             expected_salary_min = $16,
+             expected_salary_max = $17,
+             preferred_locations = $18,
+             willing_to_relocate = $19,
              updated_at = NOW()
-           WHERE user_id = $17::uuid`,
+           WHERE user_id = $20::uuid`,
           [
             parts.department,
             parts.branch,
@@ -174,6 +214,9 @@ export async function PUT(request) {
             parts.cgpa,
             parts.tenth_percentage,
             parts.twelfth_percentage,
+            parts.diploma_percentage,
+            parts.backlogs_active,
+            parts.backlogs_history,
             parts.gender,
             parts.bio,
             parts.linkedin_url,
@@ -201,6 +244,25 @@ export async function PUT(request) {
           [studentProfileId, skill]
         );
       }
+
+      await client.query(`DELETE FROM student_projects WHERE student_id = $1::uuid`, [studentProfileId]);
+      for (const project of parts.projects) {
+        await client.query(
+          `INSERT INTO student_projects
+             (student_id, title, description, tech_stack, project_url, github_url, start_date, end_date)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            studentProfileId,
+            project.title || 'Untitled project',
+            project.description || null,
+            project.techStack.length ? project.techStack : null,
+            project.projectUrl || null,
+            project.githubUrl || null,
+            project.startDate || null,
+            project.endDate || null,
+          ]
+        );
+      }
     });
 
     const refreshed = await query(
@@ -215,9 +277,17 @@ export async function PUT(request) {
       `SELECT skill_name FROM student_skills WHERE student_id = $1::uuid ORDER BY created_at ASC`,
       [sp.id]
     );
+    const projects = await query(
+      `SELECT title, description, tech_stack, project_url, github_url, start_date, end_date
+       FROM student_projects
+       WHERE student_id = $1::uuid
+       ORDER BY COALESCE(end_date, start_date) DESC NULLS LAST, created_at DESC`,
+      [sp.id]
+    );
     const profile = profileFromDb({
       sp,
       skills: skills.rows,
+      projects: projects.rows,
       accountEmail: sp.account_email,
       communicationEmail: sp.communication_email,
       userPhone: sp.user_phone,

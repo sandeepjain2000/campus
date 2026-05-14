@@ -3,8 +3,9 @@
 import { useCallback, useState, useMemo } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { FileUp, Eye, Pencil, RotateCcw, Ban, Trash2, CheckCircle, Clock, XCircle, Search } from 'lucide-react';
+import { FileUp, RotateCcw, CheckCircle, Clock, XCircle, Search } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
@@ -269,15 +270,27 @@ export default function EmployerOffersPage() {
             fullCount={offers.length}
             getRows={getOffersCsv}
           />
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              setShowCreate((v) => !v);
-              setEditId(null);
-            }}
-          >
-            {showCreate ? 'Close Form' : '+ Create Offer'}
-          </button>
+          {showCreate ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setShowCreate(false);
+                setEditId(null);
+              }}
+            >
+              Close
+            </button>
+          ) : (
+            <StandardTableIconAction
+              action="add"
+              variant="primary"
+              onClick={() => {
+                setShowCreate(true);
+                setEditId(null);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -462,25 +475,43 @@ export default function EmployerOffersPage() {
                   <td><span className={`badge badge-${getStatusColor(offer.status)} badge-dot`}>{formatStatus(offer.status || 'unknown')}</span></td>
                   <td>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                      <button type="button" className="btn btn-secondary btn-icon btn-sm" title="View details" aria-label="View offer details" onClick={() => setViewRow(offer)}>
-                        <Eye size={16} strokeWidth={2} aria-hidden />
-                      </button>
-                      <button type="button" className="btn btn-secondary btn-icon btn-sm" title="Edit offer" aria-label="Edit offer" onClick={() => openEdit(offer)}>
-                        <Pencil size={16} strokeWidth={2} aria-hidden />
-                      </button>
+                      <StandardTableIconAction
+                        action="view"
+                        showLabel={false}
+                        onClick={() => {
+                          setViewRow(offer);
+                        }}
+                      />
+                      <StandardTableIconAction
+                        action="edit"
+                        showLabel={false}
+                        onClick={() => openEdit(offer)}
+                      />
                       {['accepted', 'rejected', 'revoked', 'expired'].includes(offer.status) && (
-                        <button type="button" className="btn btn-secondary btn-icon btn-sm" title="Reopen as pending" aria-label="Reopen offer as pending" onClick={() => reopenOffer(offer.id)}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-icon btn-sm"
+                          title="Restore pending offer"
+                          aria-label="Restore pending offer"
+                          onClick={() => reopenOffer(offer.id)}
+                        >
                           <RotateCcw size={16} strokeWidth={2} aria-hidden />
                         </button>
                       )}
                       {offer.status === 'pending' && (
-                        <button type="button" className="btn btn-danger btn-icon btn-sm" title="Revoke offer" aria-label="Revoke offer" onClick={() => revokeOffer(offer.id)}>
-                          <Ban size={16} strokeWidth={2} aria-hidden />
-                        </button>
+                        <StandardTableIconAction
+                          action="archive"
+                          variant="danger"
+                          showLabel={false}
+                          onClick={() => revokeOffer(offer.id)}
+                        />
                       )}
-                      <button type="button" className="btn btn-danger btn-icon btn-sm" title="Delete offer" aria-label="Delete offer" onClick={() => deleteOffer(offer.id)}>
-                        <Trash2 size={16} strokeWidth={2} aria-hidden />
-                      </button>
+                      <StandardTableIconAction
+                        action="delete"
+                        variant="danger"
+                        showLabel={false}
+                        onClick={() => deleteOffer(offer.id)}
+                      />
                     </div>
                   </td>
                 </tr>

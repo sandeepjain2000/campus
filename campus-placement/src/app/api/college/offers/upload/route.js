@@ -11,6 +11,7 @@ import {
   parseDeadline,
 } from '@/lib/csvImportUtils';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 
 function getTenantId(session) {
   return session.user.tenantId || session.user.tenant_id;
@@ -80,13 +81,16 @@ export async function POST(request) {
       if (status === 'declined') status = 'rejected';
       if (!OFFER_STATUSES.has(status)) status = 'pending';
 
+      const { acceptedAt, rejectedAt } = offerDecisionTimestampsForInsert(status);
+
       try {
         await query(
           `INSERT INTO offers (
              student_id, employer_id, job_title, salary, location, status,
-             joining_date, deadline, salary_currency, reported_company_name
-           ) VALUES ($1, NULL, $2, $3, $4, $5, NULL, $6, 'INR', $7)`,
-          [studentId, jobTitle, salary, location, status, deadline, company],
+             joining_date, deadline, salary_currency, reported_company_name,
+             accepted_at, rejected_at
+           ) VALUES ($1, NULL, $2, $3, $4, $5, NULL, $6, 'INR', $7, $8, $9)`,
+          [studentId, jobTitle, salary, location, status, deadline, company, acceptedAt, rejectedAt],
         );
         accepted += 1;
         await refreshOfferLatestFlagsForStudent(studentId);

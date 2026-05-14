@@ -58,8 +58,8 @@ export async function POST(request) {
 
     const created = await query(
       `INSERT INTO users (
-        tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active
-      ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, true)
+        tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active, email_verified_at
+      ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, true, NOW())
       RETURNING id, email, communication_email, role, first_name, last_name, is_verified`,
       [tenantId, email, passwordHash, role, firstName, lastName || null, isVerified]
     );

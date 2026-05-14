@@ -23,6 +23,7 @@ export async function GET() {
          u.role,
          u.created_at,
          u.tenant_id,
+         u.email_verified_at,
          t.name AS tenant_name,
          ep.company_name
        FROM users u
@@ -45,6 +46,7 @@ export async function GET() {
         tenantId: r.tenant_id,
         tenantName: r.tenant_name,
         companyName: r.company_name,
+        emailVerified: Boolean(r.email_verified_at),
         label:
           r.role === 'college_admin'
             ? r.tenant_name || 'College'
@@ -74,7 +76,7 @@ export async function POST(request) {
     }
 
     const row = await query(
-      `SELECT u.id, u.email, u.first_name, u.role, u.tenant_id
+      `SELECT u.id, u.email, u.first_name, u.role, u.tenant_id, u.email_verified_at
        FROM users u
        WHERE u.id = $1::uuid
          AND u.role IN ('college_admin', 'employer')
@@ -88,6 +90,15 @@ export async function POST(request) {
     }
 
     const u = row.rows[0];
+
+    if (action === 'approve') {
+      if (!u.email_verified_at) {
+        return NextResponse.json(
+          { error: 'This registrant has not verified their email yet. They must click the verification link in their inbox before you can approve.' },
+          { status: 400 }
+        );
+      }
+    }
 
     if (action === 'reject') {
       await query(

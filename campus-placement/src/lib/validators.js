@@ -4,7 +4,33 @@
 
 export function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
+  return re.test(String(email || '').trim());
+}
+
+/** Letters (Unicode), spaces, apostrophes, periods, hyphens — for person names. */
+export function validatePersonName(name, { required = true, label = 'Name' } = {}) {
+  const s = String(name || '').trim();
+  if (!s) return required ? `${label} is required` : '';
+  if (s.length < 2) return `${label} must be at least 2 characters`;
+  if (s.length > 100) return `${label} is too long`;
+  if (!/^[\p{L}][\p{L}\s'.-]*$/u.test(s)) {
+    return `${label} may only contain letters, spaces, apostrophes, periods, and hyphens`;
+  }
+  if (/\d/.test(s)) return `${label} cannot contain numbers`;
+  return '';
+}
+
+/** Admission / batch start year (e.g. UG batch of 2024). */
+export function validateBatchYear(yearStr, { required = false } = {}) {
+  const raw = String(yearStr ?? '').trim();
+  if (!raw) return required ? 'Batch year is required' : '';
+  const y = parseInt(raw, 10);
+  if (!/^\d{4}$/.test(raw) || Number.isNaN(y)) return 'Enter batch year as a 4-digit year (e.g. 2024)';
+  const now = new Date().getFullYear();
+  const min = now - 12;
+  const max = now + 8;
+  if (y < min || y > max) return `Batch year must be between ${min} and ${max}`;
+  return '';
 }
 
 export function validatePassword(password) {
@@ -56,16 +82,17 @@ export function validateRequired(obj, fields) {
 
 export function validateRegistration(data) {
   const errors = {};
-  
+
   if (!data.email || !validateEmail(data.email)) {
     errors.email = 'Valid email is required';
   }
   if (!data.password || !validatePassword(data.password)) {
     errors.password = 'Password must be at least 8 characters with uppercase, lowercase, and number';
   }
-  if (!data.firstName || data.firstName.trim().length < 2) {
-    errors.firstName = 'First name is required (min 2 characters)';
-  }
+  const fnErr = validatePersonName(data.firstName, { required: true, label: 'First name' });
+  if (fnErr) errors.firstName = fnErr;
+  const lnErr = validatePersonName(data.lastName, { required: false, label: 'Last name' });
+  if (lnErr) errors.lastName = lnErr;
   if (!data.role || !['student', 'employer', 'college_admin'].includes(data.role)) {
     errors.role = 'Valid role is required';
   }
@@ -75,13 +102,17 @@ export function validateRegistration(data) {
       typeof data.campusBindingToken === 'string'
         ? data.campusBindingToken.trim().replace(/\s+/g, '')
         : '';
-    if (key.length < 16) {
+    if (key.length < 15) {
       errors.campusBindingToken =
         'Campus enrollment key is too short — paste the full code from your placement office';
     }
-    if (!data.department || String(data.department).trim().length < 2) {
-      errors.department = 'Department is required';
+    const deptId = typeof data.departmentId === 'string' ? data.departmentId.trim() : '';
+    const deptText = typeof data.department === 'string' ? data.department.trim() : '';
+    if (!deptId && (!deptText || deptText.length < 2)) {
+      errors.department = 'Please select a department';
     }
+    const byErr = validateBatchYear(data.batchYear, { required: true });
+    if (byErr) errors.batchYear = byErr;
   }
 
   return {

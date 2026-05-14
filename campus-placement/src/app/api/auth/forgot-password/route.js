@@ -18,7 +18,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const res = await query('SELECT id, first_name FROM users WHERE email = $1 AND is_active = true', [email.trim().toLowerCase()]);
+    const res = await query(
+      'SELECT id, first_name FROM users WHERE lower(trim(email)) = lower(trim($1)) AND email_verified_at IS NOT NULL',
+      [email.trim().toLowerCase()]
+    );
     if (res.rows.length === 0) {
       // Return success anyway to prevent email enumeration
       return NextResponse.json({ success: true });

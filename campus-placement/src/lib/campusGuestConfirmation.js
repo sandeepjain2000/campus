@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 import { applyEmailTemplate } from '@/lib/emailTemplateRender';
 import {
   CAMPUS_GUEST_CONFIRMATION_TEMPLATE_KEY,
+  SPONSORSHIP_COLLEGE_THANKS_SPONSOR_TEMPLATE_KEY,
   SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY,
 } from '@/lib/systemEmailTemplates';
 
@@ -63,6 +64,15 @@ export async function loadSystemEmailTemplate(templateKey) {
       subject_template: FALLBACK_SUBJECT,
       body_template: FALLBACK_BODY,
       description: 'Fallback (run migration 027 to store in database)',
+    };
+  }
+  if (templateKey === SPONSORSHIP_COLLEGE_THANKS_SPONSOR_TEMPLATE_KEY) {
+    return {
+      template_key: templateKey,
+      subject_template: 'Thank you for supporting {{collegeName}}',
+      body_template:
+        'Dear {{employerName}},\n\nOn behalf of {{collegeName}}, thank you for your {{sponsorshipTierName}} sponsorship ({{amountInr}}).\n\nWe have sent a separate email with receipt details for your records.\n\n— {{collegeName}}\n',
+      description: 'Fallback (run migration 036_sponsorship_auto_emails.sql)',
     };
   }
   if (templateKey === SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY) {

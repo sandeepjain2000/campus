@@ -181,7 +181,7 @@ export default function DesktopDrives() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{drives.length} total</span>
             {pendingCount > 0 && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, color: '#b45309', background: '#fef3c7', padding: '0.2rem 0.6rem', borderRadius: '6px', border: '1px solid #fde68a' }}>
+              <span className="badge badge-amber" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>
                 <AlertCircle size={12} /> {pendingCount} awaiting approval
               </span>
             )}

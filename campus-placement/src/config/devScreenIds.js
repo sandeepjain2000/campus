@@ -44,6 +44,7 @@ const ROUTES_SORTED = [
   '/dashboard/employer/calendar',
   '/dashboard/employer/campus-guest-needs',
   '/dashboard/employer/communication-templates',
+  '/dashboard/employer/clarifications',
   '/dashboard/employer/discussions',
   '/dashboard/employer/drives',
   '/dashboard/employer/hiring-assessment',

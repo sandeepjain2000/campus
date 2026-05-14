@@ -12,6 +12,10 @@
 -- Reset existing data so this script is re-runnable in test environments.
 TRUNCATE TABLE
   audit_logs,
+  employer_assessment_change_log,
+  employer_assessment_rows,
+  employer_assessment_rounds,
+  employer_assessment_uploads,
   mail_delivery_logs,
   message_templates,
   notifications,
@@ -58,7 +62,7 @@ INSERT INTO tenants (id, name, slug, type, city, state, email, communication_ema
 
 -- 1b. College public profile + logos + settings (replaces former hard-coded EntityLogo / defaults)
 UPDATE tenants SET
-  website = 'https://www.iitm.ac.in',
+  website = 'https://techcorp.com/',
   logo_url = '/logos/seed-iitm.svg',
   nirf_rank = 1,
   phone = '+91-44-2257-8000',
@@ -91,7 +95,7 @@ UPDATE tenants SET
 WHERE id = 'a1000000-0000-0000-0000-000000000001';
 
 UPDATE tenants SET
-  website = 'https://www.nitt.edu',
+  website = 'https://techcorp.com/',
   logo_url = '/logos/seed-nitt.svg',
   nirf_rank = 9,
   phone = '+91-431-250-3000',
@@ -124,7 +128,7 @@ UPDATE tenants SET
 WHERE id = 'a1000000-0000-0000-0000-000000000002';
 
 UPDATE tenants SET
-  website = 'https://www.bits-pilani.ac.in',
+  website = 'https://techcorp.com/',
   logo_url = '/logos/seed-bits.svg',
   nirf_rank = 25,
   phone = '+91-1596-242-192',
@@ -249,15 +253,15 @@ WHERE tenant_id = 'a1000000-0000-0000-0000-000000000003';
 
 -- 4. Employer Profiles (logo_url seeds — used by auth + employer profile UI; not name-guessed)
 INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry, company_type, company_size, founded_year, website, logo_url, description, headquarters, locations) VALUES
-('c1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004', 'TechCorp Solutions', 'techcorp', 'Information Technology', 'mnc', '10000+', 2001, 'https://techcorp.com', '/logos/seed-techcorp.svg', 'Leading global technology solutions provider specializing in AI, cloud computing, and enterprise software.', 'Bangalore, India', ARRAY['Bangalore', 'Hyderabad', 'Mumbai', 'Pune']),
-('c1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000005', 'GlobalSoft Technologies', 'globalsoft', 'Information Technology', 'mnc', '5000-10000', 1998, 'https://globalsoft.com', '/logos/seed-globalsoft.svg', 'Enterprise software development and consulting company with operations in 20+ countries.', 'Pune, India', ARRAY['Pune', 'Chennai', 'Noida']),
-('c1000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000006', 'Infosys Limited', 'infosys', 'Information Technology', 'mnc', '10000+', 1981, 'https://infosys.com', '/logos/seed-infosys.svg', 'Global leader in next-generation digital services and consulting.', 'Bangalore, India', ARRAY['Bangalore', 'Mysuru', 'Pune', 'Hyderabad', 'Chennai']),
-('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 1964, 'https://nitt.edu', '/logos/seed-nitt.svg', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
-('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 1978, 'https://bits-alumni.org', '/logos/seed-bits.svg', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']),
-('c1000000-0000-0000-0000-000000000006', 'b1000000-0000-0000-0000-000000000018', 'Innovent Labs', 'innovent-labs', 'Artificial Intelligence', 'startup', '500-1000', 2016, 'https://innoventlabs.ai', '/logos/seed-innovent.svg', 'AI products company building enterprise copilots and automation assistants.', 'Bengaluru, India', ARRAY['Bengaluru', 'Hyderabad']),
-('c1000000-0000-0000-0000-000000000007', 'b1000000-0000-0000-0000-000000000019', 'FinEdge Systems', 'finedge-systems', 'FinTech', 'private', '1000-5000', 2012, 'https://finedge.io', '/logos/seed-finedge.svg', 'FinTech platform focused on payments infra, fraud prevention, and risk scoring.', 'Mumbai, India', ARRAY['Mumbai', 'Pune', 'Gurugram']),
-('c1000000-0000-0000-0000-000000000008', 'b1000000-0000-0000-0000-000000000020', 'GreenVolt Mobility', 'greenvolt-mobility', 'EV & Mobility', 'startup', '200-500', 2019, 'https://greenvolt.in', '/logos/seed-greenvolt.svg', 'Electric mobility startup focused on battery systems, fleet analytics, and charging software.', 'Chennai, India', ARRAY['Chennai', 'Bengaluru']),
-('c1000000-0000-0000-0000-000000000009', 'b1000000-0000-0000-0000-000000000021', 'DataQuotient Analytics', 'dataquotient-analytics', 'Data Analytics', 'private', '500-1000', 2015, 'https://dataquotient.com', '/logos/seed-dataquotient.svg', 'Advanced analytics and decision intelligence consulting with strong campus hiring programs.', 'Hyderabad, India', ARRAY['Hyderabad', 'Noida', 'Pune']);
+('c1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004', 'TechCorp Solutions', 'techcorp', 'Information Technology', 'mnc', '10000+', 2001, 'https://techcorp.com/', '/logos/seed-techcorp.svg', 'Leading global technology solutions provider specializing in AI, cloud computing, and enterprise software.', 'Bangalore, India', ARRAY['Bangalore', 'Hyderabad', 'Mumbai', 'Pune']),
+('c1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000005', 'GlobalSoft Technologies', 'globalsoft', 'Information Technology', 'mnc', '5000-10000', 1998, 'https://techcorp.com/', '/logos/seed-globalsoft.svg', 'Enterprise software development and consulting company with operations in 20+ countries.', 'Pune, India', ARRAY['Pune', 'Chennai', 'Noida']),
+('c1000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000006', 'Infosys Limited', 'infosys', 'Information Technology', 'mnc', '10000+', 1981, 'https://techcorp.com/', '/logos/seed-infosys.svg', 'Global leader in next-generation digital services and consulting.', 'Bangalore, India', ARRAY['Bangalore', 'Mysuru', 'Pune', 'Hyderabad', 'Chennai']),
+('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 1964, 'https://techcorp.com/', '/logos/seed-nitt.svg', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
+('c1000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000014', 'BITS Alumni Association', 'bits-alumni', 'Education', 'ngo', '10000+', 1978, 'https://techcorp.com/', '/logos/seed-bits.svg', 'Connecting current students with established alumni for mentorship and guidance.', 'Pilani, India', ARRAY['Pilani']),
+('c1000000-0000-0000-0000-000000000006', 'b1000000-0000-0000-0000-000000000018', 'Innovent Labs', 'innovent-labs', 'Artificial Intelligence', 'startup', '500-1000', 2016, 'https://techcorp.com/', '/logos/seed-innovent.svg', 'AI products company building enterprise copilots and automation assistants.', 'Bengaluru, India', ARRAY['Bengaluru', 'Hyderabad']),
+('c1000000-0000-0000-0000-000000000007', 'b1000000-0000-0000-0000-000000000019', 'FinEdge Systems', 'finedge-systems', 'FinTech', 'private', '1000-5000', 2012, 'https://techcorp.com/', '/logos/seed-finedge.svg', 'FinTech platform focused on payments infra, fraud prevention, and risk scoring.', 'Mumbai, India', ARRAY['Mumbai', 'Pune', 'Gurugram']),
+('c1000000-0000-0000-0000-000000000008', 'b1000000-0000-0000-0000-000000000020', 'GreenVolt Mobility', 'greenvolt-mobility', 'EV & Mobility', 'startup', '200-500', 2019, 'https://techcorp.com/', '/logos/seed-greenvolt.svg', 'Electric mobility startup focused on battery systems, fleet analytics, and charging software.', 'Chennai, India', ARRAY['Chennai', 'Bengaluru']),
+('c1000000-0000-0000-0000-000000000009', 'b1000000-0000-0000-0000-000000000021', 'DataQuotient Analytics', 'dataquotient-analytics', 'Data Analytics', 'private', '500-1000', 2015, 'https://techcorp.com/', '/logos/seed-dataquotient.svg', 'Advanced analytics and decision intelligence consulting with strong campus hiring programs.', 'Hyderabad, India', ARRAY['Hyderabad', 'Noida', 'Pune']);
 
 -- 4b. Employer campus approvals: none in seed — employers request tie-ups from the app.
 
@@ -354,6 +358,68 @@ INSERT INTO applications (student_id, drive_id, job_id, status, current_round, a
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'e1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'in_progress', 3, NOW() - INTERVAL '5 days'),
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'e1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000003', 'applied', 0, NOW() - INTERVAL '2 days'),
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021003'), 'e1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'selected', 4, NOW() - INTERVAL '5 days');
+
+-- 10b. Employer assessment CSV upload (demo — TechCorp SDE drive @ IIT Madras; login as hr@techcorp.com to see upload history)
+INSERT INTO employer_assessment_uploads (
+  id, employer_id, tenant_id, drive_id, job_id, uploaded_by, original_file_name, s3_key,
+  total_rows, accepted_rows, rejected_rows, created_at
+) VALUES (
+  'f1000000-0000-0000-0000-000000000010',
+  'c1000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-000000000001',
+  'e1000000-0000-0000-0000-000000000001',
+  NULL,
+  'b1000000-0000-0000-0000-000000000004',
+  'demo-assessment-rounds.csv',
+  NULL,
+  3, 3, 0,
+  NOW() - INTERVAL '2 days'
+);
+
+INSERT INTO employer_assessment_rounds (upload_id, round_no, round_label) VALUES
+('f1000000-0000-0000-0000-000000000010', 1, 'Online Aptitude'),
+('f1000000-0000-0000-0000-000000000010', 2, 'Coding'),
+('f1000000-0000-0000-0000-000000000010', 3, 'Technical interview'),
+('f1000000-0000-0000-0000-000000000010', 4, 'HR'),
+('f1000000-0000-0000-0000-000000000010', 5, 'Manager');
+
+INSERT INTO employer_assessment_rows (
+  id, upload_id, student_profile_id, application_id, roll_number, is_unregistered_student,
+  round_1_result, round_2_result, round_3_result, round_4_result, round_5_result, remarks, candidate_name
+) VALUES
+(
+  'f1000000-0000-0000-0000-000000000021',
+  'f1000000-0000-0000-0000-000000000010',
+  (SELECT id FROM student_profiles WHERE roll_number = 'CS2021001' LIMIT 1),
+  (SELECT a.id FROM applications a JOIN student_profiles s ON a.student_id = s.id WHERE s.roll_number = 'CS2021001' AND a.drive_id = 'e1000000-0000-0000-0000-000000000001' LIMIT 1),
+  'CS2021001',
+  false,
+  'Pass', 'Pass', 'Scheduled', '', '',
+  'Seed data — panel notes optional',
+  NULL
+),
+(
+  'f1000000-0000-0000-0000-000000000022',
+  'f1000000-0000-0000-0000-000000000010',
+  (SELECT id FROM student_profiles WHERE roll_number = 'CS2021002' LIMIT 1),
+  (SELECT a.id FROM applications a JOIN student_profiles s ON a.student_id = s.id WHERE s.roll_number = 'CS2021002' AND a.drive_id = 'e1000000-0000-0000-0000-000000000001' LIMIT 1),
+  'CS2021002',
+  false,
+  'Pass', 'Pass', 'In progress', '', '',
+  NULL,
+  NULL
+),
+(
+  'f1000000-0000-0000-0000-000000000023',
+  'f1000000-0000-0000-0000-000000000010',
+  (SELECT id FROM student_profiles WHERE roll_number = 'CS2021003' LIMIT 1),
+  (SELECT a.id FROM applications a JOIN student_profiles s ON a.student_id = s.id WHERE s.roll_number = 'CS2021003' AND a.drive_id = 'e1000000-0000-0000-0000-000000000001' LIMIT 1),
+  'CS2021003',
+  false,
+  'Pass', 'Pass', 'Pass', 'Pass', 'Selected',
+  'Offer candidate — demo row',
+  NULL
+);
 
 -- 11. Offers
 INSERT INTO offers (application_id, student_id, employer_id, drive_id, job_title, salary, joining_date, location, status, deadline) VALUES
@@ -1065,7 +1131,7 @@ INSERT INTO users (id, email, communication_email, password_hash, role, first_na
 ('b1000000-0000-0000-0000-000000000022', 'hr@tcs.com', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'employer', 'TCS', 'HR', true, true);
 
 INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry, company_type, company_size, founded_year, website, logo_url, description, headquarters, locations) VALUES
-('c1000000-0000-0000-0000-000000000010', 'b1000000-0000-0000-0000-000000000022', 'Tata Consultancy Services (TCS)', 'tcs', 'Information Technology', 'mnc', '10000+', 1968, 'https://www.tcs.com', '/logos/seed-tcs.svg', 'Global leader in IT services, consulting, and business solutions.', 'Mumbai, India', ARRAY['Mumbai', 'Pune', 'Bangalore', 'Chennai', 'Hyderabad']);
+('c1000000-0000-0000-0000-000000000010', 'b1000000-0000-0000-0000-000000000022', 'Tata Consultancy Services (TCS)', 'tcs', 'Information Technology', 'mnc', '10000+', 1968, 'https://techcorp.com/', '/logos/seed-tcs.svg', 'Global leader in IT services, consulting, and business solutions.', 'Mumbai, India', ARRAY['Mumbai', 'Pune', 'Bangalore', 'Chennai', 'Hyderabad']);
 
 -- 2. Add second student to BITS Pilani
 INSERT INTO users (id, tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_active, is_verified, phone) VALUES
@@ -1136,3 +1202,7 @@ BEGIN
 
   END LOOP;
 END $$;
+
+-- After migration 045: ensure seeded accounts can sign in (email verification gate)
+UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE email_verified_at IS NULL;
+

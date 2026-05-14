@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatDate, formatStatus } from '@/lib/utils';
-import { CalendarDays, MapPin, Building2, Users, Plus, Edit2, Trash2, Eye, X, ArrowLeft } from 'lucide-react';
+import { CalendarDays, MapPin, Building2, Users, X, ArrowLeft } from 'lucide-react';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function DataEntryPlacementDrivesPage() {
   const [employers, setEmployers] = useState([]);
@@ -180,9 +181,17 @@ export default function DataEntryPlacementDrivesPage() {
               <button className="btn" onClick={loadData} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 Refresh Data
               </button>
-              <button className="btn" onClick={openAdd} style={{ background: 'white', color: 'var(--slate-800)', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                <Plus size={16} style={{ marginRight: '0.4rem' }} /> Add Drive
-              </button>
+              <StandardTableIconAction
+                action="add"
+                variant="secondary"
+                onClick={openAdd}
+                style={{
+                  background: 'white',
+                  color: 'var(--slate-800)',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              />
             </div>
           </div>
         </div>
@@ -206,9 +215,7 @@ export default function DataEntryPlacementDrivesPage() {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem' }}>No drives recorded</h3>
             <p className="text-secondary" style={{ margin: 0 }}>Create your first placement drive to see it listed here.</p>
           </div>
-          <button className="btn btn-primary" onClick={openAdd} style={{ marginTop: '0.5rem' }}>
-            <Plus size={16} style={{ marginRight: '0.4rem' }} /> Add Drive
-          </button>
+          <StandardTableIconAction action="add" variant="primary" onClick={openAdd} style={{ marginTop: '0.5rem' }} />
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
@@ -239,16 +246,10 @@ export default function DataEntryPlacementDrivesPage() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-default)' }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setViewRow(row)} style={{ color: 'var(--primary-600)', fontWeight: 600 }}>
-                  <Eye size={16} style={{ marginRight: '0.3rem' }} /> View Details
-                </button>
+                <StandardTableIconAction action="view" onClick={() => setViewRow(row)} />
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-secondary btn-icon btn-sm" onClick={() => openEdit(row)} title="Edit">
-                    <Edit2 size={15} />
-                  </button>
-                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDelete(row.id)} title="Delete" style={{ color: 'var(--danger-600)' }}>
-                    <Trash2 size={15} />
-                  </button>
+                  <StandardTableIconAction action="edit" showLabel={false} onClick={() => openEdit(row)} />
+                  <StandardTableIconAction action="delete" variant="danger" showLabel={false} onClick={() => handleDelete(row.id)} />
                 </div>
               </div>
             </div>
