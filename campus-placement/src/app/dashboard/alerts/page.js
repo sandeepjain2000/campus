@@ -153,7 +153,10 @@ export default function AlertsEmailPage() {
     >
       <div className="page-header" style={{ marginBottom: '1rem', flexShrink: 0 }}>
         <div className="page-header-left">
-          <h1>📨 Inbox & Alerts</h1>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span aria-hidden="true" style={{ fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", emoji' }}>📨</span> 
+            Inbox & Alerts
+          </h1>
           <p>
             {mailbox === 'inbox'
               ? 'System notifications, event coordination, and alerts.'
