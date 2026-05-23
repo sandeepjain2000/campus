@@ -4,13 +4,11 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
+import { swrFetcher } from '@/lib/fetchJson';
+import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
 
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load');
-  return data;
-};
+const MAX_CSV_BYTES = (PLATFORM_SETTINGS_DEFAULTS.maxUploadSizeMb || 5) * 1024 * 1024;
+const CSV_MIME_TYPES = new Set(['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain']);
 
 /**
  * CSV upload form for Assessment uploads (used inside a modal on the main page).
@@ -25,8 +23,8 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
   const [rounds, setRounds] = useState(['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5']);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: drivesData } = useSWR('/api/employer/drives', fetcher);
-  const { data: jobsData } = useSWR('/api/employer/jobs', fetcher);
+  const { data: drivesData } = useSWR('/api/employer/drives', swrFetcher);
+  const { data: jobsData } = useSWR('/api/employer/jobs', swrFetcher);
 
   const drives = Array.isArray(drivesData?.drives) ? drivesData.drives : [];
   const jobs = Array.isArray(jobsData?.jobs) ? jobsData.jobs : [];
@@ -52,6 +50,14 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
     const lowerName = String(file.name || '').toLowerCase();
     if (!lowerName.endsWith('.csv')) {
       addToast('Please upload a .csv file.', 'warning');
+      return;
+    }
+    if (file.size > MAX_CSV_BYTES) {
+      addToast(`CSV must be ${PLATFORM_SETTINGS_DEFAULTS.maxUploadSizeMb || 5} MB or smaller.`, 'warning');
+      return;
+    }
+    if (file.type && !CSV_MIME_TYPES.has(file.type)) {
+      addToast('Please upload a valid CSV file.', 'warning');
       return;
     }
     if (targetType === 'job' && !jobId) {
@@ -80,6 +86,7 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
 
       const res = await fetch('/api/employer/assessments/upload', {
         method: 'POST',
+        credentials: 'same-origin',
         body: form,
       });
       const json = await res.json().catch(() => ({}));

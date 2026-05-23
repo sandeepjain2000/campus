@@ -12,13 +12,10 @@ import {
   X,
 } from 'lucide-react';
 import { validateEmail } from '@/lib/validators';
+import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
+import { buildPublicSupportConfig } from '@/lib/supportContact';
 
-const DEFAULT_CONFIG = {
-  supportEmail: 'placementhub@yopmail.com',
-  supportPhone: '+91 80000 12345',
-  notificationInboxEmail: 'placementhub@yopmail.com',
-  yopmailWebmailUrl: 'https://yopmail.com/?placementhub',
-};
+const DEFAULT_CONFIG = buildPublicSupportConfig(PLATFORM_SETTINGS_DEFAULTS);
 
 function phoneTelHref(phone) {
   const digits = String(phone || '').replace(/[^\d+]/g, '');

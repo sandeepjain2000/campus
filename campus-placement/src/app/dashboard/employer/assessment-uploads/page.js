@@ -9,13 +9,7 @@ import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { AssessmentCsvUploadForm } from '@/components/employer/AssessmentSpreadsheetUploadPanel';
 import { isUuid } from '@/lib/tenantContext';
 import { toCsvIsoDate } from '@/lib/csvExport';
-
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load');
-  return data;
-};
+import { swrFetcher } from '@/lib/fetchJson';
 
 function EmployerAssessmentUploadsContent() {
   const { addToast } = useToast();
@@ -32,13 +26,13 @@ function EmployerAssessmentUploadsContent() {
   const [addRemarks, setAddRemarks] = useState('');
   const [addingRow, setAddingRow] = useState(false);
 
-  const { data: uploadsData, mutate: mutateUploads, error, isLoading } = useSWR('/api/employer/assessments?limit=20', fetcher);
+  const { data: uploadsData, mutate: mutateUploads, error, isLoading } = useSWR('/api/employer/assessments?limit=20', swrFetcher);
   const {
     data: detailData,
     mutate: mutateDetail,
     isLoading: detailLoading,
     error: detailError,
-  } = useSWR(editorUploadId ? `/api/employer/assessments/${editorUploadId}` : null, fetcher, {
+  } = useSWR(editorUploadId ? `/api/employer/assessments/${editorUploadId}` : null, swrFetcher, {
     revalidateOnFocus: false,
   });
 
@@ -92,7 +86,7 @@ function EmployerAssessmentUploadsContent() {
     error: auditError,
     isLoading: auditLoading,
     mutate: mutateAudit,
-  } = useSWR(editorUploadId ? `/api/employer/assessments/${editorUploadId}/audit` : null, fetcher, {
+  } = useSWR(editorUploadId ? `/api/employer/assessments/${editorUploadId}/audit` : null, swrFetcher, {
     revalidateOnFocus: false,
   });
   const auditEntries = auditData?.entries || [];
