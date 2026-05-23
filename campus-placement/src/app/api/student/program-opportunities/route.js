@@ -2,14 +2,16 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getStudentResumeApplyState } from '@/lib/studentApplyEligibility';
+import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Published internships or projects visible to the student's college (employer tie-up + campus selected at publish).
- * ?kind=internship | project (short_project + hackathon)
+ * Published program openings visible to the student's college.
+ * ?kind=internship | job | project (short_project only) | hackathon
  */
 export async function GET(request) {
   try {
@@ -27,8 +29,27 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const kindParam = searchParams.get('kind');
-    const kind = kindParam === 'project' ? 'project' : kindParam === 'job' ? 'job' : 'internship';
-    const types = kind === 'project' ? ['short_project', 'hackathon'] : kind === 'job' ? ['full_time'] : ['internship'];
+    const kind =
+      kindParam === 'project'
+        ? 'project'
+        : kindParam === 'job'
+          ? 'job'
+          : kindParam === 'hackathon'
+            ? 'hackathon'
+            : 'internship';
+    const types =
+      kind === 'project'
+        ? ['short_project']
+        : kind === 'hackathon'
+          ? ['hackathon']
+          : kind === 'job'
+            ? ['full_time']
+            : ['internship'];
+
+    const studentProfileId = await getOrCreateStudentProfileId(userId);
+    const { hasResume } = studentProfileId
+      ? await getStudentResumeApplyState(studentProfileId)
+      : { hasResume: false };
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 1);
     const userIdx = 1 + tenantInParams.length;
@@ -79,6 +100,8 @@ export async function GET(request) {
 
     return NextResponse.json({
       kind,
+      canApply: hasResume,
+      hasResume,
       items: result.rows.map((r) => ({
         id: r.id,
         title: r.title,

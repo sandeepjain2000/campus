@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getSessionUserId, isSuperAdmin } from '@/lib/sessionUser';
 
 const ALLOWED_CATEGORIES = new Set(['Feature Request', 'Bug Report', 'General Feedback']);
 
@@ -25,7 +26,8 @@ function mergeStatusCounts(rows) {
 export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const userId = getSessionUserId(session);
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -36,10 +38,10 @@ export async function GET(req) {
     const page = Math.max(1, Number.parseInt(pageParam || '1', 10) || 1);
     const pageSize = Math.min(100, Math.max(1, Number.parseInt(pageSizeParam || '10', 10) || 10));
 
-    const isSuperAdmin = session.user.role === 'super_admin';
+    const superAdmin = isSuperAdmin(session);
     const params = [];
-    const where = isSuperAdmin ? '' : 'WHERE f.user_id = $1';
-    if (!isSuperAdmin) params.push(session.user.id);
+    const where = superAdmin ? '' : 'WHERE f.user_id = $1::uuid';
+    if (!superAdmin) params.push(userId);
 
     const fromJoins = `
       FROM platform_feedback f
@@ -60,7 +62,17 @@ export async function GET(req) {
     );
     const statusCounts = mergeStatusCounts(statusRes.rows);
 
-    const replyCountExpr = `COALESCE((SELECT COUNT(*)::int FROM platform_feedback_replies r WHERE r.feedback_id = f.id), 0)`;
+    let replyCountExpr = '0';
+    let latestReplyExpr = 'NULL::text';
+    let latestReplyAtExpr = 'NULL::timestamptz';
+    try {
+      await query(`SELECT 1 FROM platform_feedback_replies LIMIT 0`);
+      replyCountExpr = `COALESCE((SELECT COUNT(*)::int FROM platform_feedback_replies r WHERE r.feedback_id = f.id), 0)`;
+      latestReplyExpr = `(SELECT r.message FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1)`;
+      latestReplyAtExpr = `(SELECT r.created_at FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1)`;
+    } catch (probe) {
+      if (probe.code !== '42P01') throw probe;
+    }
 
     const limitOffset = paginate
       ? `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
@@ -78,8 +90,8 @@ export async function GET(req) {
                 ELSE t.name
               END AS organization_name,
               ${replyCountExpr} AS reply_count,
-              (SELECT r.message FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1) AS latest_reply,
-              (SELECT r.created_at FROM platform_feedback_replies r WHERE r.feedback_id = f.id ORDER BY r.created_at DESC LIMIT 1) AS latest_reply_at
+              ${latestReplyExpr} AS latest_reply,
+              ${latestReplyAtExpr} AS latest_reply_at
        ${fromJoins}
        ${where}
        ORDER BY (${replyCountExpr} > 0) DESC, f.created_at DESC
@@ -112,7 +124,8 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const userId = getSessionUserId(session);
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -132,7 +145,7 @@ export async function POST(req) {
       `INSERT INTO platform_feedback (user_id, title, category, description, status)
        VALUES ($1, $2, $3, $4, 'Submitted')
        RETURNING id, title, category, description, status, created_at`,
-      [session.user.id, title, category, description],
+      [userId, title, category, description],
     );
 
     return NextResponse.json({ item: ins.rows[0] }, { status: 201 });

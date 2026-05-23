@@ -21,7 +21,7 @@ export async function GET() {
            COUNT(*)::int AS total_students,
            COUNT(*) FILTER (WHERE placement_status = 'placed')::int AS placed_students
          FROM student_profiles
-         WHERE tenant_id = $1::uuid`,
+         WHERE tenant_id = $1::uuid AND archived_at IS NULL`,
         [tenantId],
       ),
       query(
@@ -29,7 +29,7 @@ export async function GET() {
                 COUNT(*)::int AS total,
                 COUNT(*) FILTER (WHERE placement_status = 'placed')::int AS placed
          FROM student_profiles
-         WHERE tenant_id = $1::uuid
+         WHERE tenant_id = $1::uuid AND archived_at IS NULL
          GROUP BY department
          ORDER BY department`,
         [tenantId],
@@ -45,7 +45,7 @@ export async function GET() {
            END AS range,
            COUNT(*)::int AS count
          FROM offers
-         WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid)
+         WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND archived_at IS NULL)
            AND status = 'accepted'
          GROUP BY 1`,
         [tenantId],
@@ -56,7 +56,7 @@ export async function GET() {
                 ROUND(AVG(o.salary))::int AS avg_ctc
          FROM offers o
          LEFT JOIN employer_profiles ep ON ep.id = o.employer_id
-         WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid)
+         WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND archived_at IS NULL)
            AND o.status = 'accepted'
          GROUP BY ep.company_name
          ORDER BY hires DESC
@@ -72,7 +72,7 @@ export async function GET() {
     const acceptedOffersAvgRes = await query(
       `SELECT ROUND(AVG(salary))::int AS avg_ctc, MAX(salary)::int AS highest
        FROM offers
-       WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid)
+       WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND archived_at IS NULL)
          AND status = 'accepted'`,
       [tenantId],
     );

@@ -1,49 +1,69 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState, useCallback, useEffect } from 'react';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { ImportCsvSplitButton } from '@/components/import/ImportCsvSplitButton';
 import { downloadCsvFromRows } from '@/lib/csvExport';
 import {
-  CURRENT_ACADEMIC_YEAR, CURRENT_SEMESTER, STUDENT_CSV_HEADERS,
+  CURRENT_SEMESTER, STUDENT_CSV_HEADERS,
   studentToCsvRow, studentCsvTemplateExampleRow,
 } from '@/lib/collegeStudentsCsv';
+import { getCurrentAcademicYear } from '@/lib/academicYear';
+import {
+  academicYearQueryString,
+  readActiveAcademicYearContext,
+} from '@/lib/collegeAcademicYearContext';
 import { useToast } from '@/components/ToastProvider';
-import { GraduationCap, Search, Download, X, CheckCircle2, CircleAlert, UserPlus } from 'lucide-react';
-import StudentDetailModal, { getCompletedSectionCount } from './StudentDetailModal';
+import { GraduationCap, Download, CheckCircle2, CircleAlert, UserPlus } from 'lucide-react';
+import StudentQuickViewModal from './StudentQuickViewModal';
+import StudentListFiltersPanel from './StudentListFiltersPanel';
+import StudentSectionSummaryCards from './StudentSectionSummaryCards';
+import { useStudentListFilters } from './useStudentListFilters';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import StudentDegreeSpecializationCell, {
+  StudentDegreeSpecializationHeader,
+} from './StudentDegreeSpecializationCell';
+import StudentSystemIdBatchCell, {
+  StudentSystemIdBatchHeader,
+} from './StudentSystemIdBatchCell';
 
 export default function DesktopCollegeStudents() {
+  const router = useRouter();
   const { addToast } = useToast();
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [deptFilter, setDeptFilter] = useState('');
-  const [jobStatusFilter, setJobStatusFilter] = useState('');
-  const [detailStudent, setDetailStudent] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [sessionMeta, setSessionMeta] = useState(null);
+  const [quickViewStudent, setQuickViewStudent] = useState(null);
 
-  // Lock background scroll when modal is open
   useEffect(() => {
-    if (detailStudent) {
+    if (quickViewStudent) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-    return () => { document.body.style.overflow = ''; };
-  }, [detailStudent]);
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [quickViewStudent]);
 
   const reloadStudents = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/college/students');
+      const qs = academicYearQueryString(readActiveAcademicYearContext());
+      const res = await fetch(`/api/college/students${qs}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to load students');
-      setStudents(Array.isArray(json) ? json : []);
+      const list = Array.isArray(json) ? json : json.students || [];
+      setStudents(list);
+      setSessionMeta(Array.isArray(json) ? null : json.session || null);
     } catch (error) {
       addToast(error.message || 'Failed to load students', 'error');
       setStudents([]);
+      setSessionMeta(null);
     } finally {
       setIsLoading(false);
     }
@@ -51,35 +71,81 @@ export default function DesktopCollegeStudents() {
 
   useEffect(() => { reloadStudents(); }, [reloadStudents]);
 
+  useEffect(() => {
+    const onYear = () => { reloadStudents(); };
+    window.addEventListener('placementhub-academic-year', onYear);
+    return () => window.removeEventListener('placementhub-academic-year', onYear);
+  }, [reloadStudents]);
+
+  const {
+    search,
+    setSearch,
+    deptFilters,
+    setDeptFilters,
+    degreeFilters,
+    setDegreeFilters,
+    batchFilters,
+    setBatchFilters,
+    batchOptions,
+    jobStatusFilters,
+    setJobStatusFilters,
+    sectionFilters,
+    setSectionFilters,
+    sectionFilterOptions,
+    sectionRangeCounts,
+    sortBy,
+    setSortBy,
+    sortOpen,
+    setSortOpen,
+    departmentOptions,
+    degreeOptions,
+    filtered,
+    hasFilters,
+    clearFilters,
+  } = useStudentListFilters(students);
+
   const setStudentVerified = useCallback(async (profileId, approve) => {
     try {
       const res = await fetch('/api/college/students/verify', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentProfileId: profileId, approve }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Update failed');
       addToast(approve ? 'Student verified.' : 'Verification cleared.', 'success');
       setStudents((prev) => prev.map((s) => (s.id === profileId ? { ...s, verified: approve } : s)));
-      setDetailStudent((d) => (d && d.id === profileId ? { ...d, verified: approve } : d));
+      setQuickViewStudent((d) => (d && d.id === profileId ? { ...d, verified: approve } : d));
     } catch (e) {
       addToast(e.message || 'Failed', 'error');
     }
   }, [addToast]);
 
-  const filtered = useMemo(() => students.filter((s) => {
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.roll.toLowerCase().includes(search.toLowerCase())) return false;
-    if (deptFilter && s.dept !== deptFilter) return false;
-    if (jobStatusFilter && s.jobStatus !== jobStatusFilter) return false;
-    return true;
-  }), [students, search, deptFilter, jobStatusFilter]);
+  const archiveStudent = useCallback(async (student) => {
+    const label = student?.name || 'this student';
+    if (
+      !confirm(
+        `Archive ${label}? They will be hidden from drives, jobs, and the student list, and cannot sign in. A super admin can restore them later. Use this for mistaken or test entries.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/college/students/${student.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Archive failed');
+      addToast('Student archived.', 'success');
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      setQuickViewStudent((d) => (d && d.id === student.id ? null : d));
+    } catch (error) {
+      addToast(error.message || 'Archive failed', 'error');
+    }
+  }, [addToast]);
 
   const getStudentCsv = useCallback((scope) => {
     const list = scope === 'current' ? filtered : students;
     return { headers: [...STUDENT_CSV_HEADERS], rows: list.map((s) => studentToCsvRow(s)) };
   }, [filtered, students]);
-
-  const uniqueDepartments = useMemo(() => Array.from(new Set(students.map((s) => s.dept).filter(Boolean))), [students]);
 
   const downloadTemplate = useCallback(() => {
     downloadCsvFromRows('students_import_template', [...STUDENT_CSV_HEADERS], [studentCsvTemplateExampleRow()]);
@@ -126,8 +192,11 @@ export default function DesktopCollegeStudents() {
     }
   }, [addToast, reloadStudents]);
 
-  const hasFilters = search || deptFilter || jobStatusFilter;
-  const clearFilters = () => { setSearch(''); setDeptFilter(''); setJobStatusFilter(''); };
+  const toggleSectionFilter = useCallback((value) => {
+    setSectionFilters((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    );
+  }, [setSectionFilters]);
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -139,7 +208,9 @@ export default function DesktopCollegeStudents() {
             Students
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
-            AY {CURRENT_ACADEMIC_YEAR} · Semester {CURRENT_SEMESTER} · {students.length} enrolled
+            AY {sessionMeta?.academicYearLabel || getCurrentAcademicYear()} · Semester{' '}
+            {sessionMeta?.semesterNumber ?? sessionMeta?.semesterLabel ?? CURRENT_SEMESTER} · {students.length}{' '}
+            enrolled
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -158,35 +229,42 @@ export default function DesktopCollegeStudents() {
         </div>
       </div>
 
-      {/* Filters Card */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid var(--border-default)' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: '1 1 220px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-            <input className="form-input" placeholder="Search by name or roll…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: '2.5rem' }} />
-          </div>
-          <select className="form-select" style={{ width: 'auto' }} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-            <option value="">All Departments</option>
-            {uniqueDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select className="form-select" style={{ width: 'auto' }} value={jobStatusFilter} onChange={(e) => setJobStatusFilter(e.target.value)}>
-            <option value="">All Job Statuses</option>
-            <option value="unplaced">Unplaced</option>
-            <option value="placed">Placed</option>
-            <option value="opted_out">Opted out</option>
-            <option value="higher_studies">Higher studies</option>
-          </select>
+      {!isLoading && students.length > 0 ? (
+        <StudentSectionSummaryCards
+          lte4Count={sectionRangeCounts.lte4}
+          gte5Count={sectionRangeCounts.gte5}
+          totalStudents={students.length}
+          sectionFilters={sectionFilters}
+          onToggleSectionFilter={toggleSectionFilter}
+        />
+      ) : null}
 
-          {hasFilters && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--danger-600)' }}>
-              <X size={14} /> Clear
-            </button>
-          )}
-          <span style={{ marginLeft: 'auto', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-            {filtered.length} of {students.length}
-          </span>
-        </div>
-      </div>
+      <StudentListFiltersPanel
+        search={search}
+        setSearch={setSearch}
+        deptFilters={deptFilters}
+        setDeptFilters={setDeptFilters}
+        degreeFilters={degreeFilters}
+        setDegreeFilters={setDegreeFilters}
+        batchFilters={batchFilters}
+        setBatchFilters={setBatchFilters}
+        batchOptions={batchOptions}
+        jobStatusFilters={jobStatusFilters}
+        setJobStatusFilters={setJobStatusFilters}
+        sectionFilters={sectionFilters}
+        setSectionFilters={setSectionFilters}
+        sectionFilterOptions={sectionFilterOptions}
+        departmentOptions={departmentOptions}
+        degreeOptions={degreeOptions}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOpen={sortOpen}
+        setSortOpen={setSortOpen}
+        hasFilters={hasFilters}
+        clearFilters={clearFilters}
+        filteredCount={filtered.length}
+        totalCount={students.length}
+      />
 
       {isLoading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -198,75 +276,104 @@ export default function DesktopCollegeStudents() {
         <>
           <div className="desktop-table card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
             <div className="table-container" style={{ border: 'none' }}>
-              <table className="data-table">
+              <table className="data-table college-students-table">
+                <colgroup>
+                  <col className="college-students-col-num" />
+                  <col className="college-students-col-name" />
+                  <col className="college-students-col-id-batch" />
+                  <col className="college-students-col-degree" />
+                  <col className="college-students-col-cgpa" />
+                  <col className="college-students-col-status" />
+                  <col className="college-students-col-verified" />
+                  <col className="college-students-col-actions" />
+                </colgroup>
                 <thead>
                   <tr style={{ background: 'var(--bg-secondary)' }}>
-                    <th style={{ width: 50, paddingLeft: '1.5rem' }}>#</th>
-                    <th>Student</th>
-                    <th>Email</th>
-                    <th>Comm. email</th>
-                    <th>System ID</th>
-                    <th>Department</th>
+                    <th style={{ paddingLeft: '1.5rem' }}>#</th>
+                    <th>Name</th>
+                    <StudentSystemIdBatchHeader />
+                    <StudentDegreeSpecializationHeader />
                     <th>CGPA</th>
-                    <th>Sections</th>
                     <th>Job Status</th>
-                    <th style={{ paddingRight: '1.5rem' }}>Verified</th>
+                    <th>Verified</th>
+                    <th style={{ paddingRight: '1.5rem', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((s, index) => {
                     const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
                     return (
-                      <tr key={s.id} role="button" tabIndex={0} style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                        onClick={() => setDetailStudent(s)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailStudent(s); } }}
-                      >
+                      <tr key={s.id} style={{ transition: 'background 0.15s' }}>
                         <td style={{ color: 'var(--text-tertiary)', paddingLeft: '1.5rem', fontSize: '0.85rem' }}>{index + 1}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <td className="college-students-name-cell">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
                             {s.photo ? (
-                              <img src={s.photo} alt={s.name} width={34} height={34} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }} />
+                              <img src={s.photo} alt={s.name} width={34} height={34} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)', flexShrink: 0 }} />
                             ) : (
                               <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--primary-300)', flexShrink: 0 }}>
                                 {initials || 'S'}
                               </div>
                             )}
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{s.name}</div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <Link href={`/dashboard/college/students/${s.id}`} className="student-name-link">
+                                {s.name}
+                              </Link>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{s.skills.slice(0, 2).join(', ')}</div>
                             </div>
                           </div>
                         </td>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>{s.email || '—'}</td>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
-                          {(s.communicationEmail && String(s.communicationEmail).trim()) || s.email || '—'}
+                        <td>
+                          <StudentSystemIdBatchCell
+                            systemId={s.systemId}
+                            roll={s.roll}
+                            batch={s.batch}
+                            joiningAcademicYear={s.joiningAcademicYear}
+                          />
                         </td>
-                        <td style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono, monospace)' }}>
-                          <span style={{ background: 'var(--primary-50)', color: 'var(--primary-700)', border: '1px solid var(--primary-200)', borderRadius: '4px', padding: '0.15rem 0.5rem', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{s.systemId || s.roll}</span>
+                        <td>
+                          <StudentDegreeSpecializationCell
+                            degree={s.degreePursued}
+                            specialization={s.specialization}
+                          />
                         </td>
-                        <td style={{ fontSize: '0.9rem' }}>{s.dept}</td>
                         <td>
                           <span style={{ fontWeight: 700, color: s.cgpa >= 8 ? 'var(--success-600)' : s.cgpa >= 6 ? 'var(--text-primary)' : 'var(--warning-600)' }}>
                             {s.cgpa ?? '—'}
                           </span>
                         </td>
-                        <td>
-                          <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
-                            {getCompletedSectionCount(s)}/{s.sectionCompletion?.total || 6}
-                          </span>
-                        </td>
                         <td><span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>{formatStatus(s.jobStatus)}</span></td>
-                        <td style={{ paddingRight: '1.5rem' }}>
+                        <td>
                           {s.verified
                             ? <span className="badge badge-green" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle2 size={12} /> Verified</span>
                             : <span className="badge badge-amber" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CircleAlert size={12} /> Pending</span>}
+                        </td>
+                        <td style={{ paddingRight: '1.5rem', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <StandardTableIconAction
+                              action="view"
+                              showLabel={false}
+                              onClick={() => setQuickViewStudent(s)}
+                            />
+                            <StandardTableIconAction
+                              action="edit"
+                              showLabel={false}
+                              onClick={() => router.push(`/dashboard/college/students/${s.id}/edit`)}
+                            />
+                            <StandardTableIconAction
+                              action="delete"
+                              variant="danger"
+                              showLabel={false}
+                              tooltip="Archive student"
+                              onClick={() => archiveStudent(s)}
+                            />
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                   {!isLoading && filtered.length === 0 && (
                     <tr>
-                      <td colSpan={10} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
+                      <td colSpan={11} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
                         <GraduationCap size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
                         <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No students found</div>
                         <div>Try adjusting your filters or import a student CSV.</div>
@@ -282,9 +389,9 @@ export default function DesktopCollegeStudents() {
         </>
       )}
 
-      <StudentDetailModal
-        student={detailStudent}
-        onClose={() => setDetailStudent(null)}
+      <StudentQuickViewModal
+        student={quickViewStudent}
+        onClose={() => setQuickViewStudent(null)}
         onVerify={setStudentVerified}
       />
 

@@ -108,7 +108,10 @@ export async function POST(request) {
     const idShort = String(paymentId).replace(/-/g, '').slice(0, 10).toUpperCase();
     const receiptNumber = `DON-${receiptDate.getFullYear()}${String(receiptDate.getMonth() + 1).padStart(2, '0')}${String(receiptDate.getDate()).padStart(2, '0')}-${idShort}`;
 
-    const templateRow = await loadSystemEmailTemplate(SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY);
+    const templateRow = await loadSystemEmailTemplate(SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY, {
+      scopeType: 'college',
+      scopeId: tenantId,
+    });
     if (!templateRow) {
       return NextResponse.json({ error: 'Receipt email template not configured' }, { status: 500 });
     }

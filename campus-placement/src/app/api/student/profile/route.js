@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { profileFromDb, payloadToDbParts } from '@/lib/studentProfileDbMap';
+import { resolveStudentResumeUrl, resolveStudentResumeFileName } from '@/lib/studentResumeUrl';
+import { validateStudentAcademicScores, validateStudentBranchField } from '@/lib/validators';
 
 async function ensureStudentProfileRow(userId) {
   const ins = await query(
@@ -64,6 +66,19 @@ export async function GET() {
        ORDER BY COALESCE(end_date, start_date) DESC NULLS LAST, created_at DESC`,
       [sp.id]
     );
+    const documents = await query(
+      `SELECT document_type, document_name, file_url, uploaded_at
+       FROM student_documents
+       WHERE student_id = $1::uuid
+       ORDER BY uploaded_at DESC`,
+      [sp.id],
+    );
+    const documentRows = documents.rows.map((row) => ({
+      type: row.document_type,
+      name: row.document_name,
+      url: row.file_url,
+      uploadedAt: row.uploaded_at,
+    }));
 
     const profile = profileFromDb({
       sp,
@@ -73,6 +88,15 @@ export async function GET() {
       communicationEmail: sp.communication_email,
       userPhone: sp.user_phone,
       avatarUrl: sp.avatar_url,
+    });
+    profile.resumeUrl = resolveStudentResumeUrl({
+      resumeUrl: sp.resume_url,
+      documents: documentRows,
+    });
+    profile.cvFileName = resolveStudentResumeFileName({
+      resumeUrl: profile.resumeUrl || sp.resume_url,
+      documents: documentRows,
+      cvFileName: profile.cvFileName,
     });
 
     return NextResponse.json({ profile });
@@ -93,8 +117,23 @@ export async function PUT(request) {
     const accountEmail = session.user.email || '';
     const parts = payloadToDbParts({ ...body, emails: body.emails, phones: body.phones, communicationEmail: body.communicationEmail });
 
-    if (parts.cgpa != null && (parts.cgpa < 0 || parts.cgpa > 10)) {
-      return NextResponse.json({ error: 'CGPA must be between 0 and 10' }, { status: 400 });
+    const academicErr = validateStudentAcademicScores({
+      cgpa: parts.cgpa ?? body.cgpa,
+      tenthPercentage: parts.tenth_percentage,
+      twelfthPercentage: parts.twelfth_percentage,
+      diplomaPercentage: parts.diploma_percentage,
+    });
+    if (academicErr) {
+      return NextResponse.json({ error: academicErr }, { status: 400 });
+    }
+
+    const branchErr = validateStudentBranchField(parts.branch ?? body.branch);
+    if (branchErr) {
+      return NextResponse.json({ error: branchErr }, { status: 400 });
+    }
+    const deptErr = validateStudentBranchField(parts.department ?? body.department, { label: 'Department' });
+    if (deptErr) {
+      return NextResponse.json({ error: deptErr }, { status: 400 });
     }
 
     const MAX_EXPECTED_SALARY = 50_000_000; // ₹5 Cr / year — sanity cap

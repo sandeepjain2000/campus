@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import InfrastructureResourceManager from '@/components/college/InfrastructureResourceManager';
 
 const CHANNELS = [
   { id: 'web', label: 'Web' },
@@ -265,19 +266,63 @@ export default function CollegeInfrastructurePage() {
         </div>
       </div>
 
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          marginBottom: '1.25rem',
+          alignItems: 'center',
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            if (assets.length === 0) {
+              setErrorMsg('Add at least one campus resource (room/lab) before booking.');
+              return;
+            }
+            setShowForm(true);
+            setErrorMsg('');
+          }}
+        >
+          + New booking
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+          {showForm ? 'Hide booking form' : 'View calendar below'}
+        </button>
+      </div>
+
+      <InfrastructureResourceManager assets={assets} onAssetsChange={setAssets} />
+
       {/* Glassmorphic Hero */}
-      <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+      <div
+        style={{
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
-      }}>
+      }}
+      >
         <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>🏛️ Infrastructure & Logistics</h1>
           <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Book rooms, labs, and auditoriums. Tag each booking with announcement destinations.</p>
         </div>
-        <button type="button" className="btn" onClick={() => setShowForm(!showForm)} style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            if (!showForm && assets.length === 0) {
+              setErrorMsg('Add at least one campus resource above before booking.');
+              return;
+            }
+            setShowForm(!showForm);
+            if (!showForm) setErrorMsg('');
+          }}
+          style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}
+        >
           {showForm ? 'Cancel' : '+ New Booking'}
         </button>
       </div>
@@ -294,8 +339,15 @@ export default function CollegeInfrastructurePage() {
           <form className="grid grid-2" onSubmit={handleBooking}>
             <div className="form-group">
               <label className="form-label">Select Resource <span className="required">*</span></label>
-              <select className="form-select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-                <option value="" disabled>-- Select a Room/Lab --</option>
+              <select
+                className="form-select"
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+                disabled={assets.length === 0}
+              >
+                <option value="" disabled>
+                  {assets.length === 0 ? 'Add a resource above first' : '-- Select a Room/Lab --'}
+                </option>
                 {assets.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name} (Capacity: {a.capacity})
@@ -554,7 +606,23 @@ export default function CollegeInfrastructurePage() {
             </div>
           ))}
           {!isLoading && bookings.length === 0 && (
-            <p style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>No upcoming bookings scheduled.</p>
+            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+              <p style={{ color: 'var(--text-tertiary)', margin: '0 0 1rem' }}>No bookings yet.</p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  if (assets.length === 0) {
+                    setErrorMsg('Add at least one campus resource before booking.');
+                    return;
+                  }
+                  setShowForm(true);
+                  setErrorMsg('');
+                }}
+              >
+                + Create first booking
+              </button>
+            </div>
           )}
         </div>
       </div>

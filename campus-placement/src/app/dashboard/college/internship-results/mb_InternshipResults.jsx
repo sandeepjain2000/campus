@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { useToast } from '@/components/ToastProvider';
 import { CalendarDays, Download, Plus, Users, Clock, IndianRupee, Building2, FileText } from 'lucide-react';
 
@@ -115,7 +116,7 @@ export default function mb_InternshipResults() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <Building2 size={14} style={{ opacity: 0.7 }} />
-                    <span style={{ fontWeight: 500 }}>{intern.company_name || 'Unknown Company'}</span>
+                    <CompanyNameLink name={intern.company_name || 'Unknown Company'} website={intern.website} style={{ fontWeight: 500 }} />
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-default)' }}>

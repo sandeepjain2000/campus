@@ -1,8 +1,10 @@
 'use client';
 import useSWR from 'swr';
 import Link from 'next/link';
-import { Settings, School, Building2, GraduationCap, Users, Activity, ChevronRight } from 'lucide-react';
+import { Settings, School, Building2, GraduationCap, Users, Activity, ChevronRight, Download } from 'lucide-react';
 import PageError from '@/components/PageError';
+import PageLoading from '@/components/PageLoading';
+import { downloadCsvFromRows, toCsvIsoDate } from '@/lib/csvExport';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -17,36 +19,23 @@ export default function AdminOverviewPage() {
   if (error) return <PageError error={error} />;
 
   if (isLoading || !data) {
-    return (
-      <div>
-        <div className="skeleton skeleton-heading" />
-        <div className="grid grid-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton skeleton-card" />
-          ))}
-        </div>
-      </div>
-    );
+    return <PageLoading message="Loading admin overview…" variant="skeleton-dashboard" />;
   }
 
   const stats = data?.stats || { colleges: 0, employers: 0, students: 0, totalUsers: 0 };
   const registeredColleges = Array.isArray(data?.registeredColleges) ? data.registeredColleges : [];
 
   const exportOverview = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      stats,
-      registeredColleges
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'admin-overview-report.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const exportedAt = toCsvIsoDate(new Date());
+    const rows = [
+      ['Platform summary', 'Colleges', String(stats.colleges ?? 0)],
+      ['Platform summary', 'Employers', String(stats.employers ?? 0)],
+      ['Platform summary', 'Students', String(stats.students ?? 0)],
+      ['Platform summary', 'Total users', String(stats.totalUsers ?? 0)],
+      ['Platform summary', 'Exported at', exportedAt],
+      ...registeredColleges.map((c) => ['Registered college', c.name || '—', 'Active']),
+    ];
+    downloadCsvFromRows('admin-platform-overview', ['Section', 'Label', 'Value'], rows);
   };
 
   return (
@@ -58,8 +47,14 @@ export default function AdminOverviewPage() {
           </h1>
           <p className="text-secondary">PlacementHub Super Admin Dashboard</p>
         </div>
-        <button type="button" className="btn btn-secondary" onClick={exportOverview}>
-          Export Report (JSON)
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={exportOverview}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+        >
+          <Download size={16} aria-hidden />
+          Export CSV
         </button>
       </div>
 

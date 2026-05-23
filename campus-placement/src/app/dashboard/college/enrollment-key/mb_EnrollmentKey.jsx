@@ -50,7 +50,7 @@ export default function mb_EnrollmentKey() {
       
       <div className="animate-fadeIn" style={{ padding: '1rem 1rem 5rem 1rem' }}>
         
-        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', textAlign: 'center', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)', color: 'white' }}>
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', textAlign: 'center', background: 'var(--banner-gradient)', color: 'white' }}>
           <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
             <Key size={24} />
           </div>

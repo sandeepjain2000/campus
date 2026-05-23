@@ -27,7 +27,10 @@ function createTransport() {
  * @param {string | string[]} originalTo
  * @param {Awaited<ReturnType<typeof getPlatformSettings>>} platform
  */
-function resolveRecipients(originalTo, platform) {
+function resolveRecipients(originalTo, platform, { skipRecipientRedirect = false } = {}) {
+  if (skipRecipientRedirect) {
+    return originalTo;
+  }
   const envOverride = process.env.OUTBOUND_EMAIL_OVERRIDE?.trim();
   if (envOverride) return envOverride;
   const inbox = String(platform?.systemNotificationInboxEmail || '').trim();
@@ -166,12 +169,14 @@ export function studentWelcomeEmailBody({ firstName, email, tempPass, systemId }
 }
 
 /**
- * @param {{ to: string | string[], subject: string, text: string, html?: string, context?: string, userId?: string }} opts
+ * @param {{ to: string | string[], subject: string, text: string, html?: string, context?: string, userId?: string, replyTo?: string, skipCommunicationRouting?: boolean }} opts
  * @param {string} [opts.context] — optional label for logs (e.g. `guest_confirmation`, `student_welcome`)
  * @param {string} [opts.userId] — optional acting user (stored in `mail_delivery_logs.user_id`)
+ * @param {boolean} [opts.skipCommunicationRouting] — send to `to` as-is (e.g. YOPmail disposable inbox)
+ * @param {boolean} [opts.skipRecipientRedirect] — do not apply OUTBOUND_EMAIL_OVERRIDE / system inbox redirect
  */
 export async function sendMail(opts) {
-  const { context, userId, ...mailOpts } = opts;
+  const { context, userId, skipCommunicationRouting, skipRecipientRedirect, replyTo, ...mailOpts } = opts;
   const logCtx = context ? `[mail:${context}]` : '[mail]';
   const originalTo = mailOpts.to;
   const platform = await getPlatformSettings();
@@ -207,7 +212,9 @@ export async function sendMail(opts) {
     return { skipped: true, reason: 'no_smtp_credentials' };
   }
 
-  const afterCommunication = await routeThroughCommunicationEmails(mailOpts.to);
+  const afterCommunication = skipCommunicationRouting
+    ? mailOpts.to
+    : await routeThroughCommunicationEmails(mailOpts.to);
   if (String(normalizeTo(afterCommunication)) !== String(normalizeTo(originalTo))) {
     console.info(
       `${logCtx} routed to communication email: before=%s after=%s`,
@@ -216,7 +223,7 @@ export async function sendMail(opts) {
     );
   }
 
-  const to = resolveRecipients(afterCommunication, platform);
+  const to = resolveRecipients(afterCommunication, platform, { skipRecipientRedirect });
   const redirected =
     String(normalizeTo(afterCommunication)) !== String(Array.isArray(to) ? to.join(',') : to);
   if (redirected) {
@@ -231,6 +238,7 @@ export async function sendMail(opts) {
     const info = await transport.sendMail({
       from,
       to,
+      ...(replyTo ? { replyTo } : {}),
       subject: mailOpts.subject,
       text: mailOpts.text,
       html: mailOpts.html || mailOpts.text.replace(/\n/g, '<br/>'),

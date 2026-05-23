@@ -20,8 +20,8 @@ export async function GET(request) {
         SUM(CASE WHEN placement_status = 'placed' THEN 1 ELSE 0 END) as "placedStudents",
         (SELECT COUNT(DISTINCT employer_id) FROM placement_drives WHERE tenant_id = $1 AND status IN ('approved', 'scheduled', 'completed')) as "activeEmployers",
         (SELECT COUNT(*) FROM placement_drives WHERE tenant_id = $1 AND status IN ('approved', 'scheduled')) as "activeDrives",
-        (SELECT AVG(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1) AND status = 'accepted') as "avgPackage",
-        (SELECT MAX(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1) AND status = 'accepted') as "highestPackage",
+        (SELECT AVG(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1 AND archived_at IS NULL) AND status = 'accepted') as "avgPackage",
+        (SELECT MAX(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1 AND archived_at IS NULL) AND status = 'accepted') as "highestPackage",
         (
           SELECT MIN(COALESCE(NULLIF(jp.salary_min, 0), jp.salary_max))
           FROM job_postings jp
@@ -39,7 +39,7 @@ export async function GET(request) {
             AND jp.job_type = 'internship'
         ) as "minInternshipAmount"
       FROM student_profiles
-      WHERE tenant_id = $1
+      WHERE tenant_id = $1 AND archived_at IS NULL
     `, [tenantId]);
 
     // Fetch department stats
@@ -50,7 +50,7 @@ export async function GET(request) {
         SUM(CASE WHEN placement_status = 'placed' THEN 1 ELSE 0 END) as placed,
         ROUND(SUM(CASE WHEN placement_status = 'placed' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0)) as pct
       FROM student_profiles
-      WHERE tenant_id = $1
+      WHERE tenant_id = $1 AND archived_at IS NULL
       GROUP BY department
       ORDER BY pct DESC
     `, [tenantId]);
@@ -59,7 +59,7 @@ export async function GET(request) {
     const pendingQuery = await query(`
       SELECT
         (SELECT COUNT(*) FROM placement_drives WHERE tenant_id = $1 AND status = 'requested') as "drivesCount",
-        (SELECT COUNT(*) FROM users u JOIN student_profiles sp ON u.id = sp.user_id WHERE sp.tenant_id = $1 AND u.is_verified = false) as "studentsCount"
+        (SELECT COUNT(*) FROM users u JOIN student_profiles sp ON u.id = sp.user_id WHERE sp.tenant_id = $1 AND sp.archived_at IS NULL AND u.is_verified = false) as "studentsCount"
     `, [tenantId]);
 
     const s = statsQuery.rows[0];

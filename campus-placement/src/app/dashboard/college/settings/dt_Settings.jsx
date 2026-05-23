@@ -266,7 +266,7 @@ export default function CollegeSettingsPage() {
     <div className="animate-fadeIn college-settings-page" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
@@ -351,7 +351,7 @@ export default function CollegeSettingsPage() {
             <h3 className="card-title">🏫 Institution Details</h3>
           </div>
           <div className="form-group college-settings-inline">
-            <label className="form-label">Placement season (display)</label>
+            <label className="form-label">Academic year (display override)</label>
             <input
               className="form-input"
               placeholder="e.g. 2025-26"
@@ -359,7 +359,7 @@ export default function CollegeSettingsPage() {
               onChange={(e) => setRoot('placementSeasonLabel', e.target.value)}
             />
             <p className="text-xs text-tertiary" style={{ margin: 0 }}>
-              Shown on the college dashboard and top bar. Leave blank to use the session year only.
+              Optional legacy override. The top bar defaults to the academic year for today&apos;s date.
             </p>
           </div>
           <div className="form-group college-settings-inline">

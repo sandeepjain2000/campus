@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import Link from 'next/link';
 import useSWR from 'swr';
 import { FileUp, Send } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
@@ -10,6 +9,7 @@ import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessment
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import CompanyNameLink from '@/components/CompanyNameLink';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -20,20 +20,35 @@ const fetcher = async (url) => {
 
 const STATUS_OPTIONS = ['pending', 'accepted', 'rejected', 'expired', 'revoked'];
 
-export default function CollegeOffersPage() {
+const OFFER_TABLE_COLUMNS = [
+  'Student',
+  'College',
+  'Role',
+  'Salary',
+  'Location',
+  'Deadline',
+  'Status',
+  'Actions',
+];
+
+export default function DtCollegeOffers() {
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/college/offers', fetcher);
-  const { data: studentsRaw } = useSWR('/api/college/students', fetcher);
+  const { data: studentsPayload } = useSWR('/api/college/students', fetcher);
 
   const offers = Array.isArray(data?.offers) ? data.offers : [];
   const summary = data?.summary || { total: 0, accepted: 0, pending: 0, rejected: 0, avgSalary: 0 };
-  const students = useMemo(
-    () =>
-      Array.isArray(studentsRaw)
-        ? studentsRaw.map((s) => ({ id: s.id, label: `${s.name || '—'} (${s.roll || 'no roll'})` }))
-        : [],
-    [studentsRaw],
-  );
+  const students = useMemo(() => {
+    const list = Array.isArray(studentsPayload?.students)
+      ? studentsPayload.students
+      : Array.isArray(studentsPayload)
+        ? studentsPayload
+        : [];
+    return list.map((s) => ({
+      id: s.id,
+      label: `${s.name || '—'} (${s.roll || 'no roll'})`,
+    }));
+  }, [studentsPayload]);
 
   const [uploading, setUploading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -87,7 +102,9 @@ export default function CollegeOffersPage() {
       const { accepted, errors } = json;
       addToast(`Imported ${accepted} row(s).${errors?.length ? ` ${errors.length} issue(s) — see below.` : ''}`, accepted ? 'success' : 'warning');
       if (errors?.length) {
-        console.warn('CSV import issues', errors);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('CSV import issues', errors);
+        }
         addToast(errors.slice(0, 3).map((x) => `Line ${x.line}: ${x.message}`).join(' · '), 'error');
       }
       await mutate();
@@ -202,55 +219,85 @@ export default function CollegeOffersPage() {
     resetForm();
   }, []);
 
+  const summaryLine = isLoading
+    ? 'Loading offers…'
+    : error
+      ? 'Could not load counts'
+      : `${summary.total ?? offers.length} offers · ${summary.accepted ?? 0} accepted · ${summary.pending ?? 0} pending · ${summary.rejected ?? 0} declined`;
+
+  const avgSalaryLine =
+    !isLoading && !error && summary.avgSalary
+      ? `Avg accepted salary ${formatCurrency(summary.avgSalary)}`
+      : null;
+
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
-      {error && (
-        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--danger-300)', background: 'var(--danger-50)', padding: '1.25rem' }}>
-          <p style={{ margin: 0, fontWeight: 600, color: 'var(--danger-700)' }}>Could not load offers</p>
-          <p className="text-sm" style={{ margin: '0.5rem 0 0', color: 'var(--danger-600)' }}>{error.message || 'Unknown error'}</p>
-        </div>
-      )}
-
-      {/* Glassmorphic Hero */}
-      <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
-        borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
-        marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
-      }}>
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Send size={28} /> Placement Offers
-          </h1>
-          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
-            Record offers — on-platform or via email. Import CSV or add manually.
+      {error ? (
+        <div
+          className="card"
+          role="alert"
+          style={{
+            padding: '1rem 1.25rem',
+            marginBottom: '1rem',
+            background: 'var(--danger-50)',
+            border: '1px solid var(--danger-200)',
+          }}
+        >
+          <p style={{ margin: 0, color: 'var(--danger-700)', fontWeight: 600 }}>
+            {error.message || 'Could not load offers.'}
           </p>
         </div>
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn" onClick={downloadCollegeOffersTemplate} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <FileUp size={16} /> Template
+      ) : null}
+
+      <div
+        style={{
+          marginBottom: '2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontSize: '1.75rem',
+              fontWeight: 800,
+              color: 'var(--text-primary)',
+              margin: '0 0 0.35rem',
+              letterSpacing: '-0.02em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <Send size={24} aria-hidden />
+            Placement offers
+          </h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>{summaryLine}</p>
+          {avgSalaryLine ? (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: '0.25rem 0 0' }}>{avgSalaryLine}</p>
+          ) : null}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={downloadCollegeOffersTemplate}>
+            <FileUp size={14} aria-hidden /> Template
           </button>
-          <button type="button" className="btn" onClick={downloadAssessmentStarter} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <FileUp size={16} /> All Students
+          <button type="button" className="btn btn-secondary btn-sm" onClick={downloadAssessmentStarter}>
+            <FileUp size={14} aria-hidden /> All students
           </button>
-          <label className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
+          <label className="btn btn-secondary btn-sm" style={{ cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
             {uploading ? 'Importing…' : 'Upload CSV'}
             <input type="file" accept=".csv,text/csv" hidden disabled={uploading} onChange={onUploadCsv} />
           </label>
           <StandardTableIconAction
             action="add"
-            variant="secondary"
+            variant="primary"
             onClick={() => {
               resetForm();
               setShowAdd(true);
               setEditId(null);
-            }}
-            style={{
-              background: 'white',
-              color: 'var(--primary-800)',
-              border: 'none',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
             }}
           />
         </div>
@@ -294,24 +341,6 @@ export default function CollegeOffersPage() {
           <strong>Status</strong> to <strong>pending</strong> again, and save — or use <strong>Delete</strong> to remove a row (an older revision may become current
           automatically).
         </p>
-      </div>
-
-      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-        {[
-          { label: 'Total Offers', value: summary.total, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
-          { label: 'Accepted', value: summary.accepted, color: 'var(--success-600)', bg: 'rgba(5,150,105,0.08)' },
-          { label: 'Pending', value: summary.pending, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
-          { label: 'Rejected / Declined', value: summary.rejected ?? 0, color: 'var(--danger-600)', bg: 'rgba(220,38,38,0.08)' },
-        ].map(({ label, value, color, bg }) => (
-          <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color, lineHeight: 1, marginBottom: '0.5rem' }}>{value}</div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</div>
-          </div>
-        ))}
-      </div>
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Avg Accepted Salary (INR)</div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--success-600)' }}>{summary.avgSalary ? formatCurrency(summary.avgSalary) : '—'}</div>
       </div>
 
       {(showAdd || editId) && (
@@ -406,24 +435,44 @@ export default function CollegeOffersPage() {
         </div>
       )}
 
-      <div className="table-container">
+      <div className="card desktop-table" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+        <div className="table-container" style={{ border: 'none' }}>
         <table className="data-table">
           <thead>
-            <tr>
-              <th>Student</th>
-              <th>College</th>
-              <th>Role</th>
-              <th>Salary</th>
-              <th>Location</th>
-              <th>Deadline</th>
-              <th>Status</th>
-              <th>Actions</th>
+            <tr style={{ background: 'var(--bg-secondary)' }}>
+              {OFFER_TABLE_COLUMNS.map((col, i) => (
+                <th
+                  key={col}
+                  style={
+                    i === 0
+                      ? { paddingLeft: '1.5rem' }
+                      : i === OFFER_TABLE_COLUMNS.length - 1
+                        ? { paddingRight: '1.5rem' }
+                        : undefined
+                  }
+                >
+                  {col}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {offers.map((offer) => (
+            {isLoading && !offers.length ? (
+              <tr>
+                <td colSpan={OFFER_TABLE_COLUMNS.length} style={{ padding: '2rem 1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="skeleton" style={{ height: 40, borderRadius: 'var(--radius-md)' }} />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+            {!isLoading &&
+              !error &&
+              offers.map((offer) => (
               <tr key={offer.id}>
-                <td className="font-semibold">
+                <td className="font-semibold" style={{ paddingLeft: '1.5rem' }}>
                   {offer.student_name}
                   {offer.roll_number ? <div className="text-xs text-tertiary font-mono">{offer.roll_number}</div> : null}
                 </td>
@@ -435,7 +484,7 @@ export default function CollegeOffersPage() {
                 <td>
                   <span className={`badge badge-${getStatusColor(offer.status)} badge-dot`}>{formatStatus(offer.status)}</span>
                 </td>
-                <td>
+                <td style={{ paddingRight: '1.5rem' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
                     <StandardTableIconAction action="view" onClick={() => setViewRow(offer)} />
                     <StandardTableIconAction
@@ -450,15 +499,18 @@ export default function CollegeOffersPage() {
                 </td>
               </tr>
             ))}
-            {!isLoading && offers.length === 0 ? (
+            {!isLoading && !error && offers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center text-secondary">
-                  {error?.message || 'No offers yet. Add manually or import CSV.'}
+                <td colSpan={OFFER_TABLE_COLUMNS.length} style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+                  <Send size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.25 }} aria-hidden />
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>No offers yet</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Add manually or import CSV.</div>
                 </td>
               </tr>
             ) : null}
           </tbody>
         </table>
+        </div>
       </div>
 
       {viewRow && (
@@ -486,7 +538,8 @@ export default function CollegeOffersPage() {
               <strong>College:</strong> {viewRow.college_name}
             </div>
             <div>
-              <strong>Company:</strong> {viewRow.company_name || '—'}
+              <strong>Company:</strong>{' '}
+              <CompanyNameLink name={viewRow.company_name} website={viewRow.company_website} />
             </div>
             <div>
               <strong>Role:</strong> {viewRow.job_title || '—'}

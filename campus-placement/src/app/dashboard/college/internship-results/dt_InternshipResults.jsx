@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { CalendarDays, Download, Plus, Users, Clock, IndianRupee, FileText } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import CompanyNameLink from '@/components/CompanyNameLink';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -80,7 +81,7 @@ export default function CollegeInternshipResultsPage() {
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
@@ -134,7 +135,9 @@ export default function CollegeInternshipResultsPage() {
             {internships.map((intern) => (
               <tr key={intern.id}>
                 <td className="font-semibold">{intern.title || '—'}</td>
-                <td>{intern.company_name || '—'}</td>
+                <td>
+                  <CompanyNameLink name={intern.company_name} website={intern.website} />
+                </td>
                 <td>
                   {(Number(intern.salary_min) || Number(intern.salary_max))
                     ? `${Number(intern.salary_min) ? `₹${Math.round(Number(intern.salary_min) / 1000)}k` : '—'} - ${Number(intern.salary_max) ? `₹${Math.round(Number(intern.salary_max) / 1000)}k` : '—'}`

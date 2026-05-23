@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-
-function getTenantId(session) {
-  return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
-}
+import { getSessionTenantId } from '@/lib/tenantContext';
 
 function parseMeta(description, title) {
   if (!description) {
@@ -49,7 +46,7 @@ export async function GET() {
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = getSessionTenantId(session.user);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -107,7 +104,7 @@ export async function POST(request) {
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = getSessionTenantId(session.user);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -169,7 +166,7 @@ export async function PATCH(request) {
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = getSessionTenantId(session.user);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -221,7 +218,7 @@ export async function DELETE(request) {
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = getSessionTenantId(session.user);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }

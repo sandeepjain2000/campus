@@ -70,8 +70,8 @@ export default function AdminPendingRegistrationsPage() {
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
-          <h1>Pending registrations</h1>
-          <p>Approve new college and employer accounts before they can sign in.</p>
+          <h1>Onboard colleges & employers</h1>
+          <p>Approve pending college and employer sign-ups before they can sign in.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <ExportCsvSplitButton 
@@ -80,8 +80,14 @@ export default function AdminPendingRegistrationsPage() {
             fullCount={rows.length} 
             getRows={getExportRows} 
           />
+          <Link href="/dashboard/admin/colleges/add" className="btn btn-secondary btn-sm">
+            + Add college
+          </Link>
           <Link href="/dashboard/admin/colleges" className="btn btn-secondary btn-sm">
-            ← Colleges
+            Colleges directory
+          </Link>
+          <Link href="/dashboard/admin/employers" className="btn btn-secondary btn-sm">
+            Employers directory
           </Link>
         </div>
       </div>

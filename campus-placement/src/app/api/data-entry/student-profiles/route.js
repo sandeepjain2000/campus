@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
+import { parseStudentCgpaOrNull } from '@/lib/validators';
 
 const ALLOWED_STATUS = new Set(['unplaced', 'placed', 'opted_out', 'higher_studies']);
 
@@ -46,7 +47,7 @@ export async function POST(request) {
 
     const userId = String(body?.userId || '').trim();
     const department = String(body?.department || '').trim();
-    const cgpa = Number(body?.cgpa || 0);
+    const cgpaParsed = parseStudentCgpaOrNull(body?.cgpa, { required: true });
     const placementStatus = String(body?.placementStatus || 'unplaced').trim();
     const batchYear = body?.batchYear ? Number(body.batchYear) : null;
     const graduationYear = body?.graduationYear ? Number(body.graduationYear) : null;
@@ -57,6 +58,9 @@ export async function POST(request) {
     }
     if (!userId || !department) {
       return NextResponse.json({ error: 'userId and department are required' }, { status: 400 });
+    }
+    if (cgpaParsed.error) {
+      return NextResponse.json({ error: cgpaParsed.error }, { status: 400 });
     }
     if (!ALLOWED_STATUS.has(placementStatus)) {
       return NextResponse.json({ error: 'Invalid placement status' }, { status: 400 });
@@ -79,7 +83,7 @@ export async function POST(request) {
         userId,
         tenantId,
         department,
-        Number.isFinite(cgpa) ? cgpa : 0,
+        cgpaParsed.value,
         placementStatus,
         Number.isFinite(batchYear) ? batchYear : null,
         Number.isFinite(graduationYear) ? graduationYear : null,
@@ -106,19 +110,22 @@ export async function PUT(request) {
     const id = String(body?.id || '').trim();
     const department = String(body?.department || '').trim();
     const placementStatus = String(body?.placementStatus || 'unplaced').trim();
-    const cgpa = Number(body?.cgpa || 0);
+    const cgpaParsed = parseStudentCgpaOrNull(body?.cgpa, { required: true });
     const batchYear = body?.batchYear ? Number(body.batchYear) : null;
     const graduationYear = body?.graduationYear ? Number(body.graduationYear) : null;
     const isVerified = Boolean(body?.isVerified);
     if (!id || !department || !ALLOWED_STATUS.has(placementStatus)) {
       return NextResponse.json({ error: 'id, department and valid placementStatus are required' }, { status: 400 });
     }
+    if (cgpaParsed.error) {
+      return NextResponse.json({ error: cgpaParsed.error }, { status: 400 });
+    }
     const updated = await query(
       `UPDATE student_profiles
        SET department = $1, cgpa = $2, placement_status = $3, batch_year = $4, graduation_year = $5, is_verified = $6, updated_at = NOW()
        WHERE id = $7 AND tenant_id = $8
        RETURNING id, user_id, tenant_id, department, cgpa, placement_status`,
-      [department, Number.isFinite(cgpa) ? cgpa : 0, placementStatus, batchYear, graduationYear, isVerified, id, tenantId]
+      [department, cgpaParsed.value, placementStatus, batchYear, graduationYear, isVerified, id, tenantId]
     );
     if (!updated.rows[0]) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
     return NextResponse.json({ studentProfile: updated.rows[0] });

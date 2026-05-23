@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
@@ -154,7 +155,9 @@ export default function DesktopEmployers() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <EntityLogo name={emp.name} website={emp.website} size="sm" shape="rounded" />
                             <div>
-                              <div style={{ fontWeight: 600, fontSize: '0.925rem', color: 'var(--text-primary)' }}>{emp.name}</div>
+                              <div style={{ fontWeight: 600, fontSize: '0.925rem', color: 'var(--text-primary)' }}>
+                                <CompanyNameLink name={emp.name} website={emp.website} />
+                              </div>
                               {emp.website && <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>{emp.website.replace(/^https?:\/\//, '')}</div>}
                             </div>
                           </div>

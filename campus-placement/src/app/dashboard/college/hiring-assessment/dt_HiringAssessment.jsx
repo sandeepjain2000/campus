@@ -14,20 +14,23 @@ export default function CollegeHiringAssessmentPage() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [payload, setPayload] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       setLoading(true);
+      setLoadError('');
       try {
         const res = await fetch('/api/college/hiring-assessment-view');
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load');
         if (!mounted) return;
         setPayload(json);
-      } catch {
+      } catch (e) {
         if (!mounted) return;
         setPayload(null);
+        setLoadError(e?.message || 'Could not load assessment data');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -106,7 +109,7 @@ export default function CollegeHiringAssessmentPage() {
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
@@ -128,6 +131,13 @@ export default function CollegeHiringAssessmentPage() {
 
       {loading ? (
         <div className="skeleton skeleton-card" style={{ height: 200 }} />
+      ) : loadError ? (
+        <div className="card" style={{ padding: '1.25rem', borderColor: 'var(--danger-200)', background: 'var(--danger-50)' }}>
+          <p style={{ margin: 0, color: 'var(--danger-700)', fontWeight: 600 }}>{loadError}</p>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            If this mentions missing tables, apply migration <code>013_audit_exports_and_assessment_uploads.sql</code> on production.
+          </p>
+        </div>
       ) : (
         <>
           <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>

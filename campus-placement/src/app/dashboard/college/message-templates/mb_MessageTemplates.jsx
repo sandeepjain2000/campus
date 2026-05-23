@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import { useToast } from '@/components/ToastProvider';
+import { variablesToFormText } from '@/lib/messageTemplateUtils';
+import Link from 'next/link';
 import { FileEdit, Plus, Trash2, Pencil, X, Mail, MessageSquare, Bell } from 'lucide-react';
 
 const TYPE_OPTIONS = [
@@ -25,7 +27,7 @@ export default function mb_MessageTemplates() {
   const { addToast } = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -49,13 +51,18 @@ export default function mb_MessageTemplates() {
   }, [load]);
 
   const startEdit = (t) => {
-    setEditingId(t.id);
+    const id = t?.id != null ? String(t.id) : '';
+    if (!id) {
+      addToast('This template has no id and cannot be edited.', 'error');
+      return;
+    }
+    setEditingId(id);
     setForm({
       name: t.name || '',
       subject: t.subject || '',
       body: t.body || '',
       templateType: t.template_type || 'email',
-      variablesText: Array.isArray(t.variables) ? t.variables.join(', ') : '',
+      variablesText: variablesToFormText(t.variables),
       isActive: t.is_active !== false,
     });
     setShowForm(true);
@@ -82,7 +89,9 @@ export default function mb_MessageTemplates() {
       if (!payload.name) throw new Error('Name is required');
       if (!payload.body) throw new Error('Body is required');
 
-      const url = editingId ? `/api/college/message-templates/${editingId}` : '/api/college/message-templates';
+      const url = editingId
+        ? `/api/college/message-templates/${encodeURIComponent(editingId)}`
+        : '/api/college/message-templates';
       const method = editingId ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -106,7 +115,7 @@ export default function mb_MessageTemplates() {
   const remove = async (id) => {
     if (!window.confirm('Delete this template?')) return;
     try {
-      const res = await fetch(`/api/college/message-templates/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/college/message-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       if (editingId === id) cancelEdit();
       addToast('Template deleted.', 'success');
@@ -134,9 +143,21 @@ export default function mb_MessageTemplates() {
         }
       />
       <div className="animate-fadeIn" style={{ padding: '1rem 1rem 5rem 1rem' }}>
+        <Link
+          href="/dashboard/college/communication-templates"
+          className="btn btn-secondary btn-sm"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: '1rem' }}
+        >
+          <Mail size={14} />
+          Sponsorship email templates
+        </Link>
 
         {showForm && (
-          <div className="card animate-fadeIn" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px solid var(--primary-300)' }}>
+          <div
+            key={editingId || 'new'}
+            className="card animate-fadeIn"
+            style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px solid var(--primary-300)' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>{editingId ? 'Edit template' : 'New template'}</h2>
               <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEdit} style={{ padding: '0.25rem' }}>
@@ -272,7 +293,6 @@ export default function mb_MessageTemplates() {
             )}
           </div>
         )}
-
       </div>
     </>
   );

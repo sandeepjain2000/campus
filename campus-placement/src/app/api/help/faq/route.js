@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { rankFaqIdsWithOpenAI } from '@/lib/helpFaqOpenai';
+import { jsonPublicErrorLogged } from '@/lib/publicApiError';
 
 const GLOBAL_TAG = 'GLOBAL';
 
@@ -20,13 +19,9 @@ function ilikePattern(q) {
  * GET ?screen=S-1 — suggested FAQs for this screen (+ GLOBAL), ordered.
  * GET ?screen=S-1&q=keyword — search: screen first, then GLOBAL, then any active row.
  */
+/** Public read — used on /login and /help without a session. */
 export async function GET(request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const url = new URL(request.url);
     const screenTag = normalizeScreenTag(url.searchParams.get('screen'));
     const q = String(url.searchParams.get('q') || '').trim();
@@ -123,13 +118,6 @@ export async function GET(request) {
           matches,
           scope: 'ai',
           ai: true,
-          helpAi: {
-            configured: true,
-            called: true,
-            poolSize: pool.rows.length,
-            idsFromModel: rankedIds.length,
-            openaiHttpStatus: ranked.openaiHttpStatus,
-          },
         });
       }
 
@@ -138,14 +126,6 @@ export async function GET(request) {
         query: q,
         matches: [],
         scope: 'none',
-        helpAi: {
-          configured: true,
-          called: true,
-          poolSize: pool.rows.length,
-          idsFromModel: 0,
-          openaiHttpStatus: ranked.openaiHttpStatus,
-          outcome: ranked.openaiHttpStatus != null ? 'openai_http_error' : 'model_returned_no_ids',
-        },
       });
     }
 
@@ -154,23 +134,16 @@ export async function GET(request) {
       query: q,
       matches: [],
       scope: 'none',
-      helpAi: {
-        configured: false,
-        called: false,
-        outcome: 'openai_key_missing',
-      },
     });
   } catch (e) {
-    console.error('GET /api/help/faq', e);
     if (e.message && e.message.includes('documentation_faq')) {
-      return NextResponse.json(
-        {
-          error: 'Help content not available',
-          hint: 'Apply db/migrations/011_documentation_faq.sql',
-        },
-        { status: 503 }
+      return jsonPublicErrorLogged(
+        e,
+        'GET /api/help/faq (documentation_faq missing)',
+        'Help content is not available right now.',
+        503,
       );
     }
-    return NextResponse.json({ error: 'Failed to load help' }, { status: 500 });
+    return jsonPublicErrorLogged(e, 'GET /api/help/faq', 'Failed to load help', 500);
   }
 }

@@ -7,9 +7,8 @@ import {
   canEmployerAccessStudent,
   extractS3Key,
   getEmployerProfileId,
-  getLatestResumeForStudent,
-  isUsableResumeUrl,
 } from '@/lib/employerApplicationAccess';
+import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,15 +44,22 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Resume not available for this employer' }, { status: 403 });
     }
 
-    const latestResume = await getLatestResumeForStudent(studentId);
-    let fileUrl = latestResume?.file_url || '';
+    const [profile, docs] = await Promise.all([
+      query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]),
+      query(
+        `SELECT document_type AS type, file_url AS url, uploaded_at AS "uploadedAt"
+         FROM student_documents
+         WHERE student_id = $1::uuid
+         ORDER BY uploaded_at DESC`,
+        [studentId],
+      ),
+    ]);
+    const fileUrl = resolveStudentResumeUrl({
+      resumeUrl: profile.rows[0]?.resume_url,
+      documents: docs.rows,
+    });
 
-    if (!fileUrl) {
-      const profile = await query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]);
-      fileUrl = profile.rows[0]?.resume_url || '';
-    }
-
-    if (!isUsableResumeUrl(fileUrl)) {
+    if (!isAuthoritativeResumeUrl(fileUrl)) {
       return NextResponse.json({ error: 'No uploaded resume found for this student' }, { status: 404 });
     }
 

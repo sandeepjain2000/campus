@@ -1,14 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, Sparkles, MessageCircleQuestion, ExternalLink } from 'lucide-react';
 import { getDevScreenId } from '@/config/devScreenIds';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
+import { clientSafeMessageFromBody, stripInternalApiFields } from '@/lib/publicApiError';
 
 const GLOBAL_TAG = 'GLOBAL';
 
-export default function DocumentationHelpWidget() {
+/**
+ * @param {{ fullDocHref?: string }} props
+ */
+export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help' }) {
   const pathname = usePathname();
   const screenTag = getDevScreenId(pathname) || GLOBAL_TAG;
 
@@ -29,10 +34,10 @@ export default function DocumentationHelpWidget() {
     setLoading(true);
     try {
       const res = await fetch(`/api/help/faq?screen=${encodeURIComponent(screenTag)}`);
-      const data = await res.json().catch(() => ({}));
+      const data = stripInternalApiFields(await res.json().catch(() => ({})));
       if (res.status === 503) {
         setSuggestions([]);
-        setHint(data.hint || 'Run documentation FAQ migration to enable help content.');
+        setHint('Help is temporarily unavailable. Please try again later or open full documentation.');
         appendClientDebugLog({
           source: 'help_faq',
           action: 'suggestions',
@@ -45,7 +50,7 @@ export default function DocumentationHelpWidget() {
         return;
       }
       if (!res.ok) {
-        setError(data.error || 'Could not load help');
+        setError(clientSafeMessageFromBody(data, 'Could not load help'));
         setSuggestions([]);
         appendClientDebugLog({
           source: 'help_faq',
@@ -106,10 +111,10 @@ export default function DocumentationHelpWidget() {
       const res = await fetch(
         `/api/help/faq?screen=${encodeURIComponent(screenTag)}&q=${encodeURIComponent(text)}`
       );
-      const data = await res.json().catch(() => ({}));
+      const data = stripInternalApiFields(await res.json().catch(() => ({})));
       if (res.status === 503) {
         setMatches([]);
-        setHint(data.hint || '');
+        setHint('Help search is temporarily unavailable.');
         appendClientDebugLog({
           source: 'help_faq',
           action: 'search',
@@ -122,7 +127,7 @@ export default function DocumentationHelpWidget() {
         return;
       }
       if (!res.ok) {
-        setError(data.error || 'Search failed');
+        setError(clientSafeMessageFromBody(data, 'Search failed'));
         setMatches([]);
         appendClientDebugLog({
           source: 'help_faq',
@@ -146,7 +151,6 @@ export default function DocumentationHelpWidget() {
         scope: data.scope,
         ai: Boolean(data.ai),
         matchCount: matchList.length,
-        helpAi: data.helpAi || null,
       });
     } catch (err) {
       setError('Search failed (network)');
@@ -302,22 +306,48 @@ export default function DocumentationHelpWidget() {
               </button>
             </header>
 
-            <div style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
-              <p className="text-secondary" style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem' }}>
-                Try a suggested question, or type your own below.
+            <div
+              style={{
+                padding: '1rem 1rem 0.75rem',
+                borderBottom: '1px solid var(--border-default)',
+                flexShrink: 0,
+              }}
+            >
+              <form onSubmit={onSubmit}>
+                <label htmlFor="documentation-help-query" className="form-label text-xs" style={{ display: 'block', marginBottom: '0.35rem' }}>
+                  Ask a question
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    id="documentation-help-query"
+                    className="form-input"
+                    placeholder="e.g. How do I upload my resume?"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    autoComplete="off"
+                    style={{ flex: 1 }}
+                  />
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    Search
+                  </button>
+                </div>
+              </form>
+              <p className="text-secondary" style={{ margin: '0.65rem 0 0', fontSize: '0.8125rem' }}>
+                Type your question first, or pick a suggested FAQ below.
               </p>
-
               {hint && (
-                <p className="text-xs text-warning-600" style={{ margin: '0 0 0.75rem' }}>
+                <p className="text-xs text-warning-600" style={{ margin: '0.5rem 0 0' }}>
                   {hint}
                 </p>
               )}
               {error && (
-                <p className="text-xs" style={{ margin: '0 0 0.75rem', color: 'var(--danger-600)' }}>
+                <p className="text-xs" style={{ margin: '0.5rem 0 0', color: 'var(--danger-600)' }}>
                   {error}
                 </p>
               )}
+            </div>
 
+            <div style={{ padding: '1rem', flex: 1, overflowY: 'auto', minHeight: 0 }}>
               {loading && !matches.length && suggestions.length === 0 && !query.trim() && (
                 <p className="text-tertiary text-sm">Loading…</p>
               )}
@@ -383,45 +413,32 @@ export default function DocumentationHelpWidget() {
                   </ul>
                 </div>
               )}
+            </div>
 
-              <form onSubmit={onSubmit} style={{ marginTop: 'auto', paddingTop: '0.5rem' }}>
-                <label htmlFor="documentation-help-query" className="form-label text-xs" style={{ display: 'block', marginBottom: '0.35rem' }}>
-                  Ask a question
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    id="documentation-help-query"
-                    className="form-input"
-                    placeholder="e.g. How do I upload my resume?"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    autoComplete="off"
-                    style={{ flex: 1 }}
-                  />
-                  <button type="submit" className="btn btn-primary" disabled={loading}>
-                    Search
-                  </button>
-                </div>
-              </form>
-
-              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-default)', textAlign: 'center' }}>
-                <a 
-                  href="/dashboard/help" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+            <div
+              style={{
+                padding: '0.75rem 1rem 1rem',
+                borderTop: '1px solid var(--border-default)',
+                textAlign: 'center',
+                flexShrink: 0,
+              }}
+            >
+                <Link
+                  href={fullDocHref}
+                  onClick={() => setOpen(false)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.35rem',
-                    color: 'var(--primary-600, #2563eb)',
+                    color: 'var(--text-link)',
                     fontWeight: 600,
                     textDecoration: 'none',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
                   }}
                 >
-                  <ExternalLink size={16} /> Open Full Help Document
-                </a>
-              </div>
+                  <ExternalLink size={16} aria-hidden />
+                  Open full help documentation
+                </Link>
             </div>
           </aside>
         </>

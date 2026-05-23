@@ -4,6 +4,7 @@ import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
 
 import { Trophy, FlaskConical, Palette, Banknote, FileCheck2 } from 'lucide-react';
+import CompanyNameLink from '@/components/CompanyNameLink';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -118,7 +119,7 @@ export default function CollegeSponsorshipsPage() {
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         textAlign: 'center',
@@ -172,7 +173,9 @@ export default function CollegeSponsorshipsPage() {
                   <tr key={p.id}>
                     <td className="text-sm">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}</td>
                     <td>
-                      <div>{p.companyName}</div>
+                      <div>
+                        <CompanyNameLink name={p.companyName} website={p.companyWebsite} />
+                      </div>
                       {(p.billingLegalName || p.billingPan || p.billingGstNumber) ? (
                         <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem', lineHeight: 1.4 }}>
                           {p.billingLegalName ? <div>Legal: {p.billingLegalName}</div> : null}

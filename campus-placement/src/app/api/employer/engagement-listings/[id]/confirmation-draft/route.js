@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
 import {
   loadSystemEmailTemplate,
   buildCampusGuestSubstitutionVars,
@@ -74,7 +75,11 @@ export async function GET(_request, { params }) {
       );
     }
 
-    const templateRow = await loadSystemEmailTemplate(CAMPUS_GUEST_CONFIRMATION_TEMPLATE_KEY);
+    const employerProfileId = await getEmployerProfileId(employerUserId);
+    const templateRow = await loadSystemEmailTemplate(
+      CAMPUS_GUEST_CONFIRMATION_TEMPLATE_KEY,
+      employerProfileId ? { scopeType: 'employer', scopeId: employerProfileId } : null,
+    );
     if (!templateRow) {
       return NextResponse.json({ error: 'Email template not configured' }, { status: 500 });
     }

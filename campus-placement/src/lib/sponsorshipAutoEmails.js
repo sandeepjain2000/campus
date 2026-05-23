@@ -91,7 +91,11 @@ export async function sendAutomatedSponsorshipPaymentEmails(paymentId) {
   const amountInr = formatInr(row.amount_inr);
   const amountInrCurrency = `₹${amountInr}`;
 
-  const thankTemplate = await loadSystemEmailTemplate(SPONSORSHIP_COLLEGE_THANKS_SPONSOR_TEMPLATE_KEY);
+  const collegeScope = { scopeType: 'college', scopeId: row.tenant_id };
+  const thankTemplate = await loadSystemEmailTemplate(
+    SPONSORSHIP_COLLEGE_THANKS_SPONSOR_TEMPLATE_KEY,
+    collegeScope,
+  );
   if (thankTemplate) {
     const thankVars = {
       collegeName: row.college_name || '',
@@ -135,7 +139,7 @@ export async function sendAutomatedSponsorshipPaymentEmails(paymentId) {
     return out;
   }
 
-  const receiptTemplate = await loadSystemEmailTemplate(SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY);
+  const receiptTemplate = await loadSystemEmailTemplate(SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY, collegeScope);
   if (!receiptTemplate) {
     console.warn('[sponsorshipAutoEmails] receipt template missing');
     out.receipt = 'no_template';

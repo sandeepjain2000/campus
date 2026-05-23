@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import { CalendarDays, Users, Building2, Plus, ChevronRight } from 'lucide-react';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import CompanyNameLink from '@/components/CompanyNameLink';
 
 function formatTimeDisplay(t) {
   if (!t) return '';
@@ -230,7 +231,7 @@ export default function mb_Interviews() {
                     </div>
                     
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {r.company} · {r.round}
+                      <CompanyNameLink name={r.company} website={r.website} /> · {r.round}
                     </div>
                     
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.5rem' }}>

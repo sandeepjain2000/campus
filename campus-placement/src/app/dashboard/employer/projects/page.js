@@ -3,8 +3,16 @@
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { FolderGit2, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
-import { formatCurrency, formatDate, formatStatus } from '@/lib/utils';
+import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
+
+function projectPrizeLabel(min, max) {
+  if (min == null && max == null) return '—';
+  if (min != null && max != null && Number(min) !== Number(max)) {
+    return `${formatCurrency(Number(min))} – ${formatCurrency(Number(max))}`;
+  }
+  return formatCurrency(Number(min ?? max));
+}
 
 async function swrFetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -329,45 +337,68 @@ export default function EmployerProjectsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-        {jobsLoading && <p className="text-sm text-secondary">Loading…</p>}
-        {!jobsLoading && !jobsError && projects.length === 0 && (
-          <p className="text-sm text-secondary">No project postings yet. Publish one above.</p>
-        )}
-        {projects.map((p) => (
-          <div key={String(p.id)} className="stats-card stats-card--oneline">
-            <div className="stats-card-icon indigo">
-              <FolderGit2 size={22} strokeWidth={1.5} />
-            </div>
-            <p className="stats-card-oneline-text">
-              <strong>{p.title}</strong>
-              {' · '}
-              <span className="badge badge-gray">{p.type === 'hackathon' ? 'Hackathon' : 'Short project'}</span>
-              {' · '}
-              {p.salaryMin != null || p.salaryMax != null
-                ? `${formatCurrency(Number(p.salaryMin ?? p.salaryMax))}${p.salaryMax != null && p.salaryMin != null && Number(p.salaryMax) !== Number(p.salaryMin) ? ` – ${formatCurrency(Number(p.salaryMax))}` : ''}`
-                : '—'}
-              {' · '}
-              Min CGPA {p.cgpa ?? '—'} · {p.vacancies} openings ·{' '}
-              <span className={`badge ${p.status === 'published' ? 'badge-success' : 'badge-gray'} badge-dot`}>{formatStatus(p.status)}</span>
-              {p.createdAt ? ` · ${formatDate(p.createdAt)}` : ''}
-            </p>
-            <div className="stats-card-oneline-actions">
-              {p.status === 'published' && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openCampusSync(p.id)}>
-                  <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync campuses
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(p.title, 'info')}>
-                <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('Editing via API can be added later.', 'info')}>
-                <Settings size={14} style={{ marginRight: '0.25rem' }} /> Manage
-              </button>
-            </div>
+      {jobsLoading && <p className="text-sm text-secondary">Loading…</p>}
+      {!jobsLoading && !jobsError && projects.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem', border: '1px dashed var(--border-default)' }}>
+          <FolderGit2 size={40} style={{ color: 'var(--text-tertiary)', margin: '0 auto 1rem', opacity: 0.35 }} />
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>No project postings yet. Publish one above.</p>
+        </div>
+      )}
+      {!jobsLoading && !jobsError && projects.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+          <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
+            <table className="data-table" style={{ minWidth: 880 }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)' }}>
+                  <th style={{ paddingLeft: '1.25rem' }}>Title</th>
+                  <th>Type</th>
+                  <th>Prize / stipend</th>
+                  <th>Min CGPA</th>
+                  <th>Openings</th>
+                  <th>Status</th>
+                  <th>Posted</th>
+                  <th style={{ textAlign: 'right', paddingRight: '1.25rem', width: 1 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.map((p) => (
+                  <tr key={String(p.id)}>
+                    <td style={{ paddingLeft: '1.25rem', maxWidth: 280 }}>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{p.title}</div>
+                      {p.keywords ? (
+                        <div className="text-xs text-tertiary" style={{ marginTop: '0.2rem' }}>{p.keywords}</div>
+                      ) : null}
+                    </td>
+                    <td>
+                      <span className="badge badge-gray">{p.type === 'hackathon' ? 'Hackathon' : 'Short project'}</span>
+                    </td>
+                    <td className="text-sm">{projectPrizeLabel(p.salaryMin, p.salaryMax)}</td>
+                    <td className="text-sm">{p.cgpa ?? '—'}</td>
+                    <td className="text-sm">{p.vacancies ?? '—'}</td>
+                    <td>
+                      <span className={`badge badge-${getStatusColor(p.status)} badge-dot`}>{formatStatus(p.status)}</span>
+                    </td>
+                    <td className="text-sm text-secondary">{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '1.25rem', whiteSpace: 'nowrap' }}>
+                      {p.status === 'published' && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openCampusSync(p.id)}>
+                          <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(p.title, 'info')}>
+                        <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('Editing via API can be added later.', 'info')}>
+                        <Settings size={14} style={{ marginRight: '0.25rem' }} /> Manage
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {campusSyncJobId && (
         <div className="card" style={{ marginTop: '1.25rem' }}>

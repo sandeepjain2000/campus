@@ -117,7 +117,7 @@ export default function EmployerCalendarPage() {
           position: 'relative',
           borderRadius: 'var(--radius-xl)',
           overflow: 'hidden',
-          background: 'linear-gradient(135deg, var(--primary-800), var(--primary-600))',
+          background: 'var(--banner-gradient)',
           marginBottom: '2rem',
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
         }}

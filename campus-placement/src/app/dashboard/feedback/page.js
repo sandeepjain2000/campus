@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import PageError from '@/components/PageError';
+import PageLoading from '@/components/PageLoading';
 import { formatFeedbackRole } from '@/lib/utils';
 
 const fetcher = (url) => fetch(url).then((res) => {
@@ -57,7 +58,7 @@ export default function FeedbackPage() {
           <h3 className="card-title">Your feedback threads</h3>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem 1rem 1rem' }}>
-          {isLoading && <p className="text-sm text-secondary">Loading…</p>}
+          {isLoading && <PageLoading message="Loading feedback…" inline />}
           {!isLoading && items.map((item) => (
             <div key={item.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>

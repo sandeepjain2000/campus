@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { isOfferDeadlinePassed } from '@/lib/offerDeadline';
+import { isPendingOfferStatus, normalizeOfferStatus, OFFER_PENDING_STATUS_SQL } from '@/lib/offerStatusNormalize';
+import { resolveStudentProfileByUserId } from '@/lib/studentProfileResolve';
 
 function isMissingReportedColumnError(e) {
   const msg = String(e?.message || '');
@@ -12,8 +16,13 @@ function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
 }
 
+function isMissingUpdatedAtError(e) {
+  return e?.code === '42703' && String(e?.message || '').includes('updated_at');
+}
+
 function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField) {
-  const latestClause = latestOnly && selectLatestField ? 'AND o.is_latest = 1' : '';
+  const latestClause =
+    latestOnly && selectLatestField ? `AND (o.is_latest = 1 OR ${OFFER_PENDING_STATUS_SQL})` : '';
   const latestSel = selectLatestField ? ', o.is_latest as "isLatest"' : '';
   const companyExpr = useReportedCompany
     ? `COALESCE(ep.company_name, o.reported_company_name, 'Company')`
@@ -22,9 +31,11 @@ function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField
   return `
     SELECT o.id,
            ${companyExpr} AS company,
+           ep.website AS website,
            o.job_title as role,
            o.salary, o.salary_currency as currency, o.location, o.joining_date as "joiningDate",
-           o.status, o.deadline, o.created_at as "createdAt", o.accepted_at as "acceptedAt", o.rejected_at as "rejectedAt"
+           o.status, o.deadline, o.drive_id as "driveId", o.application_id as "applicationId",
+           o.created_at as "createdAt", o.accepted_at as "acceptedAt", o.rejected_at as "rejectedAt"
            ${latestSel}
     FROM offers o
     LEFT JOIN employer_profiles ep ON o.employer_id = ep.id
@@ -60,6 +71,63 @@ async function loadStudentOffersRows(studentId) {
   }
 }
 
+function mapOfferRow(offer) {
+  return {
+    ...offer,
+    id: String(offer.id),
+    status: normalizeOfferStatus(offer.status),
+  };
+}
+
+async function expireOfferIfNeeded(offer, now) {
+  const status = normalizeOfferStatus(offer.status);
+  if (!isPendingOfferStatus(status)) {
+    return { ...offer, status };
+  }
+  if (!isOfferDeadlinePassed(offer.deadline, now)) {
+    return { ...offer, status };
+  }
+  try {
+    await query(`UPDATE offers SET status = 'expired' WHERE id = $1::uuid AND ${PENDING_STATUS_SQL}`, [offer.id]);
+  } catch (err) {
+    console.error('Failed to update expired status:', err);
+  }
+  return { ...offer, status: 'expired' };
+}
+
+const PENDING_STATUS_SQL = `LOWER(TRIM(status)) IN ('pending', 'offered', 'sent', 'awaiting_response', 'awaiting')`;
+
+async function updatePendingOfferDecision(id, studentId, action) {
+  const acceptSql = `UPDATE offers
+       SET status = 'accepted', accepted_at = NOW(), updated_at = NOW()
+       WHERE id = $1::uuid AND student_id = $2::uuid AND ${PENDING_STATUS_SQL}
+       RETURNING id, status, accepted_at, rejected_at`;
+  const acceptSqlNoUpdated = `UPDATE offers
+       SET status = 'accepted', accepted_at = NOW()
+       WHERE id = $1::uuid AND student_id = $2::uuid AND ${PENDING_STATUS_SQL}
+       RETURNING id, status, accepted_at, rejected_at`;
+  const rejectSql = `UPDATE offers
+       SET status = 'rejected', rejected_at = NOW(), updated_at = NOW()
+       WHERE id = $1::uuid AND student_id = $2::uuid AND ${PENDING_STATUS_SQL}
+       RETURNING id, status, accepted_at, rejected_at`;
+  const rejectSqlNoUpdated = `UPDATE offers
+       SET status = 'rejected', rejected_at = NOW()
+       WHERE id = $1::uuid AND student_id = $2::uuid AND ${PENDING_STATUS_SQL}
+       RETURNING id, status, accepted_at, rejected_at`;
+
+  const primary = action === 'accept' ? acceptSql : rejectSql;
+  const fallback = action === 'accept' ? acceptSqlNoUpdated : rejectSqlNoUpdated;
+
+  try {
+    return await query(primary, [id, studentId]);
+  } catch (e) {
+    if (isMissingUpdatedAtError(e)) {
+      return await query(fallback, [id, studentId]);
+    }
+    throw e;
+  }
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -72,26 +140,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
     }
 
-    const studentQuery = await query(`SELECT id FROM student_profiles WHERE user_id = $1`, [userId]);
-    const studentId = studentQuery.rows[0]?.id;
+    const profile = await resolveStudentProfileByUserId(userId);
+    if (!profile?.id) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
 
-    if (!studentId) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
-
-    const offersResult = await loadStudentOffersRows(studentId);
-
+    const offersResult = await loadStudentOffersRows(profile.id);
     const now = new Date();
     const updatedOffers = [];
 
-    for (let offer of offersResult.rows) {
-      if (offer.status === 'pending' && offer.deadline && new Date(offer.deadline) < now) {
-        offer.status = 'expired';
-        try {
-          await query(`UPDATE offers SET status = 'expired' WHERE id = $1`, [offer.id]);
-        } catch (err) {
-          console.error('Failed to update expired status:', err);
-        }
-      }
-      updatedOffers.push(offer);
+    for (const row of offersResult.rows) {
+      const mapped = mapOfferRow(row);
+      const withExpiry = await expireOfferIfNeeded(mapped, now);
+      updatedOffers.push(withExpiry);
     }
 
     return NextResponse.json(updatedOffers);
@@ -112,44 +171,113 @@ export async function PATCH(request) {
     if (!userId) {
       return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
     }
-    const studentQuery = await query(`SELECT id FROM student_profiles WHERE user_id = $1`, [userId]);
-    const studentId = studentQuery.rows[0]?.id;
-    if (!studentId) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+
+    const profile = await resolveStudentProfileByUserId(userId);
+    if (!profile?.id) return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+
+    const studentId = profile.id;
+    const tenantId = profile.tenant_id;
 
     const body = await request.json();
     const id = String(body?.id || '').trim();
-    const action = String(body?.action || '').trim();
+    let action = String(body?.action || '').trim().toLowerCase();
+    if (action === 'reject') action = 'decline';
     if (!id || !['accept', 'decline'].includes(action)) {
-      return NextResponse.json({ error: 'id and valid action are required' }, { status: 400 });
+      return NextResponse.json({ error: 'id and valid action (accept or decline) are required' }, { status: 400 });
     }
 
-    const nextStatus = action === 'accept' ? 'accepted' : 'rejected';
-    const result = await query(
-      `UPDATE offers
-       SET status = $1,
-           accepted_at = CASE WHEN $1 = 'accepted' THEN NOW() ELSE accepted_at END,
-           rejected_at = CASE WHEN $1 = 'rejected' THEN NOW() ELSE rejected_at END,
-           updated_at = NOW()
-       WHERE id = $2 AND student_id = $3 AND status = 'pending'
-       RETURNING id, status, accepted_at, rejected_at`,
-      [nextStatus, id, studentId],
+    const existing = await query(
+      `SELECT id, status, deadline FROM offers WHERE id = $1::uuid AND student_id = $2::uuid`,
+      [id, studentId],
     );
+    const offer = existing.rows[0];
+    if (!offer) {
+      return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
+    }
+
+    const status = normalizeOfferStatus(offer.status);
+    if (!isPendingOfferStatus(status)) {
+      return NextResponse.json(
+        {
+          error:
+            status === 'accepted'
+              ? 'This offer was already accepted.'
+              : status === 'rejected'
+                ? 'This offer was already declined.'
+                : status === 'expired'
+                  ? 'This offer has expired.'
+                  : status === 'revoked'
+                    ? 'This offer was revoked by the employer.'
+                    : 'Only pending offers can be accepted or declined.',
+        },
+        { status: 409 },
+      );
+    }
+
+    if (isOfferDeadlinePassed(offer.deadline)) {
+      try {
+        await query(`UPDATE offers SET status = 'expired' WHERE id = $1::uuid AND ${PENDING_STATUS_SQL}`, [id]);
+      } catch {
+        /* ignore */
+      }
+      return NextResponse.json(
+        { error: 'This offer has expired and can no longer be accepted or declined.' },
+        { status: 410 },
+      );
+    }
+
+    if (action === 'accept' && tenantId) {
+      const settingsRes = await query(
+        `SELECT max_offers_per_student FROM college_settings WHERE tenant_id = $1::uuid`,
+        [tenantId],
+      );
+      const maxOffers = Number(settingsRes.rows[0]?.max_offers_per_student ?? 2);
+      if (Number.isFinite(maxOffers) && maxOffers > 0) {
+        const acceptedRes = await query(
+          `SELECT COUNT(*)::int AS n FROM offers WHERE student_id = $1::uuid AND status = 'accepted'`,
+          [studentId],
+        );
+        if ((acceptedRes.rows[0]?.n ?? 0) >= maxOffers) {
+          return NextResponse.json(
+            {
+              error: `You can accept at most ${maxOffers} offer(s) under your college placement rules. Decline an existing acceptance or contact your placement office.`,
+            },
+            { status: 403 },
+          );
+        }
+      }
+    }
+
+    const result = await updatePendingOfferDecision(id, studentId, action);
 
     if (!result.rows[0]) {
       return NextResponse.json({ error: 'Offer not found or not pending' }, { status: 404 });
     }
 
+    try {
+      await refreshOfferLatestFlagsForStudent(studentId);
+    } catch (refreshErr) {
+      console.warn('refreshOfferLatestFlagsForStudent after student decision:', refreshErr?.message || refreshErr);
+    }
+
     const row = result.rows[0];
     return NextResponse.json({
       offer: {
-        id: row.id,
-        status: row.status,
+        id: String(row.id),
+        status: normalizeOfferStatus(row.status),
         acceptedAt: row.accepted_at,
         rejectedAt: row.rejected_at,
       },
     });
   } catch (error) {
     console.error('Failed to update student offer:', error);
-    return NextResponse.json({ error: 'Failed to update offer status' }, { status: 500 });
+    const msg = String(error?.message || '');
+    if (error?.code === '42703') {
+      return NextResponse.json(
+        { error: 'Database schema is out of date for offers. Ask your administrator to run migration 059_offers_decision_columns.sql.' },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json({ error: msg || 'Failed to update offer status' }, { status: 500 });
   }
 }

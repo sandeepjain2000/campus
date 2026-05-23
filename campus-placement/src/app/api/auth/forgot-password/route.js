@@ -19,8 +19,10 @@ export async function POST(req) {
     }
 
     const res = await query(
-      'SELECT id, first_name FROM users WHERE lower(trim(email)) = lower(trim($1)) AND email_verified_at IS NOT NULL',
-      [email.trim().toLowerCase()]
+      `SELECT id, first_name FROM users
+       WHERE lower(trim(email)) = lower(trim($1))
+         AND is_active = true`,
+      [email.trim().toLowerCase()],
     );
     if (res.rows.length === 0) {
       // Return success anyway to prevent email enumeration
@@ -52,16 +54,39 @@ export async function POST(req) {
       </div>
     `;
 
-    await sendMail({
-      to: email,
-      subject: '[PlacementHub] Reset your password',
-      text: `Hi ${user.first_name},\n\nClick the link below to reset your PlacementHub password:\n\n${resetLink}\n\nThis link will expire in 1 hour.`,
-      html,
-    });
+    try {
+      await sendMail({
+        to: email,
+        subject: '[PlacementHub] Reset your password',
+        text: `Hi ${user.first_name},\n\nClick the link below to reset your PlacementHub password:\n\n${resetLink}\n\nThis link will expire in 1 hour.`,
+        html,
+      });
+    } catch (mailErr) {
+      console.error('Forgot password mail error:', mailErr);
+      if (!process.env.SMTP_USER && !process.env.SMTP_PASS && !process.env.EMAIL_FROM) {
+        return NextResponse.json(
+          {
+            error: 'Email is not configured on this server. Contact your placement office for a password reset.',
+          },
+          { status: 503 },
+        );
+      }
+      return NextResponse.json(
+        { error: 'Could not send reset email. Try again later or contact support.' },
+        { status: 503 },
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Forgot password error:', error);
+    const msg = String(error?.message || '');
+    if (error?.code === '42P01' && msg.includes('password_reset_tokens')) {
+      return NextResponse.json(
+        { error: 'Password reset is not available until database migrations are applied.' },
+        { status: 503 },
+      );
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

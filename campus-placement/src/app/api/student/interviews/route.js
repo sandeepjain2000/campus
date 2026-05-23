@@ -25,6 +25,7 @@ export async function GET() {
       `SELECT
          a.id,
          ep.company_name AS company,
+         ep.website AS website,
          COALESCE(dr.title, CONCAT('Round ', a.current_round::text)) AS round,
          pd.drive_date AS interview_date,
          COALESCE(dr.start_time, pd.start_time) AS interview_time,
@@ -46,6 +47,7 @@ export async function GET() {
     const interviews = interviewsRes.rows.map((row) => ({
       id: row.id,
       company: row.company || 'Company',
+      website: row.website || null,
       round: row.round || 'Interview Round',
       date: row.interview_date ? String(row.interview_date).slice(0, 10) : null,
       time: row.interview_time ? String(row.interview_time).slice(0, 5) : '',

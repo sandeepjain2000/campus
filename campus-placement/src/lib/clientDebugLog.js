@@ -18,6 +18,7 @@ function safeJsonParse(s, fallback) {
  */
 export function appendClientDebugLog(entry) {
   if (typeof window === 'undefined') return;
+  if (process.env.NODE_ENV === 'production') return;
 
   const line = {
     t: new Date().toISOString(),

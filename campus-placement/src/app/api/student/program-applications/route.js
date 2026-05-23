@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { getOrCreateStudentProfileId } from '@/lib/studentServer';
+import { assertStudentResumeForApply } from '@/lib/studentApplyEligibility';
+import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
 
@@ -31,7 +32,8 @@ export async function GET() {
          jp.id AS job_id,
          jp.title,
          jp.job_type,
-         ep.company_name
+         ep.company_name,
+         ep.website
        FROM program_applications pa
        JOIN student_profiles sp ON sp.id = pa.student_id
        JOIN job_postings jp ON jp.id = pa.job_id
@@ -51,6 +53,7 @@ export async function GET() {
         title: r.title,
         jobType: r.job_type,
         companyName: r.company_name,
+        website: r.website || null,
       })),
     });
   } catch (e) {
@@ -78,9 +81,21 @@ export async function POST(req) {
       return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
     }
 
+    if (await isStudentProfileArchived(userId)) {
+      return NextResponse.json(
+        { error: 'Your student account has been archived. Contact your placement office if this is a mistake.' },
+        { status: 403 },
+      );
+    }
+
     const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
       return NextResponse.json({ error: 'Student profile not available' }, { status: 400 });
+    }
+
+    const resumeGate = await assertStudentResumeForApply(studentId);
+    if (!resumeGate.ok) {
+      return NextResponse.json({ error: resumeGate.error }, { status: 400 });
     }
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 2);

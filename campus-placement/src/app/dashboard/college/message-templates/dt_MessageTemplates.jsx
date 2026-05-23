@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
-import { FileEdit, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { variablesToFormText } from '@/lib/messageTemplateUtils';
+import { FileEdit, Mail, Plus, Trash2, Pencil, X } from 'lucide-react';
 
 const TYPE_OPTIONS = [
   { value: 'email', label: 'Email' },
@@ -24,9 +25,10 @@ function emptyForm() {
 
 export default function CollegeMessageTemplatesPage() {
   const { addToast } = useToast();
+  const formRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -49,14 +51,22 @@ export default function CollegeMessageTemplatesPage() {
   }, [load]);
 
   const startEdit = (t) => {
-    setEditingId(t.id);
+    const id = t?.id != null ? String(t.id) : '';
+    if (!id) {
+      addToast('This template has no id and cannot be edited.', 'error');
+      return;
+    }
+    setEditingId(id);
     setForm({
       name: t.name || '',
       subject: t.subject || '',
       body: t.body || '',
       templateType: t.template_type || 'email',
-      variablesText: Array.isArray(t.variables) ? t.variables.join(', ') : '',
+      variablesText: variablesToFormText(t.variables),
       isActive: t.is_active !== false,
+    });
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
 
@@ -80,7 +90,7 @@ export default function CollegeMessageTemplatesPage() {
       if (!payload.body) throw new Error('Body is required');
 
       if (editingId) {
-        const res = await fetch(`/api/college/message-templates/${editingId}`, {
+        const res = await fetch(`/api/college/message-templates/${encodeURIComponent(editingId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -110,7 +120,7 @@ export default function CollegeMessageTemplatesPage() {
   const remove = async (id) => {
     if (!window.confirm('Delete this template?')) return;
     try {
-      const res = await fetch(`/api/college/message-templates/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/college/message-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Delete failed');
       if (editingId === id) cancelEdit();
@@ -127,19 +137,39 @@ export default function CollegeMessageTemplatesPage() {
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <FileEdit size={22} className="text-primary" aria-hidden />
-            Message templates
+            Message &amp; email templates
           </h1>
           <p>
-            Reusable email, notification, and SMS bodies for your placement office. Use placeholders like{' '}
-            <code className="text-xs">{`{{studentName}}`}</code> in copy when your integrations substitute them.
+            Reusable email, notification, and SMS bodies for your placement office. For sponsorship thank-you and receipt
+            emails, use{' '}
+            <Link href="/dashboard/college/communication-templates" className="text-primary">
+              Email templates
+            </Link>
+            . Placeholders like <code className="text-xs">{`{{studentName}}`}</code> are substituted when sent.
           </p>
         </div>
-        <Link href="/dashboard/college/overview" className="btn btn-secondary btn-sm">
-          Overview
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Link href="/dashboard/college/communication-templates" className="btn btn-secondary btn-sm">
+            <Mail size={14} style={{ marginRight: 6 }} />
+            Email templates
+          </Link>
+          <Link href="/dashboard/college/overview" className="btn btn-secondary btn-sm">
+            Overview
+          </Link>
+        </div>
       </div>
 
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+      <div
+        ref={formRef}
+        className="card"
+        key={editingId || 'new'}
+        style={{
+          padding: '1.25rem',
+          marginBottom: '1rem',
+          border: editingId ? '1px solid var(--primary-300)' : undefined,
+          boxShadow: editingId ? '0 0 0 1px var(--primary-100)' : undefined,
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <h2 style={{ fontSize: '1.05rem', margin: 0 }}>{editingId ? 'Edit template' : 'New template'}</h2>
           {editingId ? (
@@ -235,7 +265,7 @@ export default function CollegeMessageTemplatesPage() {
             </thead>
             <tbody>
               {rows.map((t) => (
-                <tr key={t.id}>
+                <tr key={t.id} style={editingId === String(t.id) ? { background: 'var(--primary-50)' } : undefined}>
                   <td className="font-medium">{t.name}</td>
                   <td>
                     <span className="badge badge-indigo">{t.template_type}</span>

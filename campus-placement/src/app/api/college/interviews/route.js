@@ -61,24 +61,50 @@ export async function GET() {
       };
     });
 
-    const resultsRes = await query(
-      `SELECT a.id,
-              COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student,
-              ep.company_name AS company,
-              COALESCE(d.title, 'Interview Round') AS round,
-              a.status AS outcome,
-              d.drive_date AS date
-       FROM applications a
-       JOIN student_profiles sp ON sp.id = a.student_id
-       LEFT JOIN users u ON u.id = sp.user_id
-       LEFT JOIN placement_drives d ON d.id = a.drive_id
-       LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-       WHERE sp.tenant_id = $1::uuid
-         AND a.status IN ('shortlisted', 'selected', 'rejected', 'in_progress')
-       ORDER BY a.updated_at DESC NULLS LAST, a.applied_at DESC
-       LIMIT 500`,
-      [tenantId],
-    );
+    let resultsRes;
+    try {
+      resultsRes = await query(
+        `SELECT a.id,
+                COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student,
+                ep.company_name AS company,
+                ep.website AS website,
+                COALESCE(jp.title, d.title, 'Interview Round') AS round,
+                a.status AS outcome,
+                COALESCE(d.drive_date, a.applied_at::date) AS date
+         FROM applications a
+         JOIN student_profiles sp ON sp.id = a.student_id AND sp.tenant_id = $1::uuid
+         LEFT JOIN users u ON u.id = sp.user_id
+         LEFT JOIN placement_drives d ON d.id = a.drive_id
+         LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
+         LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
+         WHERE sp.archived_at IS NULL
+           AND a.status IN ('shortlisted', 'selected', 'rejected', 'in_progress')
+         ORDER BY a.updated_at DESC NULLS LAST, a.applied_at DESC
+         LIMIT 500`,
+        [tenantId],
+      );
+    } catch (e) {
+      if (e?.code !== '42703' || !String(e?.message || '').includes('archived')) throw e;
+      resultsRes = await query(
+        `SELECT a.id,
+                COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student,
+                ep.company_name AS company,
+                ep.website AS website,
+                COALESCE(jp.title, d.title, 'Interview Round') AS round,
+                a.status AS outcome,
+                COALESCE(d.drive_date, a.applied_at::date) AS date
+         FROM applications a
+         JOIN student_profiles sp ON sp.id = a.student_id AND sp.tenant_id = $1::uuid
+         LEFT JOIN users u ON u.id = sp.user_id
+         LEFT JOIN placement_drives d ON d.id = a.drive_id
+         LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
+         LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
+         WHERE a.status IN ('shortlisted', 'selected', 'rejected', 'in_progress')
+         ORDER BY a.updated_at DESC NULLS LAST, a.applied_at DESC
+         LIMIT 500`,
+        [tenantId],
+      );
+    }
 
     const outcomeMap = {
       shortlisted: 'Shortlisted',
@@ -90,6 +116,7 @@ export async function GET() {
       id: r.id,
       student: r.student,
       company: r.company || '—',
+      website: r.website || null,
       round: r.round || 'Interview',
       outcome: outcomeMap[r.outcome] || 'Pending',
       date: r.date ? String(r.date).slice(0, 10) : '',

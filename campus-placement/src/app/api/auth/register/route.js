@@ -9,6 +9,12 @@ import {
   notifyStudentRegistered,
 } from '@/lib/registrationNotify';
 import { newEmailVerificationToken, sendSignupVerificationEmail } from '@/lib/emailVerification';
+import { assertEmailAvailable, formatEmailDifferentTenantMessage, formatEmailInUseMessage } from '@/lib/userEmail';
+import {
+  assertStudentSelfRegistrationAllowed,
+  mapStudentRegistrationError,
+} from '@/lib/studentRegistrationGuards';
+import { getPostRegistrationLoginPath } from '@/lib/postRegistrationRedirect';
 
 export async function POST(request) {
   try {
@@ -62,10 +68,7 @@ export async function POST(request) {
       let tenantId = null;
 
       if (role === 'college_admin') {
-        const existing = await client.query('SELECT id FROM users WHERE email = $1', [email]);
-        if (existing.rows.length > 0) {
-          throw new Error('EMAIL_EXISTS');
-        }
+        await assertEmailAvailable(client, email);
 
         const collegeName = body.collegeFullName || `${firstName}'s College`;
         const slug = slugify(collegeName) + '-' + Date.now().toString(36);
@@ -121,49 +124,28 @@ export async function POST(request) {
         tenantId = bind.rows[0].ref_scope_id;
 
         const rollNum = (body.rollNumber || '').trim();
-        if (!rollNum) {
-          throw new Error('MISSING_ROLL');
-        }
-
-        const existingProfile = await client.query(
-          `SELECT sp.id as profile_id, sp.user_id, u.email 
-           FROM student_profiles sp 
-           JOIN users u ON u.id = sp.user_id 
-           WHERE sp.tenant_id = $1 AND LOWER(sp.roll_number) = LOWER($2)`,
-          [tenantId, rollNum]
-        );
-
-        if (existingProfile.rows.length === 0) {
-          throw new Error('ROLL_NOT_FOUND');
-        }
-
-        const profile = existingProfile.rows[0];
-        if (profile.email.toLowerCase() !== email.toLowerCase()) {
-          throw new Error('EMAIL_MISMATCH');
-        }
+        const { profileId, userId, batchYear, graduationYear } =
+          await assertStudentSelfRegistrationAllowed(client, {
+            email,
+            rollNumber: rollNum,
+            tenantId,
+            batchYear: body.batchYear,
+          });
 
         const userResult = await client.query(
           `UPDATE users 
-           SET password_hash = $1, first_name = $2, last_name = $3, phone = $4, is_active = true, is_verified = true 
+           SET password_hash = $1, first_name = $2, last_name = $3, phone = $4, is_active = true, is_verified = true, email_verified_at = COALESCE(email_verified_at, NOW())
            WHERE id = $5 RETURNING id, email, role`,
-          [
-            passwordHash,
-            firstName,
-            lastName || '',
-            phone || '',
-            profile.user_id
-          ]
+          [passwordHash, firstName, lastName || '', phone || '', userId]
         );
 
         const user = userResult.rows[0];
 
-        // Ensure department is updated to what they chose during registration
-        const batchY = parseInt(body.batchYear, 10);
         await client.query(
           `UPDATE student_profiles 
            SET department = $1, batch_year = $2, graduation_year = $3 
            WHERE id = $4`,
-          [resolvedDepartmentName, batchY, batchY + 4, profile.profile_id]
+          [resolvedDepartmentName, batchYear, graduationYear, profileId]
         );
 
         const tname = await client.query(`SELECT name FROM tenants WHERE id = $1`, [tenantId]);
@@ -179,10 +161,7 @@ export async function POST(request) {
       }
 
       if (role === 'employer') {
-        const existing = await client.query('SELECT id FROM users WHERE email = $1', [email]);
-        if (existing.rows.length > 0) {
-          throw new Error('EMAIL_EXISTS');
-        }
+        await assertEmailAvailable(client, email);
 
         const userResult = await client.query(
           `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, is_verified, is_active, email_verification_token, email_verification_expires_at)
@@ -264,13 +243,23 @@ export async function POST(request) {
           : 'Check your email to verify your address. You can sign in only after you click the verification link.',
         pendingPlatformApproval: pendingPlatform,
         requiresEmailVerification: true,
+        nextUrl: getPostRegistrationLoginPath({ pendingPlatformApproval: pendingPlatform }),
         user: { id: userRow.id, email: userRow.email, role: userRow.role },
       },
       { status: 201 }
     );
   } catch (error) {
     if (error.message === 'EMAIL_EXISTS') {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+      return NextResponse.json(
+        { error: formatEmailInUseMessage(error.existing, { email }) },
+        { status: 409 }
+      );
+    }
+    if (error.message === 'EMAIL_DIFFERENT_TENANT') {
+      return NextResponse.json(
+        { error: formatEmailDifferentTenantMessage(email) },
+        { status: 409 }
+      );
     }
     if (error.message === 'INVALID_CAMPUS_KEY') {
       return NextResponse.json(
@@ -292,7 +281,29 @@ export async function POST(request) {
     }
     if (error.message === 'EMAIL_MISMATCH') {
       return NextResponse.json(
-        { error: 'This roll number is registered with a different email address. Please use the email your college provided.' },
+        {
+          error:
+            mapStudentRegistrationError(error, { email }) ||
+            'This roll number is registered with a different email address. Please use the email your college provided.',
+        },
+        { status: 400 }
+      );
+    }
+    if (error.message === 'ACCOUNT_ALREADY_REGISTERED') {
+      return NextResponse.json(
+        {
+          error: mapStudentRegistrationError(error, {
+            email,
+            rollNumber: error.roll_number,
+          }),
+          code: 'ACCOUNT_ALREADY_REGISTERED',
+        },
+        { status: 409 }
+      );
+    }
+    if (error.message === 'BATCH_YEAR_MISMATCH') {
+      return NextResponse.json(
+        { error: mapStudentRegistrationError(error, { email }) },
         { status: 400 }
       );
     }

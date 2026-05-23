@@ -2,6 +2,7 @@
  * Maps between student profile UI state (student profile page) and student_profiles + student_skills + users.phone.
  */
 import { SEED_DEMO_STUDENT_USER_IDS } from '@/lib/seedDemoStudentIds';
+import { resolveStudentBatch } from '@/lib/studentBatch';
 
 function capitalizeGender(g) {
   if (!g || typeof g !== 'string') return '';
@@ -222,10 +223,20 @@ export function profileFromDb({ sp, skills, projects, accountEmail, userPhone, a
     pincode: String(rawAddress.pincode || '').trim() || fallbackAddress.pincode,
   };
 
+  const batchResolved = resolveStudentBatch({
+    batchYear: sp.batch_year,
+    graduationYear: sp.graduation_year,
+    joining_academic_year: sp.joining_academic_year,
+    batchLabel: aux.batchLabel,
+    joiningAcademicYear: aux.joiningAcademicYear,
+  });
+
   return {
     department: sp.department || '',
     branch: sp.branch || '',
     rollNumber: sp.roll_number || '',
+    batch: batchResolved.batch,
+    joiningAcademicYear: batchResolved.joiningAcademicYear || batchResolved.batch,
     batchYear: sp.batch_year != null ? Number(sp.batch_year) : '',
     graduationYear: sp.graduation_year != null ? Number(sp.graduation_year) : '',
     cgpa: sp.cgpa != null ? Number(sp.cgpa) : '',

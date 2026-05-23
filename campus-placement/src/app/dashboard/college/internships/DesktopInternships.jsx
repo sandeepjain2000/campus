@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import { GraduationCap, Building2, IndianRupee, BookOpen, Calendar } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import PageLoading from '@/components/PageLoading';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -85,7 +87,7 @@ export default function DesktopInternships() {
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-secondary">Loading…</p>}
+      {isLoading && <PageLoading message="Loading internships…" inline />}
 
       {!isLoading && !error && list.length === 0 && (
         <div className="card">
@@ -107,7 +109,9 @@ export default function DesktopInternships() {
                   ) : (
                     <span className="badge badge-indigo badge-dot">Internship</span>
                   )}
-                  <span className="badge badge-gray badge-dot">{row.company_name}</span>
+                  <span className="badge badge-gray badge-dot">
+                    <CompanyNameLink name={row.company_name} website={row.website} />
+                  </span>
                 </div>
                 <p className="text-sm text-secondary" style={{ margin: '0 0 0.5rem', lineHeight: 1.5 }}>
                   {(row.description || '').slice(0, 280)}
@@ -133,17 +137,6 @@ export default function DesktopInternships() {
                   </div>
                 ) : null}
               </div>
-              {row.website ? (
-                <a
-                  href={row.website.startsWith('http') ? row.website : `https://${row.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary btn-sm"
-                  style={{ flexShrink: 0 }}
-                >
-                  Company site
-                </a>
-              ) : null}
             </div>
           </div>
         ))}

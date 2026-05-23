@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
 import { validatePhone, validateEmail, validatePersonName, validateBatchYear } from '@/lib/validators';
+import { isRegistrationJobAidEnabled } from '@/lib/registrationJobAid';
+import RegisterJobAidPanel from '@/components/auth/RegisterJobAidPanel';
+import { redirectToLoginAfterRegistration } from '@/lib/postRegistrationRedirect';
 
 function buildRegisterPhone(formData) {
   if (formData.phoneDialCode === PHONE_FULL_E164) {
@@ -18,7 +20,6 @@ function buildRegisterPhone(formData) {
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     role: '',
@@ -47,6 +48,8 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const showStudentJobAid =
+    isRegistrationJobAidEnabled() && formData.role === 'student' && step >= 2;
 
   useEffect(() => {
     let cancelled = false;
@@ -142,15 +145,20 @@ export default function RegisterPage() {
         data = {};
       }
       if (!res.ok) {
-        setError(data.error || `Registration failed (${res.status}). Please try again.`);
+        const msg = data.error || `Registration failed (${res.status}). Please try again.`;
+        setError(
+          data.code === 'ACCOUNT_ALREADY_REGISTERED' || res.status === 409
+            ? `${msg} You can sign in from the login page if you already have access.`
+            : msg,
+        );
         return;
       }
 
-      if (data.pendingPlatformApproval) {
-        router.push('/login?registered=pending-platform');
-      } else {
-        router.push('/login?registered=check-email');
-      }
+      redirectToLoginAfterRegistration({
+        pendingPlatformApproval: Boolean(data.pendingPlatformApproval),
+        nextUrl: data.nextUrl,
+      });
+      return;
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -158,11 +166,24 @@ export default function RegisterPage() {
     }
   };
 
+  const applyJobAidSample = ({ enrollmentKey, rollNumber, email }) => {
+    setFormData((prev) => ({
+      ...prev,
+      campusBindingToken: enrollmentKey || prev.campusBindingToken,
+      rollNumber: rollNumber || prev.rollNumber,
+      email: email || prev.email,
+    }));
+    setError('');
+  };
+
   return (
-    <div className="auth-page">
+    <div className={`auth-page${showStudentJobAid ? ' auth-page--with-job-aid' : ''}`}>
       <div className="auth-left">
-        <div className="auth-card animate-slideUp" style={{ maxWidth: '520px' }}>
-          <Link href="/" className="auth-logo">
+        <div
+          className="auth-card animate-slideUp"
+          style={{ maxWidth: showStudentJobAid ? '520px' : undefined }}
+        >
+          <Link href="/login" className="auth-logo">
             <div className="sidebar-logo-icon">P</div>
             PlacementHub
           </Link>
@@ -489,6 +510,21 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
+
+      {showStudentJobAid ? (
+        <RegisterJobAidPanel onApplySample={applyJobAidSample} />
+      ) : null}
+
+      <style>{`
+        @media (max-width: 960px) {
+          .auth-page--with-job-aid .hidden-on-mobile {
+            display: none !important;
+          }
+          .auth-page--with-job-aid .auth-left {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }

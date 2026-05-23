@@ -4,6 +4,9 @@ import useSWR from 'swr';
 import { FolderGit2 } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
+import PageLoading from '@/components/PageLoading';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -26,8 +29,13 @@ export default function StudentProjectsPage() {
   });
 
   const items = data?.items || [];
+  const canApply = data?.canApply !== false;
 
   const apply = async (jobId, title) => {
+    if (!canApply) {
+      addToast('Upload your primary CV on your profile before applying.', 'warning');
+      return;
+    }
     try {
       const res = await fetch('/api/student/program-applications', {
         method: 'POST',
@@ -52,16 +60,17 @@ export default function StudentProjectsPage() {
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <FolderGit2 size={28} className="text-secondary" strokeWidth={1.5} />
-            Projects
+            Browse Projects
           </h1>
           <p className="text-secondary">
-            Short projects and hackathons published for your campus. Apply when you meet the criteria — listings are real DB data
-            only.
+            Short projects published for your campus. Apply when you meet the criteria — listings are real DB data only.
           </p>
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-secondary">Loading…</p>}
+      <StudentApplyResumeBanner canApply={canApply} />
+
+      {isLoading && <PageLoading message="Loading projects…" inline />}
       {error && (
         <div className="card" style={{ borderColor: 'var(--danger-500)' }}>
           <p className="text-sm" style={{ margin: 0 }}>
@@ -81,8 +90,8 @@ export default function StudentProjectsPage() {
       {!isLoading && !error && items.length === 0 && (
         <div className="card">
           <p className="text-secondary" style={{ margin: 0 }}>
-            No published projects for your campus yet. Employers post these from Projects (short project / hackathon) and select your
-            college.
+            No published short projects for your campus yet. Employers post these from Projects and select your college. For hackathons,
+            use Browse Hackathons in the Placements menu.
           </p>
         </div>
       )}
@@ -96,7 +105,9 @@ export default function StudentProjectsPage() {
                   <span className="font-semibold text-lg">{row.title}</span>
                   <span className="badge badge-indigo">{typeLabel(row.jobType)}</span>
                 </div>
-                <div className="text-sm text-secondary">{row.companyName}</div>
+                <div className="text-sm text-secondary">
+                  <CompanyNameLink name={row.companyName} website={row.website} />
+                </div>
                 {row.description && (
                   <p className="text-sm" style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
                     {row.description}
@@ -131,8 +142,13 @@ export default function StudentProjectsPage() {
                     {formatStatus(row.applicationStatus)}
                   </span>
                 ) : (
-                  <button type="button" className="btn btn-primary" onClick={() => apply(row.id, row.title)}>
-                    Apply
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!canApply}
+                    onClick={() => apply(row.id, row.title)}
+                  >
+                    {canApply ? 'Apply' : 'CV required'}
                   </button>
                 )}
               </div>

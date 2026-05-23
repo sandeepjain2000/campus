@@ -114,6 +114,64 @@ export async function createStudentDocumentPresign({ userId, fileName, contentTy
 }
 
 /**
+ * Upload a student document from the server (avoids browser→S3 CORS / presigned Content-Type drift).
+ * @param {{ userId: string, fileName: string, contentType: string, body: Buffer | Uint8Array }} opts
+ */
+export async function uploadStudentDocumentBuffer({ userId, fileName, contentType, body }) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+
+  const bucket = process.env.S3_BUCKET_NAME;
+  const region = process.env.AWS_REGION;
+  const safe = sanitizeFilename(fileName);
+  const key = `students/${userId}/${randomUUID()}-${safe}`;
+  const resolvedType = contentType || 'application/octet-stream';
+
+  const client = getClient();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: resolvedType,
+    }),
+  );
+
+  const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
+  return { fileUrl, key, bucket, contentType: resolvedType };
+}
+
+/**
+ * Upload a student avatar from the server (avoids browser→S3 CORS issues).
+ * @param {{ userId: string, fileName: string, contentType: string, body: Buffer | Uint8Array }} opts
+ */
+export async function uploadStudentAvatarBuffer({ userId, fileName, contentType, body }) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+
+  const bucket = process.env.S3_BUCKET_NAME;
+  const region = process.env.AWS_REGION;
+  const safe = sanitizeFilename(fileName);
+  const key = `students/${userId}/avatar/${randomUUID()}-${safe}`;
+  const resolvedType = contentType || 'application/octet-stream';
+
+  const client = getClient();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: resolvedType,
+    }),
+  );
+
+  const fileUrl = buildS3ObjectPublicUrl(bucket, region, key);
+  return { fileUrl, key, bucket, contentType: resolvedType };
+}
+
+/**
  * Profile photo — same bucket/IAM prefix `students/{userId}/…` as documents.
  * Like documents, **omit signed Content-Type by default** so browser PUTs cannot hit
  * SigV4 SignatureDoesNotMatch (case/charset drift between presign and fetch).

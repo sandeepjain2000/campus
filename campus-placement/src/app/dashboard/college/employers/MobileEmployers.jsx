@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
@@ -134,7 +135,9 @@ export default function MobileEmployers() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1rem' }}>
                     <EntityLogo name={emp.name} website={emp.website} size="sm" shape="rounded" />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{emp.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                        <CompanyNameLink name={emp.name} website={emp.website} />
+                      </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{emp.industry || '—'}</div>
                     </div>
                     <StatusPill status={emp.status} />

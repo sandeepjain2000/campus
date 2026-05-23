@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
   Award,
@@ -18,10 +20,13 @@ import {
   Search,
   UserRound,
   X,
+  ExternalLink,
+  FolderOpen,
 } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
+import PageLoading from '@/components/PageLoading';
 
 const TABS = [
   { id: 'jobs', label: 'Jobs', shortLabel: 'Jobs', icon: Briefcase, desc: 'Applications to your placement drives (full-time, PPO, etc.).' },
@@ -63,11 +68,56 @@ function formatPercent(value) {
   return value !== null && value !== undefined && value !== '' ? `${Number(value).toFixed(2)}%` : '-';
 }
 
+function formatDocType(type) {
+  const t = String(type || '').trim();
+  if (!t) return 'Document';
+  return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function formatPeriod(start, end) {
   const from = start ? formatDate(start) : '';
   const to = end ? formatDate(end) : '';
   if (!from && !to) return '';
   return `${from || 'Started'} - ${to || 'Present'}`;
+}
+
+function formatPlacementStatus(status) {
+  const s = String(status || '').trim();
+  if (!s) return '';
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatSalaryRange(min, max) {
+  const lo = min != null && min !== '' && Number(min) > 0 ? `₹${Number(min).toLocaleString('en-IN')}` : '';
+  const hi = max != null && max !== '' && Number(max) > 0 ? `₹${Number(max).toLocaleString('en-IN')}` : '';
+  if (!lo && !hi) return '';
+  return `${lo || '—'} – ${hi || '—'}`;
+}
+
+function SchoolingDetails({ details }) {
+  if (!details || typeof details !== 'object') return null;
+  const levels = [
+    { key: 'tenth', label: 'Class X (school)' },
+    { key: 'twelfth', label: 'Class XII (school)' },
+    { key: 'diploma', label: 'Diploma' },
+  ];
+  const rows = levels
+    .map(({ key, label }) => {
+      const row = details[key] || {};
+      if (!row.institution && !row.board && !row.year && !row.notes) return null;
+      return (
+        <article key={key} className="employer-profile-list-row">
+          <div className="employer-profile-list-title">{label}</div>
+          <div className="employer-profile-list-meta">
+            {[row.institution, row.board, row.year].filter(Boolean).join(' · ')}
+          </div>
+          {row.notes ? <p>{row.notes}</p> : null}
+        </article>
+      );
+    })
+    .filter(Boolean);
+  if (!rows.length) return null;
+  return <div className="employer-profile-list" style={{ marginTop: '0.85rem' }}>{rows}</div>;
 }
 
 function InfoBlock({ label, value, mono = false }) {
@@ -129,9 +179,65 @@ function ActivityList({ items }) {
   );
 }
 
-function StudentProfileFullScreen({ profileData, profileError, profileLoading, onClose, onOpenResume }) {
+function StudentDocumentsPanel({ student, onOpenResume }) {
+  const documents = asList(student?.documents);
+  const resume = student?.resume;
+
+  return (
+    <ProfileSection icon={FolderOpen} title="Resume & documents">
+      <div className="employer-profile-list">
+        {resume?.hasResume ? (
+          <article className="employer-profile-list-row">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div>
+                <div className="employer-profile-list-title">CV / Resume</div>
+                <div className="employer-profile-list-meta">{resume.fileName || 'Uploaded by student'}</div>
+              </div>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => onOpenResume(resume.viewUrl)}>
+                <FileText size={15} /> Open CV <ExternalLink size={13} />
+              </button>
+            </div>
+          </article>
+        ) : (
+          <p className="text-sm text-tertiary" style={{ margin: 0 }}>No CV uploaded yet.</p>
+        )}
+        {documents.map((doc) => (
+          <article key={doc.id} className="employer-profile-list-row">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div>
+                <div className="employer-profile-list-title">{doc.name || formatDocType(doc.type)}</div>
+                <div className="employer-profile-list-meta">
+                  {[formatDocType(doc.type), doc.uploadedAt ? formatDate(doc.uploadedAt) : ''].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+              {doc.viewUrl ? (
+                <a
+                  href={doc.viewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <FileText size={14} /> Open <ExternalLink size={12} />
+                </a>
+              ) : (
+                <span className="text-xs text-tertiary">Unavailable</span>
+              )}
+            </div>
+          </article>
+        ))}
+        {!resume?.hasResume && documents.length === 0 ? (
+          <p className="text-sm text-tertiary" style={{ margin: 0 }}>This student has not uploaded any documents.</p>
+        ) : null}
+      </div>
+    </ProfileSection>
+  );
+}
+
+function StudentProfileFullScreen({ profileData, profileError, profileLoading, applicationContext, onClose, onOpenResume }) {
   const student = profileData?.student;
   const profile = student?.profile || {};
+  const avatarSrc = student?.avatarUrl || profile.avatarUrl || '';
   const initials = (student?.name || 'Student')
     .split(' ')
     .filter(Boolean)
@@ -145,19 +251,34 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
   const projects = asList(profile.projects);
   const internships = asList(profile.internships);
   const otherWork = asList(profile.otherWork);
+  const workExperience = asList(profile.workExperience);
+  const phones = asList(profile.phones).filter((p) => p?.value);
+  const emails = asList(profile.emails).filter((e) => e?.value);
+  const skillItems = asList(student?.skillsDetailed).length
+    ? student.skillsDetailed.map((s) => ({ name: s.name, proficiency: s.proficiency }))
+    : asList(profile.skills).map((name) => ({ name }));
 
   return (
     <div className="modal-overlay employer-profile-overlay" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="employer-profile-shell" role="dialog" aria-modal="true" aria-labelledby="employer-profile-title">
         <header className="employer-profile-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
-            <div className="employer-profile-avatar">{initials || 'S'}</div>
+            {avatarSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarSrc} alt="" className="employer-profile-avatar employer-profile-avatar-img" />
+            ) : (
+              <div className="employer-profile-avatar">{initials || 'S'}</div>
+            )}
             <div style={{ minWidth: 0 }}>
               <h2 id="employer-profile-title">{student?.name || 'Student profile'}</h2>
-              <p>{student?.collegeName || 'College'}{student?.rollNumber ? ` - ${student.rollNumber}` : ''}</p>
+              <p>
+                {student?.collegeName || 'College'}
+                {student?.rollNumber ? ` · ${student.rollNumber}` : ''}
+                {student?.enrollmentNumber ? ` · ${student.enrollmentNumber}` : ''}
+              </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             {student?.resume?.hasResume ? (
               <button type="button" className="btn btn-primary" onClick={() => onOpenResume(student.resume.viewUrl)}>
                 <FileText size={16} /> Open CV
@@ -178,26 +299,87 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
           )}
           {!profileLoading && !profileError && student && (
             <>
+              {applicationContext ? (
+                <section className="employer-profile-section employer-profile-application-banner">
+                  <div className="employer-profile-section-header">
+                    <span className="employer-profile-section-icon"><ClipboardList size={17} /></span>
+                    <h3>This application</h3>
+                  </div>
+                  <div className="employer-profile-grid">
+                    <InfoBlock label="Opening" value={applicationContext.openingTitle} />
+                    <InfoBlock label="Type" value={jobTypeLabel(applicationContext.jobType)} />
+                    <InfoBlock label="Status" value={formatStatus(applicationContext.status)} />
+                    <InfoBlock label="Applied" value={applicationContext.appliedAt ? formatDate(applicationContext.appliedAt) : ''} />
+                    {applicationContext.currentRound ? (
+                      <InfoBlock label="Current round" value={applicationContext.currentRound} />
+                    ) : null}
+                  </div>
+                  {applicationContext.notes ? (
+                    <p className="employer-profile-bio" style={{ marginTop: '0.75rem' }}>{applicationContext.notes}</p>
+                  ) : null}
+                </section>
+              ) : null}
+
               <div className="employer-profile-summary">
+                <InfoBlock label="Department" value={profile.department} />
                 <InfoBlock label="Branch" value={profile.branch || profile.department} />
                 <InfoBlock label="CGPA" value={profile.cgpa !== '' && profile.cgpa != null ? Number(profile.cgpa).toFixed(2) : ''} />
-                <InfoBlock label="Batch" value={profile.batchYear} />
+                <InfoBlock label="Batch" value={profile.batch || profile.batchYear} />
+                <InfoBlock label="Joining year" value={profile.joiningAcademicYear} />
                 <InfoBlock label="Graduation" value={profile.graduationYear} />
+                <InfoBlock label="Placement" value={formatPlacementStatus(student.placementStatus)} />
+                <InfoBlock label="Expected CTC" value={formatSalaryRange(profile.expectedSalaryMin ?? student.expectedSalaryMin, profile.expectedSalaryMax ?? student.expectedSalaryMax)} />
               </div>
 
-              <ProfileSection icon={UserRound} title="Contact & Overview">
+              <StudentDocumentsPanel student={student} onOpenResume={onOpenResume} />
+
+              <ProfileSection icon={UserRound} title="Contact & personal">
                 <div className="employer-profile-grid">
-                  <InfoBlock label="Email" value={student.email} />
-                  <InfoBlock label="Communication Email" value={profile.communicationEmail} />
-                  <InfoBlock label="Phone" value={asList(profile.phones).find((p) => p.value)?.value} />
-                  <InfoBlock label="Roll Number" value={student.rollNumber} mono />
-                  <InfoBlock label="Enrollment Number" value={student.enrollmentNumber} mono />
+                  <InfoBlock label="Account email" value={student.email} />
+                  <InfoBlock label="College email" value={profile.collegeEmail} />
+                  <InfoBlock label="Communication email" value={profile.communicationEmail} />
+                  <InfoBlock label="Personal email" value={profile.personalEmail} />
+                  <InfoBlock label="Roll number" value={student.rollNumber} mono />
+                  <InfoBlock label="Enrollment number" value={student.enrollmentNumber} mono />
+                  <InfoBlock label="Gender" value={student.gender || profile.gender} />
+                  <InfoBlock label="Date of birth" value={student.dateOfBirth ? formatDate(student.dateOfBirth) : ''} />
+                  <InfoBlock label="Category" value={student.category} />
+                  <InfoBlock label="Affiliated institution" value={student.affiliatedInstitution} />
+                  <InfoBlock label="Preferred locations" value={profile.preferredLocations} />
                   <InfoBlock label="Relocation" value={profile.willingToRelocate ? 'Open to relocate' : 'Not open to relocate'} />
+                  {student.address ? (
+                    <InfoBlock
+                      label="Address"
+                      value={[student.address.line1, student.address.city, student.address.state, student.address.pincode].filter(Boolean).join(', ')}
+                    />
+                  ) : null}
                 </div>
+                {phones.length ? (
+                  <div style={{ marginTop: '0.85rem' }}>
+                    <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Phone numbers</div>
+                    <div className="employer-profile-grid">
+                      {phones.map((phone, index) => (
+                        <InfoBlock key={`${phone.label}-${index}`} label={phone.label || 'Phone'} value={phone.value} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {emails.length ? (
+                  <div style={{ marginTop: '0.85rem' }}>
+                    <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Email addresses</div>
+                    <div className="employer-profile-grid">
+                      {emails.map((entry, index) => (
+                        <InfoBlock key={`${entry.label}-${index}`} label={entry.label || 'Email'} value={entry.value} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {profile.bio ? <p className="employer-profile-bio">{profile.bio}</p> : null}
                 <div className="employer-profile-links">
                   {student.email ? <span><Mail size={13} /> {student.email}</span> : null}
-                  {asList(profile.phones).find((p) => p.value)?.value ? <span><Phone size={13} /> {asList(profile.phones).find((p) => p.value)?.value}</span> : null}
+                  {phones.map((phone, index) => (
+                    phone.value ? <span key={`phone-link-${index}`}><Phone size={13} /> {phone.label ? `${phone.label}: ` : ''}{phone.value}</span> : null
+                  ))}
                   {profile.preferredLocations ? <span><MapPin size={13} /> {profile.preferredLocations}</span> : null}
                   {profileLinks.map((link) => (
                     <a key={link.url} href={link.url} target="_blank" rel="noreferrer">
@@ -209,12 +391,13 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
 
               <ProfileSection icon={GraduationCap} title="Academics">
                 <div className="employer-profile-grid">
-                  <InfoBlock label="Class X" value={formatPercent(profile.tenthPercentage)} />
-                  <InfoBlock label="Class XII" value={formatPercent(profile.twelfthPercentage)} />
-                  <InfoBlock label="Diploma" value={formatPercent(profile.diplomaPercentage)} />
-                  <InfoBlock label="Active Backlogs" value={profile.backlogsActive ?? 0} />
-                  <InfoBlock label="Total Backlogs" value={profile.backlogsHistory ?? 0} />
+                  <InfoBlock label="Class X %" value={formatPercent(profile.tenthPercentage)} />
+                  <InfoBlock label="Class XII %" value={formatPercent(profile.twelfthPercentage)} />
+                  <InfoBlock label="Diploma %" value={formatPercent(profile.diplomaPercentage)} />
+                  <InfoBlock label="Active backlogs" value={profile.backlogsActive ?? 0} />
+                  <InfoBlock label="Total backlogs" value={profile.backlogsHistory ?? 0} />
                 </div>
+                <SchoolingDetails details={profile.educationDetails} />
                 {educationRecords.length ? (
                   <div className="employer-profile-list" style={{ marginTop: '0.85rem' }}>
                     {educationRecords.map((record, index) => (
@@ -231,7 +414,19 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
               </ProfileSection>
 
               <ProfileSection icon={BookOpen} title="Skills">
-                <TagList items={profile.skills} />
+                <TagList items={skillItems} />
+                {(asList(student.languages).length > 0 || asList(student.subjects).length > 0) ? (
+                  <div className="employer-profile-two-col" style={{ marginTop: '0.85rem' }}>
+                    <div>
+                      <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Languages</div>
+                      <TagList items={student.languages} />
+                    </div>
+                    <div>
+                      <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Subjects</div>
+                      <TagList items={student.subjects} />
+                    </div>
+                  </div>
+                ) : null}
               </ProfileSection>
 
               <ProfileSection icon={FolderDot} title="Projects">
@@ -243,6 +438,20 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
                         <div className="employer-profile-list-meta">{formatPeriod(project.startDate, project.endDate)}</div>
                         {project.description ? <p>{project.description}</p> : null}
                         <TagList items={project.techStack} />
+                        {(project.projectUrl || project.githubUrl) ? (
+                          <div className="employer-profile-links" style={{ marginTop: '0.5rem' }}>
+                            {project.projectUrl ? (
+                              <a href={project.projectUrl} target="_blank" rel="noreferrer">
+                                <ExternalLink size={13} /> Project link
+                              </a>
+                            ) : null}
+                            {project.githubUrl ? (
+                              <a href={project.githubUrl} target="_blank" rel="noreferrer">
+                                <LinkIcon size={13} /> GitHub
+                              </a>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </article>
                     ))}
                   </div>
@@ -253,17 +462,35 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
                 <ProfileSection icon={Briefcase} title="Internships">
                   <ActivityList items={internships} />
                 </ProfileSection>
-                <ProfileSection icon={Briefcase} title="Other Work">
-                  <ActivityList items={otherWork} />
+                <ProfileSection icon={Briefcase} title="Work experience">
+                  <ActivityList items={workExperience} />
                 </ProfileSection>
               </div>
 
-              <ProfileSection icon={Award} title="Activities & Achievements">
+              {otherWork.length ? (
+                <ProfileSection icon={Briefcase} title="Other work">
+                  <ActivityList items={otherWork} />
+                </ProfileSection>
+              ) : null}
+
+              <ProfileSection icon={Award} title="Activities & achievements">
                 <div className="employer-profile-two-col">
-                  <ActivityList items={profile.responsibilities} />
-                  <ActivityList items={profile.accomplishments} />
-                  <ActivityList items={profile.volunteering} />
-                  <ActivityList items={profile.extracurriculars} />
+                  <div>
+                    <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Responsibilities</div>
+                    <ActivityList items={profile.responsibilities} />
+                  </div>
+                  <div>
+                    <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Accomplishments</div>
+                    <ActivityList items={profile.accomplishments} />
+                  </div>
+                  <div>
+                    <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Volunteering</div>
+                    <ActivityList items={profile.volunteering} />
+                  </div>
+                  <div>
+                    <div className="employer-profile-label" style={{ marginBottom: '0.4rem' }}>Extracurriculars</div>
+                    <ActivityList items={profile.extracurriculars} />
+                  </div>
                 </div>
               </ProfileSection>
             </>
@@ -276,13 +503,27 @@ function StudentProfileFullScreen({ profileData, profileError, profileLoading, o
 
 export default function EmployerApplicationsPage() {
   const { addToast } = useToast();
+  const searchParams = useSearchParams();
+  const driveIdFromUrl = String(searchParams.get('driveId') || '').trim();
   const [tab, setTab] = useState('jobs');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [sortOption, setSortOption] = useState('date_desc');
-  const [profileStudentId, setProfileStudentId] = useState(null);
+  const [profileContext, setProfileContext] = useState(null);
+  const profileStudentId = profileContext?.studentId ?? null;
 
-  const { data, error, isLoading, mutate } = useSWR(`/api/employer/applications?tab=${tab}`, fetcher, {
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'jobs' || tabParam === 'internships' || tabParam === 'projects') {
+      setTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const applicationsUrl = driveIdFromUrl && tab === 'jobs'
+    ? `/api/employer/applications?tab=${tab}&driveId=${encodeURIComponent(driveIdFromUrl)}`
+    : `/api/employer/applications?tab=${tab}`;
+
+  const { data, error, isLoading, mutate } = useSWR(applicationsUrl, fetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 0,
   });
@@ -368,7 +609,7 @@ export default function EmployerApplicationsPage() {
       <div
         style={{
           position: 'relative',
-          background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+          background: 'var(--banner-gradient)',
           borderRadius: 'var(--radius-xl)',
           padding: '2.5rem',
           color: 'white',
@@ -403,6 +644,33 @@ export default function EmployerApplicationsPage() {
           />
         </div>
       </div>
+
+      {driveIdFromUrl && tab === 'jobs' && (
+        <div
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            marginBottom: '1.25rem',
+            padding: '0.85rem 1.1rem',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-default)',
+            background: 'var(--primary-50)',
+            color: 'var(--text-primary)',
+            fontSize: '0.9rem',
+          }}
+        >
+          <span>
+            Showing applicants for one placement drive. Use <strong>Shortlist</strong> on each row to move candidates forward.
+          </span>
+          <Link href="/dashboard/employer/applications?tab=jobs" className="btn btn-ghost btn-sm">
+            Show all drives
+          </Link>
+        </div>
+      )}
 
       {/* Type Tabs - pill style */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
@@ -496,11 +764,14 @@ export default function EmployerApplicationsPage() {
       </div>
 
       {isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton" style={{ height: '56px', borderRadius: 'var(--radius-md)' }} />
-          ))}
-        </div>
+        <>
+          <PageLoading message="Loading applications…" inline delayMs={0} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} aria-hidden="true">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="skeleton" style={{ height: '56px', borderRadius: 'var(--radius-md)' }} />
+            ))}
+          </div>
+        </>
       )}
 
       {!isLoading && !error && filtered.length === 0 && (
@@ -516,7 +787,7 @@ export default function EmployerApplicationsPage() {
 
       {!isLoading && !error && filtered.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
-          <div className="table-container" style={{ border: 'none' }}>
+          <div className="table-container" style={{ border: 'none', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="data-table">
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)' }}>
@@ -528,7 +799,7 @@ export default function EmployerApplicationsPage() {
                   <th>Type</th>
                   <th>Status</th>
                   <th>Applied</th>
-                  <th style={{ textAlign: 'right', paddingRight: '1.5rem' }}>Actions</th>
+                  <th style={{ textAlign: 'right', paddingRight: '1.5rem', minWidth: 280 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -581,15 +852,44 @@ export default function EmployerApplicationsPage() {
                       </td>
                       <td className="text-sm text-secondary">{app.appliedAt ? formatDate(app.appliedAt) : '—'}</td>
                       <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setProfileStudentId(app.studentProfileId)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <UserRound size={14} /> Profile
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() =>
+                              setProfileContext({
+                                studentId: app.studentProfileId,
+                                openingTitle: app.openingTitle,
+                                status: app.status,
+                                appliedAt: app.appliedAt,
+                                currentRound: app.currentRound,
+                                jobType: app.jobType,
+                                notes: app.notes,
+                                sourceKind: app.sourceKind,
+                              })
+                            }
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            title="View full student profile, CV, and all uploaded documents"
+                          >
+                            <UserRound size={14} /> View
+                            {app.documentCount > 0 ? (
+                              <span className="badge badge-gray" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+                                {app.documentCount}
+                              </span>
+                            ) : null}
                           </button>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => openResume(app.resumeUrl)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => openResume(app.resumeUrl)}
+                            disabled={!app.hasResume}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            title={app.hasResume ? 'Open CV only' : 'No CV uploaded'}
+                          >
                             <FileText size={14} /> CV
                           </button>
                           {(app.status === 'applied' || app.status === 'on_hold') && (
-                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => updateStatus(app, 'shortlisted')}>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'shortlisted')}>
                               Shortlist
                             </button>
                           )}
@@ -608,7 +908,8 @@ export default function EmployerApplicationsPage() {
           profileData={profileData}
           profileError={profileError}
           profileLoading={profileLoading}
-          onClose={() => setProfileStudentId(null)}
+          applicationContext={profileContext}
+          onClose={() => setProfileContext(null)}
           onOpenResume={openResume}
         />
       )}
@@ -664,6 +965,14 @@ export default function EmployerApplicationsPage() {
           font-weight: 800;
           flex-shrink: 0;
         }
+        .employer-profile-avatar-img {
+          object-fit: cover;
+          background: var(--bg-secondary);
+        }
+        .employer-profile-application-banner {
+          border-color: var(--primary-200);
+          background: var(--primary-50);
+        }
         .employer-profile-body {
           max-width: 1180px;
           margin: 0 auto;
@@ -673,7 +982,7 @@ export default function EmployerApplicationsPage() {
         }
         .employer-profile-summary {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
           gap: 0.75rem;
         }
         .employer-profile-section {

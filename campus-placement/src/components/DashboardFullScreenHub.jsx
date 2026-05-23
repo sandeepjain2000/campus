@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import { Sun, Moon, Search, Bell } from 'lucide-react';
-import { useTheme } from '@/components/ThemeProvider';
+import { Search, Bell } from 'lucide-react';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 import EntityLogo from '@/components/EntityLogo';
 import { menuConfig, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
 import { getDevScreenId } from '@/config/devScreenIds';
@@ -62,12 +62,12 @@ function getQuickActions(role, employerHasCampus) {
   }
   if (role === 'super_admin') {
     return [
-      { label: 'Pending sign-ups', href: '/dashboard/admin/pending-registrations' },
+      { label: 'Onboard colleges & employers', href: '/dashboard/admin/pending-registrations' },
       { label: 'Colleges', href: '/dashboard/admin/colleges' },
       { label: 'Users', href: '/dashboard/admin/users' },
       { label: 'Employers', href: '/dashboard/admin/employers' },
       { label: 'Feedback inbox', href: '/dashboard/admin/feedback' },
-      { label: 'Dashboard', href: '/dashboard/admin/overview' },
+      { label: 'Platform overview', href: '/dashboard/admin/overview' },
     ];
   }
   return [];
@@ -86,7 +86,6 @@ function syncNavSection(sectionId) {
  * Matches the multi-column hub layout (see globals .dashboard-nav-hub-*).
  */
 export default function DashboardFullScreenHub({ role, session }) {
-  const { theme, toggleTheme } = useTheme();
   const menu = menuConfig[role] || menuConfig.student;
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
   const [employerHasCampus, setEmployerHasCampus] = useState(() => {
@@ -209,15 +208,7 @@ export default function DashboardFullScreenHub({ role, session }) {
             <Bell size={18} aria-hidden="true" />
             <span className="notification-dot" aria-hidden />
           </Link>
-          <button
-            type="button"
-            className="btn btn-ghost btn-icon"
-            onClick={toggleTheme}
-            title="Toggle theme"
-            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-          >
-            {theme === 'light' ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
-          </button>
+          <ThemeToggleButton />
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut({ callbackUrl: '/login' })}>
             Sign out
           </button>

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { Target, Plus, Video, Building2, Calendar, Users, ChevronDown, Check } from 'lucide-react';
+import { Target, Plus, Video, Building2, Calendar, Users, ChevronDown, Check, ClipboardList } from 'lucide-react';
+import PageLoading from '@/components/PageLoading';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -118,7 +120,7 @@ export default function EmployerDrivesPage() {
       {/* ── Hero Banner ── */}
       <div style={{
         position: 'relative',
-        background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem',
         color: 'white', overflow: 'hidden', marginBottom: '2rem',
         boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
@@ -253,7 +255,9 @@ export default function EmployerDrivesPage() {
 
       {/* ── Loading skeletons ── */}
       {isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <>
+          <PageLoading message="Loading placement drives…" inline delayMs={0} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} aria-hidden="true">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card" style={{ padding: '1.5rem' }}>
               <div className="skeleton" style={{ height: '1.2rem', width: '45%', borderRadius: '6px', marginBottom: '0.6rem' }} />
@@ -266,6 +270,7 @@ export default function EmployerDrivesPage() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* ── Drive list ── */}
@@ -274,7 +279,7 @@ export default function EmployerDrivesPage() {
           {drives.map((drive) => (
             <div key={drive.id} className="card card-hover" style={{ border: '1px solid var(--border-default)', padding: '1.5rem' }}>
               {/* Card header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <EntityLogo name={drive.college} size="sm" shape="rounded" />
                   <div>
@@ -285,6 +290,16 @@ export default function EmployerDrivesPage() {
                     <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{drive.role}</p>
                   </div>
                 </div>
+                {(drive.registered ?? 0) > 0 && drive.status !== 'requested' && drive.status !== 'rejected' && (
+                  <Link
+                    href={`/dashboard/employer/applications?tab=jobs&driveId=${encodeURIComponent(drive.id)}`}
+                    className="btn btn-primary btn-sm"
+                    style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <ClipboardList size={14} aria-hidden />
+                    Review applicants
+                  </Link>
+                )}
               </div>
 
               {/* Info grid */}

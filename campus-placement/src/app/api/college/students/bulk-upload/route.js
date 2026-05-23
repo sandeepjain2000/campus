@@ -5,7 +5,20 @@ import { authOptions } from '@/lib/auth';
 import { transaction, query } from '@/lib/db';
 import { hash } from 'bcryptjs';
 import { parseCsvLine } from '@/lib/csvParse';
+import { validateStudentCsvHeaders } from '@/lib/collegeStudentsCsv';
 import { sendMail, STUDENT_WELCOME_SUBJECT, studentWelcomeEmailBody } from '@/lib/mailer';
+import {
+  assertEmailAvailable,
+  formatEmailDifferentTenantMessage,
+  formatEmailInUseMessage,
+} from '@/lib/userEmail';
+import {
+  validateStudentCgpa,
+  parseStudentFullName,
+  resolveStudentRollNumber,
+  validateStudentBranchField,
+} from '@/lib/validators';
+import { reconcileBatchFields } from '@/lib/studentBatch';
 
 export async function POST(req) {
   try {
@@ -27,23 +40,35 @@ export async function POST(req) {
     const allLines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
     if (allLines.length < 2) return NextResponse.json({ error: 'File is empty' }, { status: 400 });
 
-    const headers = parseCsvLine(allLines[0]).map((h) => h.trim().toLowerCase());
-    const getIdx = (name) => headers.indexOf(name.toLowerCase());
-
-    const nameIdx = getIdx('Name');
-    const emailIdx = getIdx('Email');
-    const rollIdx = getIdx('Roll');
-    const deptIdx = getIdx('Department');
-    const specIdx = getIdx('Specialization');
-    const cgpaIdx = getIdx('CGPA');
-    const verifiedIdx = getIdx('Verified');
-    const genderIdx = getIdx('Gender');
-    const jobIdx = getIdx('Job Status');
-    const catIdx = getIdx('Diversity Category');
-
-    if (nameIdx === -1 || emailIdx === -1 || rollIdx === -1) {
-      return NextResponse.json({ error: 'Missing required columns: Name, Email, Roll' }, { status: 400 });
+    const headerRow = parseCsvLine(allLines[0]);
+    const headerCheck = validateStudentCsvHeaders(headerRow);
+    if (!headerCheck.ok) {
+      return NextResponse.json(
+        {
+          error: headerCheck.error,
+          hint: 'Download the import template from Students and match its column headers exactly.',
+        },
+        { status: 400 },
+      );
     }
+    const idx = headerCheck.idx;
+    const expectedColCount = headerRow.length;
+    const getIdx = (name) => idx[String(name).trim().toLowerCase()];
+
+    const nameIdx = getIdx('name');
+    const emailIdx = getIdx('email');
+    const rollIdx = getIdx('roll');
+    const deptIdx = getIdx('department');
+    const specIdx = getIdx('specialization');
+    const cgpaIdx = getIdx('cgpa');
+    const verifiedIdx = getIdx('verified');
+    const genderIdx = getIdx('gender');
+    const jobIdx = getIdx('job status');
+    const catIdx = getIdx('diversity category');
+    const batchIdx = getIdx('batch');
+    const admissionIdx = getIdx('admission year');
+    const gradIdx = getIdx('graduation year');
+    const legacyBatchYearIdx = getIdx('batch year');
 
     const results = await transaction(async (client) => {
       let processed = 0;
@@ -55,23 +80,39 @@ export async function POST(req) {
 
       for (let i = 1; i < allLines.length; i++) {
         const cells = parseCsvLine(allLines[i]);
-        if (cells.length < 3) { console.log(`[BulkUpload] Row ${i+1}: skipped (too few cells: ${cells.length})`); continue; }
+        if (cells.every((c) => !String(c || '').trim())) continue;
+        if (cells.length < 3 || cells.length < Math.min(expectedColCount, 8)) {
+          errors.push(`Row ${i + 1}: Too few columns — use the official import template.`);
+          continue;
+        }
 
         const email = cells[emailIdx]?.toLowerCase();
         const name = cells[nameIdx];
-        const roll = cells[rollIdx];
+        const rollRaw = cells[rollIdx];
 
-        if (!email || !name || !roll) {
-          const msg = `Row ${i + 1}: Missing name/email/roll (name='${name}', email='${email}', roll='${roll}')`;
+        if (!email || !name || !rollRaw) {
+          const msg = `Row ${i + 1}: Missing name/email/roll (name='${name}', email='${email}', roll='${rollRaw}')`;
           console.warn('[BulkUpload]', msg);
           errors.push(msg);
           continue;
         }
 
+        const nameParsed = parseStudentFullName(name);
+        if (nameParsed.error) {
+          errors.push(`Row ${i + 1}: ${nameParsed.error}`);
+          continue;
+        }
+
+        const rollResolved = resolveStudentRollNumber(rollRaw, shortCode);
+        if (rollResolved.error) {
+          errors.push(`Row ${i + 1}: ${rollResolved.error}`);
+          continue;
+        }
+        const roll = rollResolved.rollNumber;
+        const rowSystemId = rollResolved.systemId;
+
         try {
-          const [firstName, ...lastParts] = name.split(/\s+/);
-          const lastName = lastParts.join(' ') || null;
-          const fullName = [firstName, lastName].filter(Boolean).join(' ');
+          const { firstName, lastName, fullName } = nameParsed;
 
           // 1. Roll No is the visible system primary key within a tenant.
           //    Look up by (tenant_id + roll_number) first — then validate Name & Email match.
@@ -114,25 +155,16 @@ export async function POST(req) {
             );
             console.log(`[BulkUpload] Row ${i+1}: Roll No "${roll}" matched — updating non-primary fields for ${email}`);
           } else {
-            // Roll No not found in this tenant — check if email is already taken (cross-roll conflict)
-            const existingByEmail = await client.query(
-              `SELECT u.id, u.tenant_id, sp.roll_number
-               FROM users u
-               LEFT JOIN student_profiles sp ON sp.user_id = u.id
-               WHERE u.email = $1 LIMIT 1`,
-              [email]
-            );
-
-            if (existingByEmail.rows.length) {
-              const ex = existingByEmail.rows[0];
-              if (ex.tenant_id !== tenantId) {
-                throw new Error(`Email "${email}" is already registered under a different institution.`);
+            try {
+              await assertEmailAvailable(client, email, { tenantId });
+            } catch (e) {
+              if (e.message === 'EMAIL_DIFFERENT_TENANT') {
+                throw new Error(formatEmailDifferentTenantMessage(email));
               }
-              // Email exists but with a different roll — this is a primary key conflict
-              throw new Error(
-                `Email "${email}" already exists with Roll No "${ex.roll_number}". ` +
-                `Roll No and Email together cannot be reassigned — use a different email for Roll No "${roll}".`
-              );
+              if (e.message === 'EMAIL_EXISTS') {
+                throw new Error(formatEmailInUseMessage(e.existing, { email }));
+              }
+              throw e;
             }
 
             // Genuinely new student — create account
@@ -144,24 +176,43 @@ export async function POST(req) {
               [tenantId, email, passHash, firstName || 'Student', lastName]
             );
             userId = newUser.rows[0].id;
-            const systemId = shortCode ? `${shortCode}-${roll}` : roll;
             credentials.push({
               email,
               tempPass,
               firstName: firstName || 'Student',
-              systemId,
+              systemId: rowSystemId,
             });
             console.log(`[BulkUpload] Row ${i+1}: New student created — Roll No "${roll}", email "${email}" (id=${userId})`);
           }
 
           // 2. Student Profile — only non-primary fields updated on conflict
-          const cgpa = parseFloat(cells[cgpaIdx]) || 0;
+          const cgpaRaw = cgpaIdx >= 0 ? String(cells[cgpaIdx] ?? '').trim() : '';
+          const cgpaErr = validateStudentCgpa(cgpaRaw, { required: cgpaIdx >= 0 });
+          if (cgpaErr) {
+            throw new Error(`Row ${i + 1}: ${cgpaErr}`);
+          }
+          const cgpa = cgpaRaw ? parseFloat(cgpaRaw) : 8;
           const isVerified = ['yes', 'y', 'true', '1'].includes(cells[verifiedIdx]?.toLowerCase());
           const dept = cells[deptIdx] || '';
           const branch = cells[specIdx] || '';
+          const branchErr = validateStudentBranchField(branch) || validateStudentBranchField(dept, { label: 'Department' });
+          if (branchErr) {
+            throw new Error(`Row ${i + 1}: ${branchErr}`);
+          }
           const gender = cells[genderIdx] || '';
           const jobStatus = cells[jobIdx]?.toLowerCase().replace(/\s+/g, '_') || 'unplaced';
           const category = cells[catIdx] || 'General';
+
+          const batchReconciled = reconcileBatchFields({
+            batch: batchIdx >= 0 ? cells[batchIdx] : '',
+            batch_year:
+              admissionIdx >= 0
+                ? cells[admissionIdx]
+                : legacyBatchYearIdx >= 0
+                  ? cells[legacyBatchYearIdx]
+                  : '',
+            graduation_year: gradIdx >= 0 ? cells[gradIdx] : '',
+          });
 
           const validStatuses = ['unplaced', 'placed', 'opted_out', 'higher_studies'];
           const finalStatus = validStatuses.includes(jobStatus) ? jobStatus : 'unplaced';
@@ -169,10 +220,16 @@ export async function POST(req) {
             console.warn(`[BulkUpload] Row ${i+1}: Invalid job status '${jobStatus}', defaulting to 'unplaced'`);
           }
 
+          const auxProfile = JSON.stringify({
+            batchLabel: batchReconciled.joiningAcademicYear || batchReconciled.batchLabel || '',
+            joiningAcademicYear: batchReconciled.joiningAcademicYear || batchReconciled.batchLabel || '',
+          });
+
           await client.query(
             `INSERT INTO student_profiles (
-              user_id, tenant_id, roll_number, department, branch, cgpa, gender, category, placement_status, is_verified
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              user_id, tenant_id, roll_number, department, branch, cgpa, gender, category,
+              placement_status, is_verified, batch_year, graduation_year, joining_academic_year, aux_profile
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
             ON CONFLICT (user_id) DO UPDATE SET
               -- roll_number is a primary field: NOT updated on conflict
               department = EXCLUDED.department,
@@ -182,8 +239,29 @@ export async function POST(req) {
               category = EXCLUDED.category,
               placement_status = EXCLUDED.placement_status,
               is_verified = EXCLUDED.is_verified,
+              batch_year = COALESCE(EXCLUDED.batch_year, student_profiles.batch_year),
+              graduation_year = COALESCE(EXCLUDED.graduation_year, student_profiles.graduation_year),
+              joining_academic_year = COALESCE(EXCLUDED.joining_academic_year, student_profiles.joining_academic_year),
+              aux_profile = COALESCE(student_profiles.aux_profile, '{}'::jsonb) || EXCLUDED.aux_profile,
+              archived_at = NULL,
+              archived_by = NULL,
               updated_at = NOW()`,
-            [userId, tenantId, roll, dept, branch, cgpa, gender, category, finalStatus, isVerified]
+            [
+              userId,
+              tenantId,
+              roll,
+              dept,
+              branch,
+              cgpa,
+              gender,
+              category,
+              finalStatus,
+              isVerified,
+              batchReconciled.batchYear,
+              batchReconciled.graduationYear,
+              batchReconciled.joiningAcademicYear || batchReconciled.batchLabel || null,
+              auxProfile,
+            ],
           );
 
           console.log(`[BulkUpload] Row ${i+1}: ✅ Student profile saved for ${email} (roll=${roll}, dept=${dept})`);

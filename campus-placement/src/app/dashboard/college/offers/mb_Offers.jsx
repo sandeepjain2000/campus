@@ -6,6 +6,7 @@ import { Send, FileUp, Plus } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import CompanyNameLink from '@/components/CompanyNameLink';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -16,20 +17,21 @@ const fetcher = async (url) => {
 
 const STATUS_OPTIONS = ['pending', 'accepted', 'rejected', 'expired', 'revoked'];
 
-export default function mb_Offers() {
+export default function MbCollegeOffers() {
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/college/offers', fetcher);
   const { data: studentsRaw } = useSWR('/api/college/students', fetcher);
 
   const offers = Array.isArray(data?.offers) ? data.offers : [];
   const summary = data?.summary || { total: 0, accepted: 0, pending: 0, rejected: 0, avgSalary: 0 };
-  const students = useMemo(
-    () =>
-      Array.isArray(studentsRaw)
-        ? studentsRaw.map((s) => ({ id: s.id, label: `${s.name || '—'} (${s.roll || 'no roll'})` }))
-        : [],
-    [studentsRaw],
-  );
+  const students = useMemo(() => {
+    const list = Array.isArray(studentsRaw?.students)
+      ? studentsRaw.students
+      : Array.isArray(studentsRaw)
+        ? studentsRaw
+        : [];
+    return list.map((s) => ({ id: s.id, label: `${s.name || '—'} (${s.roll || 'no roll'})` }));
+  }, [studentsRaw]);
 
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
@@ -212,7 +214,9 @@ export default function mb_Offers() {
                 </div>
                 
                 <div style={{ background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{offer.company_name || '—'}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <CompanyNameLink name={offer.company_name} website={offer.company_website} />
+                  </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{offer.job_title || '—'}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
                     <span>{offer.salary ? formatCurrency(Number(offer.salary)) : '—'}</span>

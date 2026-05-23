@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { RotateCcw, Star, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { getInitials, timeAgo } from '@/lib/utils';
 
@@ -16,6 +16,23 @@ const fetcher = async (url) => {
 async function invalidateAllNotificationCaches(mutate, globalMutate) {
   await mutate();
   await globalMutate((k) => typeof k === 'string' && k.startsWith('/api/notifications'));
+}
+
+function StarToggleButton({ starred, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={`alerts-star-btn${starred ? ' is-starred' : ''}`}
+      aria-label={starred ? 'Remove star' : 'Star this alert'}
+      title={starred ? 'Remove star' : 'Star this alert'}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      <Star size={20} strokeWidth={2} aria-hidden fill={starred ? 'currentColor' : 'none'} />
+    </button>
+  );
 }
 
 export default function AlertsEmailPage() {
@@ -34,6 +51,7 @@ export default function AlertsEmailPage() {
             snippet: n.message || '',
             time: timeAgo(n.created_at),
             read: Boolean(n.is_read),
+            starred: Boolean(n.is_starred),
           }))
         : [],
     [data],
@@ -74,6 +92,25 @@ export default function AlertsEmailPage() {
     }
   };
 
+  const toggleStar = async (id, currentlyStarred) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentlyStarred ? { unstarIds: [id] } : { starIds: [id] }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'Could not update star');
+      addToast(currentlyStarred ? 'Removed from Starred.' : 'Added to Starred.', 'success');
+      if (currentlyStarred && mailbox === 'starred') {
+        setOpenEmailId((cur) => (cur === id ? null : cur));
+      }
+      await invalidateAllNotificationCaches(mutate, globalMutate);
+    } catch (e) {
+      addToast(e.message || 'Could not update star.', 'warning');
+    }
+  };
+
   const deleteForever = async (id) => {
     try {
       const res = await fetch('/api/notifications', {
@@ -111,7 +148,7 @@ export default function AlertsEmailPage() {
 
   const handleOpen = async (id) => {
     setOpenEmailId(openEmailId === id ? null : id);
-    if (mailbox !== 'inbox') return;
+    if (mailbox === 'trash') return;
     const row = emails.find((e) => e.id === id);
     if (row?.read) return;
     try {
@@ -141,16 +178,7 @@ export default function AlertsEmailPage() {
   }
 
   return (
-    <div
-      className="animate-fadeIn alerts-inbox-root"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        flex: '1 1 auto',
-        minHeight: 0,
-        maxHeight: 'calc(100dvh - var(--topbar-height) - 3rem)',
-      }}
-    >
+    <div className="animate-fadeIn alerts-inbox-root">
       <div className="page-header" style={{ marginBottom: '1rem', flexShrink: 0 }}>
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -158,9 +186,11 @@ export default function AlertsEmailPage() {
             Inbox & Alerts
           </h1>
           <p>
-            {mailbox === 'inbox'
-              ? 'System notifications, event coordination, and alerts.'
-              : 'Alerts in Trash are removed from your inbox. Restore or delete them permanently.'}
+            {mailbox === 'inbox' &&
+              'System notifications, event coordination, and alerts. Use the star button on each row to save important alerts.'}
+            {mailbox === 'starred' && 'Alerts you marked with a star for quick access.'}
+            {mailbox === 'trash' &&
+              'Alerts in Trash are removed from your inbox. Restore or delete them permanently.'}
           </p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -173,31 +203,8 @@ export default function AlertsEmailPage() {
         </div>
       </div>
 
-      <div
-        className="card alerts-inbox-card"
-        style={{
-          flex: 1,
-          minHeight: 0,
-          padding: 0,
-          display: 'flex',
-          flexDirection: 'row',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          className="alerts-inbox-nav"
-          style={{
-            width: 'min(250px, 36vw)',
-            flexShrink: 0,
-            borderRight: '1px solid var(--border)',
-            padding: '1rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-            background: 'var(--bg-secondary)',
-            overflowY: 'auto',
-          }}
-        >
+      <div className="card alerts-inbox-card">
+        <div className="alerts-inbox-nav">
           <button
             type="button"
             className="btn btn-ghost"
@@ -217,8 +224,30 @@ export default function AlertsEmailPage() {
               {Number(data?.unreadCount || 0)}
             </span>
           </button>
-          <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--text-secondary)' }} disabled title="Coming soon">
-            ⭐ Starred
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{
+              justifyContent: 'flex-start',
+              background: mailbox === 'starred' ? 'var(--primary-100)' : undefined,
+              color: mailbox === 'starred' ? 'var(--primary-700)' : 'var(--text-secondary)',
+              fontWeight: mailbox === 'starred' ? 600 : 400,
+            }}
+            onClick={() => {
+              setMailbox('starred');
+              setOpenEmailId(null);
+            }}
+          >
+            <Star
+              size={16}
+              aria-hidden
+              style={{ marginRight: '0.35rem', verticalAlign: 'text-bottom' }}
+              fill={mailbox === 'starred' ? 'currentColor' : 'none'}
+            />
+            Starred{' '}
+            <span className="badge badge-gray" style={{ marginLeft: 'auto' }}>
+              {Number(data?.starredCount || 0)}
+            </span>
           </button>
 
           <button
@@ -239,48 +268,41 @@ export default function AlertsEmailPage() {
           </button>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+        <div className="alerts-inbox-list">
+          <div className="alerts-inbox-list-inner">
           {emails.map((email) => (
-            <div key={email.id} style={{ borderBottom: '1px solid var(--border)' }}>
+            <div key={email.id}>
               <div
-                className="hover-bg-secondary"
+                className="alerts-inbox-row"
+                data-unread={mailbox !== 'trash' && !email.read ? 'true' : 'false'}
                 onClick={() => handleOpen(email.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '0.75rem 1rem',
-                  cursor: 'pointer',
-                  gap: '0.5rem',
-                  flexWrap: 'wrap',
-                  background: mailbox === 'inbox' && !email.read ? 'white' : 'var(--bg-secondary)',
-                  fontWeight: mailbox === 'inbox' && !email.read ? 700 : 400,
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleOpen(email.id);
+                  }
                 }}
+                role="button"
+                tabIndex={0}
               >
-                <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
-                  <input type="checkbox" onClick={(e) => e.stopPropagation()} aria-label="Select (coming soon)" />
+                <div className="alerts-inbox-row-star">
+                  <StarToggleButton
+                    starred={email.starred}
+                    onToggle={() => void toggleStar(email.id, email.starred)}
+                  />
                 </div>
-                <div style={{ width: '40px', display: 'flex', justifyContent: 'center', color: 'var(--text-tertiary)' }}>⭐</div>
-                <div style={{ flex: '1 1 140px', minWidth: '120px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{email.sender}</div>
-                <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{email.subject}</span>
-                  <span style={{ color: 'var(--text-tertiary)' }}>-</span>
-                  <span
-                    style={{
-                      fontSize: '0.85rem',
-                      color: 'var(--text-secondary)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {email.snippet}
-                  </span>
+                <div className="alerts-inbox-row-body">
+                  <div className="alerts-inbox-row-sender">{email.sender}</div>
+                  <div className="alerts-inbox-row-preview">
+                    <strong>{email.subject}</strong>
+                    <span className="alerts-inbox-row-snippet">{email.snippet}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                  {mailbox === 'inbox' ? (
+                <div className="alerts-inbox-row-actions">
+                  {mailbox !== 'trash' ? (
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="btn btn-ghost btn-icon btn-sm"
                       aria-label="Move to trash"
                       title="Move to trash"
                       onClick={(e) => {
@@ -294,7 +316,7 @@ export default function AlertsEmailPage() {
                     <>
                       <button
                         type="button"
-                        className="btn btn-ghost btn-sm"
+                        className="btn btn-ghost btn-icon btn-sm"
                         aria-label="Restore to inbox"
                         title="Restore to inbox"
                         onClick={(e) => {
@@ -319,27 +341,33 @@ export default function AlertsEmailPage() {
                     </>
                   )}
                 </div>
-                <div
-                  style={{
-                    flex: '0 0 80px',
-                    textAlign: 'right',
-                    fontSize: '0.8rem',
-                    color: mailbox === 'inbox' && !email.read ? 'var(--primary-600)' : 'var(--text-secondary)',
-                  }}
-                >
-                  {email.time}
-                </div>
+                <div className="alerts-inbox-row-time">{email.time}</div>
               </div>
 
               {openEmailId === email.id && (
-                <div style={{ padding: '2rem 4rem', background: 'var(--card-bg)', borderBottom: '2px solid var(--border)' }}>
+                <div className="alerts-inbox-detail">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{email.subject}</h2>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {mailbox === 'inbox' ? (
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveToTrash(email.id)}>
-                          Move to trash
-                        </button>
+                      {mailbox !== 'trash' ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => toggleStar(email.id, email.starred)}
+                          >
+                            <Star
+                              size={16}
+                              aria-hidden
+                              fill={email.starred ? 'currentColor' : 'none'}
+                              style={{ marginRight: '0.35rem', verticalAlign: 'text-bottom' }}
+                            />
+                            {email.starred ? 'Unstar' : 'Star'}
+                          </button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveToTrash(email.id)}>
+                            Move to trash
+                          </button>
+                        </>
                       ) : (
                         <>
                           <button type="button" className="btn btn-secondary btn-sm" onClick={() => restoreFromTrash(email.id)}>
@@ -389,10 +417,13 @@ export default function AlertsEmailPage() {
             </div>
           ))}
           {emails.length === 0 && (
-            <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>
-              {mailbox === 'trash' ? 'Trash is empty.' : 'No alerts yet.'}
+            <div style={{ padding: '2rem', color: 'var(--text-secondary)', minWidth: '100%' }}>
+              {mailbox === 'trash' && 'Trash is empty.'}
+              {mailbox === 'starred' && 'No starred alerts yet. Star messages from your inbox to find them here.'}
+              {mailbox === 'inbox' && 'No alerts yet.'}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

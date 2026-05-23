@@ -1,13 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import useSWR from 'swr';
 import MobileHeader from '@/components/mobile/MobileHeader';
-import { CalendarDays, MapPin, Building, Trash2, Plus } from 'lucide-react';
+import InfrastructureResourceManager from '@/components/college/InfrastructureResourceManager';
+import { CalendarDays, MapPin, Trash2, Plus } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
-
-const fetcher = url => fetch(url).then(res => res.json());
 
 export default function mb_Infrastructure() {
   const { addToast } = useToast();
@@ -109,20 +107,42 @@ export default function mb_Infrastructure() {
       <MobileHeader 
         title="Infrastructure" 
         action={
-          <button className="btn btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              if (!showForm && assets.length === 0) {
+                addToast('Add a campus resource (room/lab) first.', 'warning');
+                return;
+              }
+              setShowForm(!showForm);
+            }}
+          >
             <Plus size={16} /> {showForm ? 'Cancel' : 'Book'}
           </button>
         } 
       />
       <div className="animate-fadeIn" style={{ padding: '1rem 1rem 5rem 1rem' }}>
-        
+        <InfrastructureResourceManager assets={assets} onAssetsChange={setAssets} compact />
+
         {showForm && (
           <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid var(--primary-300)' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>New Booking</h3>
             <form onSubmit={handleBooking} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <select className="form-select" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-                <option value="" disabled>-- Select Room --</option>
-                {assets.map((a) => <option key={a.id} value={a.id}>{a.name} (Cap: {a.capacity})</option>)}
+              <select
+                className="form-select"
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+                disabled={assets.length === 0}
+              >
+                <option value="" disabled>
+                  {assets.length === 0 ? 'Add a resource above first' : '-- Select Room --'}
+                </option>
+                {assets.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} (Cap: {a.capacity ?? '—'})
+                  </option>
+                ))}
               </select>
               <input className="form-input" placeholder="Event / Company Name" value={company} onChange={(e) => setCompany(e.target.value)} />
               <input className="form-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -147,9 +167,26 @@ export default function mb_Infrastructure() {
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 120, borderRadius: '12px' }} />)}
           </div>
         ) : bookings.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <CalendarDays size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-            <div style={{ fontWeight: 600 }}>No upcoming bookings</div>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No bookings yet</div>
+            <p className="text-sm text-secondary" style={{ margin: '0 0 1rem' }}>
+              Add a resource above, then tap Book to schedule a drive or event.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                if (assets.length === 0) {
+                  addToast('Add a campus resource first.', 'warning');
+                  return;
+                }
+                setShowForm(true);
+              }}
+            >
+              <Plus size={14} style={{ marginRight: 4 }} />
+              New booking
+            </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

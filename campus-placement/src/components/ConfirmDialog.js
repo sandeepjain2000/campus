@@ -6,17 +6,24 @@ export default function ConfirmDialog({
   message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
+  confirmTone = 'primary',
   onConfirm,
   onCancel,
   loading = false,
 }) {
   if (!open) return null;
 
+  const confirmClass =
+    confirmTone === 'success' ? 'btn btn-success' : confirmTone === 'danger' ? 'btn btn-danger' : 'btn btn-primary';
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      onClick={() => {
+        if (!loading) onCancel?.();
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -28,7 +35,11 @@ export default function ConfirmDialog({
         padding: '1rem',
       }}
     >
-      <div className="card animate-fadeIn" style={{ width: '100%', maxWidth: '460px' }}>
+      <div
+        className="card animate-fadeIn"
+        style={{ width: '100%', maxWidth: '460px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="card-title" style={{ marginBottom: '0.75rem' }}>
           {title}
         </h3>
@@ -39,7 +50,7 @@ export default function ConfirmDialog({
           <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </button>
-          <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={loading}>
+          <button type="button" className={confirmClass} onClick={onConfirm} disabled={loading}>
             {loading ? 'Please wait…' : confirmLabel}
           </button>
         </div>

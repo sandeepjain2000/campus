@@ -5,14 +5,10 @@ import useSWR from 'swr';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
-import { Search, Mail, Download, History, ShieldAlert } from 'lucide-react';
+import { auditReportsFetcher } from '@/lib/auditReportsFetcher';
+import { Mail, Download, History, ShieldAlert } from 'lucide-react';
 
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load data');
-  return data;
-};
+const swrQuiet = { shouldRetryOnError: false, revalidateOnFocus: false };
 
 function toYmd(d) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -38,8 +34,16 @@ export default function mb_AuditReports() {
 
   const logsUrl = useMemo(() => `/api/audit/logs?from=${from}&to=${to}&limit=50`, [from, to]);
 
-  const { data: logsData, error: logsError, isLoading: logsLoading, mutate: mutateLogs } = useSWR(logsUrl, fetcher);
-  const { data: exportsData, error: exportsError, isLoading: exportsLoading, mutate: mutateExports } = useSWR('/api/audit/reports?limit=20', fetcher);
+  const { data: logsData, isLoading: logsLoading, mutate: mutateLogs } = useSWR(
+    logsUrl,
+    auditReportsFetcher,
+    swrQuiet,
+  );
+  const { data: exportsData, isLoading: exportsLoading, mutate: mutateExports } = useSWR(
+    '/api/audit/reports?limit=20',
+    auditReportsFetcher,
+    swrQuiet,
+  );
   const logs = logsData?.logs || [];
   const exportsList = exportsData?.exports || [];
 
@@ -54,12 +58,15 @@ export default function mb_AuditReports() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ from, to, email: email.trim() }),
       });
-      if (!res.ok) throw new Error('Export failed');
+      if (!res.ok) {
+        addToast('Could not start export. Please try again.', 'error');
+        return;
+      }
       addToast('Export started. Link will be emailed.', 'success');
       setActiveTab('exports');
       await Promise.all([mutateExports(), mutateLogs()]);
-    } catch (e) {
-      addToast(e.message || 'Failed to start export', 'error');
+    } catch {
+      addToast('Could not start export. Please try again.', 'error');
     } finally {
       setExporting(false);
     }
@@ -125,8 +132,6 @@ export default function mb_AuditReports() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {logsLoading ? (
               <div className="skeleton" style={{ height: 100, borderRadius: '12px' }} />
-            ) : logsError ? (
-              <div className="card" style={{ padding: '1rem', textAlign: 'center', color: 'var(--danger-600)' }}>{logsError.message}</div>
             ) : logs.length === 0 ? (
               <div className="card" style={{ padding: '2rem 1rem', textAlign: 'center' }}>
                 <History size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
@@ -164,8 +169,6 @@ export default function mb_AuditReports() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {exportsLoading ? (
               <div className="skeleton" style={{ height: 100, borderRadius: '12px' }} />
-            ) : exportsError ? (
-              <div className="card" style={{ padding: '1rem', textAlign: 'center', color: 'var(--danger-600)' }}>{exportsError.message}</div>
             ) : exportsList.length === 0 ? (
               <div className="card" style={{ padding: '2rem 1rem', textAlign: 'center' }}>
                 <ShieldAlert size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />

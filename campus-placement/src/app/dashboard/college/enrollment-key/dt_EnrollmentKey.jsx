@@ -42,7 +42,7 @@ export default function CollegeEnrollmentKeyPage() {
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'

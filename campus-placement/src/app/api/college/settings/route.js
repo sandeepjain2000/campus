@@ -60,7 +60,7 @@ export async function GET() {
     const res = await query(
       `SELECT
         name, website, logo_url, email, communication_email, phone, address, city, state, pincode,
-        accreditation, naac_grade, nirf_rank, settings
+        accreditation, naac_grade, nirf_rank, settings, short_code
        FROM tenants
        WHERE id = $1::uuid`,
       [tenantId]
@@ -73,28 +73,42 @@ export async function GET() {
     const settings = t.settings || {};
     const fallback = fallbackInstitutionContact(t);
 
-    const yearsRes = await query(
-      `WITH years AS (
-         SELECT DISTINCT EXTRACT(YEAR FROM d.drive_date)::int AS y
-         FROM placement_drives d
-         WHERE d.tenant_id = $1::uuid AND d.drive_date IS NOT NULL
-         UNION
-         SELECT DISTINCT jp.batch_year::int AS y
-         FROM job_postings jp
-         JOIN job_posting_visibility jpv ON jpv.job_id = jp.id
-         WHERE jpv.tenant_id = $1::uuid AND jp.batch_year IS NOT NULL
-         UNION
-         SELECT DISTINCT EXTRACT(YEAR FROM a.applied_at)::int AS y
-         FROM applications a
-         JOIN student_profiles sp ON sp.id = a.student_id
-         WHERE sp.tenant_id = $1::uuid AND a.applied_at IS NOT NULL
-       )
-       SELECT y FROM years WHERE y IS NOT NULL ORDER BY y DESC`,
-      [tenantId],
-    );
-    const academicYearsWithData = yearsRes.rows
-      .map((r) => formatAcademicYear(r.y))
-      .filter(Boolean);
+    let academicYearsWithData = [];
+    try {
+      const configured = await query(
+        `SELECT label FROM tenant_academic_years
+         WHERE tenant_id = $1::uuid
+         ORDER BY sequence_number ASC`,
+        [tenantId],
+      );
+      academicYearsWithData = configured.rows.map((r) => r.label).filter(Boolean);
+    } catch {
+      /* table may not exist before migration */
+    }
+    if (!academicYearsWithData.length) {
+      const yearsRes = await query(
+        `WITH years AS (
+           SELECT DISTINCT EXTRACT(YEAR FROM d.drive_date)::int AS y
+           FROM placement_drives d
+           WHERE d.tenant_id = $1::uuid AND d.drive_date IS NOT NULL
+           UNION
+           SELECT DISTINCT jp.batch_year::int AS y
+           FROM job_postings jp
+           JOIN job_posting_visibility jpv ON jpv.job_id = jp.id
+           WHERE jpv.tenant_id = $1::uuid AND jp.batch_year IS NOT NULL
+           UNION
+           SELECT DISTINCT EXTRACT(YEAR FROM a.applied_at)::int AS y
+           FROM applications a
+           JOIN student_profiles sp ON sp.id = a.student_id
+           WHERE sp.tenant_id = $1::uuid AND a.applied_at IS NOT NULL
+         )
+         SELECT y FROM years WHERE y IS NOT NULL ORDER BY y DESC`,
+        [tenantId],
+      );
+      academicYearsWithData = yearsRes.rows
+        .map((r) => formatAcademicYear(r.y))
+        .filter(Boolean);
+    }
 
     return NextResponse.json({
       website: t.website || '',
@@ -109,6 +123,7 @@ export async function GET() {
       },
       institution: {
         collegeName: t.name || '',
+        shortCode: t.short_code || '',
         email: t.email || '',
         communicationEmail: t.communication_email || t.email || '',
         phone: t.phone || fallback.phone,

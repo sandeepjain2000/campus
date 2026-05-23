@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getStudentResumeApplyState } from '@/lib/studentApplyEligibility';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 
 function formatSalary(min, max) {
@@ -20,14 +21,17 @@ export async function GET() {
 
     const studentProfileId = await getOrCreateStudentProfileId(session.user.id);
     if (!studentProfileId) {
-      return NextResponse.json({ drives: [] });
+      return NextResponse.json({ drives: [], canApply: false, hasResume: false });
     }
+
+    const { hasResume } = await getStudentResumeApplyState(studentProfileId);
 
     const res = await query(
       `
       SELECT
         d.id,
         ep.company_name AS company,
+        ep.website AS website,
         COALESCE(j.title, d.title) AS role,
         d.drive_date AS date,
         d.drive_type AS type,
@@ -55,9 +59,12 @@ export async function GET() {
     );
 
     return NextResponse.json({
+      canApply: hasResume,
+      hasResume,
       drives: res.rows.map((row) => ({
         id: row.id,
         company: row.company,
+        website: row.website || null,
         role: row.role,
         date: row.date,
         type: row.type,

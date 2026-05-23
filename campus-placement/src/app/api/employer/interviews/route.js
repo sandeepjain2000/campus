@@ -45,9 +45,32 @@ export async function POST(request) {
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id || session.user.sub;
+    const employerRes = await query(
+      `SELECT id FROM employer_profiles WHERE user_id = $1::uuid LIMIT 1`,
+      [userId],
+    );
+    const employerId = employerRes.rows[0]?.id;
+    if (!employerId) {
+      return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     const campusId = String(body?.campusId || '').trim();
     if (!campusId) return NextResponse.json({ error: 'campusId is required' }, { status: 400 });
+
+    const approvalRes = await query(
+      `SELECT 1 FROM employer_approvals
+       WHERE employer_id = $1::uuid AND tenant_id = $2::uuid AND status = 'approved'
+       LIMIT 1`,
+      [employerId, campusId],
+    );
+    if (!approvalRes.rows.length) {
+      return NextResponse.json(
+        { error: 'This college partnership is not approved yet. Request campus access first.' },
+        { status: 403 },
+      );
+    }
 
     const round = String(body?.round || '').trim();
     const date = String(body?.date || '').trim();

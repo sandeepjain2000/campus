@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { getEmployerProfileId, isUsableResumeUrl } from '@/lib/employerApplicationAccess';
+import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
+import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
 function mapRow(row) {
   const first = row.first_name || '';
   const last = row.last_name || '';
-  const hasResume = Boolean(row.resume_document_id || isUsableResumeUrl(row.resume_url));
+  const hasResume = Boolean(row.resume_document_id || isAuthoritativeResumeUrl(row.resume_url));
   return {
     id: row.id,
     sourceKind: row.source_kind,
@@ -26,6 +27,7 @@ function mapRow(row) {
     hasResume,
     resumeUrl: hasResume ? `/api/employer/applications/resume?studentId=${encodeURIComponent(row.student_id)}` : null,
     resumeFileName: row.resume_document_name || null,
+    documentCount: Number(row.document_count) || 0,
     openingTitle: row.opening_title || '—',
     jobType: row.job_type || null,
     driveId: row.drive_id,
@@ -57,6 +59,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const tabParam = (searchParams.get('tab') || 'jobs').toLowerCase();
     const tab = tabParam === 'internships' || tabParam === 'projects' ? tabParam : 'jobs';
+    const driveIdFilter = String(searchParams.get('driveId') || '').trim();
 
     const countsSql = `
       SELECT
@@ -94,6 +97,7 @@ export async function GET(request) {
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
+           (SELECT COUNT(*)::int FROM student_documents sd_all WHERE sd_all.student_id = sp.id) AS document_count,
            COALESCE(jp.title, d.title) AS opening_title,
            COALESCE(jp.job_type::text, 'placement_drive') AS job_type,
            d.id AS drive_id,
@@ -114,8 +118,10 @@ export async function GET(request) {
            LIMIT 1
          ) resume_doc ON TRUE
          WHERE ep.id = $1::uuid
+           AND sp.archived_at IS NULL
+           ${driveIdFilter ? 'AND d.id = $2::uuid' : ''}
          ORDER BY a.applied_at DESC`,
-        [employerId],
+        driveIdFilter ? [employerId, driveIdFilter] : [employerId],
       );
     } else if (tab === 'internships') {
       itemsRes = await query(
@@ -137,6 +143,7 @@ export async function GET(request) {
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
+           (SELECT COUNT(*)::int FROM student_documents sd_all WHERE sd_all.student_id = sp.id) AS document_count,
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
@@ -155,7 +162,7 @@ export async function GET(request) {
            ORDER BY sd.uploaded_at DESC
            LIMIT 1
          ) resume_doc ON TRUE
-         WHERE ep.id = $1::uuid AND jp.job_type = 'internship'
+         WHERE ep.id = $1::uuid AND jp.job_type = 'internship' AND sp.archived_at IS NULL
          ORDER BY pa.applied_at DESC`,
         [employerId],
       );
@@ -179,6 +186,7 @@ export async function GET(request) {
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
+           (SELECT COUNT(*)::int FROM student_documents sd_all WHERE sd_all.student_id = sp.id) AS document_count,
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
@@ -197,7 +205,7 @@ export async function GET(request) {
            ORDER BY sd.uploaded_at DESC
            LIMIT 1
          ) resume_doc ON TRUE
-         WHERE ep.id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')
+         WHERE ep.id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon') AND sp.archived_at IS NULL
          ORDER BY pa.applied_at DESC`,
         [employerId],
       );

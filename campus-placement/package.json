@@ -9,6 +9,7 @@
     "build:log": "node scripts/run-with-log.mjs -- npm run build",
     "start": "next start",
     "lint": "eslint",
+    "test:login-support-mail": "node scripts/test-login-support-mail.mjs",
     "verify:aws": "node scripts/verify-aws-credentials.mjs",
     "verify:aws:log": "node scripts/run-with-log.mjs -- node scripts/verify-aws-credentials.mjs",
     "vercel:prod:log": "node scripts/run-with-log.mjs -- npx vercel --prod",
@@ -26,8 +27,17 @@
     "qa:extended-xlsx": "python qa/build_extended_test_cases_xlsx.py",
     "seed:college-showcase-sql": "node scripts/generate_college_showcase_seed.js",
     "db:exec-sql-file": "node scripts/db_exec_sql_file.js",
+    "db:reset-passwords": "node scripts/db_exec_sql_file.js db/migrations/062_reset_all_passwords_admin123.sql",
     "db:upsert-college-showcase": "node scripts/upsert_college_showcase_data.js",
-    "seed:all-scenarios": "node scripts/db_exec_sql_file.js db/seeds/99_all_scenarios_extension.sql"
+    "seed:all-scenarios": "node scripts/db_exec_sql_file.js db/seeds/99_all_scenarios_extension.sql",
+    "seed:college-applications-demo": "node scripts/seed_college_applications_demo.js",
+    "seed:college-offers-demo": "node scripts/seed_college_offers_demo.js",
+    "seed:college-hiring-assessment-demo": "node scripts/seed_college_hiring_assessment_demo.js",
+    "seed:college-interviews-demo": "node scripts/seed_college_interviews_demo.js",
+    "fix:student-cgpa": "node scripts/fix_student_cgpa_blank_zero.js",
+    "fix:bulk-student-names": "node scripts/fix_bulk_student_names.js",
+    "test:blank-screens": "playwright test qa/tests/blank-screens.spec.js",
+    "test:blank-screens:college": "playwright test qa/tests/blank-screens.spec.js --grep \"Blank screen guard — college_admin\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1031.0",

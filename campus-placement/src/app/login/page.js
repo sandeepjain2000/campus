@@ -6,7 +6,12 @@ import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
 import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled, SEEDED_EMPLOYER_CREDENTIALS } from '@/lib/demoLogins';
-import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff, MessageCircleQuestion, FlaskConical, BookOpen } from 'lucide-react';
+import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
+import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
+import LoginSupportContact from '@/components/auth/LoginSupportContact';
+import { showSandboxLoginBanner } from '@/lib/sandboxBanner';
+import { markBrowserSessionActive } from '@/lib/sessionPolicy';
 
 /** Match `/demo-accounts` three-column grouping: Students | Employers | (Super + College admins). */
 const DEMO_GROUP_META = {
@@ -70,8 +75,11 @@ function LoginPageInner() {
   const forceLogin = searchParams.get('force') === '1';
   const { status, data: session } = useSession();
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [registeredBanner, setRegisteredBanner] = useState('');
   const [showCredentials, setShowCredentials] = useState(false);
@@ -129,10 +137,10 @@ function LoginPageInner() {
       setRegisteredBanner(
         'Registration received. Verify your email from our message, then wait for platform approval before signing in.',
       );
-    } else if (q === 'check-email') {
-      setRegisteredBanner('Check your email and click the verification link before you sign in.');
-    } else if (q === 'true') {
-      setRegisteredBanner('Account created. You can sign in below.');
+    } else if (q === 'check-email' || q === 'true') {
+      setRegisteredBanner(
+        'Account created. Open the verification link we emailed you, then sign in below with the password you chose.',
+      );
     }
   }, []);
 
@@ -161,6 +169,7 @@ function LoginPageInner() {
   }
 
   const showDemoLogins = isDemoLoginsEnabled();
+  const showSandboxBanner = showSandboxLoginBanner();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -170,11 +179,18 @@ function LoginPageInner() {
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
+        captchaToken,
+        captchaAnswer,
         redirect: false,
       });
       if (result?.error) {
         setError(result.error);
+        if (result.error.toLowerCase().includes('verification')) {
+          setCaptchaAnswer('');
+          setCaptchaKey((k) => k + 1);
+        }
       } else {
+        markBrowserSessionActive();
         const res = await fetch('/api/auth/session');
         const sess = await res.json();
         const role = sess?.user?.role;
@@ -310,10 +326,47 @@ function LoginPageInner() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
-      
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
+      {showSandboxBanner ? (
+        <div
+          role="status"
+          className="login-sandbox-banner"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            padding: '0.875rem clamp(1rem, 4vw, 2rem)',
+            background: 'var(--warning-50, #fffbeb)',
+            borderBottom: '1px solid var(--warning-200, #fde68a)',
+            color: 'var(--warning-800, #92400e)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <FlaskConical size={20} style={{ flexShrink: 0, marginTop: '0.1rem' }} aria-hidden />
+          <div style={{ width: '100%', maxWidth: '72rem' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, lineHeight: 1.35 }}>
+              Sandbox environment — not production
+            </p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', fontWeight: 500, lineHeight: 1.5, opacity: 0.95 }}>
+              This site is for demonstration and testing only. Do not rely on it for real placements or enter confidential personal data.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem 1rem',
+        }}
+      >
       <div style={{ width: '100%', maxWidth: showCredentials && showDemoLogins ? 'min(960px, 100%)' : '420px', transition: 'max-width 0.2s ease' }}>
-        
+
         {/* Modern Centered Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', marginBottom: '1.5rem' }}>
@@ -502,11 +555,20 @@ function LoginPageInner() {
               </div>
             </div>
 
+            <LoginCaptchaField
+              key={captchaKey}
+              token={captchaToken}
+              answer={captchaAnswer}
+              onTokenChange={setCaptchaToken}
+              onAnswerChange={setCaptchaAnswer}
+              disabled={loading}
+            />
+
             <button
               id="login-submit"
               type="submit"
               className="btn btn-primary"
-              disabled={loading}
+              disabled={loading || !captchaToken || captchaAnswer.trim() === ''}
               style={{ width: '100%', padding: '0.625rem', fontSize: '1rem', justifyContent: 'center' }}
             >
               {loading ? 'Signing in...' : 'Sign In'}
@@ -540,12 +602,62 @@ function LoginPageInner() {
               </span>
               <ArrowRight size={16} style={{ color: 'var(--text-secondary)' }} />
             </Link>
+            <Link
+              href="/help"
+              className="hidden-on-mobile"
+              style={{
+                marginTop: '0.5rem',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.625rem 0.875rem',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                textDecoration: 'none',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BookOpen size={15} />
+                Help documentation
+              </span>
+              <ArrowRight size={16} style={{ color: 'var(--text-secondary)' }} />
+            </Link>
           </div>
         </div>
+
+        <LoginSupportContact
+          hideExternalInboxLinks={
+            Boolean(registeredBanner) ||
+            searchParams.get('registered') != null ||
+            searchParams.get('verify') != null
+          }
+        />
+
+        <p
+          className="login-help-faq-hint"
+          style={{
+            marginTop: '0.75rem',
+            fontSize: '0.8125rem',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.5,
+            textAlign: 'center',
+          }}
+        >
+          <MessageCircleQuestion size={14} style={{ verticalAlign: 'middle', marginRight: '0.25rem' }} aria-hidden />
+          FAQ search: use the <strong>Help</strong> button at the bottom-right.
+        </p>
 
         <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
           Don&apos;t have an account? <Link href="/register" style={{ color: 'var(--primary-600)', fontWeight: 600, textDecoration: 'none' }}>Sign up</Link>
         </div>
+
+        <DocumentationHelpWidget fullDocHref="/help" />
 
         <style>{`
           @media (max-width: 768px) {
@@ -554,6 +666,7 @@ function LoginPageInner() {
             }
           }
         `}</style>
+      </div>
       </div>
     </div>
   );

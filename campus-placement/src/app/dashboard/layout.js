@@ -5,24 +5,27 @@ import { useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import { useTheme } from '@/components/ThemeProvider';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 import { getInitials, getRoleDisplayName } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import SessionAdBanner from '@/components/SessionAdBanner';
+import PageLoading from '@/components/PageLoading';
 import {
   menuConfig,
   ROLE_HOME_PATHS,
   NAV_SECTION_STORAGE_KEY,
   findSectionIdByPath,
   isSidebarItemActive,
+  isSidebarItemActiveInMenu,
   isRoleDashboardHome,
 } from '@/config/dashboardMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import DevScreenTag from '@/components/DevScreenTag';
 import ScreenSearchBar from '@/components/ScreenSearchBar';
 import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
-import { Moon, Sun, Menu, Mail, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
+import { Menu, Mail, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
+import { writeActiveAcademicYearContext } from '@/lib/collegeAcademicYearContext';
 
 const settingsFetcher = async (url) => {
   const res = await fetch(url);
@@ -35,14 +38,16 @@ export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     try {
+      const collapsed =
+        localStorage.getItem('placementhub_sidebar_collapsed') === '1' ||
+        localStorage.getItem('placementhub_sidebar_hidden') === '1';
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSidebarHidden(localStorage.getItem('placementhub_sidebar_hidden') === '1');
+      setSidebarCollapsed(collapsed);
     } catch {
       /* ignore */
     }
@@ -50,51 +55,70 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('placementhub_sidebar_hidden', sidebarHidden ? '1' : '0');
+      localStorage.setItem('placementhub_sidebar_collapsed', sidebarCollapsed ? '1' : '0');
     } catch {
       /* ignore */
     }
-  }, [sidebarHidden]);
+  }, [sidebarCollapsed]);
   const [employerCampusLabel, setEmployerCampusLabel] = useState(null);
   const [academicYearOverride, setAcademicYearOverride] = useState(null);
   const { data: collegeSettings } = useSWR(
     session?.user?.role === 'college_admin' ? '/api/college/settings' : null,
     settingsFetcher,
   );
+  const { data: academicYearsBundle } = useSWR(
+    session?.user?.role === 'college_admin' ? '/api/college/academic-years' : null,
+    settingsFetcher,
+  );
   const fallbackAcademicYearOptions = getAcademicYearOptions(getCurrentAcademicYear(), 3);
   const academicYearOptions = useMemo(() => {
     if (session?.user?.role !== 'college_admin') return fallbackAcademicYearOptions;
+    const fromTenant = Array.isArray(academicYearsBundle?.years)
+      ? academicYearsBundle.years.map((y) => y.label).filter(Boolean)
+      : [];
+    if (fromTenant.length) return fromTenant;
     const fromServer = Array.isArray(collegeSettings?.academicYearsWithData)
       ? collegeSettings.academicYearsWithData.filter((v) => typeof v === 'string' && v.trim())
       : [];
     return fromServer.length ? fromServer : fallbackAcademicYearOptions;
-  }, [collegeSettings?.academicYearsWithData, fallbackAcademicYearOptions, session?.user?.role]);
+  }, [
+    academicYearsBundle?.years,
+    collegeSettings?.academicYearsWithData,
+    fallbackAcademicYearOptions,
+    session?.user?.role,
+  ]);
+
+  const systemDefaultAcademicYear = useMemo(() => {
+    const fromTenantCalendar = academicYearsBundle?.current?.label?.trim();
+    if (fromTenantCalendar) return fromTenantCalendar;
+    return getCurrentAcademicYear();
+  }, [academicYearsBundle?.current?.label]);
 
   const academicYear = useMemo(() => {
     if (academicYearOverride != null && academicYearOverride !== '') return academicYearOverride;
-    if (session?.user?.role === 'college_admin') {
-      const server = collegeSettings?.placementSeasonLabel?.trim();
-      if (server) return server;
-    }
     if (typeof window !== 'undefined') {
       try {
-        const saved = sessionStorage.getItem('activeAcademicYear');
-        if (saved) return saved;
+        const saved = sessionStorage.getItem('activeAcademicYear')?.trim();
+        if (saved && academicYearOptions.includes(saved)) return saved;
       } catch {
         /* ignore */
       }
     }
-    return getCurrentAcademicYear();
-  }, [academicYearOverride, collegeSettings?.placementSeasonLabel, session?.user?.role]);
+    return systemDefaultAcademicYear;
+  }, [academicYearOverride, academicYearOptions, systemDefaultAcademicYear]);
 
   useEffect(() => {
     try {
       sessionStorage.setItem('activeAcademicYear', academicYear);
-      window.dispatchEvent(new Event('placementhub-academic-year'));
+      const match = academicYearsBundle?.years?.find((y) => y.label === academicYear);
+      writeActiveAcademicYearContext({
+        id: match?.id || null,
+        label: academicYear,
+      });
     } catch {
       /* ignore */
     }
-  }, [academicYear]);
+  }, [academicYear, academicYearsBundle?.years]);
 
   useEffect(() => {
     if (session?.user?.role !== 'employer') return;
@@ -131,11 +155,7 @@ export default function DashboardLayout({ children }) {
   }, [status, router]);
 
   if (status === 'loading') {
-    return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="skeleton" style={{ width: 200, height: 24 }} />
-      </div>
-    );
+    return <PageLoading message="Signing you in…" delayMs={0} />;
   }
 
   if (!session) return null;
@@ -146,18 +166,17 @@ export default function DashboardLayout({ children }) {
   const activeSection = menu.sections.find((s) => s.id === sectionId) || menu.sections[0];
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
   const isHub = isRoleDashboardHome(pathname, role);
+  /** Super admin: show every workspace link in the sidebar (not only the current section). */
+  const showFullSidebarNav = role === 'super_admin';
 
   const studentVerifyBanner =
     role === 'student' && session.user.studentPlacementVerified === false ? (
       <div
-        className="card"
+        className="card banner-verify-pending"
         style={{
           margin: isHub ? '1rem auto 0' : '0 0 1rem',
           maxWidth: isHub ? '56rem' : undefined,
           padding: '0.75rem 1rem',
-          background: 'var(--amber-50, #fffbeb)',
-          border: '1px solid var(--amber-200, #fde68a)',
-          color: 'var(--amber-950, #451a03)',
           fontSize: '0.875rem',
         }}
       >
@@ -176,12 +195,26 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className={`dashboard-layout ${sidebarHidden ? 'sidebar-hidden' : ''}`}>
-      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        <Link href={homePath} className="sidebar-logo">
-          <div className="sidebar-logo-icon">P</div>
-          <span>PlacementHub</span>
-        </Link>
+    <div className={`dashboard-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside
+        className={`sidebar ${mobileOpen ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}
+        aria-expanded={!sidebarCollapsed}
+      >
+        <div className="sidebar-toolbar">
+          <Link href={homePath} className="sidebar-logo">
+            <div className="sidebar-logo-icon">P</div>
+            <span className="sidebar-logo-label">PlacementHub</span>
+          </Link>
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon sidebar-collapse-toggle"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+            aria-label={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+          >
+            {sidebarCollapsed ? <PanelLeft size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <Link
@@ -189,27 +222,54 @@ export default function DashboardLayout({ children }) {
             className={`sidebar-link ${pathname === homePath ? 'active' : ''}`}
             onClick={() => setMobileOpen(false)}
             aria-current={pathname === homePath ? 'page' : undefined}
+            title="Home"
           >
             <span className="sidebar-link-icon">
               <Home size={18} aria-hidden="true" />
             </span>
-            <span>Home</span>
+            <span className="sidebar-link-label">Home</span>
           </Link>
-          <div className="sidebar-section-title">{activeSection.title}</div>
-          {activeSection.items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar-link ${isSidebarItemActive(item.href, activeSection, pathname) ? 'active' : ''}`}
-              onClick={() => setMobileOpen(false)}
-              aria-current={isSidebarItemActive(item.href, activeSection, pathname) ? 'page' : undefined}
-            >
-              <span className="sidebar-link-icon">
-                <item.icon size={18} aria-hidden="true" />
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {showFullSidebarNav ? (
+            menu.sections.map((section) => (
+              <div key={section.id}>
+                <div className="sidebar-section-title">{section.title}</div>
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-link ${isSidebarItemActiveInMenu(item.href, menu, pathname) ? 'active' : ''}`}
+                    onClick={() => setMobileOpen(false)}
+                    aria-current={isSidebarItemActiveInMenu(item.href, menu, pathname) ? 'page' : undefined}
+                    title={item.label}
+                  >
+                    <span className="sidebar-link-icon">
+                      <item.icon size={18} aria-hidden="true" />
+                    </span>
+                    <span className="sidebar-link-label">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="sidebar-section-title">{activeSection.title}</div>
+              {activeSection.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`sidebar-link ${isSidebarItemActive(item.href, activeSection, pathname) ? 'active' : ''}`}
+                  onClick={() => setMobileOpen(false)}
+                  aria-current={isSidebarItemActive(item.href, activeSection, pathname) ? 'page' : undefined}
+                  title={item.label}
+                >
+                  <span className="sidebar-link-icon">
+                    <item.icon size={18} aria-hidden="true" />
+                  </span>
+                  <span className="sidebar-link-label">{item.label}</span>
+                </Link>
+              ))}
+            </>
+          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -226,7 +286,7 @@ export default function DashboardLayout({ children }) {
                 {getInitials(session.user.name)}
               </div>
             )}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="sidebar-footer-meta" style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '0.875rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {session.user.name}
               </div>
@@ -242,38 +302,17 @@ export default function DashboardLayout({ children }) {
         <header className="topbar">
           <div className="topbar-left">
             <button
-              className="btn btn-ghost btn-icon"
-              style={{ display: 'none' }}
+              type="button"
+              className="btn btn-ghost btn-icon dashboard-mobile-menu-toggle"
               onClick={() => setMobileOpen(!mobileOpen)}
-              id="mobile-menu-toggle"
               aria-label="Toggle navigation menu"
             >
               <Menu size={18} aria-hidden="true" />
             </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-icon"
-              style={{ display: 'none' }}
-              id="sidebar-toggle-desktop"
-              onClick={() => setSidebarHidden((v) => !v)}
-              title={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
-              aria-label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
-            >
-              {sidebarHidden ? <PanelLeft size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
-            </button>
-            <style jsx>{`
-              @media (max-width: 768px) {
-                #mobile-menu-toggle { display: flex !important; }
-                #sidebar-toggle-desktop { display: none !important; }
-              }
-              @media (min-width: 769px) {
-                #sidebar-toggle-desktop { display: inline-flex !important; align-items: center; justify-content: center; }
-              }
-            `}</style>
 
             <div
               style={{
-                marginLeft: '1rem',
+                marginLeft: '0.5rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
@@ -317,18 +356,19 @@ export default function DashboardLayout({ children }) {
               {role === 'college_admin' && (
                 <>
                   <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
-                  <div className="topbar-session-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Session:</span>
+                  <div className="topbar-academic-year-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Academic Year:</span>
                     <select
                       className="form-input"
+                      aria-label="Academic Year"
                       style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                       value={academicYear}
                       onChange={async (e) => {
                         const v = e.target.value;
                         setAcademicYearOverride(v);
                         try {
-                          sessionStorage.setItem('activeAcademicYear', v);
-                          window.dispatchEvent(new Event('placementhub-academic-year'));
+                          const match = academicYearsBundle?.years?.find((y) => y.label === v);
+                          writeActiveAcademicYearContext({ id: match?.id || null, label: v });
                           const res = await fetch('/api/college/settings/placement-season', {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
@@ -365,14 +405,7 @@ export default function DashboardLayout({ children }) {
                 <Mail size={16} aria-hidden="true" /> Email
               </Link>
             )}
-            <button
-              className="btn btn-ghost btn-icon"
-              onClick={toggleTheme}
-              title="Toggle theme"
-              aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-            >
-              {theme === 'light' ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
-            </button>
+            <ThemeToggleButton />
 
             <NotificationDropdown />
 

@@ -244,7 +244,7 @@ export default function SelectCampusPage() {
       <div 
         style={{
           position: 'relative',
-          background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+          background: 'var(--banner-gradient)',
           borderRadius: 'var(--radius-xl)',
           padding: '2.5rem',
           color: 'white',

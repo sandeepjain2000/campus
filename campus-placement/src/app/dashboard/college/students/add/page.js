@@ -71,8 +71,8 @@ export default function CollegeAddStudentPage() {
             </span>
             Add Student
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, maxWidth: 520 }}>
-            Create one student account with a temporary password (welcome email). Roll number and email cannot be changed later for an existing roll — same rules as CSV import.
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, maxWidth: 640 }}>
+            Create a student with the same fields as CSV import and the full profile. A welcome email is sent with a temporary password. Roll number and login email are locked after creation.
             {' '}
             <span style={{ color: 'var(--text-tertiary)' }}>
               AY {CURRENT_ACADEMIC_YEAR} · Sem {CURRENT_SEMESTER}
@@ -84,7 +84,7 @@ export default function CollegeAddStudentPage() {
       <div
         className="card"
         style={{
-          maxWidth: 720,
+          width: '100%',
           padding: 0,
           overflow: 'hidden',
           border: '1px solid var(--border-default)',

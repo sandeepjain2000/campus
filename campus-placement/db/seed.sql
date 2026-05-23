@@ -253,7 +253,7 @@ WHERE tenant_id = 'a1000000-0000-0000-0000-000000000003';
 
 -- 4. Employer Profiles (logo_url seeds — used by auth + employer profile UI; not name-guessed)
 INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry, company_type, company_size, founded_year, website, logo_url, description, headquarters, locations) VALUES
-('c1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004', 'TechCorp Solutions', 'techcorp', 'Information Technology', 'mnc', '10000+', 2001, 'https://techcorp.com/', '/logos/seed-techcorp.svg', 'Leading global technology solutions provider specializing in AI, cloud computing, and enterprise software.', 'Bangalore, India', ARRAY['Bangalore', 'Hyderabad', 'Mumbai', 'Pune']),
+('c1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004', 'TechCorp Solutions', 'techcorp', 'Information Technology', 'mnc', '10000+', 2010, 'https://techcorp.com/', '/logos/seed-techcorp.svg', 'Leading global technology solutions provider specializing in AI, cloud computing, and enterprise software.', 'Bangalore, India', ARRAY['Bangalore', 'Hyderabad', 'Mumbai', 'Pune']),
 ('c1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000005', 'GlobalSoft Technologies', 'globalsoft', 'Information Technology', 'mnc', '5000-10000', 1998, 'https://techcorp.com/', '/logos/seed-globalsoft.svg', 'Enterprise software development and consulting company with operations in 20+ countries.', 'Pune, India', ARRAY['Pune', 'Chennai', 'Noida']),
 ('c1000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000006', 'Infosys Limited', 'infosys', 'Information Technology', 'mnc', '10000+', 1981, 'https://techcorp.com/', '/logos/seed-infosys.svg', 'Global leader in next-generation digital services and consulting.', 'Bangalore, India', ARRAY['Bangalore', 'Mysuru', 'Pune', 'Hyderabad', 'Chennai']),
 ('c1000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000013', 'NIT Trichy Academic Affairs', 'nitt-academic', 'Education', 'government', '1000-5000', 1964, 'https://techcorp.com/', '/logos/seed-nitt.svg', 'Academic hiring and guest faculty management for NIT Trichy.', 'Trichy, India', ARRAY['Trichy']),
@@ -267,14 +267,42 @@ INSERT INTO employer_profiles (id, user_id, company_name, company_slug, industry
 
 -- 5. Student Profiles (enrollment_number + resume_url keep dashboard / profile flows healthy in demos)
 INSERT INTO student_profiles (user_id, tenant_id, roll_number, enrollment_number, department, branch, batch_year, graduation_year, cgpa, tenth_percentage, twelfth_percentage, gender, placement_status, is_verified, bio, resume_url) VALUES
-('b1000000-0000-0000-0000-000000000007', 'a1000000-0000-0000-0000-000000000001', 'CS2021001', 'ENR-IITM-CS2021001', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.72, 94.5, 91.2, 'male', 'unplaced', true, 'Passionate about AI/ML and full-stack development. Looking for challenging opportunities in technology.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000008', 'a1000000-0000-0000-0000-000000000001', 'CS2021002', 'ENR-IITM-CS2021002', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 9.15, 96.0, 93.8, 'female', 'unplaced', true, 'Interested in data science, NLP, and backend engineering. Active contributor to open-source.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000009', 'a1000000-0000-0000-0000-000000000001', 'EC2021001', 'ENR-IITM-EC2021001', 'Electronics', 'Electronics & Communication', 2021, 2025, 7.65, 88.0, 85.5, 'male', 'unplaced', true, 'Experienced in embedded systems and IoT. Strong fundamentals in signal processing.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000010', 'a1000000-0000-0000-0000-000000000001', 'CS2021003', 'ENR-IITM-CS2021003', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.45, 92.0, 89.0, 'female', 'placed', true, 'Full-stack developer with experience in React, Node.js, and Python. Placed at TechCorp.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'ME2021001', 'ENR-IITM-ME2021001', 'Mechanical', 'Mechanical Engineering', 2021, 2025, 7.20, 85.0, 82.0, 'male', 'unplaced', true, 'Interested in product design and manufacturing automation.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000015', 'a1000000-0000-0000-0000-000000000002', 'CS2021101', 'ENR-NITT-CS2021101', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 8.90, 95.0, 92.5, 'female', 'unplaced', true, 'Full stack developer with passion for building scalable web applications.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000024', 'a1000000-0000-0000-0000-000000000002', 'EE2021102', 'ENR-NITT-EE2021102', 'Electrical', 'Electrical & Electronics Engineering', 2021, 2025, 8.10, 91.0, 88.0, 'male', 'unplaced', true, 'Power systems and embedded control interests.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'CS2021201', 'ENR-BITS-CS2021201', 'Computer Science', 'Computer Science & Engineering', 2021, 2025, 9.20, 98.0, 96.0, 'male', 'unplaced', true, 'AI/ML enthusiast. Working on deep learning applications and research.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+('b1000000-0000-0000-0000-000000000007', 'a1000000-0000-0000-0000-000000000001', 'CS2021001', 'ENR-IITM-CS2021001', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 8.72, 94.5, 91.2, 'male', 'unplaced', true, 'Passionate about AI/ML and full-stack development. Looking for challenging opportunities in technology.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000008', 'a1000000-0000-0000-0000-000000000001', 'CS2021002', 'ENR-IITM-CS2021002', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 9.15, 96.0, 93.8, 'female', 'unplaced', true, 'Interested in data science, NLP, and backend engineering. Active contributor to open-source.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000009', 'a1000000-0000-0000-0000-000000000001', 'EC2021001', 'ENR-IITM-EC2021001', 'Electronics', 'Electronics & Communication', 2022, 2026, 7.65, 88.0, 85.5, 'male', 'unplaced', true, 'Experienced in embedded systems and IoT. Strong fundamentals in signal processing.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000010', 'a1000000-0000-0000-0000-000000000001', 'CS2021003', 'ENR-IITM-CS2021003', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 8.45, 92.0, 89.0, 'female', 'placed', true, 'Full-stack developer with experience in React, Node.js, and Python. Placed at TechCorp.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'ME2021001', 'ENR-IITM-ME2021001', 'Mechanical', 'Mechanical Engineering', 2022, 2026, 7.20, 85.0, 82.0, 'male', 'unplaced', true, 'Interested in product design and manufacturing automation.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000015', 'a1000000-0000-0000-0000-000000000002', 'CS2021101', 'ENR-NITT-CS2021101', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 8.90, 95.0, 92.5, 'female', 'unplaced', true, 'Full stack developer with passion for building scalable web applications.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000024', 'a1000000-0000-0000-0000-000000000002', 'EE2021102', 'ENR-NITT-EE2021102', 'Electrical', 'Electrical & Electronics Engineering', 2022, 2026, 8.10, 91.0, 88.0, 'male', 'unplaced', true, 'Power systems and embedded control interests.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
+('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'CS2021201', 'ENR-BITS-CS2021201', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 9.20, 98.0, 96.0, 'male', 'unplaced', true, 'AI/ML enthusiast. Working on deep learning applications and research.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+
+-- Degree = B.Tech; department/branch hold stream names (specialisation).
+UPDATE student_profiles
+SET aux_profile = COALESCE(aux_profile, '{}'::jsonb) || jsonb_build_object('degreePursued', 'B.Tech')
+WHERE user_id IN (
+  'b1000000-0000-0000-0000-000000000007'::uuid,
+  'b1000000-0000-0000-0000-000000000008'::uuid,
+  'b1000000-0000-0000-0000-000000000009'::uuid,
+  'b1000000-0000-0000-0000-000000000010'::uuid,
+  'b1000000-0000-0000-0000-000000000011'::uuid,
+  'b1000000-0000-0000-0000-000000000015'::uuid,
+  'b1000000-0000-0000-0000-000000000024'::uuid,
+  'b1000000-0000-0000-0000-000000000016'::uuid
+);
+
+UPDATE student_profiles
+SET branch = COALESCE(NULLIF(TRIM(branch), ''), NULLIF(TRIM(department), ''))
+WHERE user_id IN (
+  'b1000000-0000-0000-0000-000000000007'::uuid,
+  'b1000000-0000-0000-0000-000000000008'::uuid,
+  'b1000000-0000-0000-0000-000000000009'::uuid,
+  'b1000000-0000-0000-0000-000000000010'::uuid,
+  'b1000000-0000-0000-0000-000000000011'::uuid,
+  'b1000000-0000-0000-0000-000000000015'::uuid,
+  'b1000000-0000-0000-0000-000000000024'::uuid,
+  'b1000000-0000-0000-0000-000000000016'::uuid
+)
+AND NULLIF(TRIM(branch), '') IS NULL;
 
 -- Demo students: college placement verification ON (no “pending approval” banner). Mirrors migrations/025.
 UPDATE student_profiles
@@ -312,16 +340,16 @@ INSERT INTO student_skills (student_id, skill_name, proficiency) VALUES
 
 -- 7. Job Postings
 INSERT INTO job_postings (id, employer_id, title, description, job_type, category, locations, salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year, skills_required, vacancies, status) VALUES
-('d1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'Software Development Engineer', 'Join our engineering team to build scalable products used by millions. Work on cutting-edge technologies including cloud computing, microservices, and distributed systems.', 'full_time', 'Engineering', ARRAY['Bangalore', 'Hyderabad'], 1200000, 1800000, ARRAY['Computer Science & Engineering', 'Information Technology'], 7.0, 0, 2025, ARRAY['Java', 'Python', 'DSA', 'System Design'], 15, 'published'),
-('d1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 'Data Science Intern', 'Work with our data science team on real-world problems in ML and analytics. 6-month internship with PPO opportunity.', 'internship', 'Data Science', ARRAY['Bangalore'], 60000, 80000, ARRAY['Computer Science & Engineering', 'Mathematics'], 8.0, 0, 2025, ARRAY['Python', 'Machine Learning', 'Statistics'], 5, 'published'),
-('d1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000002', 'Full Stack Developer', 'Build enterprise-grade web applications using modern JavaScript frameworks and cloud technologies.', 'full_time', 'Engineering', ARRAY['Pune', 'Chennai'], 1000000, 1500000, ARRAY['Computer Science & Engineering', 'Information Technology', 'Electronics & Communication'], 6.5, 1, 2025, ARRAY['React', 'Node.js', 'PostgreSQL'], 10, 'published'),
-('d1000000-0000-0000-0000-000000000004', 'c1000000-0000-0000-0000-000000000003', 'Systems Engineer', 'Join Infosys as a Systems Engineer and work on cutting-edge projects across domains.', 'full_time', 'Engineering', ARRAY['Bangalore', 'Mysuru', 'Pune'], 800000, 1000000, ARRAY['Computer Science & Engineering', 'Electronics & Communication', 'Mechanical Engineering', 'Electrical Engineering'], 6.0, 0, 2025, ARRAY['Java', 'SQL', 'Problem Solving'], 50, 'published'),
-('d1000000-0000-0000-0000-000000000005', 'c1000000-0000-0000-0000-000000000001', 'TechCorp Innovations Hackathon', 'Join the largest coding hackathon. Build innovative solutions using GenAI and win amazing prizes + PPO opportunities.', 'hackathon', 'Engineering', ARRAY['Virtual'], 0, 0, ARRAY['Computer Science & Engineering', 'Information Technology'], 0.0, 0, 2025, ARRAY['Problem Solving', 'Coding'], 100, 'published'),
-('d1000000-0000-0000-0000-000000000006', 'c1000000-0000-0000-0000-000000000002', 'GlobalSoft Summer Project', 'Short term summer project on modernizing legacy systems using microservices architecture.', 'short_project', 'Engineering', ARRAY['Remote'], 20000, 30000, ARRAY['Computer Science & Engineering'], 7.0, 0, 2025, ARRAY['Java', 'Spring Boot', 'Microservices'], 10, 'published'),
-('d1000000-0000-0000-0000-000000000007', 'c1000000-0000-0000-0000-000000000005', 'Alumni Mentorship Program 2026', 'Get paired with senior industry leaders who are alumni of BITS Pilani for a 6-month mentorship covering career guidance, interview prep, and networking.', 'mentorship', 'Career Growth', ARRAY['Virtual'], 0, 0, ARRAY['Computer Science & Engineering', 'Electronics & Communication', 'Mechanical Engineering'], 0.0, 0, 2025, ARRAY['Communication', 'Leadership'], 50, 'published'),
+('d1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'Software Development Engineer', 'Join our engineering team to build scalable products used by millions. Work on cutting-edge technologies including cloud computing, microservices, and distributed systems.', 'full_time', 'Engineering', ARRAY['Bangalore', 'Hyderabad'], 1200000, 1800000, ARRAY['Computer Science & Engineering', 'Information Technology'], 7.0, 0, 2026, ARRAY['Java', 'Python', 'DSA', 'System Design'], 15, 'published'),
+('d1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 'Data Science Intern', 'Work with our data science team on real-world problems in ML and analytics. 6-month internship with PPO opportunity.', 'internship', 'Data Science', ARRAY['Bangalore'], 60000, 80000, ARRAY['Computer Science & Engineering', 'Mathematics'], 8.0, 0, 2026, ARRAY['Python', 'Machine Learning', 'Statistics'], 5, 'published'),
+('d1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000002', 'Full Stack Developer', 'Build enterprise-grade web applications using modern JavaScript frameworks and cloud technologies.', 'full_time', 'Engineering', ARRAY['Pune', 'Chennai'], 1000000, 1500000, ARRAY['Computer Science & Engineering', 'Information Technology', 'Electronics & Communication'], 6.5, 1, 2026, ARRAY['React', 'Node.js', 'PostgreSQL'], 10, 'published'),
+('d1000000-0000-0000-0000-000000000004', 'c1000000-0000-0000-0000-000000000003', 'Systems Engineer', 'Join Infosys as a Systems Engineer and work on cutting-edge projects across domains.', 'full_time', 'Engineering', ARRAY['Bangalore', 'Mysuru', 'Pune'], 800000, 1000000, ARRAY['Computer Science & Engineering', 'Electronics & Communication', 'Mechanical Engineering', 'Electrical Engineering'], 6.0, 0, 2026, ARRAY['Java', 'SQL', 'Problem Solving'], 50, 'published'),
+('d1000000-0000-0000-0000-000000000005', 'c1000000-0000-0000-0000-000000000001', 'TechCorp Innovations Hackathon', 'Join the largest coding hackathon. Build innovative solutions using GenAI and win amazing prizes + PPO opportunities.', 'hackathon', 'Engineering', ARRAY['Virtual'], 0, 0, ARRAY['Computer Science & Engineering', 'Information Technology'], 0.0, 0, 2026, ARRAY['Problem Solving', 'Coding'], 100, 'published'),
+('d1000000-0000-0000-0000-000000000006', 'c1000000-0000-0000-0000-000000000002', 'GlobalSoft Summer Project', 'Short term summer project on modernizing legacy systems using microservices architecture.', 'short_project', 'Engineering', ARRAY['Remote'], 20000, 30000, ARRAY['Computer Science & Engineering'], 7.0, 0, 2026, ARRAY['Java', 'Spring Boot', 'Microservices'], 10, 'published'),
+('d1000000-0000-0000-0000-000000000007', 'c1000000-0000-0000-0000-000000000005', 'Alumni Mentorship Program 2026', 'Get paired with senior industry leaders who are alumni of BITS Pilani for a 6-month mentorship covering career guidance, interview prep, and networking.', 'mentorship', 'Career Growth', ARRAY['Virtual'], 0, 0, ARRAY['Computer Science & Engineering', 'Electronics & Communication', 'Mechanical Engineering'], 0.0, 0, 2026, ARRAY['Communication', 'Leadership'], 50, 'published'),
 ('d1000000-0000-0000-0000-000000000008', 'c1000000-0000-0000-0000-000000000004', 'Guest Faculty in AI/ML', 'Looking for industry experts to conduct a 2-week workshop on Advanced Machine Learning and Neural Networks for pre-final year students.', 'guest_faculty', 'Education', ARRAY['Trichy'], 100000, 150000, ARRAY['Computer Science & Engineering'], 0.0, 0, 0, ARRAY['AI/ML', 'Teaching', 'Industry Experience'], 2, 'published'),
-('d1000000-0000-0000-0000-000000000103', 'c1000000-0000-0000-0000-000000000006', 'Applied ML Engineer — Campus', 'Build and ship LLM-powered workflows for enterprise customers; strong Python and evaluation metrics required.', 'full_time', 'Engineering', ARRAY['Bengaluru', 'Hyderabad'], 1400000, 1900000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.5, 0, 2025, ARRAY['Python', 'PyTorch', 'LLMs'], 8, 'published'),
-('d1000000-0000-0000-0000-000000000104', 'c1000000-0000-0000-0000-000000000007', 'Risk Technology Analyst', 'Join the core risk platform team building real-time scoring and fraud detection pipelines.', 'full_time', 'FinTech', ARRAY['Mumbai', 'Pune'], 1100000, 1500000, ARRAY['Computer Science & Engineering', 'Mathematics'], 7.0, 0, 2025, ARRAY['Java', 'SQL', 'Statistics'], 12, 'published');
+('d1000000-0000-0000-0000-000000000103', 'c1000000-0000-0000-0000-000000000006', 'Applied ML Engineer — Campus', 'Build and ship LLM-powered workflows for enterprise customers; strong Python and evaluation metrics required.', 'full_time', 'Engineering', ARRAY['Bengaluru', 'Hyderabad'], 1400000, 1900000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.5, 0, 2026, ARRAY['Python', 'PyTorch', 'LLMs'], 8, 'published'),
+('d1000000-0000-0000-0000-000000000104', 'c1000000-0000-0000-0000-000000000007', 'Risk Technology Analyst', 'Join the core risk platform team building real-time scoring and fraud detection pipelines.', 'full_time', 'FinTech', ARRAY['Mumbai', 'Pune'], 1100000, 1500000, ARRAY['Computer Science & Engineering', 'Mathematics'], 7.0, 0, 2026, ARRAY['Java', 'SQL', 'Statistics'], 12, 'published');
 
 -- 8. Placement Drives
 INSERT INTO placement_drives (id, tenant_id, employer_id, job_id, title, description, drive_type, drive_date, start_time, end_time, venue, status, max_students, registered_count) VALUES
@@ -730,20 +758,20 @@ INSERT INTO clarification_questions (batch_id, question_text, answer_text, answe
 
 -- 26. Student education
 INSERT INTO student_education (student_id, institution, degree, field_of_study, start_year, end_year, grade, description) VALUES
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'Indian Institute of Technology, Madras', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '8.72 CGPA', 'Core CS coursework with AI/ML electives.'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'Indian Institute of Technology, Madras', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '9.15 CGPA', 'Focus on NLP and distributed systems.'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'NIT Trichy', 'B.Tech', 'Computer Science & Engineering', 2021, 2025, '8.90 CGPA', 'Strong backend and systems engineering profile.');
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'Indian Institute of Technology, Madras', 'B.Tech', 'Computer Science & Engineering', 2022, 2026, '8.72 CGPA', 'Core CS coursework with AI/ML electives.'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'Indian Institute of Technology, Madras', 'B.Tech', 'Computer Science & Engineering', 2022, 2026, '9.15 CGPA', 'Focus on NLP and distributed systems.'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'NIT Trichy', 'B.Tech', 'Computer Science & Engineering', 2022, 2026, '8.90 CGPA', 'Strong backend and systems engineering profile.');
 
 -- 27. Student projects (≥3 per college via student_profiles.tenant_id)
 INSERT INTO student_projects (student_id, title, description, tech_stack, project_url, github_url, start_date, end_date) VALUES
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'Campus Hiring Analytics Dashboard', 'Dashboard for placement pipeline insights and recruiter conversion tracking.', ARRAY['React', 'Node.js', 'PostgreSQL'], 'https://projects.example.com/hiring-analytics', 'https://github.com/example/hiring-analytics', '2024-01-15', '2024-05-20'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'Interview Assistant Bot', 'NLP chatbot to answer candidate FAQs before interview rounds.', ARRAY['Python', 'FastAPI', 'Transformers'], 'https://projects.example.com/interview-bot', 'https://github.com/example/interview-bot', '2024-02-10', '2024-06-30'),
-((SELECT id FROM student_profiles WHERE roll_number = 'EC2021001'), 'IoT Energy Monitor', 'Low-power sensor mesh for hostel energy analytics.', ARRAY['C', 'MQTT', 'ESP32'], 'https://projects.example.com/iot-energy', 'https://github.com/example/iot-energy', '2024-04-01', '2024-08-30'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'NITT Placement Portal Widgets', 'Embeddable widgets for drive registration status.', ARRAY['Vue', 'TypeScript'], 'https://projects.example.com/nitt-widgets', 'https://github.com/example/nitt-widgets', '2024-02-01', '2024-06-15'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'Smart Timetable Sync', 'Two-way sync between academic timetable and calendar apps.', ARRAY['Python', 'iCal', 'FastAPI'], 'https://projects.example.com/timetable-sync', NULL, '2024-03-10', '2024-07-01'),
-((SELECT id FROM student_profiles WHERE roll_number = 'EE2021102'), 'Microgrid Simulation Toolkit', 'MATLAB toolkit for campus microgrid what-if analysis.', ARRAY['MATLAB', 'Simulink'], 'https://projects.example.com/microgrid', NULL, '2024-01-20', '2024-05-10'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'Alumni Mentorship Matcher', 'Recommendation system to pair students with alumni mentors.', ARRAY['Next.js', 'TypeScript', 'PostgreSQL'], 'https://projects.example.com/mentor-match', 'https://github.com/example/mentor-match', '2024-03-01', '2024-07-15'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'BITS Course Recommender', 'Graph-based elective recommendation from historical grades.', ARRAY['Python', 'NetworkX', 'Streamlit'], 'https://projects.example.com/course-rec', 'https://github.com/example/course-rec', '2024-04-05', NULL);
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'Campus Hiring Analytics Dashboard', 'Dashboard for placement pipeline insights and recruiter conversion tracking.', ARRAY['React', 'Node.js', 'PostgreSQL'], 'https://projects.example.com/hiring-analytics', 'https://github.com/example/hiring-analytics', '2026-01-15', '2026-05-20'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'Interview Assistant Bot', 'NLP chatbot to answer candidate FAQs before interview rounds.', ARRAY['Python', 'FastAPI', 'Transformers'], 'https://projects.example.com/interview-bot', 'https://github.com/example/interview-bot', '2026-02-10', '2026-06-30'),
+((SELECT id FROM student_profiles WHERE roll_number = 'EC2021001'), 'IoT Energy Monitor', 'Low-power sensor mesh for hostel energy analytics.', ARRAY['C', 'MQTT', 'ESP32'], 'https://projects.example.com/iot-energy', 'https://github.com/example/iot-energy', '2026-04-01', '2026-08-30'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'NITT Placement Portal Widgets', 'Embeddable widgets for drive registration status.', ARRAY['Vue', 'TypeScript'], 'https://projects.example.com/nitt-widgets', 'https://github.com/example/nitt-widgets', '2026-02-01', '2026-06-15'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'Smart Timetable Sync', 'Two-way sync between academic timetable and calendar apps.', ARRAY['Python', 'iCal', 'FastAPI'], 'https://projects.example.com/timetable-sync', NULL, '2026-03-10', '2026-07-01'),
+((SELECT id FROM student_profiles WHERE roll_number = 'EE2021102'), 'Microgrid Simulation Toolkit', 'MATLAB toolkit for campus microgrid what-if analysis.', ARRAY['MATLAB', 'Simulink'], 'https://projects.example.com/microgrid', NULL, '2026-01-20', '2026-05-10'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'Alumni Mentorship Matcher', 'Recommendation system to pair students with alumni mentors.', ARRAY['Next.js', 'TypeScript', 'PostgreSQL'], 'https://projects.example.com/mentor-match', 'https://github.com/example/mentor-match', '2026-03-01', '2026-07-15'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'BITS Course Recommender', 'Graph-based elective recommendation from historical grades.', ARRAY['Python', 'NetworkX', 'Streamlit'], 'https://projects.example.com/course-rec', 'https://github.com/example/course-rec', '2026-04-05', NULL);
 
 -- 28. Message templates
 INSERT INTO message_templates (tenant_id, name, subject, body, template_type, variables, is_active) VALUES
@@ -1103,10 +1131,10 @@ INSERT INTO platform_feedback_replies (feedback_id, author_user_id, message, cha
   NOW() - INTERVAL '4 days'
 );
 
--- Historical data (previous 2 academic years) for year-wise testing
+-- Completed drives (2026 season) for year-wise / analytics testing — no schedule dates before 2026
 INSERT INTO job_postings (id, employer_id, title, description, job_type, category, locations, salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year, skills_required, vacancies, status) VALUES
-('d1000000-0000-0000-0000-000000000101', 'c1000000-0000-0000-0000-000000000001', 'Data Science Intern 2024', 'Historical internship listing for year-wise analytics tests.', 'internship', 'Data Science', ARRAY['Bangalore'], 55000, 75000, ARRAY['Computer Science & Engineering', 'Mathematics'], 7.5, 0, 2024, ARRAY['Python', 'ML'], 6, 'published'),
-('d1000000-0000-0000-0000-000000000102', 'c1000000-0000-0000-0000-000000000002', 'Platform Engineering Intern 2023', 'Historical internship listing for year-wise analytics tests.', 'internship', 'Engineering', ARRAY['Chennai'], 50000, 70000, ARRAY['Computer Science & Engineering', 'Information Technology'], 7.0, 1, 2023, ARRAY['Node.js', 'PostgreSQL'], 8, 'published');
+('d1000000-0000-0000-0000-000000000101', 'c1000000-0000-0000-0000-000000000001', 'Data Science Intern 2026', 'Completed internship listing for analytics tests.', 'internship', 'Data Science', ARRAY['Bangalore'], 55000, 75000, ARRAY['Computer Science & Engineering', 'Mathematics'], 7.5, 0, 2026, ARRAY['Python', 'ML'], 6, 'published'),
+('d1000000-0000-0000-0000-000000000102', 'c1000000-0000-0000-0000-000000000002', 'Platform Engineering Intern 2026', 'Completed internship listing for analytics tests.', 'internship', 'Engineering', ARRAY['Chennai'], 50000, 70000, ARRAY['Computer Science & Engineering', 'Information Technology'], 7.0, 1, 2026, ARRAY['Node.js', 'PostgreSQL'], 8, 'published');
 
 INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES
 ('d1000000-0000-0000-0000-000000000101', 'a1000000-0000-0000-0000-000000000001'),
@@ -1116,12 +1144,12 @@ INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES
 ('d1000000-0000-0000-0000-000000000102', 'a1000000-0000-0000-0000-000000000003');
 
 INSERT INTO placement_drives (id, tenant_id, employer_id, job_id, title, description, drive_type, drive_date, start_time, end_time, venue, status, max_students, registered_count) VALUES
-('e1000000-0000-0000-0000-000000000101', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000101', 'TechCorp Internship Drive 2024', 'Historical drive record for analytics testing.', 'on_campus', DATE '2024-09-18', TIME '10:00', TIME '17:00', 'IITM Main Hall', 'completed', 120, 54),
-('e1000000-0000-0000-0000-000000000102', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000102', 'GlobalSoft Internship Drive 2023', 'Historical drive record for analytics testing.', 'virtual', DATE '2023-10-10', TIME '09:00', TIME '16:00', 'Online', 'completed', 100, 48);
+('e1000000-0000-0000-0000-000000000101', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000101', 'TechCorp Internship Drive 2026', 'Completed drive record for analytics testing.', 'on_campus', DATE '2026-07-18', TIME '10:00', TIME '17:00', 'IITM Main Hall', 'completed', 120, 54),
+('e1000000-0000-0000-0000-000000000102', 'a1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000102', 'GlobalSoft Internship Drive 2026', 'Completed drive record for analytics testing.', 'virtual', DATE '2026-08-10', TIME '09:00', TIME '16:00', 'Online', 'completed', 100, 48);
 
 INSERT INTO program_applications (student_id, job_id, status, notes, applied_at) VALUES
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'd1000000-0000-0000-0000-000000000101', 'selected', 'Selected in 2024 internship cycle.', TIMESTAMP '2024-08-20 11:15:00'),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'd1000000-0000-0000-0000-000000000102', 'in_progress', 'Reached final technical round in 2023 cycle.', TIMESTAMP '2023-08-25 14:30:00');
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'd1000000-0000-0000-0000-000000000101', 'selected', 'Selected in 2026 internship cycle.', TIMESTAMP '2026-08-20 11:15:00'),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'd1000000-0000-0000-0000-000000000102', 'in_progress', 'Reached final technical round in 2026 cycle.', TIMESTAMP '2026-08-25 14:30:00');
 
 
 -- APPENDIX: TCS and Extended Tie-ups
@@ -1138,11 +1166,11 @@ INSERT INTO users (id, tenant_id, email, communication_email, password_hash, rol
 ('b1000000-0000-0000-0000-000000000023', 'a1000000-0000-0000-0000-000000000003', 'priya.singh@bits.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'student', 'Priya', 'Singh', true, true, '+919800100023');
 
 INSERT INTO student_profiles (user_id, tenant_id, roll_number, enrollment_number, department, branch, batch_year, graduation_year, cgpa, tenth_percentage, twelfth_percentage, gender, placement_status, is_verified, verified_at, bio, resume_url) VALUES
-('b1000000-0000-0000-0000-000000000023', 'a1000000-0000-0000-0000-000000000003', 'EC2021202', 'ENR-BITS-EC2021202', 'Electronics', 'Electronics & Communication', 2021, 2025, 8.85, 96.0, 94.0, 'female', 'unplaced', true, NOW(), 'Passionate about embedded systems.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+('b1000000-0000-0000-0000-000000000023', 'a1000000-0000-0000-0000-000000000003', 'EC2021202', 'ENR-BITS-EC2021202', 'Electronics', 'Electronics & Communication', 2022, 2026, 8.85, 96.0, 94.0, 'female', 'unplaced', true, NOW(), 'Passionate about embedded systems.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
 
 INSERT INTO student_projects (student_id, title, description, tech_stack, project_url, github_url, start_date, end_date) VALUES
-((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'FPGA Signal Lab', 'Teaching lab exercises for DSP on FPGA boards.', ARRAY['VHDL', 'Verilog'], 'https://projects.example.com/fpga-lab', NULL, '2024-05-01', '2024-09-01'),
-((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'Campus Shuttle ETA', 'Live shuttle tracking mini-app for Pilani campus.', ARRAY['React Native', 'Node.js'], 'https://projects.example.com/shuttle-eta', NULL, '2024-02-15', '2024-06-30');
+((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'FPGA Signal Lab', 'Teaching lab exercises for DSP on FPGA boards.', ARRAY['VHDL', 'Verilog'], 'https://projects.example.com/fpga-lab', NULL, '2026-05-01', '2026-09-01'),
+((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'Campus Shuttle ETA', 'Live shuttle tracking mini-app for Pilani campus.', ARRAY['React Native', 'Node.js'], 'https://projects.example.com/shuttle-eta', NULL, '2026-02-15', '2026-06-30');
 
 -- 3. Tie up every employer to all three seeded colleges (≥2 employers per campus; here: full grid, all approved)
 DELETE FROM employer_approvals;
@@ -1180,19 +1208,19 @@ BEGIN
     -- Insert Full Time Job
     j_id := gen_random_uuid();
     INSERT INTO job_postings (id, employer_id, title, description, job_type, category, locations, salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year, skills_required, vacancies, status)
-    VALUES (j_id, emp.id, emp.company_name || ' Software Engineer', 'Full time software engineer role.', 'full_time', 'Engineering', ARRAY['Bangalore'], 1000000, 1500000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.0, 0, 2025, ARRAY['Java', 'Python', 'React'], 10, 'published');
+    VALUES (j_id, emp.id, emp.company_name || ' Software Engineer', 'Full time software engineer role.', 'full_time', 'Engineering', ARRAY['Bangalore'], 1000000, 1500000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.0, 0, 2026, ARRAY['Java', 'Python', 'React'], 10, 'published');
     INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES (j_id, col1);
 
     -- Insert Internship
     i_id := gen_random_uuid();
     INSERT INTO job_postings (id, employer_id, title, description, job_type, category, locations, salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year, skills_required, vacancies, status)
-    VALUES (i_id, emp.id, emp.company_name || ' Summer Intern', 'Summer internship program.', 'internship', 'Engineering', ARRAY['Bangalore'], 50000, 80000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.0, 0, 2025, ARRAY['Java', 'Python'], 5, 'published');
+    VALUES (i_id, emp.id, emp.company_name || ' Summer Intern', 'Summer internship program.', 'internship', 'Engineering', ARRAY['Bangalore'], 50000, 80000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.0, 0, 2026, ARRAY['Java', 'Python'], 5, 'published');
     INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES (i_id, col1);
 
     -- Insert Project
     p_id := gen_random_uuid();
     INSERT INTO job_postings (id, employer_id, title, description, job_type, category, locations, salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year, skills_required, vacancies, status)
-    VALUES (p_id, emp.id, emp.company_name || ' Short Project', 'Short project opportunity.', 'short_project', 'Engineering', ARRAY['Remote'], 20000, 30000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.0, 0, 2025, ARRAY['React', 'Node'], 5, 'published');
+    VALUES (p_id, emp.id, emp.company_name || ' Short Project', 'Short project opportunity.', 'short_project', 'Engineering', ARRAY['Remote'], 20000, 30000, ARRAY['Computer Science & Engineering', 'Electronics & Communication'], 7.0, 0, 2026, ARRAY['React', 'Node'], 5, 'published');
     INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES (p_id, col1);
 
     -- Insert Drive

@@ -64,6 +64,7 @@ export async function GET(request) {
       SELECT
         d.id,
         ep.company_name AS company,
+        ep.website AS website,
         COALESCE(j.title, d.title) AS role,
         d.drive_date AS date,
         d.drive_type AS type,
@@ -84,6 +85,7 @@ export async function GET(request) {
         a.id,
         a.drive_id AS "driveId",
         ep.company_name AS company,
+        ep.website AS website,
         COALESCE(j.title, d.title) AS role,
         a.status,
         a.current_round AS "currentRound",

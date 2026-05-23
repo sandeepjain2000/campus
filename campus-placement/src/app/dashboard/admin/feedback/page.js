@@ -1,19 +1,24 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate as mutateByKey } from 'swr';
 import { formatDate, formatFeedbackRole } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import AdminRecordModal from '@/components/admin/AdminRecordModal';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 const PAGE_SIZE = 10;
 const EXPORT_PAGE_SIZE = 500;
 
-const fetcher = (url) => fetch(url).then((res) => {
-  if (!res.ok) throw new Error('Failed to load feedback');
-  return res.json();
-});
+const fetchOpts = { credentials: 'include' };
+
+const fetcher = (url) =>
+  fetch(url, fetchOpts).then((res) => {
+    if (!res.ok) throw new Error('Failed to load feedback');
+    return res.json();
+  });
 
 const STATUSES = ['Submitted', 'Under Review', 'Planned', 'Closed'];
 
@@ -26,11 +31,13 @@ export default function AdminFeedbackInboxPage() {
   const { data, error, isLoading, mutate } = useSWR(listKey, fetcher);
   const { data: exportData } = useSWR(exportKey, fetcher, { revalidateOnFocus: false });
 
+  const [panelMode, setPanelMode] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const [panelError, setPanelError] = useState('');
+  const [threadData, setThreadData] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [threadData, setThreadData] = useState(null);
 
   const items = data?.items || [];
   const total = data?.total ?? 0;
@@ -38,22 +45,40 @@ export default function AdminFeedbackInboxPage() {
 
   const statusCounts = data?.statusCounts;
 
-  const counts = useMemo(() => ({
-    submitted: statusCounts?.Submitted ?? 0,
-    review: statusCounts?.['Under Review'] ?? 0,
-    planned: statusCounts?.Planned ?? 0,
-    closed: statusCounts?.Closed ?? 0,
-  }), [statusCounts]);
+  const counts = useMemo(
+    () => ({
+      submitted: statusCounts?.Submitted ?? 0,
+      review: statusCounts?.['Under Review'] ?? 0,
+      planned: statusCounts?.Planned ?? 0,
+      closed: statusCounts?.Closed ?? 0,
+    }),
+    [statusCounts],
+  );
 
   const refreshLists = () => {
     mutate();
     mutateByKey(exportKey);
   };
 
+  const closePanel = () => {
+    setPanelMode(null);
+    setSelectedId(null);
+    setPanelLoading(false);
+    setPanelError('');
+    setThreadData(null);
+    setReplyText('');
+  };
+
+  useEffect(() => {
+    closePanel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset detail when list page changes
+  }, [page]);
+
   const updateStatus = async (id, status) => {
     const res = await fetch(`/api/feedback/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ status }),
     });
     if (!res.ok) {
@@ -62,34 +87,63 @@ export default function AdminFeedbackInboxPage() {
       return;
     }
     refreshLists();
+    if (selectedId === id && threadData?.item) {
+      setThreadData((prev) =>
+        prev?.item ? { ...prev, item: { ...prev.item, status } } : prev,
+      );
+    }
+  };
+
+  const loadThread = async (id) => {
+    try {
+      const res = await fetch(`/api/feedback/${id}`, fetchOpts);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = body.error || 'Could not load feedback';
+        setPanelError(msg);
+        addToast(msg, 'warning');
+        return null;
+      }
+      if (body.repliesUnavailable) {
+        setThreadData(body);
+        addToast(
+          body.error || 'Replies table is not set up on this database.',
+          'warning',
+        );
+        return body;
+      }
+      setThreadData(body);
+      return body;
+    } catch {
+      const msg = 'Network error while loading feedback';
+      setPanelError(msg);
+      addToast(msg, 'warning');
+      return null;
+    } finally {
+      setPanelLoading(false);
+    }
   };
 
   const openThread = async (id) => {
     setSelectedId(id);
-    setThreadLoading(true);
-    try {
-      const res = await fetch(`/api/feedback/${id}`);
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        addToast(body.error || 'Could not load feedback thread', 'warning');
-        return;
-      }
-      setThreadData(body);
-    } catch {
-      addToast('Network error while loading thread', 'warning');
-    } finally {
-      setThreadLoading(false);
-    }
+    setPanelMode('view');
+    setPanelError('');
+    setThreadData(null);
+    setReplyText('');
+    setPanelLoading(true);
+    await loadThread(id);
   };
 
   const sendReply = async () => {
     if (!selectedId || !replyText.trim()) return;
     setReplyLoading(true);
+    const message = replyText.trim();
     try {
       const res = await fetch(`/api/feedback/${selectedId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: replyText.trim() }),
+        credentials: 'include',
+        body: JSON.stringify({ message }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -97,14 +151,20 @@ export default function AdminFeedbackInboxPage() {
         return;
       }
       setReplyText('');
-      addToast('Reply posted.', 'info');
-      await Promise.all([refreshLists(), openThread(selectedId)]);
+      addToast('Reply posted.', 'success');
+      refreshLists();
+      await loadThread(selectedId);
     } catch {
       addToast('Network error while posting reply', 'warning');
     } finally {
       setReplyLoading(false);
     }
   };
+
+  const selectedTitle =
+    threadData?.item?.title ||
+    items.find((row) => row.id === selectedId)?.title ||
+    'Feedback';
 
   if (error) return <PageError error={error} />;
 
@@ -193,7 +253,7 @@ export default function AdminFeedbackInboxPage() {
                 <th>Role</th>
                 <th>Replies</th>
                 <th>Status</th>
-                <th>Discussion</th>
+                <th style={{ width: 72 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -202,7 +262,10 @@ export default function AdminFeedbackInboxPage() {
                   <td className="text-sm">{formatDate(row.created_at)}</td>
                   <td>
                     <div className="font-semibold">{row.title}</div>
-                    <div className="text-sm text-secondary" style={{ maxWidth: 420, marginTop: '0.25rem', lineHeight: 1.45 }}>
+                    <div
+                      className="text-sm text-secondary"
+                      style={{ maxWidth: 420, marginTop: '0.25rem', lineHeight: 1.45 }}
+                    >
                       {row.description}
                     </div>
                   </td>
@@ -234,18 +297,19 @@ export default function AdminFeedbackInboxPage() {
                       onChange={(e) => updateStatus(row.id, e.target.value)}
                     >
                       {STATUSES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </select>
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-sm"
+                    <StandardTableIconAction
+                      action="view"
+                      showLabel={false}
                       onClick={() => openThread(row.id)}
-                    >
-                      View
-                    </button>
+                      tooltip="View thread and reply"
+                    />
                   </td>
                 </tr>
               ))}
@@ -292,74 +356,139 @@ export default function AdminFeedbackInboxPage() {
         )}
         {items.length === 0 && (
           <p className="text-sm text-secondary" style={{ padding: '1rem' }}>
-            No feedback yet — or the <code>platform_feedback</code> table is not created. Run <code>db/migrations/002_platform_feedback.sql</code>.
+            No feedback yet — or the <code>platform_feedback</code> table is not created. Run{' '}
+            <code>db/migrations/002_platform_feedback.sql</code>.
           </p>
         )}
       </div>
 
-      {selectedId && (
-        <div className="card" style={{ marginTop: '1rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">Feedback discussion track</h3>
-          </div>
-          {threadLoading && <p className="text-sm text-secondary">Loading thread…</p>}
-          {!threadLoading && threadData?.item && (
-            <>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
-                  <div>
-                    <div className="font-semibold">{threadData.item.title}</div>
-                    <div className="text-sm text-secondary">{threadData.item.description}</div>
-                    {threadData.item.organization_name ? (
-                      <div className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-                        {threadData.item.organization_name}
-                        {' · '}
-                        {formatFeedbackRole(threadData.item.user_role)}
-                      </div>
-                    ) : null}
-                  </div>
-                  <span className="badge badge-amber">{threadData.item.status}</span>
-                </div>
+      <AdminRecordModal
+        title={selectedTitle}
+        mode={panelMode}
+        loading={panelLoading}
+        saving={replyLoading}
+        error={panelError}
+        onClose={closePanel}
+        footer={
+          threadData?.item && !threadData.repliesUnavailable ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={sendReply}
+              disabled={replyLoading || !replyText.trim()}
+            >
+              {replyLoading ? 'Sending…' : 'Send reply'}
+            </button>
+          ) : null
+        }
+      >
+        {threadData?.item ? (
+          <>
+            {threadData.repliesUnavailable ? (
+              <div
+                className="card"
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.75rem 1rem',
+                  borderColor: 'var(--warning-300)',
+                  background: 'var(--warning-50)',
+                }}
+              >
+                <p className="text-sm" style={{ margin: 0, color: 'var(--warning-800)' }}>
+                  {threadData.error ||
+                    'Replies are disabled until db/migrations/003_platform_feedback_replies.sql is applied.'}
+                </p>
               </div>
+            ) : null}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                {(threadData.replies || []).map((r) => (
-                  <div key={r.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.75rem' }}>
-                    <div className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>{r.message}</div>
-                    <div className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-                      {(r.author_name && r.author_name.trim()) || r.author_email || 'Super Admin'} · {formatDate(r.created_at)}
+            <div style={{ marginBottom: '1rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div>
+                  <div className="text-xs text-tertiary" style={{ marginBottom: '0.25rem' }}>
+                    {formatDate(threadData.item.created_at)}
+                    {threadData.item.category ? ` · ${threadData.item.category}` : ''}
+                  </div>
+                  <div className="text-sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {threadData.item.description}
+                  </div>
+                  {threadData.item.organization_name ? (
+                    <div className="text-xs text-tertiary" style={{ marginTop: '0.5rem' }}>
+                      {threadData.item.organization_name}
+                      {' · '}
+                      {formatFeedbackRole(threadData.item.user_role)}
+                      {threadData.item.user_email ? ` · ${threadData.item.user_email}` : ''}
                     </div>
-                  </div>
-                ))}
-                {(threadData.replies || []).length === 0 && (
-                  <p className="text-sm text-secondary">No replies yet. Send the first response.</p>
-                )}
+                  ) : null}
+                </div>
+                <select
+                  className="form-select"
+                  style={{ minWidth: '140px', flexShrink: 0 }}
+                  value={threadData.item.status}
+                  onChange={(e) => updateStatus(threadData.item.id, e.target.value)}
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
 
-              <div className="form-group" style={{ marginBottom: '0.5rem' }}>
-                <label className="form-label">Reply as Super Admin</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              <p className="text-xs font-semibold text-secondary" style={{ margin: 0, textTransform: 'uppercase' }}>
+                Discussion
+              </p>
+              {(threadData.replies || []).map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.65rem 0.75rem',
+                  }}
+                >
+                  <div className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
+                    {r.message}
+                  </div>
+                  <div className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
+                    {(r.author_name && r.author_name.trim()) || r.author_email || 'Super Admin'} ·{' '}
+                    {formatDate(r.created_at)}
+                  </div>
+                </div>
+              ))}
+              {(threadData.replies || []).length === 0 && !threadData.repliesUnavailable ? (
+                <p className="text-sm text-secondary" style={{ margin: 0 }}>
+                  No replies yet. Send the first response below.
+                </p>
+              ) : null}
+            </div>
+
+            {!threadData.repliesUnavailable ? (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="admin-feedback-reply">
+                  Reply as Super Admin
+                </label>
                 <textarea
+                  id="admin-feedback-reply"
                   className="form-input"
-                  rows={3}
-                  placeholder="Type your reply to the feedback submitter..."
+                  rows={4}
+                  placeholder="Type your reply to the feedback submitter…"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={sendReply}
-                  disabled={replyLoading || !replyText.trim()}
-                >
-                  {replyLoading ? 'Sending…' : 'Reply'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+            ) : null}
+          </>
+        ) : null}
+      </AdminRecordModal>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { FileEdit, CheckCircle, Award, Target, Calendar, IndianRupee, Globe, Building, ArrowRight, ClipboardList } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import PageLoading from '@/components/PageLoading';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -22,16 +24,7 @@ export default function StudentOverviewPage() {
   if (error) return <PageError error={error} reset={() => mutate()} />;
 
   if (isLoading || !data) {
-    return (
-      <div>
-        <div className="skeleton skeleton-heading" />
-        <div className="grid grid-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton skeleton-card" />
-          ))}
-        </div>
-      </div>
-    );
+    return <PageLoading message="Loading your overview…" variant="skeleton-dashboard" />;
   }
 
   const { stats, recentDrives, applications } = data;
@@ -135,7 +128,9 @@ export default function StudentOverviewPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
-                  <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{drive.company}</h4>
+                  <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
+                    <CompanyNameLink name={drive.company} website={drive.website} />
+                  </h4>
                   <span className={`badge badge-${getStatusColor(drive.status)}`}>{formatStatus(drive.status)}</span>
                 </div>
                 <p className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
@@ -189,7 +184,9 @@ export default function StudentOverviewPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
-                  <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{app.company}</h4>
+                  <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>
+                    <CompanyNameLink name={app.company} website={app.website} />
+                  </h4>
                   <span className={`badge badge-${getStatusColor(app.status)} badge-dot`}>{formatStatus(app.status)}</span>
                 </div>
                 <p className="text-sm text-secondary">{app.role}</p>

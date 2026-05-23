@@ -12,6 +12,7 @@ export default function mb_HiringAssessment() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [payload, setPayload] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -19,15 +20,17 @@ export default function mb_HiringAssessment() {
     let mounted = true;
     (async () => {
       setLoading(true);
+      setLoadError('');
       try {
         const res = await fetch('/api/college/hiring-assessment-view');
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load');
         if (!mounted) return;
         setPayload(json);
-      } catch {
+      } catch (e) {
         if (!mounted) return;
         setPayload(null);
+        setLoadError(e?.message || 'Could not load assessment data');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -111,6 +114,10 @@ export default function mb_HiringAssessment() {
             <div className="skeleton" style={{ height: 100, borderRadius: '12px' }} />
             <div className="skeleton" style={{ height: 100, borderRadius: '12px' }} />
             <div className="skeleton" style={{ height: 100, borderRadius: '12px' }} />
+          </div>
+        ) : loadError ? (
+          <div className="card" style={{ padding: '1rem', borderColor: 'var(--danger-200)', background: 'var(--danger-50)' }}>
+            <p style={{ margin: 0, color: 'var(--danger-700)', fontWeight: 600, fontSize: '0.9rem' }}>{loadError}</p>
           </div>
         ) : (
           <>

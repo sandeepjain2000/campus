@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
@@ -12,6 +13,11 @@ import {
   Clock, MapPin, Users, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import {
+  academicYearQueryString,
+  readActiveAcademicYearContext,
+} from '@/lib/collegeAcademicYearContext';
+import { mapCollegeDriveFromApi, isDriveStaffDirty } from '@/lib/collegeDrivesClient';
 
 const STATUS_META = {
   requested:   { label: 'Awaiting Approval', color: '#b45309', bg: '#fef3c7', icon: AlertCircle },
@@ -49,33 +55,35 @@ export default function MobileDrives() {
   const [expandedId, setExpandedId] = useState(null);
   const [facebookPageShare, setFacebookPageShare] = useState(false);
   const [postingFacebookId, setPostingFacebookId] = useState(null);
+  const [staffSavingId, setStaffSavingId] = useState(null);
+
+  const loadDrives = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const qs = academicYearQueryString(readActiveAcademicYearContext());
+      const res = await fetch(`/api/college/drives${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
+      setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
+      setFacebookPageShare(Boolean(json.integrations?.facebookPageShare));
+      setDrives((json.drives || []).map(mapCollegeDriveFromApi));
+    } catch (error) {
+      addToast(error.message || 'Failed to load drives', 'error');
+      setDrives([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addToast]);
 
   useEffect(() => {
-    let mounted = true;
-    const loadDrives = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/college/drives');
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
-        if (!mounted) return;
-        setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
-        setFacebookPageShare(Boolean(json.integrations?.facebookPageShare));
-        setDrives((json.drives || []).map((d) => ({
-          ...d, date: d.date ? String(d.date).slice(0, 10) : '',
-          registered: Number(d.registered || 0), selected: Number(d.selected || 0),
-          staffIds: [], jobPostingTitle: '', jobPostingUrl: '',
-          socialShared: Array.isArray(d.social_shared) ? d.social_shared : [],
-        })));
-      } catch (error) {
-        if (!mounted) return;
-        addToast(error.message || 'Failed to load drives', 'error');
-        setDrives([]);
-      } finally { if (mounted) setIsLoading(false); }
-    };
     loadDrives();
-    return () => { mounted = false; };
-  }, [addToast]);
+  }, [loadDrives]);
+
+  useEffect(() => {
+    const onYear = () => { loadDrives(); };
+    window.addEventListener('placementhub-academic-year', onYear);
+    return () => window.removeEventListener('placementhub-academic-year', onYear);
+  }, [loadDrives]);
 
   const attachStaff = (driveId, staffId) => {
     if (!staffId) return;
@@ -83,6 +91,35 @@ export default function MobileDrives() {
   };
   const removeStaff = (driveId, staffId) => {
     setDrives((prev) => prev.map((d) => (d.id === driveId ? { ...d, staffIds: d.staffIds.filter((id) => id !== staffId) } : d)));
+  };
+
+  const saveDriveStaff = async (driveId) => {
+    const drive = drives.find((d) => d.id === driveId);
+    if (!drive) return;
+    setStaffSavingId(driveId);
+    try {
+      const res = await fetch(`/api/college/drives/${driveId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffIds: drive.staffIds }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(json.error || 'Could not save staff assignment.', 'error');
+        return;
+      }
+      const saved = (json.drive?.staffIds || drive.staffIds).map(String);
+      setDrives((prev) =>
+        prev.map((d) =>
+          d.id === driveId ? { ...d, staffIds: saved, staffIdsBaseline: [...saved] } : d,
+        ),
+      );
+      addToast('Staff assignment saved.', 'success');
+    } catch (e) {
+      addToast(e.message || 'Network error while saving.', 'error');
+    } finally {
+      setStaffSavingId(null);
+    }
   };
 
   const addOptionsForDrive = useMemo(() => {
@@ -210,7 +247,9 @@ export default function MobileDrives() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                       <EntityLogo name={drive.company} size="sm" shape="rounded" />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{drive.company}</div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                          <CompanyNameLink name={drive.company} website={drive.website} />
+                        </div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{drive.role}</div>
                       </div>
                       <StatusPill status={drive.status} />
@@ -264,7 +303,10 @@ export default function MobileDrives() {
                     <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Staff</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                          {drive.staffIds.length === 0 && (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>None linked yet.</span>
+                          )}
                           {drive.staffIds.map((sid) => {
                             const s = staffDirectory.find((staff) => staff.id === sid);
                             if (!s) return null;
@@ -275,11 +317,22 @@ export default function MobileDrives() {
                               </span>
                             );
                           })}
-                          <select className="form-select" style={{ width: 'auto', minWidth: 120, fontSize: '0.75rem', padding: '0.2rem 1.5rem 0.2rem 0.5rem' }} value="" onChange={(e) => { attachStaff(drive.id, e.target.value); e.target.value = ''; }}>
-                            <option value="">+ Add</option>
-                            {addOptionsForDrive[drive.id]?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                          </select>
+                          {staffDirectory.length > 0 && (
+                            <select className="form-select" style={{ width: 'auto', minWidth: 120, fontSize: '0.75rem', padding: '0.2rem 1.5rem 0.2rem 0.5rem' }} value="" onChange={(e) => { attachStaff(drive.id, e.target.value); e.target.value = ''; }}>
+                              <option value="">+ Add</option>
+                              {addOptionsForDrive[drive.id]?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          style={{ marginTop: '0.5rem' }}
+                          disabled={!isDriveStaffDirty(drive) || staffSavingId === drive.id || staffDirectory.length === 0}
+                          onClick={() => saveDriveStaff(drive.id)}
+                        >
+                          {staffSavingId === drive.id ? 'Saving…' : 'Save staff'}
+                        </button>
                       </div>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Social</div>

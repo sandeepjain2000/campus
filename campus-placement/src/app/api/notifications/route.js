@@ -7,7 +7,19 @@ const LIMIT = 50;
 
 function mailboxFromUrl(url) {
   const sp = new URL(url).searchParams.get('mailbox');
-  return sp === 'trash' ? 'trash' : 'inbox';
+  if (sp === 'trash') return 'trash';
+  if (sp === 'starred') return 'starred';
+  return 'inbox';
+}
+
+function mailboxWhereClause(mailbox) {
+  if (mailbox === 'trash') {
+    return 'deleted_at IS NOT NULL';
+  }
+  if (mailbox === 'starred') {
+    return 'deleted_at IS NULL AND is_starred = true';
+  }
+  return 'deleted_at IS NULL';
 }
 
 export async function GET(request) {
@@ -19,19 +31,27 @@ export async function GET(request) {
 
     const mailbox = mailboxFromUrl(request.url);
 
+    const whereMailbox = mailboxWhereClause(mailbox);
+
     const res = await query(
-      `SELECT id, title, message, type, link, is_read, created_at, deleted_at
+      `SELECT id, title, message, type, link, is_read, is_starred, created_at, deleted_at
        FROM notifications
        WHERE user_id = $1::uuid
-         AND (($2 = 'trash' AND deleted_at IS NOT NULL) OR ($2 = 'inbox' AND deleted_at IS NULL))
+         AND ${whereMailbox}
        ORDER BY created_at DESC
-       LIMIT $3`,
-      [session.user.id, mailbox, LIMIT],
+       LIMIT $2`,
+      [session.user.id, LIMIT],
     );
 
     const unread = await query(
       `SELECT COUNT(*)::int AS c FROM notifications
        WHERE user_id = $1::uuid AND is_read = false AND deleted_at IS NULL`,
+      [session.user.id],
+    );
+
+    const starred = await query(
+      `SELECT COUNT(*)::int AS c FROM notifications
+       WHERE user_id = $1::uuid AND deleted_at IS NULL AND is_starred = true`,
       [session.user.id],
     );
 
@@ -47,6 +67,7 @@ export async function GET(request) {
     return NextResponse.json({
       notifications: res.rows,
       unreadCount: unread.rows[0]?.c ?? 0,
+      starredCount: starred.rows[0]?.c ?? 0,
       notificationSenderEmail,
       mailbox,
     });
@@ -64,7 +85,7 @@ export async function PATCH(req) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { markAllRead, ids, trashIds, restoreIds } = body;
+    const { markAllRead, ids, trashIds, restoreIds, starIds, unstarIds } = body;
 
     if (markAllRead) {
       await query(
@@ -102,7 +123,28 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ error: 'markAllRead, ids, trashIds, or restoreIds required' }, { status: 400 });
+    if (Array.isArray(starIds) && starIds.length) {
+      await query(
+        `UPDATE notifications SET is_starred = true
+         WHERE user_id = $1::uuid AND id = ANY($2::uuid[]) AND deleted_at IS NULL`,
+        [session.user.id, starIds],
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (Array.isArray(unstarIds) && unstarIds.length) {
+      await query(
+        `UPDATE notifications SET is_starred = false
+         WHERE user_id = $1::uuid AND id = ANY($2::uuid[])`,
+        [session.user.id, unstarIds],
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json(
+      { error: 'markAllRead, ids, trashIds, restoreIds, starIds, or unstarIds required' },
+      { status: 400 },
+    );
   } catch (e) {
     console.error('PATCH /api/notifications', e);
     return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 });

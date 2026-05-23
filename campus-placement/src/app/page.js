@@ -14,6 +14,7 @@ import {
   Database,
 } from 'lucide-react';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 
 export default function LandingPage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '?';
@@ -46,10 +47,11 @@ export default function LandingPage() {
     });
   }, [appVersion, buildTimeIso, gitSha, deployId]);
 
+  /** Same-tab navigation so browser Back returns to the landing page. */
   function MarketingNavLink({ internalHref, children, ...rest }) {
     if (marketingUrl) {
       return (
-        <a href={marketingUrl} target="_blank" rel="noopener noreferrer" {...rest}>
+        <a href={marketingUrl} {...rest}>
           {children}
         </a>
       );
@@ -64,6 +66,11 @@ export default function LandingPage() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', display: 'flex', flexDirection: 'column' }}>
       
+      {/* Demo Email Banner */}
+      <div style={{ backgroundColor: 'var(--primary-50)', borderBottom: '1px solid var(--primary-200)', padding: '0.75rem 1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--primary-800)', zIndex: 60, position: 'relative' }}>
+        <strong>Demo Emails:</strong> All System emails can be checked on this disposable mail id: <strong>placementhub@yopmail.com</strong> at <a href="https://yopmail.com/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--primary-900)' }}>https://yopmail.com/</a>
+      </div>
+
       {/* Fixed Demo Links - Bottom Left (Moved away from prime focus) */}
       <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Demo Tools</div>
@@ -93,6 +100,7 @@ export default function LandingPage() {
               <MarketingNavLink internalHref="/contact" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact</MarketingNavLink>
             </nav>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <ThemeToggleButton />
               <Link href="/register" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
                 Register
               </Link>
@@ -204,14 +212,14 @@ export default function LandingPage() {
 
         {/* CTA Section */}
         <section style={{ padding: '6rem 1.5rem', textAlign: 'center' }}>
-          <div style={{ borderRadius: 'var(--radius-2xl)', border: 'none', background: 'linear-gradient(135deg, var(--primary-900), var(--primary-700))', padding: '4rem 2rem', maxWidth: '56rem', margin: '0 auto', boxShadow: 'var(--shadow-xl)' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ffffff', marginBottom: '1rem', letterSpacing: '-0.025em' }}>
+          <div className="gradient-banner" style={{ borderRadius: 'var(--radius-2xl)', border: 'none', padding: '4rem 2rem', maxWidth: '56rem', margin: '0 auto', boxShadow: 'var(--shadow-xl)' }}>
+            <h2 className="gradient-banner-title" style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-0.025em' }}>
               Ready to Transform Placements?
             </h2>
-            <p style={{ fontSize: '1.125rem', color: 'var(--primary-200)', marginBottom: '2.5rem', maxWidth: '42rem', marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ fontSize: '1.125rem', color: 'var(--banner-fg-muted)', marginBottom: '2.5rem', maxWidth: '42rem', marginLeft: 'auto', marginRight: 'auto' }}>
               Join 500+ colleges already using PlacementHub to drive better outcomes.
             </p>
-            <Link href="/register" className="btn" style={{ padding: '1rem 2.5rem', fontSize: '1.125rem', backgroundColor: '#ffffff', color: 'var(--primary-800)', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}>
+            <Link href="/register" className="btn gradient-banner-solid-btn" style={{ padding: '1rem 2.5rem', fontSize: '1.125rem', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}>
               Start Your Free Trial
             </Link>
           </div>

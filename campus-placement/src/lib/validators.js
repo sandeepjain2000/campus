@@ -7,17 +7,122 @@ export function validateEmail(email) {
   return re.test(String(email || '').trim());
 }
 
-/** Letters (Unicode), spaces, apostrophes, periods, hyphens — for person names. */
+export const MAX_STUDENT_BRANCH_LENGTH = 100;
+
+/** Department, branch, and specialisation fields on student profiles. */
+export function validateStudentBranchField(value, { label = 'Branch / specialisation' } = {}) {
+  const s = String(value ?? '').trim();
+  if (!s) return '';
+  if (s.length > MAX_STUDENT_BRANCH_LENGTH) {
+    return `${label} must be ${MAX_STUDENT_BRANCH_LENGTH} characters or fewer`;
+  }
+  return '';
+}
+
+/**
+ * Person name: Unicode letters + marks, spaces, and connectors common across naming traditions
+ * (hyphens, apostrophes, periods for initials, middle dot).
+ */
+const NAME_WORD = String.raw`[\p{L}\p{M}]+(?:[\u0027\u2019\u02BC.\u00B7-][\p{L}\p{M}]+)*`;
+const NAME_INITIAL = String.raw`[\p{L}\p{M}]\.`;
+const NAME_PART = String.raw`(?:${NAME_INITIAL}|${NAME_WORD})`;
+export const PERSON_NAME_PATTERN = new RegExp(`^${NAME_PART}(?:\\s+${NAME_PART})*$`, 'u');
+
+export function normalizePersonName(name) {
+  return String(name || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 export function validatePersonName(name, { required = true, label = 'Name' } = {}) {
-  const s = String(name || '').trim();
+  const s = normalizePersonName(name);
   if (!s) return required ? `${label} is required` : '';
   if (s.length < 2) return `${label} must be at least 2 characters`;
   if (s.length > 100) return `${label} is too long`;
-  if (!/^[\p{L}][\p{L}\s'.-]*$/u.test(s)) {
-    return `${label} may only contain letters, spaces, apostrophes, periods, and hyphens`;
-  }
   if (/\d/.test(s)) return `${label} cannot contain numbers`;
+  if (/[^\p{L}\p{M}\s\u0027\u2019\u02BC.\u00B7-]/u.test(s)) {
+    return `${label} may only contain letters and common name characters (spaces, hyphens, apostrophes, periods)`;
+  }
+  if (!PERSON_NAME_PATTERN.test(s)) {
+    return `${label} must use letters with spaces or connectors (e.g. hyphen, apostrophe) between name parts`;
+  }
   return '';
+}
+
+/** Roll / system-id body after college prefix is removed (alphanumeric, hyphens, underscores). */
+const ROLL_BODY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
+function validateRollBody(roll) {
+  const s = String(roll || '').trim();
+  if (!s) return { error: 'Roll No is required' };
+  if (s.length > 48) return { error: 'Roll No is too long' };
+  if (!ROLL_BODY_PATTERN.test(s)) {
+    return { error: 'Roll No may only contain letters, numbers, hyphens, and underscores' };
+  }
+  return { rollNumber: s };
+}
+
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Normalize roll input and enforce college system-id prefix when short_code is set.
+ * Accepts bare roll (CS2021001) or prefixed (IITM-CS2021001). Rejects another college prefix (BITS-…).
+ */
+export function resolveStudentRollNumber(rawInput, shortCode) {
+  const input = String(rawInput || '').trim();
+  if (!input) return { error: 'Roll No is required' };
+
+  const code = String(shortCode || '').trim();
+  if (!code) {
+    const body = validateRollBody(input);
+    if (body.error) return body;
+    return { rollNumber: body.rollNumber, systemId: body.rollNumber };
+  }
+
+  const prefixRe = new RegExp(`^${escapeRegExp(code)}-`, 'i');
+  if (prefixRe.test(input)) {
+    const rollPart = input.slice(code.length + 1).trim();
+    const body = validateRollBody(rollPart);
+    if (body.error) return body;
+    return {
+      rollNumber: body.rollNumber,
+      systemId: `${code}-${body.rollNumber}`,
+    };
+  }
+
+  const dash = input.indexOf('-');
+  if (dash > 0) {
+    const head = input.slice(0, dash);
+    const tail = input.slice(dash + 1).trim();
+    if (/^[A-Za-z]{2,12}$/.test(head) && !/\d/.test(head) && head.toLowerCase() !== code.toLowerCase()) {
+      return {
+        error: `System ID must use your college prefix "${code}-" (found "${head}-")`,
+      };
+    }
+    if (!tail && head.toLowerCase() === code.toLowerCase()) {
+      return { error: 'Roll No is required after college prefix' };
+    }
+  }
+
+  const body = validateRollBody(input);
+  if (body.error) return body;
+  return {
+    rollNumber: body.rollNumber,
+    systemId: `${code}-${body.rollNumber}`,
+  };
+}
+
+/** Validate full student name and split into first / last for storage. */
+export function parseStudentFullName(name) {
+  const fullName = normalizePersonName(name);
+  const error = validatePersonName(fullName, { required: true, label: 'Name' });
+  if (error) return { error };
+  const parts = fullName.split(/\s+/);
+  const firstName = parts[0];
+  const lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
+  return { firstName, lastName, fullName };
 }
 
 /** Admission / batch start year (e.g. UG batch of 2024). */
@@ -60,9 +165,71 @@ export function validateCGPA(cgpa) {
   return !isNaN(num) && num >= 0 && num <= 10;
 }
 
+/** Student / college-record CGPA: when set, must be in (0, 10]. Empty allowed unless required. */
+export function validateStudentCgpa(cgpa, { required = false } = {}) {
+  const raw = cgpa === '' || cgpa == null ? '' : String(cgpa).trim();
+  if (!raw) return required ? 'CGPA is required' : '';
+  const num = parseFloat(raw);
+  if (!Number.isFinite(num) || num <= 0 || num > 10) {
+    return 'CGPA must be greater than 0 and at most 10';
+  }
+  return '';
+}
+
+export function parseStudentCgpaOrNull(cgpa, options = {}) {
+  const err = validateStudentCgpa(cgpa, options);
+  if (err) return { error: err };
+  const raw = cgpa === '' || cgpa == null ? '' : String(cgpa).trim();
+  if (!raw) return { value: null };
+  return { value: parseFloat(raw) };
+}
+
 export function validatePercentage(pct) {
   const num = parseFloat(pct);
   return !isNaN(num) && num >= 0 && num <= 100;
+}
+
+/** Board / diploma percentage: when set, must be in [0, 100]. Empty allowed unless required. */
+export function validateStudentPercentage(pct, { label = 'Percentage', required = false } = {}) {
+  const raw = pct === '' || pct == null ? '' : String(pct).trim();
+  if (!raw) return required ? `${label} is required` : '';
+  const num = parseFloat(raw);
+  if (!Number.isFinite(num) || num < 0 || num > 100) {
+    return `${label} must be between 0 and 100`;
+  }
+  return '';
+}
+
+export function parseStudentPercentageOrNull(pct, label, options = {}) {
+  const err = validateStudentPercentage(pct, { label, required: options.required });
+  if (err) return { error: err };
+  const raw = pct === '' || pct == null ? '' : String(pct).trim();
+  if (!raw) return { value: null };
+  return { value: parseFloat(raw) };
+}
+
+/**
+ * Validate CGPA (≤10) and academic percentages (≤100) for student profiles.
+ * Accepts camelCase or snake_case field names.
+ */
+export function validateStudentAcademicScores(fields = {}) {
+  const cgpa = fields.cgpa;
+  const tenth = fields.tenthPercentage ?? fields.tenth_percentage;
+  const twelfth = fields.twelfthPercentage ?? fields.twelfth_percentage;
+  const diploma = fields.diplomaPercentage ?? fields.diploma_percentage;
+
+  const cgpaErr = validateStudentCgpa(cgpa, { required: Boolean(fields.cgpaRequired) });
+  if (cgpaErr) return cgpaErr;
+
+  for (const [val, label] of [
+    [tenth, 'Class X %'],
+    [twelfth, 'Class XII %'],
+    [diploma, 'Diploma %'],
+  ]) {
+    const err = validateStudentPercentage(val, { label });
+    if (err) return err;
+  }
+  return null;
 }
 
 export function sanitizeInput(str) {

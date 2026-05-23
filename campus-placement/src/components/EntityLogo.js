@@ -71,7 +71,7 @@ export default function EntityLogo({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#ffffff',
+        background: 'var(--bg-primary)',
         border: '1px solid var(--border-default)',
         flexShrink: 0,
         position: 'relative',

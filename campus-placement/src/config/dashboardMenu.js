@@ -3,8 +3,11 @@ import {
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
   CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, FileUp, Rocket,
+  CalendarRange,
   UserPlus,
   Mail,
+  Archive,
+  Trophy,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -63,6 +66,28 @@ export function isSidebarItemActive(itemHref, section, pathname) {
   return getActiveItemHrefForSection(section, pathname) === itemHref;
 }
 
+/** Longest-prefix active href across every section (for full admin sidebar). */
+export function getActiveItemHrefForMenu(menu, pathname) {
+  let best = null;
+  let bestLen = -1;
+  for (const section of menu?.sections || []) {
+    for (const item of section.items) {
+      const h = item.href;
+      if (pathname === h || pathname.startsWith(`${h}/`)) {
+        if (h.length > bestLen) {
+          bestLen = h.length;
+          best = h;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+export function isSidebarItemActiveInMenu(itemHref, menu, pathname) {
+  return getActiveItemHrefForMenu(menu, pathname) === itemHref;
+}
+
 export const menuConfig = {
   student: {
     title: 'Student',
@@ -84,9 +109,8 @@ export const menuConfig = {
           { label: 'Browse Jobs', href: '/dashboard/student/jobs', icon: Briefcase },
           { label: 'Browse Internships', href: '/dashboard/student/internships', icon: GraduationCap },
           { label: 'Browse Projects', href: '/dashboard/student/projects', icon: FolderDot },
+          { label: 'Browse Hackathons', href: '/dashboard/student/hackathons', icon: Trophy },
           { label: 'Placement calendar', href: '/dashboard/student/calendar', icon: CalendarDays },
-          { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
-          { label: 'My Offers', href: '/dashboard/student/offers', icon: Award },
         ],
       },
       {
@@ -98,6 +122,8 @@ export const menuConfig = {
           { label: 'My Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
           { label: 'My Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
           { label: 'My Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
+          { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
+          { label: 'My Offers', href: '/dashboard/student/offers', icon: Handshake },
         ],
       },
       {
@@ -246,7 +272,8 @@ export const menuConfig = {
         items: [
           { label: 'Clarifications', href: '/dashboard/college/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
-          { label: 'Message templates', href: '/dashboard/college/message-templates', icon: FileEdit },
+          { label: 'Email templates', href: '/dashboard/college/communication-templates', icon: Mail },
+          { label: 'Custom message templates', href: '/dashboard/college/message-templates', icon: FileEdit },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
@@ -265,6 +292,7 @@ export const menuConfig = {
         items: [
           { label: 'Enrollment key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
           { label: 'Placement Rules', href: '/dashboard/college/rules', icon: SlidersHorizontal },
+          { label: 'Academic years', href: '/dashboard/college/academic-years', icon: CalendarRange },
           { label: 'Infrastructure', href: '/dashboard/college/infrastructure', icon: Building },
           { label: 'Settings', href: '/dashboard/college/settings', icon: Settings },
         ],
@@ -286,7 +314,7 @@ export const menuConfig = {
         id: 'admin-overview',
         title: 'Overview',
         items: [
-          { label: 'Dashboard', href: '/dashboard/admin/overview', icon: LayoutDashboard },
+          { label: 'Platform overview', href: '/dashboard/admin/overview', icon: LayoutDashboard },
           { label: 'Getting Started', href: '/dashboard/admin/getting-started', icon: Rocket },
           { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
         ],
@@ -298,6 +326,7 @@ export const menuConfig = {
           { label: 'Colleges', href: '/dashboard/admin/colleges', icon: Building },
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
+          { label: 'Archived students', href: '/dashboard/admin/archived-students', icon: Archive },
         ],
       },
       {
@@ -311,7 +340,7 @@ export const menuConfig = {
         id: 'admin-operations',
         title: 'Operations & Risk',
         items: [
-          { label: 'Pending registrations', href: '/dashboard/admin/pending-registrations', icon: Inbox },
+          { label: 'Onboard colleges & employers', href: '/dashboard/admin/pending-registrations', icon: Inbox },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },
           { label: 'Audit reports', href: '/dashboard/admin/audit-reports', icon: FileText },
           { label: 'Settings', href: '/dashboard/admin/settings', icon: Settings },

@@ -8,6 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { pickRepresentativeAssessmentRows } from '@/lib/assessmentRowsDedupe';
 import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
+import { toCsvIsoDate } from '@/lib/csvExport';
 
 export default function EmployerHiringAssessmentPage() {
   const { addToast } = useToast();
@@ -113,7 +114,7 @@ export default function EmployerHiringAssessmentPage() {
       ],
       rows: displayRows.map((r) => [
         r.original_file_name ?? '',
-        r.upload_created_at ? new Date(r.upload_created_at).toISOString() : '',
+        toCsvIsoDate(r.upload_created_at),
         r.tenant_name ?? '',
         r.roll_number ?? '',
         r.candidate_name ?? '',

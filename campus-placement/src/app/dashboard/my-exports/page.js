@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate, formatStatus } from '@/lib/utils';
+import PageLoading from '@/components/PageLoading';
 
 const historyFetcher = async (url) => {
   const res = await fetch(url);
@@ -32,6 +33,7 @@ export default function MyExportsPage() {
 
   const exports = hist?.exports || [];
   const screens = reg?.screens || [];
+  const defaultExportExt = 'csv';
   const filteredExports = useMemo(() => {
     const q = sectionFilter.trim().toLowerCase();
     return exports.filter((row) => {
@@ -60,13 +62,16 @@ export default function MyExportsPage() {
       }
       const cd = res.headers.get('Content-Disposition') || '';
       const m = cd.match(/filename="([^"]+)"/);
-      const name = m?.[1] || `placementhub-export-${new Date().toISOString().slice(0, 10)}.json`;
+      const name = m?.[1] || `placementhub-export-${new Date().toISOString().slice(0, 10)}.${defaultExportExt}`;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = name;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       addToast('Download started. A confirmation email was sent if SMTP is configured.', 'success');
       await mutate();
@@ -75,7 +80,7 @@ export default function MyExportsPage() {
     } finally {
       setBusy(false);
     }
-  }, [addToast, mutate]);
+  }, [addToast, mutate, defaultExportExt]);
 
   return (
     <div className="animate-fadeIn">
@@ -83,7 +88,7 @@ export default function MyExportsPage() {
         <div className="page-header-left">
           <h1>📦 My data export</h1>
           <p>
-            Download a JSON snapshot of the data this platform associates with your login ({session?.user?.role?.replace(/_/g, ' ') || '…'}).
+            Download a CSV snapshot of the data this platform associates with your login ({session?.user?.role?.replace(/_/g, ' ') || '…'}).
             Each request is recorded for audit. Use the <strong>Screens</strong> button in the top bar to jump to any page.
           </p>
         </div>
@@ -111,7 +116,7 @@ export default function MyExportsPage() {
             onChange={(e) => setSectionFilter(e.target.value)}
           />
         </div>
-        {isLoading && <p className="text-sm text-secondary">Loading…</p>}
+        {isLoading && <PageLoading message="Loading export history…" inline />}
         {error && <p className="text-sm" style={{ color: 'var(--danger-600)' }}>{error.message}</p>}
         {!isLoading && !error && filteredExports.length === 0 && (
           <p className="text-sm text-secondary">No exports yet. Run a download to create the first entry.</p>
@@ -123,6 +128,7 @@ export default function MyExportsPage() {
                 <tr>
                   <th>When</th>
                   <th>Status</th>
+                  <th>Format</th>
                   <th>Size</th>
                   <th>Sections</th>
                 </tr>
@@ -132,6 +138,7 @@ export default function MyExportsPage() {
                   <tr key={row.id}>
                     <td>{row.created_at ? formatDate(row.created_at) : '—'}</td>
                     <td>{formatStatus(row.status)}</td>
+                    <td>{(row.format || 'csv').toUpperCase()}</td>
                     <td>{row.byte_size != null ? `${row.byte_size} B` : '—'}</td>
                     <td className="text-sm text-secondary">
                       {(() => {

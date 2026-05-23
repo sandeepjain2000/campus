@@ -21,7 +21,7 @@ export async function buildUserDataExportPayload(sessionUser) {
     }
     const employerId = profile.id;
 
-    const [drives, jobs, apps, uploads, rowCounts] = await Promise.all([
+    const [drives, jobs, apps, programApps, uploads, rowCounts] = await Promise.all([
       query(
         `SELECT d.id, t.name AS college, d.title, d.drive_date, d.drive_type, d.status, d.venue, d.registered_count, d.ctc_breakup
          FROM placement_drives d
@@ -49,6 +49,16 @@ export async function buildUserDataExportPayload(sessionUser) {
         [employerId],
       ),
       query(
+        `SELECT pa.id, pa.status, pa.applied_at, pa.job_id, jp.title AS job_title, jp.job_type, sp.roll_number
+         FROM program_applications pa
+         JOIN job_postings jp ON jp.id = pa.job_id
+         JOIN student_profiles sp ON sp.id = pa.student_id
+         WHERE jp.employer_id = $1::uuid
+         ORDER BY pa.applied_at DESC
+         LIMIT 2000`,
+        [employerId],
+      ),
+      query(
         `SELECT id, original_file_name, total_rows, accepted_rows, rejected_rows, created_at, drive_id, job_id, tenant_id
          FROM employer_assessment_uploads
          WHERE employer_id = $1::uuid
@@ -69,6 +79,7 @@ export async function buildUserDataExportPayload(sessionUser) {
     base.sections.placement_drives = drives.rows;
     base.sections.job_postings = jobs.rows;
     base.sections.applications_for_my_drives = apps.rows;
+    base.sections.program_applications = programApps.rows;
     base.sections.assessment_uploads = uploads.rows;
     base.sections.assessment_result_rows_total = rowCounts.rows[0]?.n ?? 0;
     return base;

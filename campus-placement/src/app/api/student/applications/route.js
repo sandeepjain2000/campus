@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { getOrCreateStudentProfileId } from '@/lib/studentServer';
+import { assertStudentResumeForApply } from '@/lib/studentApplyEligibility';
+import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 
 export async function GET() {
   try {
@@ -22,6 +23,7 @@ export async function GET() {
         a.applied_at,
         d.drive_date,
         ep.company_name AS company,
+        ep.website AS website,
         COALESCE(j.title, d.title) AS role,
         j.job_type
       FROM applications a
@@ -40,6 +42,7 @@ export async function GET() {
         id: row.id,
         drive_id: row.drive_id,
         company: row.company,
+        website: row.website || null,
         role: row.role,
         status: row.status,
         currentRound: row.current_round,
@@ -68,11 +71,23 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Drive ID required' }, { status: 400 });
     }
 
+    if (await isStudentProfileArchived(userId)) {
+      return NextResponse.json(
+        { error: 'Your student account has been archived. Contact your placement office if this is a mistake.' },
+        { status: 403 },
+      );
+    }
+
     const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
       return NextResponse.json({
         error: 'Student profile not found. Complete profile setup before applying.',
       }, { status: 400 });
+    }
+
+    const resumeGate = await assertStudentResumeForApply(studentId);
+    if (!resumeGate.ok) {
+      return NextResponse.json({ error: resumeGate.error }, { status: 400 });
     }
 
     const notes = location_preference ? `Preferred Location: ${location_preference}` : null;

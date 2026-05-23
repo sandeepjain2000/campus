@@ -4,23 +4,55 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isFacebookPageShareConfigured } from '@/lib/facebookPageShare';
 import { emailPlacementDriveApproved } from '@/lib/placementDriveEmail';
+import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
 }
 
 /** Older DBs may not have run db/migrations/012_employer_poc_drive_social_shared.sql yet. */
-async function loadDrivesForTenant(tenantId) {
+async function loadDrivesForTenant(tenantId, academicYearId = null) {
+  const yearFilter = academicYearId ? ' AND d.academic_year_id = $2::uuid' : '';
+  const params = academicYearId ? [tenantId, academicYearId] : [tenantId];
   const baseFrom = `
       FROM placement_drives d
       LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-      WHERE d.tenant_id = $1::uuid
+      WHERE d.tenant_id = $1::uuid${yearFilter}
       ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC`;
   try {
     return await query(
       `SELECT
         d.id,
         ep.company_name AS company,
+        ep.website AS website,
+        d.title AS role,
+        d.drive_date AS date,
+        d.drive_type AS type,
+        d.status,
+        d.registered_count AS registered,
+        d.selected_count AS selected,
+        d.venue,
+        COALESCE(d.social_shared, ARRAY[]::text[]) AS social_shared,
+        COALESCE(d.attached_staff_user_ids, ARRAY[]::uuid[]) AS attached_staff_user_ids
+      ${baseFrom}`,
+      params,
+    );
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (
+      err?.code === '42703' &&
+      (msg.includes('social_shared') ||
+        msg.includes('academic_year_id') ||
+        msg.includes('attached_staff_user_ids'))
+    ) {
+      if (msg.includes('academic_year_id')) {
+        return loadDrivesForTenant(tenantId, null);
+      }
+      const slim = await query(
+        `SELECT
+        d.id,
+        ep.company_name AS company,
+        ep.website AS website,
         d.title AS role,
         d.drive_date AS date,
         d.drive_type AS type,
@@ -30,32 +62,21 @@ async function loadDrivesForTenant(tenantId) {
         d.venue,
         COALESCE(d.social_shared, ARRAY[]::text[]) AS social_shared
       ${baseFrom}`,
-      [tenantId],
-    );
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (err?.code === '42703' && msg.includes('social_shared')) {
-      const slim = await query(
-        `SELECT
-        d.id,
-        ep.company_name AS company,
-        d.title AS role,
-        d.drive_date AS date,
-        d.drive_type AS type,
-        d.status,
-        d.registered_count AS registered,
-        d.selected_count AS selected,
-        d.venue
-      ${baseFrom}`,
-        [tenantId],
+        params,
       );
-      return { rows: slim.rows.map((r) => ({ ...r, social_shared: [] })) };
+      return {
+        rows: slim.rows.map((r) => ({
+          ...r,
+          social_shared: r.social_shared ?? [],
+          attached_staff_user_ids: [],
+        })),
+      };
     }
     throw err;
   }
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -67,7 +88,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
 
-    const drives = await loadDrivesForTenant(tenantId);
+    const { searchParams } = new URL(request.url);
+    const ay = await resolveTenantAcademicYear(tenantId, searchParams);
+    const drives = await loadDrivesForTenant(tenantId, ay.year?.id || null);
 
     const staff = await query(
       `SELECT id, first_name, last_name, role

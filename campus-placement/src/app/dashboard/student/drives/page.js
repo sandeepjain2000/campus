@@ -5,6 +5,9 @@ import useSWR, { mutate as swrMutate } from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import MonthYearPicker from '@/components/MonthYearPicker';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
+import PageLoading from '@/components/PageLoading';
 
 function getTimeLeft(deadline) {
   if (!deadline) return null;
@@ -93,6 +96,8 @@ export default function StudentDrivesPage() {
     return Array.isArray(drivesData?.drives) ? drivesData.drives : [];
   }, [drivesData]);
 
+  const canApply = drivesData?.canApply !== false;
+
   const monthBounds = useMemo(() => {
     const y = new Date().getFullYear();
     return { minYear: y - 1, maxYear: y + 2 };
@@ -134,6 +139,10 @@ export default function StudentDrivesPage() {
 
   const openApplyModal = (drive) => {
     if (drive.applied) return;
+    if (!canApply) {
+      addToast('Upload your primary CV on your profile before applying.', 'warning');
+      return;
+    }
     setApplyingTo(drive);
     setLocationPref('');
   };
@@ -174,6 +183,8 @@ export default function StudentDrivesPage() {
           <p>Browse on-campus, virtual, and off-campus drives — filter by date and apply when open.</p>
         </div>
       </div>
+
+      <StudentApplyResumeBanner canApply={canApply} />
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -314,7 +325,7 @@ export default function StudentDrivesPage() {
         </div>
       </div>
 
-      {drivesLoading && <div className="skeleton skeleton-card" style={{ height: 180 }} />}
+      {drivesLoading && <PageLoading message="Loading placement drives…" variant="skeleton-card" inline />}
       {drivesError && (
         <div className="card" style={{ color: 'var(--danger-600)' }}>
           <p>{drivesError.message || 'Could not load drives.'}</p>
@@ -333,7 +344,15 @@ export default function StudentDrivesPage() {
           const activeApplication = Boolean(drive.applied);
           const st = drive.applicationStatus ? String(drive.applicationStatus).toLowerCase() : '';
           const hasPriorApplication = st === 'withdrawn' || st === 'rejected';
-          const applyLabel = isExpired ? 'Closed' : hasPriorApplication ? (st === 'withdrawn' ? 'Withdrawn' : 'Rejected') : 'Apply now';
+          const applyLabel = isExpired
+            ? 'Closed'
+            : hasPriorApplication
+              ? st === 'withdrawn'
+                ? 'Withdrawn'
+                : 'Rejected'
+              : !canApply
+                ? 'CV required'
+                : 'Apply now';
 
           return (
             <div
@@ -344,7 +363,9 @@ export default function StudentDrivesPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{drive.company}</h3>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>
+                      <CompanyNameLink name={drive.company} website={drive.website} />
+                    </h3>
                     <span className={`badge badge-${getStatusColor(drive.status)}`}>{formatStatus(drive.status)}</span>
                   </div>
                   <p className="text-sm text-secondary">{drive.role}</p>
@@ -358,8 +379,8 @@ export default function StudentDrivesPage() {
                     <span className="badge badge-green">Applied</span>
                   ) : (
                     <button
-                      className={`btn ${isExpired || hasPriorApplication ? 'btn-outline' : 'btn-primary'} btn-sm`}
-                      disabled={isExpired || hasPriorApplication}
+                      className={`btn ${isExpired || hasPriorApplication || !canApply ? 'btn-outline' : 'btn-primary'} btn-sm`}
+                      disabled={isExpired || hasPriorApplication || !canApply}
                       onClick={() => openApplyModal(drive)}
                     >
                       {applyLabel}

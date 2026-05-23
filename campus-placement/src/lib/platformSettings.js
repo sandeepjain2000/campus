@@ -7,9 +7,11 @@ export const PLATFORM_SETTINGS_DEFAULTS = {
   /** Public brochure / marketing site (Wix, etc.). Empty = use in-app /features, /about, /contact. */
   marketingWebsiteUrl: '',
   supportEmail: 'placementhub@yopmail.com',
+  /** Shown on login / public support (sandbox demo line). */
+  supportPhone: '+91 80000 12345',
   /** When non-empty, sendMail() delivers every message to this address instead of `to` (dev safety). */
-  systemNotificationInboxEmail: '',
-  systemNotificationWebmailUrl: '',
+  systemNotificationInboxEmail: 'placementhub@yopmail.com',
+  systemNotificationWebmailUrl: 'https://yopmail.com/wm',
   systemNotificationSenderName: 'placementhub',
   timezone: 'Asia/Kolkata',
   requireEmailVerification: true,

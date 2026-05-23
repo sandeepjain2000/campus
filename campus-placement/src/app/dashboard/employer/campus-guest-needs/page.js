@@ -412,8 +412,8 @@ export default function EmployerCampusGuestNeedsPage() {
                   />
                 </div>
                 <p className="text-xs text-secondary" style={{ marginBottom: '0.75rem' }}>
-                  Subject and body are prefilled from the platform template (Super Admin → Communication &amp; Support →
-                  Email templates). Edit before sending.
+                  Subject and body use your employer template (Communication templates) or the platform default. Edit
+                  before sending.
                 </p>
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <button type="button" className="btn btn-primary" disabled={sending} onClick={() => void sendConfirmation()}>

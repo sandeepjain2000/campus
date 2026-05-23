@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { formatDate } from '@/lib/utils';
+import CompanyNameLink from '@/components/CompanyNameLink';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -72,7 +73,9 @@ export default function StudentInterviewsPage() {
             <tbody>
               {myInterviews.map((i) => (
                 <tr key={i.id}>
-                  <td className="font-semibold">{i.company}</td>
+                  <td className="font-semibold">
+                    <CompanyNameLink name={i.company} website={i.website} />
+                  </td>
                   <td>{i.round}</td>
                   <td>{formatDate(i.date)}</td>
                   <td>{i.time}</td>

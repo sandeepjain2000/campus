@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import { Briefcase, Building2, IndianRupee, BookOpen, Calendar } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus } from '@/lib/utils';
+import { useCollegeAcademicYearApiPath } from '@/lib/collegeAcademicYearContext';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import PageLoading from '@/components/PageLoading';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -16,7 +19,8 @@ function salaryLabel(min, max) {
 }
 
 export default function MobileJobs() {
-  const { data, error, isLoading } = useSWR('/api/college/jobs', fetcher);
+  const jobsPath = useCollegeAcademicYearApiPath('/api/college/jobs');
+  const { data, error, isLoading } = useSWR(jobsPath, fetcher);
   const list = useMemo(() => (Array.isArray(data?.jobs) ? data.jobs : []), [data]);
 
   const stats = useMemo(() => ({
@@ -47,7 +51,7 @@ export default function MobileJobs() {
           </div>
         )}
 
-        {isLoading && <p className="text-sm text-secondary">Loading jobs...</p>}
+        {isLoading && <PageLoading message="Loading jobs…" inline />}
 
         {!isLoading && !error && list.length === 0 && (
           <div className="card">
@@ -62,7 +66,9 @@ export default function MobileJobs() {
                 <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, margin: 0 }}>{row.title}</h3>
                 <span className="badge badge-indigo badge-dot">{formatStatus(row.job_type)}</span>
               </div>
-              <span className="badge badge-gray badge-dot">{row.company_name}</span>
+              <span className="badge badge-gray badge-dot">
+                <CompanyNameLink name={row.company_name} website={row.website} />
+              </span>
               <p className="text-sm text-secondary" style={{ margin: '0.75rem 0', lineHeight: 1.5 }}>
                 {(row.description || '').slice(0, 220)}
                 {(row.description || '').length > 220 ? '...' : ''}

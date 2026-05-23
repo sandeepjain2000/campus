@@ -1,5 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/sessionPolicy';
+
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+function appendLegacyCookieClearance(response) {
+  for (const name of LEGACY_SESSION_COOKIE_NAMES) {
+    response.cookies.set(name, '', {
+      maxAge: 0,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: IS_PROD,
+    });
+  }
+  return response;
+}
 
 /** Keep in sync with ROLE_HOME_PATHS in config/dashboardMenu.js (no lucide import here — Edge-safe). */
 const ROLE_HOME_PATHS = {
@@ -22,6 +38,7 @@ const SHARED_DASHBOARD_ROUTES = [
   '/dashboard/alerts',
   '/dashboard/feedback',
   '/dashboard/my-exports',
+  '/dashboard/help',
 ];
 
 /**
@@ -35,47 +52,57 @@ export default async function proxy(request) {
 
   // ── /data-entry — public demo tools from landing; APIs still gate writes ───
   if (pathname.startsWith('/data-entry')) {
-    return NextResponse.next();
+    return appendLegacyCookieClearance(NextResponse.next());
   }
 
   // ── /login — bounce already-authenticated users (unless ?force=1) ──────────
   if (pathname === '/login') {
     const force = request.nextUrl.searchParams.get('force');
     if (!force) {
-      const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+      const token = await getToken({
+        req: request,
+        secret: process.env.NEXTAUTH_SECRET,
+        cookieName: SESSION_COOKIE_NAME,
+      });
       if (token?.role) {
         const dest = ROLE_HOME_PATHS[token.role] || '/dashboard';
-        return NextResponse.redirect(new URL(dest, request.url));
+        return appendLegacyCookieClearance(NextResponse.redirect(new URL(dest, request.url)));
       }
     }
-    return NextResponse.next();
+    return appendLegacyCookieClearance(NextResponse.next());
   }
 
   // ── /dashboard/* — per-role path enforcement ─────────────────────────────
   if (pathname.startsWith('/dashboard/')) {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+      cookieName: SESSION_COOKIE_NAME,
+    });
 
     // Unauthenticated → login
-    if (!token?.role) return NextResponse.redirect(new URL('/login', request.url));
+    if (!token?.role) {
+      return appendLegacyCookieClearance(NextResponse.redirect(new URL('/login', request.url)));
+    }
 
     const role = token.role;
     const ownedPrefix = ROLE_OWNED_PREFIX[role];
 
     // Allow shared routes for all authenticated users
     const isShared = SHARED_DASHBOARD_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'));
-    if (isShared) return NextResponse.next();
+    if (isShared) return appendLegacyCookieClearance(NextResponse.next());
 
     // Allow the role's own dashboard subtree
     if (ownedPrefix && (pathname === ownedPrefix || pathname.startsWith(ownedPrefix + '/'))) {
-      return NextResponse.next();
+      return appendLegacyCookieClearance(NextResponse.next());
     }
 
     // Block cross-role access — redirect to the role's own home
     const dest = ROLE_HOME_PATHS[role] || '/dashboard';
-    return NextResponse.redirect(new URL(dest, request.url));
+    return appendLegacyCookieClearance(NextResponse.redirect(new URL(dest, request.url)));
   }
 
-  return NextResponse.next();
+  return appendLegacyCookieClearance(NextResponse.next());
 }
 
 export const config = {

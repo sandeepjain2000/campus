@@ -3,6 +3,8 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { formatDate } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import { toCompanyWebsiteUrl } from '@/lib/companyWebsite';
 import { useToast } from '@/components/ToastProvider';
 
 const fetcher = async (url) => {
@@ -79,13 +81,13 @@ export default function EmployerRequestsPage() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <EntityLogo name={req.company_name} website={req.website} size="sm" shape="rounded" />
-                        <span className="font-semibold">{req.company_name}</span>
+                        <CompanyNameLink name={req.company_name} website={req.website} className="font-semibold" />
                       </div>
                     </td>
                     <td>{req.industry || '—'}</td>
                     <td>
                       {req.website ? (
-                        <a href={req.website} target="_blank" rel="noreferrer" className="text-secondary hover:text-primary">
+                        <a href={toCompanyWebsiteUrl(req.website)} target="_blank" rel="noopener noreferrer" className="text-secondary hover:text-primary">
                           {req.website.replace(/^https?:\/\//, '')}
                         </a>
                       ) : '—'}

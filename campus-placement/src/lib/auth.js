@@ -2,21 +2,19 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { query } from './db';
 import { SEED_DEMO_STUDENT_USER_IDS } from './seedDemoStudentIds';
+import { verifyLoginCaptcha } from './simpleCaptcha';
+import {
+  JWT_SESSION_MAX_AGE_SECONDS,
+  SESSION_COOKIE_NAME,
+  sessionTokenCookieOptions,
+} from './sessionPolicy';
 
 export const authOptions = {
   cookies: {
     sessionToken: {
-      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        // 30-day persistent cookie — prevents mobile browsers from clearing the
-        // session when switching apps or backgrounding the browser.
-        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-      }
-    }
+      name: SESSION_COOKIE_NAME,
+      options: sessionTokenCookieOptions(),
+    },
   },
   providers: [
     CredentialsProvider({
@@ -24,10 +22,16 @@ export const authOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        captchaToken: { label: 'Captcha token', type: 'text' },
+        captchaAnswer: { label: 'Captcha answer', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email and password are required');
+        }
+
+        if (!verifyLoginCaptcha(credentials.captchaToken, credentials.captchaAnswer)) {
+          throw new Error('Incorrect verification answer. Click refresh beside the question and try again.');
         }
 
         try {
@@ -160,9 +164,8 @@ export const authOptions = {
   },
   session: {
     strategy: 'jwt',
-    // 30-day session to match the persistent cookie above.
-    // Mobile browsers clear pure session cookies aggressively (on app switch / background).
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    // JWT cap while the browser session cookie is present (cookie clears on browser close).
+    maxAge: JWT_SESSION_MAX_AGE_SECONDS,
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

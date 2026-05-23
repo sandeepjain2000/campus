@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailer';
 import { buildUserDataExportPayload, summarizeExportSections } from '@/lib/userDataExport/buildPayload';
+import { buildExportFile, EXPORT_FORMAT } from '@/lib/userDataExport/toCsv';
 
 export async function GET() {
   try {
@@ -34,13 +35,24 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ins = await query(
-      `INSERT INTO user_data_exports (user_id, role, status, format)
-       VALUES ($1::uuid, $2, 'processing', 'json')
-       RETURNING id`,
-      [session.user.id, session.user.role],
-    );
-    const exportId = ins.rows[0]?.id;
+    let exportId;
+    try {
+      const ins = await query(
+        `INSERT INTO user_data_exports (user_id, role, status, format)
+         VALUES ($1::uuid, $2, 'processing', $3)
+         RETURNING id`,
+        [session.user.id, session.user.role, EXPORT_FORMAT],
+      );
+      exportId = ins.rows[0]?.id;
+    } catch (insertErr) {
+      if (insertErr?.code === '42P01') {
+        return NextResponse.json(
+          { error: 'Export history is not set up on this database. Run db/migrations/014_user_data_exports.sql.' },
+          { status: 503 },
+        );
+      }
+      throw insertErr;
+    }
 
     try {
       const payload = await buildUserDataExportPayload({
@@ -48,8 +60,7 @@ export async function POST() {
         role: session.user.role,
         tenantId: session.user.tenantId ?? null,
       });
-      const json = JSON.stringify(payload, null, 2);
-      const buf = Buffer.from(json, 'utf8');
+      const { body: buf, contentType, ext } = buildExportFile(payload);
       const summary = summarizeExportSections(payload);
 
       await query(
@@ -59,9 +70,22 @@ export async function POST() {
         [exportId, buf.length, JSON.stringify(summary)],
       );
 
-      const safeName = `placementhub-export-${session.user.role}-${new Date().toISOString().slice(0, 10)}.json`;
-      const commQuery = await query(`SELECT COALESCE(NULLIF(communication_email, ''), email) as email FROM users WHERE id = $1::uuid`, [session.user.id]);
-      const targetEmail = commQuery.rows[0]?.email || session.user.email;
+      const safeName = `placementhub-export-${session.user.role}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+      let targetEmail = session.user.email;
+      try {
+        const commQuery = await query(
+          `SELECT COALESCE(NULLIF(communication_email, ''), email) AS email FROM users WHERE id = $1::uuid`,
+          [session.user.id],
+        );
+        targetEmail = commQuery.rows[0]?.email || targetEmail;
+      } catch (commErr) {
+        if (commErr?.code === '42703') {
+          const emailQuery = await query(`SELECT email FROM users WHERE id = $1::uuid`, [session.user.id]);
+          targetEmail = emailQuery.rows[0]?.email || targetEmail;
+        } else {
+          throw commErr;
+        }
+      }
 
       try {
         await sendMail({
@@ -72,7 +96,7 @@ export async function POST() {
             ``,
             `We recorded a full data export for your ${session.user.role} account.`,
             `Export id: ${exportId}`,
-            `Download was started from the browser; keep the JSON file somewhere safe.`,
+            `Download was started from the browser; keep the CSV file somewhere safe.`,
             ``,
             `— PlacementHub`,
           ].join('\n'),
@@ -84,7 +108,7 @@ export async function POST() {
       return new NextResponse(buf, {
         status: 200,
         headers: {
-          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Type': contentType,
           'Content-Disposition': `attachment; filename="${safeName}"`,
           'X-Export-Id': String(exportId),
         },

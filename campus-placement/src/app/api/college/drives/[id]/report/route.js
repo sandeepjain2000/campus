@@ -62,7 +62,7 @@ export async function GET(req, { params }) {
       FROM applications a
       JOIN student_profiles sp ON a.student_id = sp.id
       JOIN users u ON sp.user_id = u.id
-      WHERE a.drive_id = $1 AND a.status = 'selected'
+      WHERE a.drive_id = $1 AND a.status = 'selected' AND sp.archived_at IS NULL
     `, [driveId]);
 
     const report = {

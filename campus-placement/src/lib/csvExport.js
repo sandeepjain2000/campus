@@ -9,14 +9,24 @@ export function escapeCsvField(value) {
   return s;
 }
 
+/** ISO timestamp for CSV cells; never throws on bad input. */
+export function toCsvIsoDate(value) {
+  if (value == null || value === '') return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString();
+}
+
 /**
  * @param {string[]} headers
  * @param {string[][]} rows — each row is an array of cell values in header order
  */
 export function rowsToCsv(headers, rows) {
+  const headerList = Array.isArray(headers) ? headers : [];
+  const rowList = Array.isArray(rows) ? rows : [];
   const lines = [
-    headers.map(escapeCsvField).join(','),
-    ...rows.map((row) => row.map(escapeCsvField).join(',')),
+    headerList.map(escapeCsvField).join(','),
+    ...rowList.map((row) => (Array.isArray(row) ? row : []).map(escapeCsvField).join(',')),
   ];
   return lines.join('\n');
 }

@@ -3,9 +3,15 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
+import {
+  academicYearQueryString,
+  readActiveAcademicYearContext,
+} from '@/lib/collegeAcademicYearContext';
+import { mapCollegeDriveFromApi, isDriveStaffDirty } from '@/lib/collegeDrivesClient';
 import {
   Target, CheckCircle, XCircle, Download, Video, Building2,
   ChevronDown, ChevronUp, LayoutList, CalendarDays, X,
@@ -48,33 +54,35 @@ export default function DesktopDrives() {
   const [expandedId, setExpandedId] = useState(null);
   const [facebookPageShare, setFacebookPageShare] = useState(false);
   const [postingFacebookId, setPostingFacebookId] = useState(null);
+  const [staffSavingId, setStaffSavingId] = useState(null);
+
+  const loadDrives = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const qs = academicYearQueryString(readActiveAcademicYearContext());
+      const res = await fetch(`/api/college/drives${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
+      setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
+      setFacebookPageShare(Boolean(json.integrations?.facebookPageShare));
+      setDrives((json.drives || []).map(mapCollegeDriveFromApi));
+    } catch (error) {
+      addToast(error.message || 'Failed to load drives', 'error');
+      setDrives([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addToast]);
 
   useEffect(() => {
-    let mounted = true;
-    const loadDrives = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/college/drives');
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
-        if (!mounted) return;
-        setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
-        setFacebookPageShare(Boolean(json.integrations?.facebookPageShare));
-        setDrives((json.drives || []).map((d) => ({
-          ...d, date: d.date ? String(d.date).slice(0, 10) : '',
-          registered: Number(d.registered || 0), selected: Number(d.selected || 0),
-          staffIds: [], jobPostingTitle: '', jobPostingUrl: '',
-          socialShared: Array.isArray(d.social_shared) ? d.social_shared : [],
-        })));
-      } catch (error) {
-        if (!mounted) return;
-        addToast(error.message || 'Failed to load drives', 'error');
-        setDrives([]);
-      } finally { if (mounted) setIsLoading(false); }
-    };
     loadDrives();
-    return () => { mounted = false; };
-  }, [addToast]);
+  }, [loadDrives]);
+
+  useEffect(() => {
+    const onYear = () => { loadDrives(); };
+    window.addEventListener('placementhub-academic-year', onYear);
+    return () => window.removeEventListener('placementhub-academic-year', onYear);
+  }, [loadDrives]);
 
   const attachStaff = (driveId, staffId) => {
     if (!staffId) return;
@@ -82,6 +90,35 @@ export default function DesktopDrives() {
   };
   const removeStaff = (driveId, staffId) => {
     setDrives((prev) => prev.map((d) => (d.id === driveId ? { ...d, staffIds: d.staffIds.filter((id) => id !== staffId) } : d)));
+  };
+
+  const saveDriveStaff = async (driveId) => {
+    const drive = drives.find((d) => d.id === driveId);
+    if (!drive) return;
+    setStaffSavingId(driveId);
+    try {
+      const res = await fetch(`/api/college/drives/${driveId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffIds: drive.staffIds }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(json.error || 'Could not save staff assignment.', 'error');
+        return;
+      }
+      const saved = (json.drive?.staffIds || drive.staffIds).map(String);
+      setDrives((prev) =>
+        prev.map((d) =>
+          d.id === driveId ? { ...d, staffIds: saved, staffIdsBaseline: [...saved] } : d,
+        ),
+      );
+      addToast('Staff assignment saved.', 'success');
+    } catch (e) {
+      addToast(e.message || 'Network error while saving.', 'error');
+    } finally {
+      setStaffSavingId(null);
+    }
   };
 
   const addOptionsForDrive = useMemo(() => {
@@ -238,7 +275,7 @@ export default function DesktopDrives() {
                     <EntityLogo name={drive.company} size="sm" shape="rounded" />
                     <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {drive.company}
+                        <CompanyNameLink name={drive.company} website={drive.website} />
                       </div>
                       <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>{drive.role}</div>
                     </div>
@@ -324,10 +361,31 @@ export default function DesktopDrives() {
                                 </span>
                               );
                             })}
-                            <select className="form-select" style={{ width: 'auto', minWidth: 180, fontSize: '0.825rem' }} value="" onChange={(e) => { attachStaff(drive.id, e.target.value); e.target.value = ''; }}>
-                              <option value="">+ Add staff…</option>
-                              {addOptionsForDrive[drive.id]?.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.role}</option>)}
-                            </select>
+                            {staffDirectory.length === 0 ? (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                                Add college admin accounts under Settings to list coordinators here.
+                              </span>
+                            ) : (
+                              <select className="form-select" style={{ width: 'auto', minWidth: 180, fontSize: '0.825rem' }} value="" onChange={(e) => { attachStaff(drive.id, e.target.value); e.target.value = ''; }}>
+                                <option value="">+ Add staff…</option>
+                                {addOptionsForDrive[drive.id]?.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.role}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              disabled={!isDriveStaffDirty(drive) || staffSavingId === drive.id || staffDirectory.length === 0}
+                              onClick={() => saveDriveStaff(drive.id)}
+                            >
+                              {staffSavingId === drive.id ? 'Saving…' : 'Save staff'}
+                            </button>
+                            {isDriveStaffDirty(drive) ? (
+                              <span className="text-xs text-secondary">Unsaved changes</span>
+                            ) : drive.staffIds.length > 0 ? (
+                              <span className="text-xs text-tertiary">Saved</span>
+                            ) : null}
                           </div>
                         </div>
 

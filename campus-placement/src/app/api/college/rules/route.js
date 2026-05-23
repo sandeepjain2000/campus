@@ -17,11 +17,22 @@ export async function GET() {
 
     const result = await query(`SELECT * FROM college_settings WHERE tenant_id = $1`, [tenantId]);
 
+    const defaultRules = {
+      maxOffers: 1,
+      acceptanceWindow: 7,
+      minCGPA: 6,
+      allowBacklogs: false,
+      maxBacklogs: 0,
+      requirePPT: false,
+      autoVerify: false,
+      fcfsEnabled: false,
+      bufferDays: 0,
+      seasonStart: null,
+      seasonEnd: null,
+    };
+
     if (!result.rows.length) {
-      return NextResponse.json(
-        { error: 'College rules not configured yet' },
-        { status: 404 }
-      );
+      return NextResponse.json(defaultRules);
     }
 
     const dbRules = result.rows[0];

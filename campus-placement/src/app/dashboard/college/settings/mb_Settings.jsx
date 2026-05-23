@@ -156,7 +156,7 @@ export default function mb_Settings() {
                   <input className="form-input" value={form.institution.collegeName} onChange={(e) => setNested('institution', 'collegeName', e.target.value)} />
                 </div>
                 <div className="form-group mb-0">
-                  <label className="text-xs text-secondary mb-1 block">Placement Season Display</label>
+                  <label className="text-xs text-secondary mb-1 block">Academic year (display override)</label>
                   <input className="form-input" placeholder="e.g. 2025-26" value={form.placementSeasonLabel} onChange={(e) => setRoot('placementSeasonLabel', e.target.value)} />
                 </div>
                 <div className="form-group mb-0">

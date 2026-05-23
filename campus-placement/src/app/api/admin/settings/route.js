@@ -69,6 +69,7 @@ export async function POST(request) {
       platformName: pickString(payload, 'platformName', PLATFORM_SETTINGS_DEFAULTS.platformName),
       marketingWebsiteUrl: normalizeMarketingWebsiteUrl(pickString(payload, 'marketingWebsiteUrl', '')),
       supportEmail: pickString(payload, 'supportEmail', PLATFORM_SETTINGS_DEFAULTS.supportEmail),
+      supportPhone: pickString(payload, 'supportPhone', PLATFORM_SETTINGS_DEFAULTS.supportPhone),
       systemNotificationInboxEmail: pickString(
         payload,
         'systemNotificationInboxEmail',

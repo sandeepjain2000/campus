@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { rowsToCsv, downloadCsv } from '@/lib/csvExport';
+import { useToast } from '@/components/ToastProvider';
 
 const PREPARE_MS = 600;
 
@@ -33,6 +34,7 @@ export function ExportCsvSplitButton({
   className = '',
   size = 'md',
 }) {
+  const { addToast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const wrapRef = useRef(null);
@@ -64,14 +66,19 @@ export function ExportCsvSplitButton({
     setMenuOpen(false);
     await new Promise((r) => setTimeout(r, PREPARE_MS));
     try {
-      const { headers, rows } = build();
-      const csv = rowsToCsv(headers, rows);
+      const payload = typeof build === 'function' ? build() : null;
+      if (!payload || !Array.isArray(payload.headers)) {
+        throw new Error('Export data is not ready yet');
+      }
+      const csv = rowsToCsv(payload.headers, payload.rows);
       const stamp = new Date().toISOString().slice(0, 10);
       downloadCsv(`${fileStem}_${stamp}`, csv);
+    } catch (e) {
+      addToast(e?.message || 'Export failed', 'error');
     } finally {
       setPreparing(false);
     }
-  }, []);
+  }, [addToast]);
 
   const sizeClass = size === 'sm' ? 'btn-sm' : '';
 

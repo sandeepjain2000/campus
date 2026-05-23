@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
-import { formatCurrency, formatDate, formatStatus } from '@/lib/utils';
+import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 
 async function swrFetcher(url) {
@@ -345,40 +345,64 @@ export default function EmployerInternshipsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-        {jobsLoading && <p className="text-sm text-secondary">Loading internships…</p>}
-        {!jobsLoading && !jobsError && internships.length === 0 && (
-          <p className="text-sm text-secondary">No internship postings yet. Publish one above (saved as job_type internship).</p>
-        )}
-        {internships.map((intern) => (
-          <div key={String(intern.id)} className="stats-card stats-card--oneline">
-            <div className="stats-card-icon indigo">
-              <GraduationCap size={22} strokeWidth={1.5} />
-            </div>
-            <p className="stats-card-oneline-text">
-              <strong>{intern.title}</strong>
-              {' · '}
-              {stipendLabel(intern.salaryMin, intern.salaryMax)} · Min CGPA {intern.cgpa ?? '—'} · {intern.vacancies} openings ·{' '}
-              <span className={`badge ${intern.status === 'published' ? 'badge-success' : 'badge-gray'} badge-dot`}>{formatStatus(intern.status)}</span>
-              {' · '}
-              {intern.createdAt ? formatDate(intern.createdAt) : ''}
-            </p>
-            <div className="stats-card-oneline-actions">
-              {intern.status === 'published' && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => openCampusSync(intern.id)}>
-                  <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync campuses
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(intern.title, 'info')}>
-                <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('Manage via Job Postings when edit API is available.', 'info')}>
-                <Settings size={14} style={{ marginRight: '0.25rem' }} /> Manage
-              </button>
-            </div>
+      {jobsLoading && <p className="text-sm text-secondary">Loading internships…</p>}
+      {!jobsLoading && !jobsError && internships.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem', border: '1px dashed var(--border-default)' }}>
+          <GraduationCap size={40} style={{ color: 'var(--text-tertiary)', margin: '0 auto 1rem', opacity: 0.35 }} />
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>No internship postings yet. Publish one above.</p>
+        </div>
+      )}
+      {!jobsLoading && !jobsError && internships.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+          <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
+            <table className="data-table" style={{ minWidth: 880 }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)' }}>
+                  <th style={{ paddingLeft: '1.25rem' }}>Title</th>
+                  <th>Stipend / month</th>
+                  <th>Min CGPA</th>
+                  <th>Openings</th>
+                  <th>Status</th>
+                  <th>Posted</th>
+                  <th style={{ textAlign: 'right', paddingRight: '1.25rem', width: 1 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {internships.map((intern) => (
+                  <tr key={String(intern.id)}>
+                    <td style={{ paddingLeft: '1.25rem', maxWidth: 280 }}>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{intern.title}</div>
+                      {intern.keywords ? (
+                        <div className="text-xs text-tertiary" style={{ marginTop: '0.2rem' }}>{intern.keywords}</div>
+                      ) : null}
+                    </td>
+                    <td className="text-sm">{stipendLabel(intern.salaryMin, intern.salaryMax)}</td>
+                    <td className="text-sm">{intern.cgpa ?? '—'}</td>
+                    <td className="text-sm">{intern.vacancies ?? '—'}</td>
+                    <td>
+                      <span className={`badge badge-${getStatusColor(intern.status)} badge-dot`}>{formatStatus(intern.status)}</span>
+                    </td>
+                    <td className="text-sm text-secondary">{intern.createdAt ? formatDate(intern.createdAt) : '—'}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '1.25rem', whiteSpace: 'nowrap' }}>
+                      {intern.status === 'published' && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openCampusSync(intern.id)}>
+                          <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(intern.title, 'info')}>
+                        <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('Manage via Job Postings when edit API is available.', 'info')}>
+                        <Settings size={14} style={{ marginRight: '0.25rem' }} /> Manage
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div className="text-sm text-secondary">

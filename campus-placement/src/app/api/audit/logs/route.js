@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
+import { resolveAuditScope } from '@/lib/auditScope';
 
 function parseDate(value, fallback) {
   const s = String(value || '').trim();
@@ -24,18 +24,16 @@ export async function GET(request) {
     const entityType = String(url.searchParams.get('entityType') || '').trim();
     const limit = Math.min(1000, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '300', 10)));
     const requestedTenant = String(url.searchParams.get('tenantId') || '').trim();
-    const sessionTenant = getSessionTenantId(session.user);
-
-    let tenantId = sessionTenant;
-    if (session.user.role === 'super_admin' && requestedTenant && isUuid(requestedTenant)) {
-      tenantId = requestedTenant;
-    }
-    if (!tenantId || !isUuid(String(tenantId))) {
-      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
+    const scopeResult = resolveAuditScope(session.user, requestedTenant);
+    if (!scopeResult.ok) {
+      return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status });
     }
 
-    const params = [tenantId, from, to];
-    const where = ['tenant_id = $1::uuid', 'DATE(created_at) >= $2::date', 'DATE(created_at) <= $3::date'];
+    const params = scopeResult.scope === 'tenant' ? [scopeResult.tenantId, from, to] : [from, to];
+    const where =
+      scopeResult.scope === 'tenant'
+        ? ['tenant_id = $1::uuid', 'DATE(created_at) >= $2::date', 'DATE(created_at) <= $3::date']
+        : ['DATE(created_at) >= $1::date', 'DATE(created_at) <= $2::date'];
     if (action) {
       params.push(action);
       where.push(`action = $${params.length}`);
@@ -47,17 +45,32 @@ export async function GET(request) {
     params.push(limit);
 
     const res = await query(
-      `SELECT id, user_id, tenant_id, action, entity_type, entity_id, old_values, new_values, ip_address, created_at
-       FROM audit_logs
+      `SELECT al.id, al.user_id, al.tenant_id, t.name AS tenant_name,
+              al.action, al.entity_type, al.entity_id, al.old_values, al.new_values, al.ip_address, al.created_at
+       FROM audit_logs al
+       LEFT JOIN tenants t ON t.id = al.tenant_id
        WHERE ${where.join(' AND ')}
-       ORDER BY created_at DESC
+       ORDER BY al.created_at DESC
        LIMIT $${params.length}`,
       params,
     );
 
-    return NextResponse.json({ logs: res.rows });
+    return NextResponse.json({ logs: res.rows, scope: scopeResult.scope });
   } catch (error) {
     console.error('GET /api/audit/logs failed:', error);
-    return NextResponse.json({ error: 'Failed to load audit logs' }, { status: 500 });
+    const code = error?.code;
+    const message = String(error?.message || '');
+    const migrationHint =
+      code === '42P01' || message.includes('audit_logs')
+        ? 'Apply database migration 013_audit_exports_and_assessment_uploads.sql (audit_logs table).'
+        : code === '42P01' || message.includes('audit_report_exports')
+          ? 'Apply database migration 013_audit_exports_and_assessment_uploads.sql.'
+          : '';
+    return NextResponse.json({
+      logs: [],
+      scope: 'platform',
+      unavailable: true,
+      error: migrationHint || 'Audit logs are temporarily unavailable.',
+    });
   }
 }

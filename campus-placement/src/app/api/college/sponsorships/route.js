@@ -74,6 +74,7 @@ export async function GET() {
           sp.billing_pan,
           sp.billing_gst_number,
           ep.company_name,
+          ep.website,
           so.tier_name,
           so.category,
           sdrs.id AS receipt_send_id,
@@ -108,6 +109,7 @@ export async function GET() {
             sp.billing_pan,
             sp.billing_gst_number,
             ep.company_name,
+            ep.website,
             so.tier_name,
             so.category
            FROM sponsorship_payments sp
@@ -141,6 +143,7 @@ export async function GET() {
         bankTransferConfirmedAt: p.bank_transfer_confirmed_at,
         hasProof: Boolean(p.has_proof),
         companyName: p.company_name,
+        companyWebsite: p.website || null,
         billingLegalName: p.billing_legal_name || null,
         billingPan: p.billing_pan || null,
         billingGstNumber: p.billing_gst_number || null,

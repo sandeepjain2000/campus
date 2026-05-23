@@ -277,6 +277,7 @@ CREATE TABLE placement_drives (
     notes TEXT,
     ctc_breakup TEXT,
     social_shared TEXT[] DEFAULT '{}',
+    attached_staff_user_ids UUID[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -565,12 +566,14 @@ CREATE TABLE notifications (
     type VARCHAR(30) DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error', 'drive', 'offer', 'application')),
     link VARCHAR(255),
     is_read BOOLEAN DEFAULT false,
+    is_starred BOOLEAN NOT NULL DEFAULT false,
     deleted_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_notif_user ON notifications(user_id);
 CREATE INDEX idx_notif_read ON notifications(is_read);
+CREATE INDEX idx_notif_user_starred ON notifications (user_id, created_at DESC) WHERE deleted_at IS NULL AND is_starred = true;
 CREATE INDEX idx_notif_user_trash ON notifications (user_id, created_at DESC) WHERE deleted_at IS NOT NULL;
 
 -- ============================================
@@ -671,6 +674,19 @@ CREATE TABLE system_email_templates (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_by UUID REFERENCES users(id) ON DELETE SET NULL
 );
+
+CREATE TABLE email_template_overrides (
+    scope_type VARCHAR(20) NOT NULL CHECK (scope_type IN ('employer', 'college')),
+    scope_id UUID NOT NULL,
+    template_key VARCHAR(64) NOT NULL,
+    subject_template TEXT NOT NULL,
+    body_template TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    PRIMARY KEY (scope_type, scope_id, template_key)
+);
+
+CREATE INDEX idx_email_tpl_override_scope ON email_template_overrides(scope_type, scope_id);
 
 -- ============================================
 -- 29. CAMPUS GUEST NEED — EMPLOYER CONFIRMATION EMAILS

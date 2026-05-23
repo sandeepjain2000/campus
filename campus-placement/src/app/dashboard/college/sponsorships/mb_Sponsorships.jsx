@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { Trophy, FlaskConical, Palette, Banknote, FileCheck2, Download, Mail } from 'lucide-react';
 
 const fetcher = async (url) => {
@@ -224,7 +225,9 @@ export default function mb_Sponsorships() {
                 {payments.map((p) => (
                   <div key={p.id} className="card" style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{p.companyName}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                        <CompanyNameLink name={p.companyName} website={p.companyWebsite} />
+                      </div>
                       <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>{formatPaymentStatus(p.status, p.method)}</span>
                     </div>
                     

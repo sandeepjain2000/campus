@@ -26,7 +26,7 @@ export async function POST(request) {
     const check = await query(
       `SELECT sp.id, sp.user_id
        FROM student_profiles sp
-       WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid`,
+       WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND sp.archived_at IS NULL`,
       [studentProfileId, tenantId]
     );
 

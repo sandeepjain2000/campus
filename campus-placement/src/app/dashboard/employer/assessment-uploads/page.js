@@ -8,6 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { AssessmentCsvUploadForm } from '@/components/employer/AssessmentSpreadsheetUploadPanel';
 import { isUuid } from '@/lib/tenantContext';
+import { toCsvIsoDate } from '@/lib/csvExport';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -206,7 +207,7 @@ function EmployerAssessmentUploadsContent() {
               headers: ['id', 'created_at', 'target', 'original_file_name', 'total_rows', 'accepted_rows', 'rejected_rows'],
               rows: uploads.map((u) => [
                 u.id,
-                u.created_at ? new Date(u.created_at).toISOString() : '',
+                toCsvIsoDate(u.created_at),
                 u.drive_id ? `drive:${u.drive_id}` : `job:${u.job_id || ''}`,
                 u.original_file_name ?? '',
                 String(u.total_rows ?? ''),

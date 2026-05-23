@@ -3,10 +3,30 @@ import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useToast } from '@/components/ToastProvider';
 
-const fetcher = url => fetch(url).then(res => res.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || 'Failed to load rules');
+  if (json?.error) throw new Error(json.error);
+  return json;
+};
+
+const DEFAULT_RULES = {
+  maxOffers: 1,
+  acceptanceWindow: 7,
+  minCGPA: 6,
+  allowBacklogs: false,
+  maxBacklogs: 0,
+  requirePPT: false,
+  autoVerify: false,
+  fcfsEnabled: false,
+  bufferDays: 0,
+  seasonStart: '',
+  seasonEnd: '',
+};
 
 export default function CollegeRulesPage() {
-  const { data, isLoading } = useSWR('/api/college/rules', fetcher);
+  const { data, error, isLoading } = useSWR('/api/college/rules', fetcher);
   const [rules, setRules] = useState(null);
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
@@ -35,15 +55,26 @@ export default function CollegeRulesPage() {
     }
   };
 
+  if (error && !rules) {
+    return (
+      <div style={{ padding: '2rem' }}>
+        <p style={{ color: 'var(--danger-600)', marginBottom: '0.75rem' }}>{error.message}</p>
+        <button type="button" className="btn btn-secondary" onClick={() => setRules(DEFAULT_RULES)}>
+          Use defaults and edit
+        </button>
+      </div>
+    );
+  }
+
   if (isLoading || !rules) {
-    return <div style={{ padding: '2rem' }}>Loading rules...</div>;
+    return <div style={{ padding: '2rem' }}>Loading rules…</div>;
   }
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'

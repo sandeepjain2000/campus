@@ -18,6 +18,9 @@ export async function downloadCsvFromApi(url, filename) {
   const a = document.createElement('a');
   a.href = u;
   a.download = name;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(u);
 }

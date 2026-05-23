@@ -22,6 +22,7 @@ function buildCollegeOffersSql(latestOnly, useReported) {
     ${STUDENT_NAME_SQL},
     ten.name AS college_name,
     ${companyExpr},
+    ep.website AS company_website,
     o.job_title,
     o.salary,
     o.location,
@@ -36,7 +37,7 @@ function buildCollegeOffersSql(latestOnly, useReported) {
   LEFT JOIN users u ON u.id = sp.user_id
   JOIN tenants ten ON ten.id = sp.tenant_id
   LEFT JOIN employer_profiles ep ON ep.id = o.employer_id
-  WHERE sp.tenant_id = $1::uuid ${latestClause}
+  WHERE sp.tenant_id = $1::uuid AND sp.archived_at IS NULL ${latestClause}
   ORDER BY o.created_at DESC
   LIMIT 500`;
 }
@@ -50,9 +51,29 @@ function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
 }
 
+async function queryWithLatestFallback(latestOnly, useReported, tenantId) {
+  const res = await query(buildCollegeOffersSql(latestOnly, useReported), [tenantId]);
+  if (latestOnly && res.rows.length === 0) {
+    const countRes = await query(
+      `SELECT COUNT(*)::int AS n FROM offers o
+       JOIN student_profiles sp ON sp.id = o.student_id
+       WHERE sp.tenant_id = $1::uuid AND sp.archived_at IS NULL`,
+      [tenantId],
+    );
+    const total = Number(countRes.rows[0]?.n) || 0;
+    if (total > 0) {
+      console.warn(
+        `college offers: ${total} offer(s) for tenant but none with is_latest=1; listing all rows (run refresh or seed)`,
+      );
+      return query(buildCollegeOffersSql(false, useReported), [tenantId]);
+    }
+  }
+  return res;
+}
+
 export async function queryCollegeOffersForTenant(tenantId) {
   try {
-    return await query(buildCollegeOffersSql(true, true), [tenantId]);
+    return await queryWithLatestFallback(true, true, tenantId);
   } catch (e) {
     if (isMissingIsLatestError(e)) {
       try {
@@ -68,7 +89,7 @@ export async function queryCollegeOffersForTenant(tenantId) {
     if (isMissingReportedColumnError(e)) {
       console.warn('college offers: reported_company_name missing; legacy SELECT (run migration 018)');
       try {
-        return await query(buildCollegeOffersSql(true, false), [tenantId]);
+        return await queryWithLatestFallback(true, false, tenantId);
       } catch (e2) {
         if (isMissingIsLatestError(e2)) {
           return await query(buildCollegeOffersSql(false, false), [tenantId]);

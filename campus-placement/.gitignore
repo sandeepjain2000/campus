@@ -52,5 +52,9 @@ update_seed.js
 
 # local SQLite marketing data
 db/sqlite/*.sqlite
-db/sqlite/*.sqlite-shm
-db/sqlite/*.sqlite-wal
+# qa2 generated artifacts (regenerate with python qa2/generate_test_cases_json.py)
+qa2/test_cases.json
+qa2/agent_results_*.json
+qa2/logs/
+
+.vercel

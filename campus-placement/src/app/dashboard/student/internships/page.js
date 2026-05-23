@@ -6,6 +6,9 @@ import { GraduationCap, Eye, X, ExternalLink } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import EntityLogo from '@/components/EntityLogo';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
+import PageLoading from '@/components/PageLoading';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -24,8 +27,13 @@ export default function StudentInternshipsPage() {
   });
 
   const items = data?.items || [];
+  const canApply = data?.canApply !== false;
 
   const apply = async (jobId, title) => {
+    if (!canApply) {
+      addToast('Upload your primary CV on your profile before applying.', 'warning');
+      return;
+    }
     setApplyingId(jobId);
     try {
       const res = await fetch('/api/student/program-applications', {
@@ -66,7 +74,9 @@ export default function StudentInternshipsPage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-secondary">Loading…</p>}
+      <StudentApplyResumeBanner canApply={canApply} />
+
+      {isLoading && <PageLoading message="Loading internships…" inline />}
       {error && (
         <div className="card" style={{ borderColor: 'var(--danger-500)' }}>
           <p className="text-sm" style={{ margin: 0 }}>
@@ -97,8 +107,9 @@ export default function StudentInternshipsPage() {
 
       {/* ── Tabular list ── */}
       {!isLoading && items.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table className="data-table" style={{ width: '100%' }}>
+        <div className="card card-table-shell">
+          <div className="table-container">
+          <table className="data-table">
             <thead>
               <tr>
                 <th style={{ paddingLeft: '1rem' }}>Company</th>
@@ -117,7 +128,7 @@ export default function StudentInternshipsPage() {
                   <td style={{ paddingLeft: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <EntityLogo name={row.companyName} size="sm" shape="rounded" />
-                      <span className="font-semibold">{row.companyName}</span>
+                      <CompanyNameLink name={row.companyName} website={row.website} className="font-semibold" />
                     </div>
                   </td>
                   <td>{row.title}</td>
@@ -158,10 +169,10 @@ export default function StudentInternshipsPage() {
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
-                          disabled={applyingId === row.id}
+                          disabled={!canApply || applyingId === row.id}
                           onClick={() => apply(row.id, row.title)}
                         >
-                          {applyingId === row.id ? 'Applying…' : 'Apply'}
+                          {applyingId === row.id ? 'Applying…' : canApply ? 'Apply' : 'CV required'}
                         </button>
                       )}
                     </div>
@@ -170,6 +181,7 @@ export default function StudentInternshipsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -198,7 +210,9 @@ export default function StudentInternshipsPage() {
                 <EntityLogo name={selectedRow.companyName} size="lg" shape="rounded" />
                 <div>
                   <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{selectedRow.title}</h2>
-                  <p className="text-sm text-secondary" style={{ margin: '0.125rem 0 0 0' }}>{selectedRow.companyName}</p>
+                  <p className="text-sm text-secondary" style={{ margin: '0.125rem 0 0 0' }}>
+                    <CompanyNameLink name={selectedRow.companyName} website={selectedRow.website} />
+                  </p>
                 </div>
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => setSelectedRow(null)} title="Close">
@@ -276,25 +290,16 @@ export default function StudentInternshipsPage() {
               </div>
             )}
 
-            {/* Website */}
-            {selectedRow.website && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <a href={selectedRow.website} target="_blank" rel="noopener noreferrer" className="text-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <ExternalLink size={14} /> Company website
-                </a>
-              </div>
-            )}
-
             {/* Apply button */}
             {!selectedRow.hasApplied && (
               <button
                 type="button"
                 className="btn btn-primary"
                 style={{ width: '100%' }}
-                disabled={applyingId === selectedRow.id}
+                disabled={!canApply || applyingId === selectedRow.id}
                 onClick={() => apply(selectedRow.id, selectedRow.title)}
               >
-                {applyingId === selectedRow.id ? 'Applying…' : 'Apply to this Internship'}
+                {applyingId === selectedRow.id ? 'Applying…' : canApply ? 'Apply to this Internship' : 'Upload CV to apply'}
               </button>
             )}
           </div>

@@ -20,55 +20,98 @@ import {
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import PageError from '@/components/PageError';
+import PageLoading from '@/components/PageLoading';
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
+async function onboardingFetcher(url) {
+  const res = await fetch(url);
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error || 'Failed to load onboarding steps');
+  return json;
+}
 
 const STEP_ICONS = {
   academic: UserCheck,
   resume: FileText,
   apply: Briefcase,
   profile: Building2,
+  campus: Building2,
+  posting: Briefcase,
   drive: CalendarPlus,
   offers: Upload,
+  applications: Inbox,
   settings: Settings,
   employers: Building2,
   students: Users,
   colleges: Building2,
+  'onboard-orgs': Inbox,
+};
+
+const ROLE_INTRO = {
+  student: 'Complete these steps to set up your profile and start applying.',
+  employer: 'Set up your company profile, connect with campuses, and run your first placement activity.',
+  college_admin: 'Configure your campus, employers, and student records to go live.',
+  super_admin: 'Review pending sign-ups and platform settings to onboard colleges and employers.',
+};
+
+const ROLE_HOME = {
+  student: '/dashboard/student/overview',
+  employer: '/dashboard/employer/overview',
+  college_admin: '/dashboard/college/overview',
+  super_admin: '/dashboard/admin',
 };
 
 export default function GettingStartedPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const role = session?.user?.role;
   const userId = session?.user?.id;
-  const { data, error, isLoading } = useSWR(userId ? '/api/user/onboarding' : null, fetcher);
+  const { data, error, isLoading, mutate } = useSWR(
+    userId ? '/api/user/onboarding' : null,
+    onboardingFetcher,
+  );
 
-  if (isLoading) {
+  if (sessionStatus === 'loading' || (userId && isLoading)) {
+    return <PageLoading message="Loading getting started…" variant="skeleton-card" />;
+  }
+
+  if (!userId) {
     return (
-      <main className="page-content">
-        <div className="skeleton skeleton-heading" style={{ width: '30%', marginBottom: '2rem' }} />
-        <div className="skeleton skeleton-card" style={{ height: '300px' }} />
-      </main>
+      <div className="card animate-fadeIn" style={{ padding: '2rem', textAlign: 'center' }}>
+        <p className="text-secondary" style={{ margin: 0 }}>Sign in to view your setup checklist.</p>
+      </div>
     );
   }
 
-  if (error) return <PageError error={error} />;
-  
+  if (error) {
+    return (
+      <PageError
+        error={error}
+        reset={() => {
+          void mutate();
+        }}
+      />
+    );
+  }
+
   const steps = data?.progress?.steps || [];
   const completedCount = steps.filter((s) => s.completed).length;
   const totalCount = steps.length;
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 100;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const nextStep = steps.find((s) => !s.completed);
-  const isComplete = data?.progress?.isComplete || completedCount === totalCount;
+  const isComplete = data?.progress?.isComplete || (totalCount > 0 && completedCount === totalCount);
+  const homeHref = ROLE_HOME[role] || '/dashboard';
+
+  const intro =
+    ROLE_INTRO[role] || 'Complete these steps to set up your account and get the most out of the platform.';
 
   return (
-    <main className="page-content animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* High-Fidelity Glassmorphic Hero Banner */}
-      <div 
+      <div
+        className="gradient-banner"
         style={{
           position: 'relative',
-          background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
           borderRadius: 'var(--radius-xl)',
           padding: '2.5rem',
-          color: 'white',
           overflow: 'hidden',
           marginBottom: '2.5rem',
           boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
@@ -84,11 +127,11 @@ export default function GettingStartedPage() {
         <div style={{ position: 'absolute', bottom: '-50px', left: '10%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', borderRadius: '50%' }} />
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
-          <h1 style={{ color: 'white', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <h1 className="gradient-banner-title" style={{ fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Rocket size={28} /> Getting Started
           </h1>
-          <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>
-            Complete these steps to set up your account and get the most out of the platform.
+          <p style={{ fontSize: '1.05rem', color: 'var(--banner-fg-muted)', margin: 0, lineHeight: 1.5 }}>
+            {intro}
           </p>
         </div>
       </div>
@@ -126,6 +169,31 @@ export default function GettingStartedPage() {
 
         {/* Steps List */}
         <div style={{ padding: '1.5rem 2rem' }}>
+          {steps.length === 0 ? (
+            <div
+              style={{
+                padding: '2rem 1rem',
+                textAlign: 'center',
+                color: 'var(--text-secondary)',
+                border: '1px dashed var(--border-default)',
+                borderRadius: 'var(--radius-lg)',
+              }}
+            >
+              <p style={{ margin: '0 0 0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                No setup steps are available
+              </p>
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                Try refreshing the page. If this persists, open{' '}
+                <Link href={homeHref} style={{ fontWeight: 600 }}>
+                  Dashboard
+                </Link>{' '}
+                or contact support.
+              </p>
+              <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '1rem' }} onClick={() => void mutate()}>
+                Refresh checklist
+              </button>
+            </div>
+          ) : null}
           {steps.map((step) => {
             const Icon = STEP_ICONS[step.id] || Circle;
             const isCompleted = step.completed;
@@ -194,6 +262,6 @@ export default function GettingStartedPage() {
           })}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

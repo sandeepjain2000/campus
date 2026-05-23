@@ -1,8 +1,18 @@
+import { parseJoiningBatch, reconcileBatchFields } from '@/lib/studentBatch';
+import { defaultAdmissionBatchYear } from '@/lib/admissionBatchYear';
+import { formatProfileSectionsCell } from '@/lib/studentProfileSections';
+import { validateStudentCgpa } from '@/lib/validators';
+
 /** Display + template defaults (import falls back when cells are blank). */
 export const CURRENT_ACADEMIC_YEAR = '2025-26';
 export const CURRENT_SEMESTER = '6';
+/** Joining batch = intake year (YYYY). */
+export const CURRENT_JOINING_BATCH = defaultAdmissionBatchYear();
+export const CURRENT_ADMISSION_YEAR = defaultAdmissionBatchYear();
+export const CURRENT_GRADUATION_YEAR = '2026';
 
-export const STUDENT_CSV_HEADERS = [
+/** Columns required for roster CSV import (batch columns are optional for older templates). */
+export const STUDENT_CSV_REQUIRED_HEADERS = [
   'Academic Year',
   'Semester',
   'Name',
@@ -18,6 +28,30 @@ export const STUDENT_CSV_HEADERS = [
   'Job Status',
   'Internship Status',
   'Verified',
+  'Sections',
+  'Photo URL',
+];
+
+export const STUDENT_CSV_HEADERS = [
+  'Academic Year',
+  'Semester',
+  'Batch',
+  'Admission Year',
+  'Graduation Year',
+  'Name',
+  'Roll',
+  'Email',
+  'Department',
+  'Specialization',
+  'Gender',
+  'Disability Status',
+  'Diversity Category',
+  'Skills',
+  'CGPA',
+  'Job Status',
+  'Internship Status',
+  'Verified',
+  'Sections',
   'Photo URL',
 ];
 
@@ -44,7 +78,7 @@ export function buildHeaderIndex(headers) {
 
 export function validateStudentCsvHeaders(headers) {
   const idx = buildHeaderIndex(headers);
-  const missing = STUDENT_CSV_HEADERS.filter((col) => idx[normKey(col)] === undefined);
+  const missing = STUDENT_CSV_REQUIRED_HEADERS.filter((col) => idx[normKey(col)] === undefined);
   if (missing.length) {
     return { ok: false, error: `Missing columns: ${missing.join(', ')}` };
   }
@@ -86,8 +120,11 @@ export function studentToCsvRow(s) {
     const map = {
       'Academic Year': s.academicYear,
       Semester: s.semester,
+      Batch: s.batch || s.joiningAcademicYear || '',
+      'Admission Year': s.batchYear != null ? String(s.batchYear) : '',
+      'Graduation Year': s.graduationYear != null ? String(s.graduationYear) : '',
       Name: s.name,
-      Roll: s.roll,
+      Roll: s.systemId || s.roll,
       Email: s.email,
       Department: s.dept,
       Specialization: s.specialization,
@@ -96,6 +133,7 @@ export function studentToCsvRow(s) {
       'Diversity Category': s.diversityCategory,
       'Job Status': s.jobStatus,
       'Internship Status': s.internshipStatus,
+      Sections: formatProfileSectionsCell(s),
       'Photo URL': s.photo,
     };
     return String(map[h] ?? '');
@@ -106,6 +144,9 @@ export function studentCsvTemplateExampleRow() {
   return [
     CURRENT_ACADEMIC_YEAR,
     CURRENT_SEMESTER,
+    CURRENT_JOINING_BATCH,
+    CURRENT_ADMISSION_YEAR,
+    CURRENT_GRADUATION_YEAR,
     'Sample Student',
     'CS2021001',
     'student@example.com',
@@ -119,6 +160,7 @@ export function studentCsvTemplateExampleRow() {
     'unplaced',
     'none',
     'No',
+    '3/6',
     'https://i.pravatar.cc/64?img=1',
   ];
 }
@@ -150,12 +192,13 @@ export function parseStudentRow(cells, idx, line) {
   const cgpaRaw = g('CGPA');
   let cgpa;
   if (cgpaRaw === '') {
-    cgpa = 0;
+    cgpa = 8;
   } else {
-    cgpa = Number(cgpaRaw);
-    if (Number.isNaN(cgpa) || cgpa < 0 || cgpa > 10) {
-      return { ok: false, error: `Line ${line}: CGPA must be a number from 0 to 10` };
+    const cgpaErr = validateStudentCgpa(cgpaRaw);
+    if (cgpaErr) {
+      return { ok: false, error: `Line ${line}: ${cgpaErr}` };
     }
+    cgpa = Number(cgpaRaw);
   }
 
   const verified = parseVerified(g('Verified'));
@@ -184,11 +227,41 @@ export function parseStudentRow(cells, idx, line) {
     return { ok: false, error: `Line ${line}: Semester must be 1–8` };
   }
 
+  const batchReconciled = reconcileBatchFields({
+    batch: g('Batch'),
+    batch_year: g('Admission Year'),
+    graduation_year: g('Graduation Year'),
+  });
+  if (batchReconciled.error) {
+    return { ok: false, error: `Line ${line}: ${batchReconciled.error}` };
+  }
+  if (g('Batch')) {
+    const check = parseJoiningBatch(g('Batch'));
+    if (!check.ok) return { ok: false, error: `Line ${line}: ${check.error}` };
+  }
+  if (g('Admission Year') && batchReconciled.batchYear == null) {
+    return { ok: false, error: `Line ${line}: Admission Year must be a 4-digit year` };
+  }
+  if (g('Graduation Year') && batchReconciled.graduationYear == null) {
+    return { ok: false, error: `Line ${line}: Graduation Year must be a 4-digit year` };
+  }
+  if (
+    batchReconciled.batchYear &&
+    batchReconciled.graduationYear &&
+    batchReconciled.graduationYear < batchReconciled.batchYear
+  ) {
+    return { ok: false, error: `Line ${line}: Graduation Year must be on or after Admission Year` };
+  }
+
   return {
     ok: true,
     student: {
       academicYear: g('Academic Year') || CURRENT_ACADEMIC_YEAR,
       semester: semester || CURRENT_SEMESTER,
+      batch: batchReconciled.joiningAcademicYear || batchReconciled.batchLabel,
+      joiningAcademicYear: batchReconciled.joiningAcademicYear,
+      batchYear: batchReconciled.batchYear,
+      graduationYear: batchReconciled.graduationYear,
       name,
       roll,
       email,

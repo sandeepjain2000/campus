@@ -7,6 +7,7 @@ import { Users, CheckCircle, Building2, Target, BarChart2, Activity, Zap, Clipbo
 import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
 import { useToast } from '@/components/ToastProvider';
 import { getCurrentAcademicYear } from '@/lib/academicYear';
+import PageLoading from '@/components/PageLoading';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -70,12 +71,9 @@ export default function CollegeOverviewPage() {
     </div>
   );
 
-  if (isLoading || !data) return (
-    <div>
-      <div className="skeleton" style={{ height: 140, borderRadius: 'var(--radius-xl)', marginBottom: '2rem' }} />
-      <div className="grid grid-4">{[1,2,3,4].map(i => <div key={i} className="skeleton skeleton-card" style={{ height: 120 }} />)}</div>
-    </div>
-  );
+  if (isLoading || !data) {
+    return <PageLoading message="Loading college overview…" variant="skeleton-dashboard" />;
+  }
 
   const stats = data?.stats ?? { totalStudents: 0, placedStudents: 0, placementRate: 0, activeEmployers: 0, activeDrives: 0, avgPackage: 0, highestPackage: 0, minJobAmount: 0, minInternshipAmount: 0 };
   const departmentStats = Array.isArray(data?.departmentStats) ? data.departmentStats : [];
@@ -103,7 +101,7 @@ export default function CollegeOverviewPage() {
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'

@@ -8,6 +8,7 @@ import { SOCIAL_PLATFORM_ORDER } from '@/components/SocialIcons';
 import { useToast } from '@/components/ToastProvider';
 import { getCurrentAcademicYear } from '@/lib/academicYear';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import PageLoading from '@/components/PageLoading';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -74,17 +75,16 @@ export default function mb_Overview() {
     </>
   );
 
-  if (isLoading || !data) return (
-    <>
-      <MobileHeader title="Dashboard" />
-      <div style={{ padding: '1rem 1rem 5rem 1rem' }}>
-        <div className="skeleton" style={{ height: 100, borderRadius: '12px', marginBottom: '1rem' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-          {[1,2,3,4].map(i => <div key={i} className="skeleton skeleton-card" style={{ height: 90 }} />)}
+  if (isLoading || !data) {
+    return (
+      <>
+        <MobileHeader title="Dashboard" />
+        <div style={{ padding: '1rem 1rem 5rem 1rem' }}>
+          <PageLoading message="Loading college overview…" variant="skeleton-card" inline />
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
+  }
 
   const stats = data?.stats ?? { totalStudents: 0, placedStudents: 0, placementRate: 0, activeEmployers: 0, activeDrives: 0, avgPackage: 0, highestPackage: 0, minJobAmount: 0, minInternshipAmount: 0 };
   const departmentStats = Array.isArray(data?.departmentStats) ? data.departmentStats : [];
@@ -105,7 +105,7 @@ export default function mb_Overview() {
         
         {/* Mobile Hero */}
         <div style={{
-          background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+          background: 'var(--banner-gradient)',
           borderRadius: '12px', padding: '1.25rem', color: 'white',
           marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
         }}>

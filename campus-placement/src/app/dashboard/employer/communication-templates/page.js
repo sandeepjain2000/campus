@@ -1,61 +1,100 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
-import { Mail, ArrowLeft, X } from 'lucide-react';
-import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
-import {
-  EDITABLE_SYSTEM_EMAIL_TEMPLATE_KEYS,
-  SYSTEM_EMAIL_TEMPLATE_META,
-} from '@/lib/systemEmailTemplates';
+import { ArrowLeft, Mail, RotateCcw, Save } from 'lucide-react';
 
-const TEMPLATE_ROWS = EDITABLE_SYSTEM_EMAIL_TEMPLATE_KEYS.map((id) => {
-  const meta = SYSTEM_EMAIL_TEMPLATE_META[id];
-  return {
-    id,
-    name: meta?.title || id,
-    scope: 'Platform',
-    summary: meta?.summary || '',
-    placeholders: meta?.placeholders || [],
-  };
-});
+function emptyForms() {
+  return {};
+}
 
 export default function EmployerCommunicationTemplatesPage() {
   const { addToast } = useToast();
-  const [viewRow, setViewRow] = useState(null);
+  const [loading, setLoading] = useState(true);
+  /** @type {[Array<{ template_key: string, title: string, summary: string, placeholders: string[], subject_template: string, body_template: string, updated_at: string | null, source: string, has_override: boolean }>, Function]} */
+  const [catalog, setCatalog] = useState([]);
+  const [forms, setForms] = useState(emptyForms);
+  const [savingKey, setSavingKey] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/employer/email-templates');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to load');
+      const list = Array.isArray(json.templates) ? json.templates : [];
+      setCatalog(list);
+      const next = {};
+      for (const row of list) {
+        next[row.template_key] = {
+          subject: row.subject_template || '',
+          body: row.body_template || '',
+          updated_at: row.updated_at || null,
+          has_override: row.has_override,
+        };
+      }
+      setForms(next);
+    } catch (e) {
+      addToast(e.message || 'Failed to load', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
 
   useEffect(() => {
-    if (viewRow) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [viewRow]);
+    void load();
+  }, [load]);
 
-  const modalBackdrop = {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(15, 23, 42, 0.45)',
-    zIndex: 1000,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1rem',
+  const setFormField = (templateKey, field, value) => {
+    setForms((prev) => ({
+      ...prev,
+      [templateKey]: { ...prev[templateKey], [field]: value },
+    }));
   };
 
-  const modalPanel = {
-    background: 'var(--bg-elevated)',
-    borderRadius: '12px',
-    maxWidth: 560,
-    width: '100%',
-    maxHeight: '90vh',
-    overflow: 'auto',
-    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-    border: '1px solid var(--border-default)',
+  const save = async (templateKey) => {
+    const f = forms[templateKey];
+    if (!f) return;
+    setSavingKey(templateKey);
+    try {
+      const res = await fetch('/api/employer/email-templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateKey,
+          subjectTemplate: f.subject,
+          bodyTemplate: f.body,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Save failed');
+      addToast('Template saved for your organization.', 'success');
+      await load();
+    } catch (e) {
+      addToast(e.message || 'Save failed', 'error');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const resetToPlatform = async (templateKey) => {
+    setSavingKey(templateKey);
+    try {
+      const res = await fetch('/api/employer/email-templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateKey, resetToPlatform: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Reset failed');
+      addToast('Reverted to platform default wording.', 'success');
+      await load();
+    } catch (e) {
+      addToast(e.message || 'Reset failed', 'error');
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   return (
@@ -75,113 +114,112 @@ export default function EmployerCommunicationTemplatesPage() {
             Email templates
           </h1>
           <p>
-            Platform-managed templates. Use <strong>View</strong> for placeholders and details; editing and deletion are
-            limited to PlacementHub administrators.
+            Customize email wording for <strong>your organization</strong>. Changes apply when you send guest confirmations
+            or sponsorship thank-you messages. Platform defaults remain available via reset; Super Admins can still edit
+            global defaults.
           </p>
         </div>
       </div>
 
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Template</th>
-              <th>Scope</th>
-              <th>Summary</th>
-              <th style={{ width: 1 }} aria-label="Actions">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {TEMPLATE_ROWS.map((row) => (
-              <tr key={row.id}>
-                <td className="font-medium">{row.name}</td>
-                <td>
-                  <span className="badge badge-indigo">{row.scope}</span>
-                </td>
-                <td className="text-sm text-secondary" style={{ maxWidth: 320 }}>
-                  {row.summary}
-                </td>
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
-                    <StandardTableIconAction action="view" variant="ghost" showLabel={false} onClick={() => setViewRow(row)} />
-                    <StandardTableIconAction
-                      action="edit"
-                      variant="ghost"
-                      showLabel={false}
-                      onClick={() =>
-                        addToast(
-                          'Only Super Admins can edit platform templates. Ask your PlacementHub administrator, or use Admin → Communication & Support → Email templates.',
-                          'info',
-                        )
-                      }
-                    />
-                    <StandardTableIconAction
-                      action="delete"
-                      variant="danger"
-                      showLabel={false}
-                      onClick={() => addToast('System templates cannot be deleted.', 'info')}
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {viewRow ? (
-        <div style={modalBackdrop} role="presentation" onClick={() => setViewRow(null)}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="tpl-view-title"
-            style={{ ...modalPanel, padding: '1.25rem' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-              <div>
-                <p className="text-sm text-secondary" style={{ margin: 0 }}>
-                  {viewRow.scope}
-                </p>
-                <h2 id="tpl-view-title" style={{ fontSize: '1.1rem', margin: '0.35rem 0 0' }}>
-                  {viewRow.name}
-                </h2>
-              </div>
-              <button type="button" className="btn btn-ghost btn-sm" aria-label="Close" onClick={() => setViewRow(null)}>
-                <X size={18} />
-              </button>
-            </div>
-            <div style={{ marginTop: '1rem' }}>
-              <p className="text-sm text-secondary" style={{ marginTop: 0 }}>
-                {viewRow.summary}
-              </p>
-              <p className="text-sm" style={{ marginBottom: '0.35rem' }}>
-                Only <strong>Super Admin</strong> users can change the stored wording (sidebar:{' '}
-                <strong>Communication &amp; Support</strong> → <strong>Email templates</strong>).
-              </p>
-              <p className="text-sm font-medium" style={{ marginBottom: '0.35rem' }}>
-                Placeholders (double curly braces in the template)
-              </p>
-              <code
-                className="text-xs"
-                style={{
-                  display: 'block',
-                  padding: '0.75rem',
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 8,
-                  border: '1px solid var(--border-default)',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {viewRow.placeholders.map((p) => `{{${p}}}`).join('  ')}
-              </code>
-            </div>
-          </div>
+      {loading ? (
+        <div className="skeleton" style={{ height: 280 }} />
+      ) : catalog.length === 0 ? (
+        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>
+            No editable templates are configured. Ask your administrator to apply database migration{' '}
+            <code className="text-xs">058_email_template_overrides.sql</code>.
+          </p>
         </div>
-      ) : null}
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 900 }}>
+          {catalog.map((row) => {
+            const f = forms[row.template_key] || { subject: '', body: '', updated_at: null, has_override: false };
+            const placeholders = row.placeholders || [];
+            return (
+              <div key={row.template_key} className="card" style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>{row.title}</h2>
+                  <span className={`badge ${f.has_override ? 'badge-indigo' : 'badge-gray'}`}>
+                    {f.has_override ? 'Your organization' : 'Platform default'}
+                  </span>
+                </div>
+                {row.summary ? (
+                  <p className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
+                    {row.summary}
+                  </p>
+                ) : null}
+                {f.updated_at ? (
+                  <p className="text-xs text-secondary" style={{ marginBottom: '1rem' }}>
+                    Last updated: {new Date(f.updated_at).toLocaleString()}
+                  </p>
+                ) : null}
+
+                <div
+                  className="text-xs"
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-default)',
+                  }}
+                >
+                  <strong>Placeholders</strong> (double curly braces):
+                  <code style={{ display: 'block', marginTop: '0.35rem', whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>
+                    {placeholders.map((p) => `{{${p}}}`).join('  ')}
+                  </code>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Subject template</label>
+                  <input
+                    className="form-input"
+                    value={f.subject}
+                    onChange={(e) => setFormField(row.template_key, 'subject', e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Body template (plain text)</label>
+                  <textarea
+                    className="form-input"
+                    rows={12}
+                    value={f.body}
+                    onChange={(e) => setFormField(row.template_key, 'body', e.target.value)}
+                    style={{ fontFamily: 'var(--font-mono, ui-monospace, monospace)', fontSize: '0.85rem' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => void save(row.template_key)}
+                    disabled={savingKey === row.template_key}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Save size={16} />
+                      {savingKey === row.template_key ? 'Saving…' : 'Save for my organization'}
+                    </span>
+                  </button>
+                  {f.has_override ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => void resetToPlatform(row.template_key)}
+                      disabled={savingKey === row.template_key}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <RotateCcw size={16} />
+                        Use platform default
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

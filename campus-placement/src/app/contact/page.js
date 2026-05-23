@@ -1,11 +1,8 @@
 import Link from 'next/link';
 import { ArrowLeft, Mail } from 'lucide-react';
-import { redirectIfMarketingSiteConfigured } from '@/lib/redirectMarketingSite';
-
 export const dynamic = 'force-dynamic';
 
-export default async function ContactPage() {
-  await redirectIfMarketingSiteConfigured();
+export default function ContactPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>
       <header style={{ borderBottom: '1px solid var(--border-default)', padding: '1rem 1.5rem' }}>

@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 
 export async function getEmployerProfileId(userId) {
   const result = await query(`SELECT id FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
@@ -31,22 +32,16 @@ export async function getLatestResumeForStudent(studentId) {
      FROM student_documents
      WHERE student_id = $1::uuid
        AND document_type = 'resume'
-     ORDER BY uploaded_at DESC
-     LIMIT 1`,
+     ORDER BY uploaded_at DESC`,
     [studentId],
   );
-  return result.rows[0] || null;
+  for (const row of result.rows) {
+    if (isAuthoritativeResumeUrl(row.file_url)) return row;
+  }
+  return null;
 }
 
-export function isPlaceholderResumeUrl(url) {
-  const value = String(url || '').trim().toLowerCase();
-  return !value || value.includes('campus-placement.local') || value.includes('/student-documents/');
-}
-
-export function isUsableResumeUrl(url) {
-  const value = String(url || '').trim();
-  return /^https:\/\//i.test(value) && !isPlaceholderResumeUrl(value);
-}
+export { isAuthoritativeResumeUrl, isPlaceholderResumeUrl, isUsableResumeUrl } from '@/lib/studentResumeUrl';
 
 export function extractS3Key(fileUrl) {
   try {

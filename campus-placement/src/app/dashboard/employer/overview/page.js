@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight, Building2, MapPin } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
+import PageLoading from '@/components/PageLoading';
 import { useToast } from '@/components/ToastProvider';
 
 const fetcher = async (url) => {
@@ -105,18 +106,10 @@ export default function EmployerOverviewPage() {
 
   if (resolvingCampus || isLoading || (!data && activeCampus)) {
     return (
-      <div className="animate-fadeIn" style={{ paddingBottom: '2rem' }}>
-        <div style={{ height: '140px', borderRadius: 'var(--radius-xl)', background: 'var(--bg-secondary)', marginBottom: '2rem' }} className="skeleton" />
-        <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton skeleton-card" style={{ height: '120px' }} />
-          ))}
-        </div>
-        <div className="grid grid-2">
-          <div className="skeleton skeleton-card" style={{ height: '300px' }} />
-          <div className="skeleton skeleton-card" style={{ height: '300px' }} />
-        </div>
-      </div>
+      <PageLoading
+        message={resolvingCampus ? 'Loading campus context…' : 'Loading employer overview…'}
+        variant="skeleton-dashboard"
+      />
     );
   }
 
@@ -159,14 +152,15 @@ export default function EmployerOverviewPage() {
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* High-Fidelity Glassmorphic Hero Banner */}
-      <div 
+      <div
+        className="gradient-banner"
         style={{
           position: 'relative',
-          background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+          background: 'var(--banner-gradient)',
           borderRadius: 'var(--radius-xl)',
           padding: '2.5rem',
           color: 'white',
-          overflow: 'hidden',
+          overflow: 'visible',
           marginBottom: '2rem',
           boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
           display: 'flex',
@@ -190,10 +184,10 @@ export default function EmployerOverviewPage() {
         </div>
         
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '1rem' }}>
-          <Link href="/dashboard/employer/assessment-summary" className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' }}>
+          <Link href="/dashboard/employer/assessment-summary" className="btn gradient-banner-glass-btn" style={{ backdropFilter: 'blur(10px)' }}>
             Assessment Map
           </Link>
-          <Link href="/dashboard/employer/jobs" className="btn" style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <Link href="/dashboard/employer/jobs" className="btn gradient-banner-solid-btn" style={{ border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             + Post New Job
           </Link>
         </div>

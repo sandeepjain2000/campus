@@ -6,7 +6,7 @@ import { rowsToCsv } from '@/lib/csvExport';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailer';
 import { createDownloadUrlForKey, isS3Configured, putObjectText } from '@/lib/s3';
-import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
+import { resolveAuditScope } from '@/lib/auditScope';
 
 function parseDate(value, fallback) {
   const s = String(value || '').trim();
@@ -39,14 +39,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'email is required' }, { status: 400 });
     }
 
-    const sessionTenant = getSessionTenantId(session.user);
-    let tenantId = sessionTenant;
-    if (session.user.role === 'super_admin' && requestedTenant && isUuid(requestedTenant)) {
-      tenantId = requestedTenant;
+    const scopeResult = resolveAuditScope(session.user, requestedTenant);
+    if (!scopeResult.ok) {
+      return NextResponse.json({ error: scopeResult.error }, { status: scopeResult.status });
     }
-    if (!tenantId || !isUuid(String(tenantId))) {
-      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
-    }
+    const tenantId = scopeResult.tenantId;
 
     const created = await query(
       `INSERT INTO audit_report_exports (tenant_id, requested_by, from_date, to_date, status, emailed_to)
@@ -57,18 +54,33 @@ export async function POST(request) {
     const exportId = created.rows[0].id;
 
     try {
-      const logs = await query(
-        `SELECT created_at, action, entity_type, entity_id, user_id, ip_address, old_values, new_values
-         FROM audit_logs
-         WHERE tenant_id = $1::uuid
-           AND DATE(created_at) >= $2::date
-           AND DATE(created_at) <= $3::date
-         ORDER BY created_at DESC`,
-        [tenantId, from, to],
-      );
+      const logs =
+        scopeResult.scope === 'tenant'
+          ? await query(
+              `SELECT al.created_at, t.name AS tenant_name, al.action, al.entity_type, al.entity_id,
+                      al.user_id, al.ip_address, al.old_values, al.new_values
+               FROM audit_logs al
+               LEFT JOIN tenants t ON t.id = al.tenant_id
+               WHERE al.tenant_id = $1::uuid
+                 AND DATE(al.created_at) >= $2::date
+                 AND DATE(al.created_at) <= $3::date
+               ORDER BY al.created_at DESC`,
+              [tenantId, from, to],
+            )
+          : await query(
+              `SELECT al.created_at, t.name AS tenant_name, al.action, al.entity_type, al.entity_id,
+                      al.user_id, al.ip_address, al.old_values, al.new_values
+               FROM audit_logs al
+               LEFT JOIN tenants t ON t.id = al.tenant_id
+               WHERE DATE(al.created_at) >= $1::date
+                 AND DATE(al.created_at) <= $2::date
+               ORDER BY al.created_at DESC`,
+              [from, to],
+            );
 
       const headers = [
         'created_at',
+        'tenant_name',
         'action',
         'entity_type',
         'entity_id',
@@ -79,6 +91,7 @@ export async function POST(request) {
       ];
       const rows = logs.rows.map((r) => [
         r.created_at ? new Date(r.created_at).toISOString() : '',
+        r.tenant_name || '',
         r.action || '',
         r.entity_type || '',
         r.entity_id || '',
@@ -88,7 +101,8 @@ export async function POST(request) {
         r.new_values ? JSON.stringify(r.new_values) : '',
       ]);
       const csv = `\uFEFF${rowsToCsv(headers, rows)}`;
-      const key = `audit-reports/${tenantId}/${from}_to_${to}/${exportId}-${randomUUID()}.csv`;
+      const keyPrefix = tenantId ? `audit-reports/${tenantId}` : 'audit-reports/platform';
+      const key = `${keyPrefix}/${from}_to_${to}/${exportId}-${randomUUID()}.csv`;
       await putObjectText({
         key,
         body: csv,
@@ -103,10 +117,12 @@ export async function POST(request) {
         [key, exportId],
       );
 
+      const scopeLabel =
+        scopeResult.scope === 'platform' ? 'all colleges (platform-wide)' : 'the selected college';
       await sendMail({
         to: requestedEmail,
         subject: 'Campus Placement audit report is ready',
-        text: `Your audit report for ${from} to ${to} is ready.\n\nDownload link:\n${downloadUrl}\n\nThis link is time-limited for security.`,
+        text: `Your audit report for ${from} to ${to} (${scopeLabel}) is ready.\n\nDownload link:\n${downloadUrl}\n\nThis link is time-limited for security.`,
       });
 
       return NextResponse.json({

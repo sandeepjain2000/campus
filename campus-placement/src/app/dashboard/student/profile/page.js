@@ -9,8 +9,14 @@ import { useToast } from '@/components/ToastProvider';
 import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
 import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
+import { uploadStudentAvatarViaServer } from '@/lib/clientStudentAvatarUpload';
 import { studentAvatarAcceptAttr, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
+import { validateStudentAcademicScores } from '@/lib/validators';
+import { STUDENT_DOCUMENT_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
+import { uploadStudentDocumentViaServer } from '@/lib/clientStudentDocumentUpload';
 import TagPicker from '@/components/TagPicker';
+import StudentResumeUploadCard from '@/components/student/StudentResumeUploadCard';
+import PageLoading from '@/components/PageLoading';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -154,6 +160,24 @@ function parseSalaryInput(value) {
   return n;
 }
 
+function clampCgpaInput(value) {
+  if (value === '' || value == null) return '';
+  const n = typeof value === 'number' ? value : parseFloat(String(value));
+  if (!Number.isFinite(n)) return '';
+  if (n > 10) return 10;
+  if (n < 0) return 0;
+  return n;
+}
+
+function clampPercentInput(value) {
+  if (value === '' || value == null) return '';
+  const n = typeof value === 'number' ? value : parseFloat(String(value));
+  if (!Number.isFinite(n)) return '';
+  if (n > 100) return 100;
+  if (n < 0) return 0;
+  return n;
+}
+
 export default function StudentProfilePage() {
   const { data: session, status, update } = useSession();
   const { addToast } = useToast();
@@ -235,6 +259,16 @@ export default function StudentProfilePage() {
   }, []);
 
   const handleSave = async () => {
+    const academicErr = validateStudentAcademicScores({
+      cgpa: profile.cgpa,
+      tenthPercentage: profile.tenthPercentage,
+      twelfthPercentage: profile.twelfthPercentage,
+      diplomaPercentage: profile.diplomaPercentage,
+    });
+    if (academicErr) {
+      addToast(academicErr, 'warning');
+      return;
+    }
     const salaryErr = validateExpectedSalary(profile);
     if (salaryErr) {
       addToast(salaryErr, 'warning');
@@ -417,59 +451,25 @@ export default function StudentProfilePage() {
 
     setAvatarUploading(true);
     try {
-      const presignRes = await fetch('/api/student/profile/avatar/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: validated.contentType,
-          fileSize: file.size,
-        }),
-      });
-      const presign = await presignRes.json();
+      const serverResult = await uploadStudentAvatarViaServer(file);
+      if (serverResult.ok) {
+        setProfile((prev) => ({
+          ...prev,
+          avatarUrl: serverResult.avatar_url,
+          avatarDataUrl: '',
+          avatarName: file.name,
+        }));
+        await update({ avatar: serverResult.avatar_url });
+        addToast('Profile photo updated.', 'success');
+        return;
+      }
 
-      if (presignRes.status === 503 && (presign.error === 'Cloud storage not configured' || presign.error === 'S3 not configured')) {
+      if (serverResult.error === 'Cloud storage not configured' || serverResult.hint?.includes('S3')) {
         await persistLocalAvatarDataUrl(file);
         return;
       }
-      if (!presignRes.ok) {
-        addToast(presign.error + (presign.hint ? ` — ${presign.hint}` : ''), 'warning');
-        return;
-      }
 
-      const ph = {};
-      if (presign.contentType) {
-        ph['Content-Type'] = String(presign.contentType).split(';')[0].trim();
-      }
-      const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: ph, body: file });
-      if (!putRes.ok) {
-        const raw = (await putRes.text()).replace(/\s+/g, ' ').trim();
-        const code = (raw.match(/<Code>([^<]+)<\/Code>/) || [])[1];
-        const msg = (raw.match(/<Message>([^<]+)<\/Message>/) || [])[1];
-        const hint = code || msg ? `${code || 'Error'}${msg ? `: ${msg}` : ''}` : raw.slice(0, 140);
-        addToast(`Photo upload failed (${putRes.status}). ${hint || 'Please try again.'}`, 'warning');
-        return;
-      }
-
-      const completeRes = await fetch('/api/student/profile/avatar/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_url: presign.fileUrl }),
-      });
-      const complete = await completeRes.json();
-      if (!completeRes.ok) {
-        addToast(complete.error || 'File uploaded but profile could not be updated', 'warning');
-        return;
-      }
-
-      setProfile((prev) => ({
-        ...prev,
-        avatarUrl: presign.fileUrl,
-        avatarDataUrl: '',
-        avatarName: file.name,
-      }));
-      await update({ avatar: presign.fileUrl });
-      addToast('Photo saved to cloud storage.', 'info');
+      addToast(serverResult.error + (serverResult.hint ? ` — ${serverResult.hint}` : ''), 'warning');
     } catch (err) {
       if (err?.message !== 'too large' && err?.message !== 'invalid read' && err?.message !== 'read error') {
         addToast('Upload failed (network).', 'warning');
@@ -486,55 +486,19 @@ export default function StudentProfilePage() {
 
     setCvUploading(true);
     try {
-      const presignRes = await fetch('/api/student/documents/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type || 'application/octet-stream',
-          fileSize: file.size,
-        }),
+      const result = await uploadStudentDocumentViaServer(file, {
+        documentType: 'resume',
+        setAsPrimaryResume: true,
       });
-      const presign = await presignRes.json();
-      if (!presignRes.ok) {
-        addToast(presign.error + (presign.hint ? ` — ${presign.hint}` : ''), 'warning');
+      if (!result.ok) {
+        addToast(result.error + (result.hint ? ` — ${result.hint}` : ''), 'warning');
         return;
       }
 
-      const putHeaders = {};
-      if (presign.contentType) {
-        putHeaders['Content-Type'] = String(presign.contentType).split(';')[0].trim();
-      }
-      const putRes = await fetch(presign.uploadUrl, { method: 'PUT', headers: putHeaders, body: file });
-      if (!putRes.ok) {
-        const raw = (await putRes.text()).replace(/\s+/g, ' ').trim();
-        const code = (raw.match(/<Code>([^<]+)<\/Code>/) || [])[1];
-        const msg = (raw.match(/<Message>([^<]+)<\/Message>/) || [])[1];
-        const hint = code || msg ? `${code || 'Error'}${msg ? `: ${msg}` : ''}` : raw.slice(0, 140);
-        addToast(`CV upload failed (${putRes.status}). ${hint || 'Please try again.'}`, 'warning');
-        return;
-      }
-
-      const completeRes = await fetch('/api/student/documents/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          document_type: 'resume',
-          document_name: file.name,
-          file_url: presign.fileUrl,
-          file_size: file.size,
-        }),
-      });
-      const complete = await completeRes.json();
-      if (!completeRes.ok) {
-        addToast(complete.error || 'CV uploaded but could not be saved to profile', 'warning');
-        return;
-      }
-
-      persist({ ...profile, resumeUrl: presign.fileUrl, cvFileName: file.name, cvDataUrl: '' });
-      addToast('CV uploaded and saved.', 'success');
+      await loadProfileFromApi({ silent: true });
+      addToast('Primary CV saved. Employers will see this version when you apply.', 'success');
     } catch {
-      addToast('CV upload failed (network).', 'warning');
+      addToast('Résumé upload failed (network).', 'warning');
     } finally {
       setCvUploading(false);
     }
@@ -555,6 +519,19 @@ export default function StudentProfilePage() {
 
   const rawAvatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
   const avatarSrc = rawAvatarSrc.startsWith('data:') ? rawAvatarSrc : toSignedViewUrl(rawAvatarSrc);
+  const resumeViewUrl = profile.resumeUrl ? '/api/student/resume/view' : '';
+  const resumeLabel = profile.cvFileName?.trim() || 'View résumé';
+  const headerActionLabelStyle = {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    padding: '0.3rem 0.55rem',
+    borderRadius: 'var(--radius-md)',
+    background: 'rgba(255,255,255,0.18)',
+    border: '1px solid rgba(255,255,255,0.4)',
+    color: 'white',
+    margin: 0,
+    textAlign: 'center',
+  };
   const skillsList = profile.skills || [];
   const linksList = profile.profileLinks || [];
   const projectsList = asList(profile.projects);
@@ -572,11 +549,7 @@ export default function StudentProfilePage() {
     (profile.expectedSalaryMax != null && Number(profile.expectedSalaryMax) > 0);
 
   if (profileLoading) {
-    return (
-      <div className="animate-fadeIn">
-        <p className="text-secondary">Loading profile…</p>
-      </div>
-    );
+    return <PageLoading message="Loading profile…" />;
   }
 
   return (
@@ -603,17 +576,9 @@ export default function StudentProfilePage() {
           <label
             aria-label={avatarUploading ? 'Uploading profile photo' : 'Change profile photo'}
             style={{
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              padding: '0.3rem 0.55rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(255,255,255,0.18)',
-              border: '1px solid rgba(255,255,255,0.4)',
-              color: 'white',
+              ...headerActionLabelStyle,
               cursor: avatarUploading ? 'wait' : 'pointer',
               opacity: avatarUploading ? 0.8 : 1,
-              margin: 0,
-              textAlign: 'center',
             }}
           >
             {avatarUploading ? 'Uploading…' : 'Change photo'}
@@ -633,12 +598,23 @@ export default function StudentProfilePage() {
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditingTab('header')}>
                 Edit summary
               </button>
-            ) : null}
+            ) : (
+              <span className="text-sm" style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+                Editing summary
+              </span>
+            )}
           </div>
           {!editingHeader ? (
             <>
               <p style={{ margin: '0.35rem 0 0' }}>
-                {[profile.branch, profile.batchYear !== '' && profile.batchYear != null ? `Batch ${profile.batchYear}` : '']
+                {[
+                  profile.branch,
+                  profile.batch || profile.joiningAcademicYear
+                    ? `Batch ${profile.batch || profile.joiningAcademicYear}`
+                    : profile.batchYear !== '' && profile.batchYear != null
+                      ? `Batch ${profile.batchYear}`
+                      : '',
+                ]
                   .filter(Boolean)
                   .join(' | ') || '—'}
               </p>
@@ -647,6 +623,16 @@ export default function StudentProfilePage() {
                 <div className="profile-meta-item">
                   📊 CGPA: {Number.isFinite(cgpaNum) ? `${cgpaNum}` : '—'}
                 </div>
+                {resumeViewUrl ? (
+                  <a
+                    href={resumeViewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="profile-meta-item profile-resume-link"
+                  >
+                    📄 {resumeLabel}
+                  </a>
+                ) : null}
                 {displayEmails
                   .filter((x) => x.value)
                   .map((x, i) => (
@@ -675,6 +661,7 @@ export default function StudentProfilePage() {
                   className="form-input"
                   style={{ minWidth: '140px', flex: '1 1 140px' }}
                   placeholder="Branch / specialisation"
+                  maxLength={100}
                   value={profile.branch}
                   onChange={(e) => persist({ ...profile, branch: e.target.value })}
                 />
@@ -712,14 +699,14 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   max="10"
                   style={{ maxWidth: '10rem' }}
                   value={profile.cgpa === '' ? '' : profile.cgpa}
                   onChange={(e) =>
                     persist({
                       ...profile,
-                      cgpa: e.target.value === '' ? '' : e.target.value,
+                      cgpa: e.target.value === '' ? '' : clampCgpaInput(e.target.value),
                     })
                   }
                 />
@@ -795,19 +782,45 @@ export default function StudentProfilePage() {
                   + Add number
                 </button>
               </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-end',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid var(--border-default)',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={profileSaving}
+                  onClick={() => {
+                    void loadProfileFromApi({ silent: true });
+                    setEditingTab(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" disabled={profileSaving} onClick={() => void handleSave()}>
+                  {profileSaving ? 'Saving…' : 'Save summary'}
+                </button>
+              </div>
               <p className="text-xs text-tertiary" style={{ margin: 0 }}>
-                Use Save below. Full address and labels are also under the Contact tab.
+                Full address and additional labels are under the Contact tab.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {profile.cvFileName && (
-        <p className="text-sm text-secondary" style={{ margin: '-0.5rem 0 1rem' }}>
-          Résumé on file: <strong>{profile.cvFileName}</strong> {profile.resumeUrl ? '(saved to your account)' : '(saved on this device)'}
-        </p>
-      )}
+      <StudentResumeUploadCard
+        resumeViewUrl={resumeViewUrl}
+        resumeLabel={resumeLabel}
+        cvUploading={cvUploading}
+        onCvChange={onCvChange}
+      />
 
       <div
         className="card"
@@ -859,7 +872,7 @@ export default function StudentProfilePage() {
       </div>
 
       <div className="card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.1rem' }} role="tablist" aria-label="Profile sections">
+        <div className="horizontal-scroll" style={{ display: 'flex', gap: '0.35rem', paddingBottom: '0.1rem' }} role="tablist" aria-label="Profile sections">
           {PROFILE_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -868,7 +881,7 @@ export default function StudentProfilePage() {
               aria-selected={activeTab === tab.key}
               className={activeTab === tab.key ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
               onClick={() => {
-                if (editingTab && editingTab !== tab.key) {
+                if (editingTab) {
                   void loadProfileFromApi({ silent: true });
                   setEditingTab(null);
                 }
@@ -893,7 +906,7 @@ export default function StudentProfilePage() {
               : 'Edit this section independently from the rest of your profile.'}
           </p>
         </div>
-        {editing || editingHeader ? (
+        {editing ? (
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button
               type="button"
@@ -907,14 +920,14 @@ export default function StudentProfilePage() {
               Cancel
             </button>
             <button type="button" className="btn btn-primary" disabled={profileSaving} onClick={() => void handleSave()}>
-              {profileSaving ? 'Saving…' : editingHeader ? 'Save summary' : 'Save section'}
+              {profileSaving ? 'Saving…' : 'Save section'}
             </button>
           </div>
-        ) : (
+        ) : !editingHeader ? (
           <button type="button" className="btn btn-secondary" onClick={() => setEditingTab(activeTab)}>
             ✏️ Edit section
           </button>
-        )}
+        ) : null}
       </div>
 
       <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -935,7 +948,7 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">Branch / Specialisation</div>
               {editing ? (
-                <input className="form-input" value={profile.branch} onChange={(e) => persist({ ...profile, branch: e.target.value })} />
+                <input className="form-input" maxLength={100} value={profile.branch} onChange={(e) => persist({ ...profile, branch: e.target.value })} />
               ) : (
                 <div className="drive-info-value">{profile.branch}</div>
               )}
@@ -956,13 +969,13 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   max="10"
                   value={profile.cgpa === '' ? '' : profile.cgpa}
                   onChange={(e) =>
                     persist({
                       ...profile,
-                      cgpa: e.target.value === '' ? '' : parseFloat(e.target.value),
+                      cgpa: e.target.value === '' ? '' : clampCgpaInput(e.target.value),
                     })
                   }
                 />
@@ -984,11 +997,13 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="100"
                   value={profile.tenthPercentage === '' ? '' : profile.tenthPercentage}
                   onChange={(e) =>
                     persist({
                       ...profile,
-                      tenthPercentage: e.target.value === '' ? '' : parseFloat(e.target.value),
+                      tenthPercentage: e.target.value === '' ? '' : clampPercentInput(e.target.value),
                     })
                   }
                 />
@@ -1005,11 +1020,13 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="100"
                   value={profile.twelfthPercentage === '' ? '' : profile.twelfthPercentage}
                   onChange={(e) =>
                     persist({
                       ...profile,
-                      twelfthPercentage: e.target.value === '' ? '' : parseFloat(e.target.value),
+                      twelfthPercentage: e.target.value === '' ? '' : clampPercentInput(e.target.value),
                     })
                   }
                 />
@@ -1026,11 +1043,13 @@ export default function StudentProfilePage() {
                   className="form-input"
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="100"
                   value={profile.diplomaPercentage === '' ? '' : profile.diplomaPercentage}
                   onChange={(e) =>
                     persist({
                       ...profile,
-                      diplomaPercentage: e.target.value === '' ? '' : parseFloat(e.target.value),
+                      diplomaPercentage: e.target.value === '' ? '' : clampPercentInput(e.target.value),
                     })
                   }
                 />
@@ -1736,7 +1755,7 @@ export default function StudentProfilePage() {
                 style={{ cursor: cvUploading ? 'wait' : 'pointer', margin: 0, opacity: cvUploading ? 0.7 : 1 }}
               >
                 {cvUploading ? '⏳ Uploading CV…' : '📄 Upload CV / Resume'}
-                <input type="file" accept=".pdf,.doc,.docx" hidden disabled={cvUploading} onChange={onCvChange} />
+                <input type="file" accept={STUDENT_DOCUMENT_ACCEPT_ATTR} hidden disabled={cvUploading} onChange={onCvChange} />
               </label>
             </div>
             <textarea className="form-textarea" value={profile.bio} onChange={(e) => persist({ ...profile, bio: e.target.value })} rows={4} />

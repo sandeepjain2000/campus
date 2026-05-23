@@ -1,14 +1,19 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import PageError from '@/components/PageError';
+import PageLoading from '@/components/PageLoading';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import StudentOfferRespondActions from '@/components/student/StudentOfferRespondActions';
+import { findPendingOfferForApplication } from '@/lib/offerStatusNormalize';
 import { ClipboardList, Eye, X } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { use } from 'react';
+import { use, useMemo } from 'react';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -28,6 +33,46 @@ function roundLabel(item) {
 
 const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons', 'drives'];
 
+const TYPE_META = {
+  drives: {
+    title: 'Drive',
+    browseHref: '/dashboard/student/drives',
+    browseText: 'Browse Drives',
+    emptyMessage:
+      "You haven't applied to any placement drives yet. Start exploring active drives and apply to kickstart your career!",
+  },
+  jobs: {
+    title: 'Job',
+    browseHref: '/dashboard/student/jobs',
+    browseText: 'Browse Jobs',
+    emptyMessage: "You haven't applied to any jobs yet. Browse published jobs for your campus and apply.",
+  },
+  internships: {
+    title: 'Internship',
+    browseHref: '/dashboard/student/internships',
+    browseText: 'Browse Internships',
+    emptyMessage: "You haven't applied to any internships yet. Start exploring available internships and apply!",
+  },
+  projects: {
+    title: 'Project',
+    browseHref: '/dashboard/student/projects',
+    browseText: 'Browse Projects',
+    emptyMessage: "You haven't applied to any short projects yet. Browse projects for your campus and apply.",
+  },
+  hackathons: {
+    title: 'Hackathon',
+    browseHref: '/dashboard/student/hackathons',
+    browseText: 'Browse Hackathons',
+    emptyMessage: "You haven't applied to any hackathons yet. Browse hackathons for your campus and apply.",
+  },
+  mentorship: {
+    title: 'Mentorship',
+    browseHref: '/dashboard/student/internships',
+    browseText: 'Browse Programs',
+    emptyMessage: "You haven't applied to any mentorship programs yet.",
+  },
+};
+
 const WITHDRAW_REAPPLY_NOTICE =
   'If you withdraw, you can apply again from Browse Drives while the drive stays open. If you wait 2 or more days, your college or the company may have closed applications — re-apply may no longer be possible. Continue with withdrawal?';
 
@@ -45,6 +90,15 @@ export default function StudentApplicationsPage({ params }) {
   const [selectedApp, setSelectedApp] = useState(null);
   const apiEndpoint = type === 'drives' ? '/api/student/applications' : '/api/student/program-applications';
   const { data, error, isLoading, mutate } = useSWR(apiEndpoint, fetcher);
+  const {
+    data: offers,
+    mutate: mutateOffers,
+  } = useSWR('/api/student/offers', async (url) => {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'Failed to load offers');
+    return json;
+  });
   const allApplications = (data?.items || []).map(item => ({
     ...item,
     company: item.company || item.companyName,
@@ -141,19 +195,25 @@ export default function StudentApplicationsPage({ params }) {
 
   if (error) return <PageError error={error} />;
 
-  const pageTitle = type.charAt(0).toUpperCase() + type.slice(1);
-  const browseHref = type === 'internships' ? '/dashboard/student/internships' : type === 'projects' ? '/dashboard/student/projects' : '/dashboard/student/drives';
-  const browseText = type === 'internships' ? 'Browse Internships' : type === 'projects' ? 'Browse Projects' : 'Browse Active Drives';
-  const emptyMessage = type === 'internships' ? "You haven't applied to any internships yet. Start exploring available internships and apply!" : type === 'projects' ? "You haven't applied to any projects yet. Start exploring available projects and apply!" : "You haven't applied to any placement drives yet. Start exploring active drives and apply to kickstart your career!";
+  const meta = TYPE_META[type] || TYPE_META.drives;
+
+  const pendingOfferForSelected = useMemo(() => {
+    if (!selectedApp || selectedApp.status !== 'selected') return null;
+    return findPendingOfferForApplication(offers, selectedApp, { type });
+  }, [offers, selectedApp, type]);
+  const pageTitle = meta.title;
+  const browseHref = meta.browseHref;
+  const browseText = meta.browseText;
+  const emptyMessage = meta.emptyMessage;
 
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <ClipboardList size={28} /> My {pageTitle} Applications
+            <ClipboardList size={28} /> My {type === 'hackathons' ? 'Hackathons' : `${pageTitle} Applications`}
           </h1>
-          <p>Track the status of your {type} applications</p>
+          <p>Track the status of your {type === 'hackathons' ? 'hackathon' : type} applications</p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', gap: '0.75rem' }}>
           <a href={browseHref} className="btn btn-secondary">
@@ -179,15 +239,12 @@ export default function StudentApplicationsPage({ params }) {
 
       {/* Tabular Applications */}
       <div style={{ marginTop: '1.5rem' }}>
-        {isLoading && (
-          <div className="card">
-            <div className="text-sm text-secondary">Loading applications…</div>
-          </div>
-        )}
+        {isLoading && <PageLoading message="Loading applications…" inline />}
 
         {!isLoading && filtered.length > 0 && (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table className="data-table" style={{ width: '100%' }}>
+          <div className="card card-table-shell">
+            <div className="table-container">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th style={{ paddingLeft: '1rem' }}>Company</th>
@@ -205,7 +262,7 @@ export default function StudentApplicationsPage({ params }) {
                     <td style={{ paddingLeft: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <EntityLogo name={app.company} size="sm" shape="rounded" />
-                        <span className="font-semibold">{app.company}</span>
+                        <CompanyNameLink name={app.company} website={app.website} className="font-semibold" />
                       </div>
                     </td>
                     <td className="text-sm">{app.role}</td>
@@ -240,6 +297,7 @@ export default function StudentApplicationsPage({ params }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -301,7 +359,9 @@ export default function StudentApplicationsPage({ params }) {
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <EntityLogo name={selectedApp.company} size="lg" shape="rounded" />
                 <div>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{selectedApp.company}</h2>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                    <CompanyNameLink name={selectedApp.company} website={selectedApp.website} />
+                  </h2>
                   <p className="text-sm text-secondary" style={{ margin: '0.125rem 0 0 0' }}>{selectedApp.role}</p>
                 </div>
               </div>
@@ -316,9 +376,52 @@ export default function StudentApplicationsPage({ params }) {
                 {formatStatus(selectedApp.status)}
               </span>
               {selectedApp.status === 'selected' && (
-                <span className="badge badge-green" style={{ padding: '0.375rem 1rem', marginLeft: '0.5rem' }}>🎉 Offer Available</span>
+                <span className="badge badge-green" style={{ padding: '0.375rem 1rem', marginLeft: '0.5rem' }}>Offer stage</span>
               )}
             </div>
+
+            {selectedApp.status === 'selected' && (
+              <div
+                style={{
+                  marginBottom: '1.25rem',
+                  padding: '1rem 1.25rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--success-200)',
+                  background: 'var(--success-50)',
+                }}
+              >
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--success-800)' }}>
+                  Formal offer — accept or decline
+                </p>
+                {pendingOfferForSelected ? (
+                  <StudentOfferRespondActions
+                    offer={pendingOfferForSelected}
+                    compact
+                    onUpdated={async () => {
+                      await mutateOffers();
+                      await mutate();
+                    }}
+                  />
+                ) : (
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    No pending offer is linked to this application yet. When your college or employer creates one with status{' '}
+                    <strong>pending</strong>, accept and decline buttons will appear here and on{' '}
+                    <Link href="/dashboard/student/offers" style={{ fontWeight: 600, color: 'var(--primary-600)' }}>
+                      My Offers
+                    </Link>
+                    .
+                  </p>
+                )}
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  Applies to placement offers (jobs, drives, internships, hackathons, and similar) once your college or employer publishes a{' '}
+                  <strong>pending</strong> offer. You can also respond from{' '}
+                  <Link href="/dashboard/student/offers" style={{ fontWeight: 600, color: 'var(--primary-600)' }}>
+                    My Offers
+                  </Link>
+                  .
+                </p>
+              </div>
+            )}
 
             {/* Details grid */}
             <div

@@ -50,41 +50,57 @@ export async function GET() {
       progress.isComplete = progress.steps.every(s => s.completed);
 
     } else if (role === 'employer') {
-      // Step 1: Complete Company Profile
       const profileRes = await query(
-        `SELECT id, company_name, website FROM employer_profiles WHERE user_id = $1 LIMIT 1`,
+        `SELECT id, company_name FROM employer_profiles WHERE user_id = $1 LIMIT 1`,
         [userId]
       );
       const profile = profileRes.rows[0];
-      const hasProfile = profile && profile.company_name && profile.website;
+      const hasProfile = Boolean(profile?.company_name?.trim());
 
-      // Step 2: Create Placement Drive
-      let hasDrives = false;
-      if (profile) {
-        const drivesRes = await query(
-          `SELECT 1 FROM placement_drives WHERE employer_id = $1 LIMIT 1`,
-          [profile.id]
-        );
-        hasDrives = drivesRes.rowCount > 0;
-      }
+      let hasCampusPartnership = false;
+      let hasRecruitingActivity = false;
 
-      // Step 3: Upload Offer Letters
-      let hasOffers = false;
       if (profile) {
-        const offersRes = await query(
-          `SELECT 1 FROM offers WHERE employer_id = $1 LIMIT 1`,
-          [profile.id]
-        );
-        hasOffers = offersRes.rowCount > 0;
+        const [campusRes, drivesRes, jobsRes] = await Promise.all([
+          query(
+            `SELECT 1 FROM employer_approvals WHERE employer_id = $1 AND status = 'approved' LIMIT 1`,
+            [profile.id]
+          ),
+          query(
+            `SELECT 1 FROM placement_drives WHERE employer_id = $1 LIMIT 1`,
+            [profile.id]
+          ),
+          query(
+            `SELECT 1 FROM job_postings WHERE employer_id = $1 LIMIT 1`,
+            [profile.id]
+          ),
+        ]);
+        hasCampusPartnership = campusRes.rowCount > 0;
+        hasRecruitingActivity = drivesRes.rowCount > 0 || jobsRes.rowCount > 0;
       }
 
       progress.steps = [
-        { id: 'profile', title: 'Complete Company Profile', completed: !!hasProfile, href: '/dashboard/employer/profile' },
-        { id: 'drive', title: 'Create Placement Drive', completed: !!hasDrives, href: '/dashboard/employer/drives' },
-        { id: 'offers', title: 'Upload Offer Letters', completed: !!hasOffers, href: '/dashboard/employer/offers' },
+        {
+          id: 'profile',
+          title: 'Complete Company Profile',
+          completed: hasProfile,
+          href: '/dashboard/employer/profile',
+        },
+        {
+          id: 'campus',
+          title: 'Connect with a Campus',
+          completed: hasCampusPartnership,
+          href: '/dashboard/employer/select-campus',
+        },
+        {
+          id: 'drive',
+          title: 'Post a Job or Schedule a Drive',
+          completed: hasRecruitingActivity,
+          href: '/dashboard/employer/jobs',
+        },
       ];
 
-      progress.isComplete = progress.steps.every(s => s.completed);
+      progress.isComplete = progress.steps.every((s) => s.completed);
     } else if (role === 'college_admin') {
       // Basic static steps for college admin
       progress.steps = [
@@ -97,12 +113,13 @@ export async function GET() {
       // Basic static steps for super admin
       progress.steps = [
         {
-          id: 'colleges',
-          title: 'Onboard New Colleges',
+          id: 'onboard-orgs',
+          title: 'Onboard new colleges & employers',
           completed: false,
           href: '/dashboard/admin/pending-registrations',
         },
-        { id: 'employers', title: 'Verify Employers', completed: false, href: '/dashboard/admin/employers' },
+        { id: 'colleges', title: 'Manage college directory', completed: false, href: '/dashboard/admin/colleges' },
+        { id: 'employers', title: 'Manage employer directory', completed: false, href: '/dashboard/admin/employers' },
         { id: 'settings', title: 'Platform Settings', completed: false, href: '/dashboard/admin/settings' },
       ];
       progress.isComplete = false;

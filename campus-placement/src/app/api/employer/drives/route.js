@@ -4,10 +4,74 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
 import { emailPlacementDriveRequested } from '@/lib/placementDriveEmail';
+import { findAcademicYearForDate } from '@/lib/academicYearTenant';
 
 async function getEmployerId(userId) {
   const r = await query(`SELECT id, company_name FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
   return r.rows[0] || null;
+}
+
+function isMissingCtcBreakupColumn(err) {
+  return err?.code === '42703' && String(err?.message || '').includes('ctc_breakup');
+}
+
+/** Insert drive request; omits ctc_breakup when the column is not migrated yet. */
+async function insertPlacementDriveRequest(client, params) {
+  const {
+    tenantId,
+    employerId,
+    jobId,
+    title,
+    description,
+    driveType,
+    driveDate,
+    venue,
+    ctcBreakup,
+    academicYearId,
+  } = params;
+
+  const baseValues = [
+    tenantId,
+    employerId,
+    jobId || null,
+    title,
+    description || '',
+    driveType,
+    driveDate || null,
+    venue,
+    academicYearId,
+  ];
+
+  try {
+    const ins = await client.query(
+      `INSERT INTO placement_drives (
+         tenant_id, employer_id, job_id, title, description, drive_type, drive_date,
+         start_time, end_time, venue, ctc_breakup, status, max_students, registered_count,
+         academic_year_id
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7::date,
+         NULL, NULL, $8, $9, 'requested', 100, 0, $10::uuid
+       )
+       RETURNING id, title, drive_date, tenant_id`,
+      [...baseValues.slice(0, 8), ctcBreakup, baseValues[8]],
+    );
+    return { row: ins.rows[0], ctcBreakupStored: ctcBreakup };
+  } catch (err) {
+    if (!isMissingCtcBreakupColumn(err)) throw err;
+    const ins = await client.query(
+      `INSERT INTO placement_drives (
+         tenant_id, employer_id, job_id, title, description, drive_type, drive_date,
+         start_time, end_time, venue, status, max_students, registered_count,
+         academic_year_id
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7::date,
+         NULL, NULL, $8, 'requested', 100, 0, $9::uuid
+       )
+       RETURNING id, title, drive_date, tenant_id`,
+      baseValues,
+    );
+    return { row: ins.rows[0], ctcBreakupStored: null };
+  }
 }
 
 export async function GET(request) {
@@ -39,8 +103,7 @@ export async function GET(request) {
       const res = await query(`${baseSelect}, d.ctc_breakup AS ctc_breakup ${baseFrom}`, params);
       rows = res.rows;
     } catch (err) {
-      if (err?.code === '42703' && String(err?.message || '').includes('ctc_breakup')) {
-        // Column not yet migrated — return without it
+      if (isMissingCtcBreakupColumn(err)) {
         const res = await query(`${baseSelect} ${baseFrom}`, params);
         rows = res.rows.map((r) => ({ ...r, ctc_breakup: null }));
       } else {
@@ -116,19 +179,28 @@ export async function POST(request) {
         }
       }
 
-      const ins = await client.query(
-        `INSERT INTO placement_drives (
-           tenant_id, employer_id, job_id, title, description, drive_type, drive_date,
-           start_time, end_time, venue, ctc_breakup, status, max_students, registered_count
-         ) VALUES (
-           $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7::date,
-           NULL, NULL, $8, $9, 'requested', 100, 0
-         )
-         RETURNING id, title, drive_date, tenant_id`,
-        [tenantId, emp.id, jobId || null, title.trim(), description || '', driveType, driveDate || null, venue, ctcBreakup],
-      );
+      let academicYearId = null;
+      if (driveDate) {
+        const yearsRes = await client.query(
+          `SELECT id, period_start, period_end FROM tenant_academic_years WHERE tenant_id = $1::uuid`,
+          [tenantId],
+        );
+        const match = findAcademicYearForDate(driveDate, yearsRes.rows);
+        academicYearId = match?.id || null;
+      }
 
-      const row = ins.rows[0];
+      const { row, ctcBreakupStored } = await insertPlacementDriveRequest(client, {
+        tenantId,
+        employerId: emp.id,
+        jobId,
+        title: title.trim(),
+        description,
+        driveType,
+        driveDate,
+        venue,
+        ctcBreakup,
+        academicYearId,
+      });
       const college = await client.query(`SELECT name FROM tenants WHERE id = $1::uuid`, [tenantId]);
       const collegeName = college.rows[0]?.name || 'your campus';
 
@@ -159,7 +231,7 @@ export async function POST(request) {
           status: 'requested',
           registered: 0,
           venue,
-          ctcBreakup,
+          ctcBreakup: ctcBreakupStored,
         },
       };
     });
@@ -182,12 +254,6 @@ export async function POST(request) {
     return NextResponse.json(result);
   } catch (e) {
     console.error('POST /api/employer/drives', e);
-    if (e.code === '42703' && String(e.message || '').includes('ctc_breakup')) {
-      return NextResponse.json(
-        { error: 'Run db/migrations/038_placement_drives_ctc_breakup.sql on your database.' },
-        { status: 503 },
-      );
-    }
     const code = e.statusCode || 500;
     const safeMsg = code >= 500 ? 'Failed to create drive' : (e.message || 'Failed to create drive');
     return NextResponse.json({ error: safeMsg }, { status: code });

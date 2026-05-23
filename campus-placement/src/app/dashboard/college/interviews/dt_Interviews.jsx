@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
+import CompanyNameLink from '@/components/CompanyNameLink';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { CalendarDays, Users, Building2, Plus, ChevronRight } from 'lucide-react';
@@ -111,7 +112,7 @@ export default function CollegeInterviewsPage() {
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* Glassmorphic Hero */}
       <div style={{
-        position: 'relative', background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--primary-700) 100%)',
+        position: 'relative', background: 'var(--banner-gradient)',
         borderRadius: 'var(--radius-xl)', padding: '2.5rem', color: 'white', overflow: 'hidden',
         marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
@@ -251,7 +252,9 @@ export default function CollegeInterviewsPage() {
                 {results.map((r) => (
                   <tr key={r.id}>
                     <td className="font-semibold">{r.student}</td>
-                    <td>{r.company}</td>
+                    <td>
+                      <CompanyNameLink name={r.company} website={r.website} />
+                    </td>
                     <td>{r.round}</td>
                     <td>
                       <span

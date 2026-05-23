@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
+import { assertEmailAvailable, formatEmailInUseMessage } from '@/lib/userEmail';
 
 const ALLOWED_ROLES = new Set(['student', 'college_admin', 'employer']);
 
@@ -55,6 +56,24 @@ export async function POST(request) {
     }
 
     const passwordHash = await hash(password, 10);
+
+    try {
+      await assertEmailAvailable({ query }, email, { tenantId });
+    } catch (e) {
+      if (e.message === 'EMAIL_EXISTS') {
+        return NextResponse.json(
+          { error: formatEmailInUseMessage(e.existing, { email }) },
+          { status: 409 }
+        );
+      }
+      if (e.message === 'EMAIL_DIFFERENT_TENANT') {
+        return NextResponse.json(
+          { error: `Email "${email}" is already registered under a different institution.` },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
 
     const created = await query(
       `INSERT INTO users (

@@ -5,13 +5,9 @@ import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
+import { auditReportsFetcher } from '@/lib/auditReportsFetcher';
 
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load data');
-  return data;
-};
+const swrQuiet = { shouldRetryOnError: false, revalidateOnFocus: false };
 
 function toYmd(d) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -20,14 +16,23 @@ function toYmd(d) {
 export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
   const { data: session } = useSession();
   const { addToast } = useToast();
+  const isSuperAdmin = session?.user?.role === 'super_admin';
   const today = useMemo(() => new Date(), []);
   const thirtyDaysAgo = useMemo(() => new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), []);
   const [from, setFrom] = useState(toYmd(thirtyDaysAgo));
   const [to, setTo] = useState(toYmd(today));
   const [action, setAction] = useState('');
   const [entityType, setEntityType] = useState('');
+  const [tenantFilter, setTenantFilter] = useState('');
   const [email, setEmail] = useState(session?.user?.email || '');
   const [exporting, setExporting] = useState(false);
+
+  const { data: collegesData } = useSWR(
+    isSuperAdmin ? '/api/admin/colleges?limit=100' : null,
+    auditReportsFetcher,
+    swrQuiet,
+  );
+  const colleges = collegesData?.colleges || [];
 
   const setPresetDays = (days) => {
     const end = new Date();
@@ -35,6 +40,8 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
     setFrom(toYmd(start));
     setTo(toYmd(end));
   };
+
+  const tenantQuery = tenantFilter.trim() ? `&tenantId=${encodeURIComponent(tenantFilter.trim())}` : '';
 
   const logsUrl = useMemo(() => {
     const p = new URLSearchParams({
@@ -44,11 +51,17 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
     });
     if (action.trim()) p.set('action', action.trim());
     if (entityType.trim()) p.set('entityType', entityType.trim());
+    if (tenantFilter.trim()) p.set('tenantId', tenantFilter.trim());
     return `/api/audit/logs?${p.toString()}`;
-  }, [from, to, action, entityType]);
+  }, [from, to, action, entityType, tenantFilter]);
 
-  const { data: logsData, error: logsError, isLoading: logsLoading, mutate: mutateLogs } = useSWR(logsUrl, fetcher);
-  const { data: exportsData, error: exportsError, mutate: mutateExports } = useSWR('/api/audit/reports?limit=20', fetcher);
+  const exportsUrl = useMemo(
+    () => `/api/audit/reports?limit=20${tenantQuery}`,
+    [tenantQuery],
+  );
+
+  const { data: logsData, isLoading: logsLoading, mutate: mutateLogs } = useSWR(logsUrl, auditReportsFetcher, swrQuiet);
+  const { data: exportsData, mutate: mutateExports } = useSWR(exportsUrl, auditReportsFetcher, swrQuiet);
   const logs = logsData?.logs || [];
   const exportsList = exportsData?.exports || [];
 
@@ -63,17 +76,23 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
     }
     setExporting(true);
     try {
+      const payload = { from, to, email: email.trim() };
+      if (tenantFilter.trim()) payload.tenantId = tenantFilter.trim();
       const res = await fetch('/api/audit/reports/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to, email: email.trim() }),
+        credentials: 'include',
+        body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'Export failed');
+      if (!res.ok) {
+        addToast('Could not start export. Please try again.', 'error');
+        return;
+      }
       addToast('Audit export started. Download link will be sent by email.', 'success');
       await Promise.all([mutateExports(), mutateLogs()]);
-    } catch (e) {
-      addToast(e.message || 'Failed to start export', 'error');
+    } catch {
+      addToast('Could not start export. Please try again.', 'error');
     } finally {
       setExporting(false);
     }
@@ -89,6 +108,23 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
+        {isSuperAdmin && (
+          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+            <label className="form-label">College scope</label>
+            <select
+              className="form-input"
+              value={tenantFilter}
+              onChange={(e) => setTenantFilter(e.target.value)}
+            >
+              <option value="">All colleges (platform-wide)</option>
+              {colleges.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="grid grid-4">
           <div className="form-group">
             <label className="form-label">From date</label>
@@ -135,12 +171,12 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
             Refresh exports
           </button>
         </div>
-        {exportsError && <p style={{ color: 'var(--danger-600)' }}>{exportsError.message}</p>}
         <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
                 <th>Created</th>
+                {isSuperAdmin && !tenantFilter ? <th>College</th> : null}
                 <th>Date range</th>
                 <th>Status</th>
                 <th>Email</th>
@@ -151,17 +187,20 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
               {exportsList.map((r) => (
                 <tr key={r.id}>
                   <td>{r.created_at ? formatDate(r.created_at) : '—'}</td>
+                  {isSuperAdmin && !tenantFilter ? (
+                    <td>{r.tenant_name || (r.tenant_id ? 'College' : 'Platform')}</td>
+                  ) : null}
                   <td>{r.from_date} → {r.to_date}</td>
                   <td><span className={`badge badge-${r.status === 'completed' ? 'success' : r.status === 'failed' ? 'danger' : 'warning'}`}>{r.status}</span></td>
                   <td>{r.emailed_to || '—'}</td>
                   <td className="text-sm text-tertiary" style={{ maxWidth: '24rem', wordBreak: 'break-word' }}>
-                    {r.s3_key || (r.error_message ? `Error: ${r.error_message}` : '—')}
+                    {r.status === 'failed' ? 'Export failed' : r.s3_key ? 'Stored' : '—'}
                   </td>
                 </tr>
               ))}
               {exportsList.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan={isSuperAdmin && !tenantFilter ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No export jobs yet.
                   </td>
                 </tr>
@@ -171,9 +210,26 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
         </div>
       </div>
 
+      {(logsData?.unavailable || exportsData?.unavailable) && (
+        <div
+          className="card"
+          style={{
+            marginBottom: '1rem',
+            padding: '1rem 1.25rem',
+            borderColor: 'var(--warning-200)',
+            background: 'var(--warning-50)',
+          }}
+        >
+          <p style={{ margin: 0, color: 'var(--warning-800)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+            {logsData?.error ||
+              exportsData?.error ||
+              'Audit data could not be loaded. Ensure audit migrations are applied and S3 is configured for exports.'}
+          </p>
+        </div>
+      )}
+
       <div className="card">
         <h3 className="card-title">Audit log entries</h3>
-        {logsError && <p style={{ color: 'var(--danger-600)' }}>{logsError.message}</p>}
         {logsLoading ? (
           <div className="skeleton skeleton-card" style={{ height: 180 }} />
         ) : (
@@ -182,6 +238,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
               <thead>
                 <tr>
                   <th>Time</th>
+                  {isSuperAdmin && !tenantFilter ? <th>College</th> : null}
                   <th>Action</th>
                   <th>Entity</th>
                   <th>User</th>
@@ -192,6 +249,9 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
                 {logs.map((l) => (
                   <tr key={l.id}>
                     <td>{l.created_at ? new Date(l.created_at).toLocaleString() : '—'}</td>
+                    {isSuperAdmin && !tenantFilter ? (
+                      <td className="text-sm">{l.tenant_name || '—'}</td>
+                    ) : null}
                     <td><span className="badge badge-gray">{l.action || '—'}</span></td>
                     <td>{l.entity_type || '—'} {l.entity_id ? `(${String(l.entity_id).slice(0, 8)}...)` : ''}</td>
                     <td>{l.user_id ? String(l.user_id).slice(0, 8) : '—'}</td>
@@ -200,7 +260,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
                 ))}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <td colSpan={isSuperAdmin && !tenantFilter ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                       No logs found for selected filters.
                     </td>
                   </tr>

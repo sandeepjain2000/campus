@@ -2,7 +2,11 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { useToast } from '@/components/ToastProvider';
+import { isOfferDeadlinePassed, parseOfferDeadline } from '@/lib/offerDeadline';
+import { canStudentRespondToOffer, normalizeOfferStatus } from '@/lib/offerStatusNormalize';
+import CompanyNameLink from '@/components/CompanyNameLink';
+import PageLoading from '@/components/PageLoading';
+import StudentOfferRespondActions from '@/components/student/StudentOfferRespondActions';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -12,9 +16,9 @@ const fetcher = async (url) => {
 };
 
 function formatTimeLeft(deadline, now) {
-  if (!deadline) return null;
-  const d = new Date(deadline);
-  const diff = d - now;
+  const end = parseOfferDeadline(deadline);
+  if (!end) return null;
+  const diff = end.getTime() - now;
   if (diff <= 0) return 'Expired';
   
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -29,30 +33,12 @@ function formatTimeLeft(deadline, now) {
 export default function StudentOffersPage() {
   const { data: offers, isLoading, mutate } = useSWR('/api/student/offers', fetcher);
   const [now, setNow] = useState(Date.now());
-  const { addToast } = useToast();
-
-  const respondToOffer = async (id, action) => {
-    try {
-      const res = await fetch('/api/student/offers', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Failed to update offer');
-      await mutate();
-      addToast(action === 'accept' ? 'Offer accepted.' : 'Offer declined.', 'success');
-    } catch (e) {
-      addToast(e.message || 'Failed to update offer', 'error');
-    }
-  };
-
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000); // update every minute
     return () => clearInterval(timer);
   }, []);
 
-  if (isLoading) return <div className="skeleton skeleton-card" style={{ height: 200, margin: '2rem' }}></div>;
+  if (isLoading) return <PageLoading message="Loading your offers…" variant="skeleton-card" />;
 
   return (
     <div className="animate-fadeIn">
@@ -66,28 +52,48 @@ export default function StudentOffersPage() {
         </div>
       </div>
 
+      {offers?.length > 0 && !offers.some((o) => normalizeOfferStatus(o.status) === 'pending' && !isOfferDeadlinePassed(o.deadline, new Date(now))) ? (
+        <div
+          className="card"
+          style={{ marginBottom: '1.25rem', padding: '1rem 1.25rem', borderColor: 'var(--border-default)' }}
+        >
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            You have offer records on file, but none are waiting for your response. New offers must be created with status{' '}
+            <strong>pending</strong> (employer <strong>Create Offer</strong> or college upload). If you expected Accept / Decline buttons, ask your placement office to re-open the offer as pending.
+          </p>
+        </div>
+      ) : null}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {offers && offers.length > 0 ? offers.map(offer => {
-          const isExpired = offer.status === 'expired' || (offer.status === 'pending' && new Date(offer.deadline) <= now);
+          const status = normalizeOfferStatus(offer.status);
+          const isExpired = status === 'expired' || (status === 'pending' && isOfferDeadlinePassed(offer.deadline, new Date(now)));
           const timeLeft = formatTimeLeft(offer.deadline, now);
-          const effectiveStatus = isExpired && offer.status === 'pending' ? 'expired' : offer.status;
+          const effectiveStatus = isExpired && status === 'pending' ? 'expired' : status;
+          const canRespond = canStudentRespondToOffer(offer, new Date(now));
+          const offerId = String(offer.id);
 
           return (
-            <div key={offer.id} className={`offer-card ${effectiveStatus === 'pending' ? 'highlight' : ''}`} style={{ opacity: effectiveStatus === 'expired' ? 0.75 : 1 }}>
+            <div key={offerId} className={`offer-card ${effectiveStatus === 'pending' ? 'highlight' : ''}`} style={{ opacity: effectiveStatus === 'expired' ? 0.75 : 1 }}>
               {effectiveStatus === 'pending' && (
                 <div style={{ 
                   position: 'absolute', top: 0, left: 0, right: 0, 
                   padding: '0.5rem 1.5rem', 
                   background: 'linear-gradient(90deg, var(--success-500), var(--success-600))',
-                  color: 'white', fontSize: '0.8125rem', fontWeight: 600, textAlign: 'center'
-                }}>
+                  color: 'white', fontSize: '0.8125rem', fontWeight: 600, textAlign: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }}
+                >
                   ⏳ Action required — {timeLeft === 'Expired' ? 'Offer Expired' : `Respond before ${formatDate(offer.deadline)} (${timeLeft})`}
                 </div>
               )}
               
               <div className="offer-card-header" style={{ marginTop: effectiveStatus === 'pending' ? '2rem' : 0 }}>
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{offer.company}</h3>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                    <CompanyNameLink name={offer.company} website={offer.website} />
+                  </h3>
                   <p className="text-sm text-secondary">{offer.role}</p>
                 </div>
                 <span
@@ -127,12 +133,9 @@ export default function StudentOffersPage() {
                 </div>
               </div>
 
-              {effectiveStatus === 'pending' && (
-                <div className="offer-actions">
-                  <button className="btn btn-success" style={{ flex: 1 }} onClick={() => respondToOffer(offer.id, 'accept')}>✅ Accept Offer</button>
-                  <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => respondToOffer(offer.id, 'decline')}>❌ Decline Offer</button>
-                </div>
-              )}
+              {canRespond ? (
+                <StudentOfferRespondActions offer={offer} onUpdated={() => mutate()} />
+              ) : null}
 
               {effectiveStatus === 'expired' && (
                 <div style={{ 
@@ -187,6 +190,7 @@ export default function StudentOffersPage() {
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-tertiary)' }}>No offers yet.</div>
         )}
       </div>
+
     </div>
   );
 }

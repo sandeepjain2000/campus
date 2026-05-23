@@ -19,6 +19,7 @@ export async function GET(request) {
       `SELECT
         ep.id,
         ep.company_name,
+        ep.website,
         ep.industry,
         ep.total_hires,
         ep.is_verified,
@@ -34,6 +35,7 @@ export async function GET(request) {
       employers: rows.map((r) => ({
         id: r.id,
         name: r.company_name,
+        website: r.website || null,
         industry: r.industry || '—',
         hires: Number(r.total_hires || 0),
         verified: Boolean(r.is_verified),

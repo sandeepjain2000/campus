@@ -99,7 +99,7 @@ export async function POST(request) {
     if (!studentId && rollNumber) {
       const sr = await query(
         `SELECT id FROM student_profiles
-         WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2
+         WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2 AND archived_at IS NULL
          LIMIT 1`,
         [tenantId, rollNumber],
       );
@@ -113,7 +113,7 @@ export async function POST(request) {
     }
 
     const own = await query(
-      `SELECT id FROM student_profiles WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+      `SELECT id FROM student_profiles WHERE id = $1::uuid AND tenant_id = $2::uuid AND archived_at IS NULL`,
       [studentId, tenantId],
     );
     if (!own.rows[0]) {

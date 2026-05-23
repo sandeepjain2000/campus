@@ -6,9 +6,13 @@ import { profileFromDb } from '@/lib/studentProfileDbMap';
 import {
   canEmployerAccessStudent,
   getEmployerProfileId,
-  getLatestResumeForStudent,
-  isUsableResumeUrl,
 } from '@/lib/employerApplicationAccess';
+import {
+  filterDisplayDocuments,
+  isAuthoritativeResumeUrl,
+  resolveStudentResumeFileName,
+  resolveStudentResumeUrl,
+} from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,8 +61,11 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
     }
 
-    const [skills, projects, educationRecords, latestResume] = await Promise.all([
-      query(`SELECT skill_name FROM student_skills WHERE student_id = $1::uuid ORDER BY created_at ASC`, [studentId]),
+    const [skillsRes, projectsRes, educationRecordsRes, documentsRes] = await Promise.all([
+      query(
+        `SELECT skill_name, proficiency FROM student_skills WHERE student_id = $1::uuid ORDER BY created_at ASC`,
+        [studentId],
+      ),
       query(
         `SELECT title, description, tech_stack, project_url, github_url, start_date, end_date
          FROM student_projects
@@ -73,21 +80,62 @@ export async function GET(request) {
          ORDER BY start_year DESC NULLS LAST, created_at DESC`,
         [studentId],
       ),
-      getLatestResumeForStudent(studentId),
+      query(
+        `SELECT id, document_type, document_name, file_url, file_size, is_verified, uploaded_at
+         FROM student_documents
+         WHERE student_id = $1::uuid
+         ORDER BY uploaded_at DESC`,
+        [studentId],
+      ),
     ]);
+
+    const aux =
+      sp.aux_profile && typeof sp.aux_profile === 'object' && !Array.isArray(sp.aux_profile)
+        ? sp.aux_profile
+        : {};
+    const languages = Array.isArray(aux.languages) ? aux.languages : [];
+    const subjects = Array.isArray(aux.subjects) ? aux.subjects : [];
+
+    const rawDocuments = documentsRes.rows.map((row) => ({
+      id: row.id,
+      type: row.document_type,
+      name: row.document_name,
+      url: row.file_url,
+      fileSize: row.file_size,
+      verified: row.is_verified,
+      uploadedAt: row.uploaded_at,
+    }));
+    const displayDocuments = filterDisplayDocuments(rawDocuments).map((doc) => ({
+        id: doc.id,
+        type: doc.type,
+        name: doc.name,
+        fileSize: doc.fileSize,
+        verified: Boolean(doc.verified),
+        uploadedAt: doc.uploadedAt,
+        viewUrl: `/api/employer/applications/documents/view?studentId=${encodeURIComponent(studentId)}&documentId=${encodeURIComponent(doc.id)}`,
+      }));
 
     const profile = profileFromDb({
       sp,
-      skills: skills.rows,
-      projects: projects.rows,
+      skills: skillsRes.rows,
+      projects: projectsRes.rows,
       accountEmail: sp.account_email,
       communicationEmail: sp.communication_email,
       userPhone: sp.user_phone,
       avatarUrl: sp.avatar_url,
     });
 
-    const hasResume = Boolean(latestResume || isUsableResumeUrl(sp.resume_url));
+    const resolvedResumeUrl = resolveStudentResumeUrl({
+      resumeUrl: sp.resume_url,
+      documents: rawDocuments,
+    });
+    const hasResume = isAuthoritativeResumeUrl(resolvedResumeUrl);
     const resumeUrl = hasResume ? `/api/employer/applications/resume?studentId=${encodeURIComponent(studentId)}` : '';
+    const primaryResumeFileName = resolveStudentResumeFileName({
+      resumeUrl: sp.resume_url,
+      documents: rawDocuments,
+      cvFileName: profile.cvFileName,
+    });
 
     return NextResponse.json({
       student: {
@@ -100,9 +148,18 @@ export async function GET(request) {
         profile: {
           ...profile,
           resumeUrl,
-          cvFileName: latestResume?.document_name || profile.cvFileName,
+          cvFileName: primaryResumeFileName || profile.cvFileName,
         },
-        educationRecords: educationRecords.rows.map((row) => ({
+        avatarUrl: sp.avatar_url || profile.avatarUrl || '',
+        dateOfBirth: sp.date_of_birth || null,
+        category: sp.category || '',
+        placementStatus: sp.placement_status || '',
+        affiliatedInstitution: sp.affiliated_institution_name || '',
+        skillsDetailed: skillsRes.rows.map((row) => ({
+          name: row.skill_name,
+          proficiency: row.proficiency || '',
+        })),
+        educationRecords: educationRecordsRes.rows.map((row) => ({
           institution: row.institution,
           degree: row.degree,
           fieldOfStudy: row.field_of_study,
@@ -113,9 +170,16 @@ export async function GET(request) {
         })),
         resume: {
           hasResume,
-          fileName: latestResume?.document_name || profile.cvFileName || '',
+          fileName: primaryResumeFileName,
           viewUrl: resumeUrl,
         },
+        documents: displayDocuments,
+        languages,
+        subjects,
+        gender: profile.gender || '',
+        address: profile.address || null,
+        expectedSalaryMin: profile.expectedSalaryMin,
+        expectedSalaryMax: profile.expectedSalaryMax,
       },
     });
   } catch (e) {

@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-
-function getTenantId(session) {
-  return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
-}
+import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
 
 function normalizeVariables(raw) {
   if (raw === undefined) return undefined;
@@ -27,14 +24,15 @@ export async function PATCH(request, { params }) {
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = getSessionTenantId(session.user);
     if (!tenantId) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
     }
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const { id: rawId } = await params;
+    const id = rawId ? String(rawId).trim() : '';
+    if (!id || !isUuid(id)) {
+      return NextResponse.json({ error: 'Invalid template id' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -72,8 +70,8 @@ export async function PATCH(request, { params }) {
       values.push(variables.length ? variables : null);
     }
     if (body.isActive !== undefined || body.is_active !== undefined) {
-      const isActive = body.isActive !== false && body.is_active !== false;
-      updates.push(`is_active = $${i++}`);
+      const isActive = Boolean(body.isActive ?? body.is_active);
+      updates.push(`is_active = $${i++}::boolean`);
       values.push(isActive);
     }
 
@@ -110,14 +108,15 @@ export async function DELETE(_request, { params }) {
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = getSessionTenantId(session.user);
     if (!tenantId) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
     }
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const { id: rawId } = await params;
+    const id = rawId ? String(rawId).trim() : '';
+    if (!id || !isUuid(id)) {
+      return NextResponse.json({ error: 'Invalid template id' }, { status: 400 });
     }
 
     const r = await query(

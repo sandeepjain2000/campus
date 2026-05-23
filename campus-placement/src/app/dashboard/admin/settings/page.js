@@ -26,6 +26,7 @@ export default function AdminSettingsPage() {
   const [platformName, setPlatformName] = useState('');
   const [marketingWebsiteUrl, setMarketingWebsiteUrl] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
+  const [supportPhone, setSupportPhone] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [requireEmailVerification, setRequireEmailVerification] = useState(true);
   const [enableTwoFactorAuth, setEnableTwoFactorAuth] = useState(false);
@@ -67,6 +68,7 @@ export default function AdminSettingsPage() {
         setPlatformName(json.platformName ?? '');
         setMarketingWebsiteUrl(json.marketingWebsiteUrl ?? '');
         setSupportEmail(json.supportEmail ?? '');
+        setSupportPhone(json.supportPhone ?? '');
         setTimezone(
           canonicalizeTimezoneId(
             json.timezone ?? 'Asia/Kolkata'
@@ -104,6 +106,7 @@ export default function AdminSettingsPage() {
         platformName,
         marketingWebsiteUrl,
         supportEmail,
+        supportPhone,
         timezone: canonicalizeTimezoneId(timezone),
         requireEmailVerification,
         enableTwoFactorAuth,
@@ -140,6 +143,7 @@ export default function AdminSettingsPage() {
       platformName,
       marketingWebsiteUrl,
       supportEmail,
+      supportPhone,
       timezone: canonicalizeTimezoneId(timezone),
       requireEmailVerification,
       enableTwoFactorAuth,
@@ -239,10 +243,23 @@ export default function AdminSettingsPage() {
               onChange={(e) => setMarketingWebsiteUrl(e.target.value)}
             />
             <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-              When set, the home page Features / About / Contact links and the <code>/features</code>, <code>/about</code>, and <code>/contact</code> routes open this URL (stored in the database). Leave empty to use built-in pages.
+              When set, the home page Features / About / Contact links open this URL in the same tab (browser Back returns to PlacementHub). Built-in pages at <code>/features</code>, <code>/about</code>, and <code>/contact</code> always stay on this app with a Home link. Leave empty to use only built-in pages from the home page.
             </p>
           </div>
           <div className="form-group"><label className="form-label">Support Email</label><input className="form-input" placeholder="Set support email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} /></div>
+          <div className="form-group">
+            <label className="form-label">Support phone (login page)</label>
+            <input
+              className="form-input"
+              type="tel"
+              placeholder="+91 80000 12345"
+              value={supportPhone}
+              onChange={(e) => setSupportPhone(e.target.value)}
+            />
+            <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
+              Shown on the public login page with a click-to-call link.
+            </p>
+          </div>
           <div className="form-group">
             <label className="form-label">Default Timezone</label>
             <select className="form-select" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
@@ -278,7 +295,7 @@ export default function AdminSettingsPage() {
               </select>
             </div>
             <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-              Prototype meaning: max signed-in session age before forced login.
+              Max signed-in time while the browser stays open (default 24 hours). Closing the browser always ends the session; this does not enable “remember me” across restarts.
             </p>
           </div>
           <div className="form-group">
