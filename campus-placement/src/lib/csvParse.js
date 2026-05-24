@@ -2,10 +2,11 @@
  * Parse a single CSV line with RFC4180-style quoted fields (commas inside quotes).
  */
 export function parseCsvLine(line) {
+  if (line == null || typeof line !== 'string') return [];
   const out = [];
   let cur = '';
   let inQuotes = false;
-  const s = String(line);
+  const s = line;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (inQuotes) {

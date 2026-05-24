@@ -4,6 +4,7 @@ import Link from 'next/link';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import { useToast } from '@/components/ToastProvider';
 import { Key, Copy, Users, CheckCircle2 } from 'lucide-react';
+import { fetchJson } from '@/lib/fetchJson';
 
 export default function mb_EnrollmentKey() {
   const { addToast } = useToast();
@@ -15,9 +16,7 @@ export default function mb_EnrollmentKey() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/college/enrollment-ledger');
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to load');
+        const json = await fetchJson('/api/college/enrollment-ledger', { credentials: 'same-origin' });
         if (m) setKey(json.enrollmentKey || '');
       } catch (e) {
         if (m) addToast(e.message || 'Failed', 'error');

@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { validateEmail } from '@/lib/validators';
-import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
+import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettingsDefaults';
 import { buildPublicSupportConfig } from '@/lib/supportContact';
 
 const DEFAULT_CONFIG = buildPublicSupportConfig(PLATFORM_SETTINGS_DEFAULTS);

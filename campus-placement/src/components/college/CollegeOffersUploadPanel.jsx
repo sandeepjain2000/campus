@@ -7,13 +7,10 @@ import { downloadCollegeOffersTemplate } from '@/lib/collegeOffersCsvTemplate';
 import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
+import { swrFetcher } from '@/lib/fetchJson';
+import { MAX_CSV_UPLOAD_BYTES, PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettingsDefaults';
 
-const metaFetcher = async (url) => {
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load');
-  return json;
-};
+const MAX_CSV_BYTES = MAX_CSV_UPLOAD_BYTES;
 
 export function summarizeCsvErrors(errors) {
   const list = Array.isArray(errors) ? errors : [];
@@ -49,10 +46,19 @@ export function useCollegeOffersUploadActions({ addToast, onUploadSuccess }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const lowerName = String(file.name || '').toLowerCase();
+    if (!lowerName.endsWith('.csv')) {
+      addToast('Please upload a .csv file.', 'warning');
+      return;
+    }
+    if (file.size > MAX_CSV_BYTES) {
+      addToast(`CSV must be ${PLATFORM_SETTINGS_DEFAULTS.maxUploadSizeMb || 5} MB or smaller.`, 'warning');
+      return;
+    }
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/college/offers/upload', { method: 'POST', body: fd });
+      const res = await fetch('/api/college/offers/upload', { method: 'POST', credentials: 'same-origin', body: fd });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Upload failed');
       const { accepted, errors } = json;
@@ -73,7 +79,7 @@ export function useCollegeOffersUploadActions({ addToast, onUploadSuccess }) {
 }
 
 export function CollegeOffersUploadMeta({ compact = false }) {
-  const { data, error, isLoading } = useSWR('/api/college/offers/upload-meta', metaFetcher, {
+  const { data, error, isLoading } = useSWR('/api/college/offers/upload-meta', swrFetcher, {
     revalidateOnFocus: true,
   });
 

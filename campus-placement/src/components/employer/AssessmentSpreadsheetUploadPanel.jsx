@@ -5,9 +5,9 @@ import useSWR from 'swr';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import { swrFetcher } from '@/lib/fetchJson';
-import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
+import { MAX_CSV_UPLOAD_BYTES, PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettingsDefaults';
 
-const MAX_CSV_BYTES = (PLATFORM_SETTINGS_DEFAULTS.maxUploadSizeMb || 5) * 1024 * 1024;
+const MAX_CSV_BYTES = MAX_CSV_UPLOAD_BYTES;
 const CSV_MIME_TYPES = new Set(['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain']);
 
 /**

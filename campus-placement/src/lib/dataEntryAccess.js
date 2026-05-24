@@ -15,7 +15,7 @@ export async function requireDataEntrySession() {
   if (!session?.user?.id) {
     return { ok: false, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
-  if (!DATA_ENTRY_ROLES.has(session.user.role)) {
+  if (!session.user?.role || !DATA_ENTRY_ROLES.has(session.user.role)) {
     return { ok: false, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
   }
   return { ok: true, session };

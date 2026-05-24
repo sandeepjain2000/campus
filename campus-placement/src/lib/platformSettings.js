@@ -1,31 +1,8 @@
 import { query } from '@/lib/db';
 import { canonicalizeTimezoneId } from '@/lib/timezoneUi';
+import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettingsDefaults';
 
-/** Defaults merged with DB `platform_settings.settings` (super admin /api/admin/settings). */
-export const PLATFORM_SETTINGS_DEFAULTS = {
-  platformName: 'PlacementHub',
-  /** Public brochure / marketing site (Wix, etc.). Empty = use in-app /features, /about, /contact. */
-  marketingWebsiteUrl: '',
-  supportEmail: 'placementhub@yopmail.com',
-  /** Shown on login / public support (sandbox demo line). */
-  supportPhone: '+91 80000 12345',
-  /** When non-empty, sendMail() delivers every message to this address instead of `to` (dev safety). */
-  systemNotificationInboxEmail: 'placementhub@yopmail.com',
-  systemNotificationWebmailUrl: 'https://yopmail.com/wm',
-  systemNotificationSenderName: 'placementhub',
-  timezone: 'Asia/Kolkata',
-  requireEmailVerification: true,
-  enableTwoFactorAuth: false,
-  sessionTimeoutValue: 24,
-  sessionTimeoutUnit: 'hours',
-  rememberDeviceValue: 14,
-  rememberDeviceUnit: 'days',
-  smtpHost: '',
-  smtpPort: 587,
-  fromEmail: '',
-  storageProvider: 'Local Filesystem',
-  maxUploadSizeMb: 5,
-};
+export { PLATFORM_SETTINGS_DEFAULTS };
 
 let cache = { at: 0, data: null };
 const TTL_MS = 30_000;

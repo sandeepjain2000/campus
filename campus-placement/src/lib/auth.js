@@ -34,8 +34,12 @@ export const authOptions = {
           throw new Error('Incorrect verification answer. Click refresh beside the question and try again.');
         }
 
+        const email = String(credentials.email).trim().toLowerCase();
+        const password = String(credentials.password);
+
+        let result;
         try {
-          const result = await query(
+          result = await query(
             `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo_url,
                     ep.logo_url AS employer_logo_url,
                     sp.is_verified AS student_placement_verified
@@ -44,78 +48,84 @@ export const authOptions = {
              LEFT JOIN employer_profiles ep ON ep.user_id = u.id
              LEFT JOIN student_profiles sp ON sp.user_id = u.id
              WHERE u.email = $1`,
-            [credentials.email]
+            [email],
           );
+        } catch (error) {
+          console.error('Authentication error:', error);
+          throw new Error('Unable to sign in right now. Please try again in a moment.');
+        }
 
-          const user = result.rows[0];
-          if (!user) {
-            throw new Error('Account not found. Please check your email or register.');
-          }
+        const user = result.rows[0];
+        if (!user) {
+          throw new Error('Account not found. Please check your email or register.');
+        }
 
-          const isValid = await bcrypt.compare(credentials.password, user.password_hash);
-          if (!isValid) throw new Error('Incorrect password. If your college just created your account, please check your email for the temporary password or use Forgot Password.');
+        const isValid = await bcrypt.compare(password, user.password_hash);
+        if (!isValid) {
+          throw new Error(
+            'Incorrect password. If your college just created your account, please check your email for the temporary password or use Forgot Password.',
+          );
+        }
 
-          if (!user.email_verified_at) {
+        if (!user.email_verified_at) {
+          throw new Error(
+            'Please verify your email address before signing in. Check your inbox for the verification link from PlacementHub.',
+          );
+        }
+
+        if (!user.is_active) {
+          if (['college_admin', 'employer'].includes(user.role)) {
+            if (user.registration_rejected_at) {
+              const hint = user.registration_rejection_note
+                ? ` ${user.registration_rejection_note}`
+                : '';
+              throw new Error(`Your registration was not approved.${hint}`);
+            }
             throw new Error(
-              'Please verify your email address before signing in. Check your inbox for the verification link from PlacementHub.'
+              'Your account is pending approval by the platform team. You will be able to sign in after activation.',
             );
           }
-
-          if (!user.is_active) {
-            if (['college_admin', 'employer'].includes(user.role)) {
-              if (user.registration_rejected_at) {
-                const hint = user.registration_rejection_note
-                  ? ` ${user.registration_rejection_note}`
-                  : '';
-                throw new Error(`Your registration was not approved.${hint}`);
-              }
-              throw new Error(
-                'Your account is pending approval by the platform team. You will be able to sign in after activation.'
-              );
-            }
-            throw new Error('This account is inactive. Contact support if you need help.');
-          }
-
-          await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
-
-          let fallbackTenantName = user.tenant_name;
-          if (!fallbackTenantName) {
-            if (user.role === 'employer') {
-              if (user.email.includes('techcorp')) fallbackTenantName = 'TechCorp Solutions';
-              else if (user.email.includes('infosys')) fallbackTenantName = 'Infosys Limited';
-              else fallbackTenantName = 'Corporate Partner';
-            } else if (user.role === 'college_admin') {
-              if (user.email.includes('iitm')) fallbackTenantName = 'IIT Madras';
-              else if (user.email.includes('nitt')) fallbackTenantName = 'NIT Trichy';
-              else fallbackTenantName = 'College Admin';
-            }
-          }
-
-          const brandLogoUrl =
-            user.role === 'employer'
-              ? user.employer_logo_url || null
-              : user.tenant_logo_url || null;
-
-          return {
-            id: user.id,
-            email: user.email,
-            communication_email: user.communication_email || user.email,
-            name: `${user.first_name} ${user.last_name || ''}`.trim(),
-            role: user.role,
-            tenantId: user.tenant_id,
-            tenantName: fallbackTenantName,
-            tenantSlug: user.tenant_slug,
-            avatar: user.avatar_url,
-            brandLogoUrl,
-            studentPlacementVerified:
-              user.role === 'student'
-                ? Boolean(user.student_placement_verified) || SEED_DEMO_STUDENT_USER_IDS.has(user.id)
-                : undefined,
-          };
-        } catch (error) {
-          console.error('Authentication error:', error.message);
-          throw new Error(error.message);
+          throw new Error('This account is inactive. Contact support if you need help.');
         }
+
+        try {
+          await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
+        } catch (error) {
+          console.error('Authentication last_login update failed:', error);
+        }
+
+        let fallbackTenantName = user.tenant_name;
+        if (!fallbackTenantName) {
+          if (user.role === 'employer') {
+            if (user.email.includes('techcorp')) fallbackTenantName = 'TechCorp Solutions';
+            else if (user.email.includes('infosys')) fallbackTenantName = 'Infosys Limited';
+            else fallbackTenantName = 'Corporate Partner';
+          } else if (user.role === 'college_admin') {
+            if (user.email.includes('iitm')) fallbackTenantName = 'IIT Madras';
+            else if (user.email.includes('nitt')) fallbackTenantName = 'NIT Trichy';
+            else fallbackTenantName = 'College Admin';
+          }
+        }
+
+        const brandLogoUrl =
+          user.role === 'employer' ? user.employer_logo_url || null : user.tenant_logo_url || null;
+
+        return {
+          id: user.id,
+          email: user.email,
+          communication_email: user.communication_email || user.email,
+          name: `${user.first_name} ${user.last_name || ''}`.trim(),
+          role: user.role,
+          tenantId: user.tenant_id,
+          tenantName: fallbackTenantName,
+          tenantSlug: user.tenant_slug,
+          avatar: user.avatar_url,
+          brandLogoUrl,
+          studentPlacementVerified:
+            user.role === 'student'
+              ? Boolean(user.student_placement_verified) || SEED_DEMO_STUDENT_USER_IDS.has(user.id)
+              : undefined,
+        };
       },
     }),
   ],

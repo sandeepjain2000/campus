@@ -26,6 +26,16 @@ export default function CollegeGuestEngagementsAddPage() {
 
   const create = async (e) => {
     e.preventDefault();
+    const title = form.title.trim();
+    const summary = form.summary.trim();
+    if (!title) {
+      addToast('Title is required.', 'error');
+      return;
+    }
+    if (!summary) {
+      addToast('Summary is required.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/college/engagement-listings', {
@@ -33,10 +43,10 @@ export default function CollegeGuestEngagementsAddPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kind: form.kind,
-          title: form.title,
-          summary: form.summary,
-          requirements: form.requirements,
-          timeHint: form.timeHint,
+          title,
+          summary,
+          requirements: form.requirements.trim(),
+          timeHint: form.timeHint.trim(),
           status: form.publishNow ? 'published' : 'draft',
         }),
       });

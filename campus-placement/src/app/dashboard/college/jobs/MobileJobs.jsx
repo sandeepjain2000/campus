@@ -8,8 +8,7 @@ import { useCollegeAcademicYearApiPath } from '@/lib/collegeAcademicYearContext'
 import MobileHeader from '@/components/mobile/MobileHeader';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import PageLoading from '@/components/PageLoading';
-
-const fetcher = (url) => fetch(url).then((r) => r.json());
+import { swrFetcher } from '@/lib/fetchJson';
 
 function salaryLabel(min, max) {
   if (min == null && max == null) return '—';
@@ -20,7 +19,7 @@ function salaryLabel(min, max) {
 
 export default function MobileJobs() {
   const jobsPath = useCollegeAcademicYearApiPath('/api/college/jobs');
-  const { data, error, isLoading } = useSWR(jobsPath, fetcher);
+  const { data, error, isLoading } = useSWR(jobsPath, swrFetcher);
   const list = useMemo(() => (Array.isArray(data?.jobs) ? data.jobs : []), [data]);
 
   const stats = useMemo(() => ({

@@ -7,7 +7,7 @@ import PageLoading from '@/components/PageLoading';
 export default function CollegeDashboardHubPage() {
   const { data: session } = useSession();
 
-  if (!session?.user) {
+  if (!session?.user?.role) {
     return <PageLoading message="Loading your workspace…" variant="skeleton-dashboard" delayMs={0} />;
   }
 

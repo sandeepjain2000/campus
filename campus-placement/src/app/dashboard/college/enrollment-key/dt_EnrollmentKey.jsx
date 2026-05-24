@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { fetchJson } from '@/lib/fetchJson';
 
 export default function CollegeEnrollmentKeyPage() {
   const { addToast } = useToast();
@@ -14,9 +15,7 @@ export default function CollegeEnrollmentKeyPage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/college/enrollment-ledger');
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to load');
+        const json = await fetchJson('/api/college/enrollment-ledger', { credentials: 'same-origin' });
         if (m) setKey(json.enrollmentKey || '');
       } catch (e) {
         if (m) addToast(e.message || 'Failed', 'error');

@@ -4,12 +4,18 @@ import { query } from '@/lib/db';
 
 const MAX_ACTION_LEN = 50;
 
+function normalizeAuditAction(raw) {
+  return String(raw || '')
+    .replace(/[^\w]/g, '_')
+    .slice(0, MAX_ACTION_LEN);
+}
+
 /**
  * Best-effort audit row; never throws to callers.
  * @param {AuditPayload} payload
  */
 export async function writeAuditLog(payload) {
-  const action = String(payload.action || '').slice(0, MAX_ACTION_LEN);
+  const action = normalizeAuditAction(payload.action);
   if (!action) return;
 
   try {

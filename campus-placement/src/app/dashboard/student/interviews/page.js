@@ -5,17 +5,11 @@ import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid
 import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { formatDate } from '@/lib/utils';
 import CompanyNameLink from '@/components/CompanyNameLink';
-
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load interviews');
-  return json;
-};
+import { swrFetcher } from '@/lib/fetchJson';
 
 export default function StudentInterviewsPage() {
   const [view, setView] = useState('list');
-  const { data, isLoading, error } = useSWR('/api/student/interviews', fetcher);
+  const { data, isLoading, error } = useSWR('/api/student/interviews', swrFetcher);
   const myInterviews = Array.isArray(data?.interviews) ? data.interviews : [];
 
   const calItems = useMemo(
@@ -91,7 +85,7 @@ export default function StudentInterviewsPage() {
               {!isLoading && myInterviews.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center text-secondary">
-                    {error?.message || 'No interview schedule found.'}
+                    {error?.message || 'No interview schedule found. Try again later.'}
                   </td>
                 </tr>
               ) : null}

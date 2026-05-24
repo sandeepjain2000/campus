@@ -3,26 +3,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ConvBubble, ConvThread } from '@/components/messaging/ConvBubble';
+import { fetchJson } from '@/lib/fetchJson';
 
 export default function StudentDiscussionsPage() {
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [search, setSearch] = useState('');
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await fetch('/api/discussions');
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Failed to load discussions');
+        const json = await fetchJson('/api/discussions', { credentials: 'same-origin' });
         if (!mounted) return;
         const list = Array.isArray(json.threads) ? json.threads : [];
         setThreads(list);
         setActiveId(list[0]?.id || null);
-      } catch {
+        setLoadError(null);
+      } catch (err) {
         if (!mounted) return;
         setThreads([]);
+        setLoadError(err instanceof Error ? err.message : 'Failed to load discussions');
       }
     };
     load();
@@ -57,6 +59,14 @@ export default function StudentDiscussionsPage() {
           </p>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--danger-500)' }}>
+          <p className="text-sm" style={{ margin: 0, color: 'var(--danger-600)' }}>
+            {loadError}
+          </p>
+        </div>
+      ) : null}
 
       <div
         className="card student-discussions-grid"

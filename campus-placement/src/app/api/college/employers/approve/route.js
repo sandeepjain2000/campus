@@ -17,6 +17,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
+    if (action !== 'approve' && action !== 'reject') {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
     const result = await query(

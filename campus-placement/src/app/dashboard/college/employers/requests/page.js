@@ -6,36 +6,38 @@ import EntityLogo from '@/components/EntityLogo';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import { toCompanyWebsiteUrl } from '@/lib/companyWebsite';
 import { useToast } from '@/components/ToastProvider';
+import { fetchJson, swrFetcher } from '@/lib/fetchJson';
 
-const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load');
-  if (!Array.isArray(data)) throw new Error(data.error || 'Invalid response');
+async function collegeRequestsFetcher(url) {
+  const data = await swrFetcher(url);
+  if (!Array.isArray(data)) {
+    throw new Error(data?.error || 'Invalid response');
+  }
   return data;
-};
+}
 
 export default function EmployerRequestsPage() {
   const { addToast } = useToast();
-  const { data: requests, error, isLoading, mutate } = useSWR('/api/college/employers/requests', fetcher);
+  const { data: requests, error, isLoading, mutate } = useSWR('/api/college/employers/requests', collegeRequestsFetcher);
   const [processing, setProcessing] = useState(null);
 
   const handleAction = async (approvalId, action) => {
+    if (action !== 'approve' && action !== 'reject') {
+      addToast('Invalid action.', 'error');
+      return;
+    }
     setProcessing(approvalId);
     try {
-      const res = await fetch('/api/college/employers/approve', {
+      await fetchJson('/api/college/employers/approve', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approval_id: approvalId, action })
+        body: JSON.stringify({ approval_id: approvalId, action }),
       });
-      if (res.ok) {
-        mutate(); // Refresh the list
-        addToast(`Request ${action}d successfully.`, 'success');
-      } else {
-        addToast('Failed to process request.', 'error');
-      }
+      mutate();
+      addToast(`Request ${action === 'approve' ? 'approved' : 'rejected'} successfully.`, 'success');
     } catch (e) {
-      addToast('Network error while processing request.', 'error');
+      addToast(e instanceof Error ? e.message : 'Failed to process request.', 'error');
     } finally {
       setProcessing(null);
     }
@@ -95,14 +97,14 @@ export default function EmployerRequestsPage() {
                     <td>{formatDate(req.created_at)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
+                        <button
                           className="btn btn-success btn-sm"
                           disabled={processing === req.approval_id}
                           onClick={() => handleAction(req.approval_id, 'approve')}
                         >
                           {processing === req.approval_id ? '...' : 'Approve'}
                         </button>
-                        <button 
+                        <button
                           className="btn btn-ghost btn-sm"
                           style={{ color: 'var(--danger-500)' }}
                           disabled={processing === req.approval_id}

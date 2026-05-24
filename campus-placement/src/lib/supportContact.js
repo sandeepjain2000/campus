@@ -1,4 +1,4 @@
-import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettings';
+import { PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettingsDefaults';
 
 /** Inbox where login-page support messages are delivered (YOPmail demo). */
 export function resolveSupportInboxEmail(platform) {

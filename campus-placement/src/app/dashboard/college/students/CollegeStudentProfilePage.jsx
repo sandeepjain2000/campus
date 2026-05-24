@@ -25,7 +25,7 @@ export default function CollegeStudentProfilePage({ mobile = false }) {
     setLoadError(null);
     try {
       const qs = academicYearQueryString(readActiveAcademicYearContext());
-      const res = await fetch(`/api/college/students/${studentId}${qs}`, { credentials: 'include' });
+      const res = await fetch(`/api/college/students/${encodeURIComponent(studentId)}${qs}`, { credentials: 'include' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Failed to load student');
       setStudent(json.student || null);
