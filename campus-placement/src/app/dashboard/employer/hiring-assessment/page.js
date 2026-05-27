@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { HiringAssessmentRoundBreakdown } from '@/components/assessment/HiringAssessmentRoundBreakdown';
 import { useToast } from '@/components/ToastProvider';
@@ -75,7 +78,23 @@ export default function EmployerHiringAssessmentPage() {
   }, [selectedTenantId, addToast]);
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-  const displayRows = useMemo(() => pickRepresentativeAssessmentRows(rows), [rows]);
+  const baseDisplayRows = useMemo(() => pickRepresentativeAssessmentRows(rows), [rows]);
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(baseDisplayRows, {
+    getSearchText: (r) =>
+      [r.roll_number, r.candidate_name, r.original_file_name, r.remarks].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'name_asc',
+  });
   const roundLabels = useMemo(() => {
     const rl = payload?.roundLabels;
     if (!Array.isArray(rl) || rl.length === 0) {
@@ -253,6 +272,21 @@ export default function EmployerHiringAssessmentPage() {
               <strong>Candidate</strong> is the name from the campus master list for that roll (then email, then roll). CSV placeholders like &quot;Student_1&quot; are not
               shown here.
             </p>
+            {totalCount > 0 ? (
+              <DataTableToolbar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search roll, candidate, or file…"
+                sort={sort}
+                onSortChange={setSort}
+                sortOptions={COMMON_SORT_OPTIONS}
+                filteredCount={filteredCount}
+                totalCount={totalCount}
+                hasActiveFilters={hasActiveFilters}
+                onClear={clearFilters}
+                style={{ marginBottom: '1rem' }}
+              />
+            ) : null}
             <div className="table-container" style={{ overflowX: 'auto', border: 'none' }}>
               <table className="data-table" style={{ minWidth: 900 }}>
                 <thead>
@@ -267,6 +301,13 @@ export default function EmployerHiringAssessmentPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {displayRows.length === 0 && totalCount > 0 ? (
+                    <tr>
+                      <td colSpan={3 + roundLabels.length + 1} className="text-center text-secondary">
+                        No rows match your search.
+                      </td>
+                    </tr>
+                  ) : null}
                   {displayRows.map((r) => (
                     <tr key={r.id}>
                       <td className="text-xs">{r.original_file_name || '—'}</td>
@@ -282,7 +323,7 @@ export default function EmployerHiringAssessmentPage() {
                       </td>
                     </tr>
                   ))}
-                  {rows.length === 0 && (
+                  {totalCount === 0 && (
                     <tr>
                       <td colSpan={9} className="text-center text-secondary">
                         No assessment rows for this campus yet. Upload a CSV under{' '}

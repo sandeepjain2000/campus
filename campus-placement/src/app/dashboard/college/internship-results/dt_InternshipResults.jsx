@@ -2,6 +2,9 @@
 
 import { useMemo } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMPANY_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import Link from 'next/link';
 import { CalendarDays, Download, Plus, Users, Clock, IndianRupee, FileText } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
@@ -18,6 +21,21 @@ export default function CollegeInternshipResultsPage() {
   const { addToast } = useToast();
   const { data, error, isLoading } = useSWR('/api/college/internships', fetcher);
   const internships = Array.isArray(data?.internships) ? data.internships : [];
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayInternships,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(internships, {
+    getSearchText: (intern) => [intern.title, intern.company_name, intern.job_type, intern.status].filter(Boolean).join(' '),
+    sortOptions: COMPANY_SORT_OPTIONS,
+    defaultSort: 'company_asc',
+  });
   const showNotReady = (label) => addToast(`${label} is coming soon.`, 'info');
 
   const exportCsv = () => {
@@ -119,6 +137,21 @@ export default function CollegeInternshipResultsPage() {
         ))}
       </div>
 
+      {totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search role, company, or status…"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMPANY_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
+
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -132,7 +165,14 @@ export default function CollegeInternshipResultsPage() {
             </tr>
           </thead>
           <tbody>
-            {internships.map((intern) => (
+            {displayInternships.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center text-secondary">
+                  No internships match your search.
+                </td>
+              </tr>
+            ) : null}
+            {displayInternships.map((intern) => (
               <tr key={intern.id}>
                 <td className="font-semibold">{intern.title || '—'}</td>
                 <td>
@@ -156,7 +196,7 @@ export default function CollegeInternshipResultsPage() {
                 </td>
               </tr>
             ))}
-            {internships.length === 0 && (
+            {totalCount === 0 && (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                   No internship records available yet.

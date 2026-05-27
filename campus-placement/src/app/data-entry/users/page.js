@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, ROLE_FILTER_OPTIONS, roleFilterFn } from '@/lib/tableQueryPresets';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function DataEntryUsersPage() {
@@ -42,6 +45,24 @@ export default function DataEntryUsersPage() {
   useEffect(() => {
     loadRows();
   }, []);
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(rows, {
+    getSearchText: (row) => [row.email, row.first_name, row.last_name, row.role].filter(Boolean).join(' '),
+    filterFn: roleFilterFn,
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
 
   const onChange = (field) => (event) => {
     const value = ['isVerified', 'isActive'].includes(field) ? event.target.checked : event.target.value;
@@ -214,6 +235,25 @@ export default function DataEntryUsersPage() {
           <div className="card-header">
             <h3 className="card-title">Existing Users</h3>
           </div>
+          {!isLoading && totalCount > 0 ? (
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search email, name, or role…"
+              filter={filter}
+              onFilterChange={setFilter}
+              filterOptions={ROLE_FILTER_OPTIONS}
+              filterLabel="Role"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+              style={{ marginBottom: '1rem' }}
+            />
+          ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -227,7 +267,12 @@ export default function DataEntryUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {displayRows.length === 0 && totalCount > 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center text-secondary">No users match your search or filters.</td>
+                  </tr>
+                ) : null}
+                {displayRows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.email}</td>
                     <td>{row.first_name} {row.last_name || ''}</td>
@@ -245,7 +290,7 @@ export default function DataEntryUsersPage() {
                     </td>
                   </tr>
                 ))}
-                {!isLoading && rows.length === 0 ? (
+                {!isLoading && totalCount === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-secondary">No users found.</td>
                   </tr>

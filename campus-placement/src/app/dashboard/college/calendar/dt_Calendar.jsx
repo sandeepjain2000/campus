@@ -1,5 +1,7 @@
 'use client';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { parseYmdToLocalDate, toDateOnlyString } from '@/lib/dateOnly';
+import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
@@ -15,19 +17,38 @@ const fetcher = async (url) => {
 
 export default function CollegeCalendarPage() {
   const { addToast } = useToast();
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8)); // September 2026
   const { data, error, mutate } = useSWR('/api/college/events', fetcher);
 
   const events = useMemo(
-    () => (Array.isArray(data?.events) ? data.events : []).map((e) => ({
-      id: e.id,
-      title: e.title,
-      type: e.event_type,
-      startDate: e.start_date ? new Date(e.start_date) : null,
-      endDate: e.end_date ? new Date(e.end_date) : null,
-    })),
-    [data]
+    () =>
+      (Array.isArray(data?.events) ? data.events : []).map((e) => {
+        const startYmd = toDateOnlyString(e.start_date);
+        const endYmd = toDateOnlyString(e.end_date);
+        return {
+          id: e.id,
+          title: e.title,
+          type: e.event_type,
+          startDate: startYmd ? parseYmdToLocalDate(startYmd) : null,
+          endDate: endYmd ? parseYmdToLocalDate(endYmd) : null,
+        };
+      }),
+    [data],
   );
+
+  const initialCursor = useMemo(
+    () =>
+      getInitialCalendarCursorFromIsoDates(
+        (Array.isArray(data?.events) ? data.events : []).map((e) => toDateOnlyString(e.start_date)),
+      ),
+    [data],
+  );
+
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
+  useEffect(() => {
+    if (!data?.events) return;
+    setCurrentMonth(new Date(initialCursor.initialYear, initialCursor.initialMonth, 1));
+  }, [data?.events, initialCursor.initialYear, initialCursor.initialMonth]);
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();

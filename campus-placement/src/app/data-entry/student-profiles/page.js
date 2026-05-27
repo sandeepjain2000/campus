@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function DataEntryStudentProfilesPage() {
@@ -51,6 +54,22 @@ export default function DataEntryStudentProfilesPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(rows, {
+    getSearchText: (row) =>
+      [row.email, row.department, row.placement_status, row.batch_year, row.graduation_year].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
 
   const onChange = (field) => (event) => {
     const value = field === 'isVerified' ? event.target.checked : event.target.value;
@@ -221,6 +240,21 @@ export default function DataEntryStudentProfilesPage() {
           <div className="card-header">
             <h3 className="card-title">Existing Student Profiles</h3>
           </div>
+          {!isLoading && totalCount > 0 ? (
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search student, department, or status…"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+              style={{ marginBottom: '1rem' }}
+            />
+          ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -234,7 +268,12 @@ export default function DataEntryStudentProfilesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {displayRows.length === 0 && totalCount > 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center text-secondary">No profiles match your search.</td>
+                  </tr>
+                ) : null}
+                {displayRows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.first_name} {row.last_name || ''} ({row.email || '-'})</td>
                     <td>{row.department || '-'}</td>
@@ -252,7 +291,7 @@ export default function DataEntryStudentProfilesPage() {
                     </td>
                   </tr>
                 ))}
-                {!isLoading && rows.length === 0 ? (
+                {!isLoading && totalCount === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-secondary">No student profiles found.</td>
                   </tr>

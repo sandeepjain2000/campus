@@ -1,6 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, EMPLOYER_STATUS_FILTER_OPTIONS, employerStatusFilterFn } from '@/lib/tableQueryPresets';
 import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
@@ -52,6 +55,24 @@ export default function DesktopEmployers() {
 
   const list = data?.employers || [];
   const staffDirectory = data?.staffDirectory || [];
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayList,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(list, {
+    getSearchText: (e) => [e.name, e.industry, e.status, labelEmployerCompanyType(e.company_type)].filter(Boolean).join(' '),
+    filterFn: employerStatusFilterFn,
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
 
   useEffect(() => {
     if (!pocModal) { setPocStaffSelection([]); return; }
@@ -115,7 +136,7 @@ export default function DesktopEmployers() {
         )}
       </div>
 
-      {list.length === 0 ? (
+      {totalCount === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '5rem 2rem', border: '1px dashed var(--border-default)', borderRadius: '12px' }}>
           <Building2 size={40} style={{ color: 'var(--text-tertiary)', margin: '0 auto 1rem', opacity: 0.3 }} />
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No employer tie-ups yet</h3>
@@ -126,6 +147,22 @@ export default function DesktopEmployers() {
         </div>
       ) : (
         <>
+          <DataTableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search company, industry, or status…"
+            filter={filter}
+            onFilterChange={setFilter}
+            filterOptions={EMPLOYER_STATUS_FILTER_OPTIONS}
+            filterLabel="Status"
+            sort={sort}
+            onSortChange={setSort}
+            sortOptions={COMMON_SORT_OPTIONS}
+            filteredCount={filteredCount}
+            totalCount={totalCount}
+            hasActiveFilters={hasActiveFilters}
+            onClear={clearFilters}
+          />
           {/* Desktop table — hidden on mobile */}
           <div className="card employers-table-wrap" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
             <div className="table-container" style={{ border: 'none' }}>
@@ -145,7 +182,14 @@ export default function DesktopEmployers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((emp, index) => {
+                  {displayList.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="text-center text-secondary">
+                        No employers match your search or filters.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {displayList.map((emp, index) => {
                     const rating = emp.reliability_score != null ? Number(emp.reliability_score) : null;
                     const pocNames = (emp.coordination_poc_user_ids || []).map((uid) => staffDirectory.find((s) => String(s.id) === String(uid))?.name).filter(Boolean);
                     return (

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function DataEntryOffersPage() {
@@ -54,6 +57,23 @@ export default function DataEntryOffersPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(rows, {
+    getSearchText: (row) =>
+      [row.student_email, row.job_title, row.location, row.status, row.employer_name, row.drive_title].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const onChange = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -239,6 +259,21 @@ export default function DataEntryOffersPage() {
           <div className="card-header">
             <h3 className="card-title">Existing Offers</h3>
           </div>
+          {!isLoading && totalCount > 0 ? (
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search student, role, or status…"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+              style={{ marginBottom: '1rem' }}
+            />
+          ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -251,7 +286,12 @@ export default function DataEntryOffersPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {displayRows.length === 0 && totalCount > 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center text-secondary">No offers match your search.</td>
+                  </tr>
+                ) : null}
+                {displayRows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.first_name} {row.last_name || ''} ({row.email || '-'})</td>
                     <td>{row.job_title}</td>
@@ -268,7 +308,7 @@ export default function DataEntryOffersPage() {
                     </td>
                   </tr>
                 ))}
-                {!isLoading && rows.length === 0 ? (
+                {!isLoading && totalCount === 0 ? (
                   <tr><td colSpan={5} className="text-secondary">No offers found.</td></tr>
                 ) : null}
               </tbody>

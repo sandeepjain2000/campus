@@ -5,6 +5,9 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight, Building2, MapPin } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
@@ -102,6 +105,23 @@ export default function EmployerOverviewPage() {
     fetcher
   );
 
+  const recentApplications = Array.isArray(data?.recentApplications) ? data.recentApplications : [];
+  const {
+    search: appsSearch,
+    setSearch: setAppsSearch,
+    sort: appsSort,
+    setSort: setAppsSort,
+    filtered: displayRecentApplications,
+    filteredCount: appsFilteredCount,
+    totalCount: appsTotalCount,
+    hasActiveFilters: appsHasActiveFilters,
+    clearFilters: clearAppsFilters,
+  } = useDataTableQuery(recentApplications, {
+    getSearchText: (app) => [app.name, app.role, app.college, app.status, app.cgpa].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
+
   if (error) return <PageError error={error} />;
 
   if (resolvingCampus || isLoading || (!data && activeCampus)) {
@@ -139,7 +159,7 @@ export default function EmployerOverviewPage() {
     );
   }
 
-  const { stats, recentApplications, upcomingDrives } = data;
+  const { stats, upcomingDrives } = data;
   const pipelineCounts = [
     stats.totalApplications || 0,
     stats.shortlisted || 0,
@@ -361,6 +381,21 @@ export default function EmployerOverviewPage() {
             View All Pipeline <ArrowRight size={14} />
           </Link>
         </div>
+        {appsTotalCount > 0 ? (
+          <DataTableToolbar
+            search={appsSearch}
+            onSearchChange={setAppsSearch}
+            searchPlaceholder="Search candidate, role, or campus…"
+            sort={appsSort}
+            onSortChange={setAppsSort}
+            sortOptions={COMMON_SORT_OPTIONS}
+            filteredCount={appsFilteredCount}
+            totalCount={appsTotalCount}
+            hasActiveFilters={appsHasActiveFilters}
+            onClear={clearAppsFilters}
+            style={{ margin: '0 1.25rem 1rem', border: '1px solid var(--border-default)' }}
+          />
+        ) : null}
         <div className="table-container" style={{ border: 'none' }}>
           <table className="data-table">
             <thead>
@@ -374,7 +409,14 @@ export default function EmployerOverviewPage() {
               </tr>
             </thead>
             <tbody>
-              {recentApplications.map((app) => (
+              {displayRecentApplications.length === 0 && appsTotalCount > 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center text-secondary">
+                    No applications match your search.
+                  </td>
+                </tr>
+              ) : null}
+              {displayRecentApplications.map((app) => (
                 <tr key={app.id} style={{ transition: 'background 0.2s', ':hover': { background: 'var(--bg-secondary)' } }}>
                   <td style={{ paddingLeft: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -427,7 +469,7 @@ export default function EmployerOverviewPage() {
                   </td>
                 </tr>
               ))}
-              {recentApplications.length === 0 && (
+              {appsTotalCount === 0 && (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
                     No recent applications to review.

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { toDateOnlyString, validateDriveDateForApply } from '@/lib/dateOnly';
 import { assertStudentResumeForApply } from '@/lib/studentApplyEligibility';
 import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 
@@ -94,7 +95,7 @@ export async function POST(req) {
 
     try {
       const meta = await query(
-        `SELECT d.id, d.job_id, j.min_cgpa, sp.cgpa AS student_cgpa
+        `SELECT d.id, d.job_id, d.drive_date, j.min_cgpa, sp.cgpa AS student_cgpa
          FROM placement_drives d
          LEFT JOIN job_postings j ON d.job_id = j.id
          CROSS JOIN student_profiles sp
@@ -106,7 +107,12 @@ export async function POST(req) {
         return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
       }
 
-      const { job_id, min_cgpa, student_cgpa } = meta.rows[0];
+      const { job_id, drive_date, min_cgpa, student_cgpa } = meta.rows[0];
+      const driveDateYmd = toDateOnlyString(drive_date);
+      const driveDateCheck = validateDriveDateForApply(driveDateYmd);
+      if (!driveDateCheck.ok) {
+        return NextResponse.json({ error: driveDateCheck.error }, { status: 400 });
+      }
 
       if (min_cgpa != null) {
         const reqCgpa = Number(min_cgpa);

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
 import { GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
@@ -55,6 +58,33 @@ export default function EmployerInternshipsPage() {
   );
 
   const internships = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
+  const internshipStatusFilterOptions = useMemo(
+    () => [
+      FILTER_ALL,
+      { value: 'published', label: 'Published' },
+      { value: 'draft', label: 'Draft' },
+      { value: 'closed', label: 'Closed' },
+    ],
+    [],
+  );
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayInternships,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(internships, {
+    getSearchText: (intern) => [intern.title, intern.keywords, intern.status].filter(Boolean).join(' '),
+    filterFn: (row, f) => !f || String(row.status || '') === f,
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const openForm = () => {
     const sel = {};
@@ -352,7 +382,25 @@ export default function EmployerInternshipsPage() {
           <p className="text-sm text-secondary" style={{ margin: 0 }}>No internship postings yet. Publish one above.</p>
         </div>
       )}
-      {!jobsLoading && !jobsError && internships.length > 0 && (
+      {!jobsLoading && !jobsError && totalCount > 0 && (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search title or keywords…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={internshipStatusFilterOptions}
+          filterLabel="Status"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      )}
+      {!jobsLoading && !jobsError && totalCount > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
           <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
             <table className="data-table" style={{ minWidth: 880 }}>
@@ -368,7 +416,14 @@ export default function EmployerInternshipsPage() {
                 </tr>
               </thead>
               <tbody>
-                {internships.map((intern) => (
+                {displayInternships.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No internships match your search or filters.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayInternships.map((intern) => (
                   <tr key={String(intern.id)}>
                     <td style={{ paddingLeft: '1.25rem', maxWidth: 280 }}>
                       <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{intern.title}</div>

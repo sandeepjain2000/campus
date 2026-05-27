@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getSessionTenantId } from '@/lib/tenantContext';
+import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
 
 function parseMeta(description, title) {
   if (!description) {
@@ -74,7 +75,7 @@ export async function GET() {
         id: r.id,
         roomId: meta.roomId,
         roomName: meta.roomName,
-        date: r.start_date ? String(r.start_date).slice(0, 10) : '',
+        date: toDateOnlyString(r.start_date),
         startTime: meta.startTime,
         endTime: meta.endTime,
         company: meta.company,
@@ -123,6 +124,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const dateCheck = validatePlacementDate(date, { allowPast: false });
+    if (!dateCheck.ok) {
+      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    }
+
     const desc = JSON.stringify({
       roomId,
       roomName,
@@ -137,7 +143,7 @@ export async function POST(request) {
       `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
        VALUES ($1, $2, 'placement_drive', $3, $3, true, $4)
        RETURNING id, title, start_date, description`,
-      [tenantId, company, date, desc]
+      [tenantId, company, dateCheck.value, desc]
     );
 
     const r = created.rows[0];
@@ -146,7 +152,7 @@ export async function POST(request) {
         id: r.id,
         roomId,
         roomName,
-        date: String(r.start_date).slice(0, 10),
+        date: toDateOnlyString(r.start_date),
         startTime,
         endTime,
         company,

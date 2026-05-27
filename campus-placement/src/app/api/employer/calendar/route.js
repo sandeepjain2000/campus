@@ -2,18 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-
-function toIsoDateOnly(value) {
-  if (!value) return '';
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
-  }
-  const s = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const parsed = new Date(s);
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  return '';
-}
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 export async function GET() {
   try {
@@ -40,12 +29,43 @@ export async function GET() {
     const events = eventsRes.rows.map((r) => ({
       id: r.id,
       title: r.title || 'Placement Drive',
-      date: toIsoDateOnly(r.drive_date),
+      date: toDateOnlyString(r.drive_date),
       time: '',
       type: r.status || 'scheduled',
       mode: r.drive_type || 'on_campus',
       college: r.college || '',
     }));
+
+    const approvals = await query(
+      `SELECT tenant_id FROM employer_approvals
+       WHERE employer_id = $1::uuid AND status = 'approved'`,
+      [employerId],
+    );
+
+    for (const row of approvals.rows) {
+      const tenantRes = await query(`SELECT settings, name FROM tenants WHERE id = $1::uuid`, [row.tenant_id]);
+      const tenant = tenantRes.rows[0];
+      if (!tenant) continue;
+      const plans = Array.isArray(tenant.settings?.employerInterviewPlans)
+        ? tenant.settings.employerInterviewPlans
+        : [];
+      for (const p of plans) {
+        if (p.employerUserId !== session.user.id) continue;
+        const date = toDateOnlyString(p.date);
+        if (!date) continue;
+        events.push({
+          id: p.id || `ei-${date}-${p.round}`,
+          title: `${p.campus || tenant.name} — ${p.round}`,
+          date,
+          time: p.time || '',
+          type: 'interview',
+          mode: p.mode || 'Virtual',
+          college: p.campus || tenant.name || '',
+        });
+      }
+    }
+
+    events.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
     return NextResponse.json({ events });
   } catch (error) {

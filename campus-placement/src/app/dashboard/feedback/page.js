@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
 import PageError from '@/components/PageError';
@@ -13,6 +15,15 @@ const fetcher = (url) => fetch(url).then((res) => {
 });
 
 export default function FeedbackPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (session?.user?.role === 'super_admin') {
+      router.replace('/dashboard/admin/feedback');
+    }
+  }, [session?.user?.role, router]);
+
   const { data, error, isLoading } = useSWR('/api/feedback', fetcher);
 
   const items = data?.items || [];

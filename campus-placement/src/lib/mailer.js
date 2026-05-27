@@ -158,14 +158,62 @@ export const STUDENT_WELCOME_SUBJECT = 'Your PlacementHub Account is Ready';
  * Plain-text body for new student welcome (temporary password + system ID).
  * @param {{ firstName?: string | null, email: string, tempPass: string, systemId: string }} p
  */
-export function studentWelcomeEmailBody({ firstName, email, tempPass, systemId }) {
+export function studentWelcomeEmailBody({ firstName, email, tempPass, systemId, collegeName }) {
   const fn = (firstName && String(firstName).trim()) || 'Student';
+  const campus = collegeName ? ` at ${collegeName}` : '';
   return (
-    `Hello ${fn},\n\nYour campus placement account has been created.\n\n` +
-    `Login: ${email}\nTemporary Password: ${tempPass}\n\n` +
-    `Please log in and change your password.\n\nSystem ID: ${systemId}\n\n` +
+    `Hello ${fn},\n\n` +
+    `Your college has added you to PlacementHub${campus}. Student self-registration is not used — your profile details come from the campus master list.\n\n` +
+    `Sign in at the PlacementHub login page with:\n` +
+    `  Login email: ${email}\n` +
+    `  Password: ${tempPass}\n\n` +
+    `You may keep this password; changing it is optional.\n\n` +
+    `Roll / system ID: ${systemId}\n\n` +
+    `If you did not expect this message, contact your placement office.\n\n` +
     `Best regards,\nPlacementHub Team`
   );
+}
+
+/**
+ * Welcome email to the student's login address and a copy to the platform notification inbox (YOPmail in demo).
+ * @param {{ loginEmail: string, firstName?: string, tempPass: string, systemId: string, collegeName?: string, userId?: string }} p
+ */
+export async function sendStudentWelcomeEmails(p) {
+  const { loginEmail, firstName, tempPass, systemId, collegeName, userId } = p;
+  const text = studentWelcomeEmailBody({
+    firstName,
+    email: loginEmail,
+    tempPass,
+    systemId,
+    collegeName,
+  });
+  const platform = await getPlatformSettings();
+  const yopInbox = String(platform?.systemNotificationInboxEmail || '').trim();
+
+  await sendMail({
+    to: loginEmail,
+    subject: STUDENT_WELCOME_SUBJECT,
+    text,
+    context: 'student_welcome',
+    userId,
+    skipRecipientRedirect: true,
+  });
+
+  if (yopInbox) {
+    const copyText =
+      `Demo inbox copy — student welcome for ${loginEmail}\n` +
+      `(Original recipient: ${loginEmail})\n\n` +
+      text;
+    await sendMail({
+      to: yopInbox,
+      subject: `[Student welcome] ${loginEmail} — ${STUDENT_WELCOME_SUBJECT}`,
+      text: copyText,
+      context: 'student_welcome_yop_copy',
+      userId,
+      skipRecipientRedirect: true,
+      skipCommunicationRouting: true,
+    });
+  }
 }
 
 /**

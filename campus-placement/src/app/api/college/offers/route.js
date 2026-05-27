@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { queryCollegeOffersForTenant } from '@/lib/collegeOffersListQuery';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
+import { toDateOnlyString, validateOfferDates } from '@/lib/dateOnly';
 
 const OFFER_STATUSES = new Set(['pending', 'accepted', 'rejected', 'expired', 'revoked']);
 const REOPEN_FROM_STATUSES = new Set(['accepted', 'rejected', 'revoked', 'expired']);
@@ -82,8 +83,17 @@ export async function POST(request) {
     const salary = Number(body?.salary ?? 0);
     const location = String(body?.location || '').trim() || null;
     const deadlineRaw = body?.deadline != null ? String(body.deadline).trim() : '';
-    const deadline = deadlineRaw ? new Date(deadlineRaw.includes('T') ? deadlineRaw : `${deadlineRaw}T23:59:59`) : null;
-    const joiningDate = body?.joiningDate || body?.joining_date ? String(body.joiningDate || body.joining_date).trim() || null : null;
+    const deadlineYmd = deadlineRaw ? toDateOnlyString(deadlineRaw) : '';
+    const joiningDateYmd =
+      body?.joiningDate || body?.joining_date
+        ? toDateOnlyString(String(body.joiningDate || body.joining_date).trim())
+        : '';
+    const offerDatesCheck = validateOfferDates(deadlineYmd || null, joiningDateYmd || null);
+    if (!offerDatesCheck.ok) {
+      return NextResponse.json({ error: offerDatesCheck.error }, { status: 400 });
+    }
+    const deadline = deadlineYmd ? new Date(`${deadlineYmd}T23:59:59`) : null;
+    const joiningDate = joiningDateYmd || null;
     let status = String(body?.status || 'pending').trim().toLowerCase();
     if (status === 'declined') status = 'rejected';
     if (!OFFER_STATUSES.has(status)) status = 'pending';
@@ -201,17 +211,46 @@ export async function PATCH(request) {
     if (body.location !== undefined) {
       push('location =', body.location ? String(body.location).trim() : null);
     }
-    if (body.deadline !== undefined) {
-      const d = body.deadline ? String(body.deadline).trim() : '';
-      if (!d) push('deadline =', null);
-      else {
-        const dt = new Date(d.includes('T') ? d : `${d}T23:59:59`);
-        push('deadline =', Number.isNaN(dt.getTime()) ? null : dt.toISOString());
+    if (
+      body.deadline !== undefined ||
+      body.joiningDate !== undefined ||
+      body.joining_date !== undefined
+    ) {
+      const curDates = await query(
+        `SELECT deadline, joining_date FROM offers WHERE id = $1::uuid`,
+        [id],
+      );
+      const cur = curDates.rows[0] || {};
+      let deadlineYmd =
+        body.deadline !== undefined
+          ? body.deadline
+            ? toDateOnlyString(String(body.deadline).trim())
+            : ''
+          : cur.deadline
+            ? toDateOnlyString(cur.deadline)
+            : '';
+      let joiningYmd =
+        body.joiningDate !== undefined || body.joining_date !== undefined
+          ? body.joiningDate ?? body.joining_date
+            ? toDateOnlyString(String(body.joiningDate ?? body.joining_date).trim())
+            : ''
+          : cur.joining_date
+            ? toDateOnlyString(cur.joining_date)
+            : '';
+      const offerDatesCheck = validateOfferDates(deadlineYmd || null, joiningYmd || null);
+      if (!offerDatesCheck.ok) {
+        return NextResponse.json({ error: offerDatesCheck.error }, { status: 400 });
       }
-    }
-    if (body.joiningDate !== undefined || body.joining_date !== undefined) {
-      const j = body.joiningDate ?? body.joining_date;
-      push('joining_date =', j ? String(j).trim() : null);
+      if (body.deadline !== undefined) {
+        if (!deadlineYmd) push('deadline =', null);
+        else {
+          const dt = new Date(`${deadlineYmd}T23:59:59`);
+          push('deadline =', Number.isNaN(dt.getTime()) ? null : dt.toISOString());
+        }
+      }
+      if (body.joiningDate !== undefined || body.joining_date !== undefined) {
+        push('joining_date =', joiningYmd || null);
+      }
     }
     if (body.status != null) {
       let st = String(body.status).trim().toLowerCase();

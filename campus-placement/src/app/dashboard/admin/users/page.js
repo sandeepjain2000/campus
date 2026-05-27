@@ -1,5 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import {
+  COMMON_SORT_OPTIONS,
+  FILTER_ALL,
+  ROLE_FILTER_OPTIONS,
+  roleFilterFn,
+  STATUS_FILTER_OPTIONS,
+  statusActiveFilterFn,
+} from '@/lib/tableQueryPresets';
 import { getRoleDisplayName } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
@@ -31,9 +41,30 @@ export default function AdminUsersPage() {
     };
   }, []);
 
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayUsers,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(users, {
+    getSearchText: (u) => [u.name, u.email, getRoleDisplayName(u.role)].filter(Boolean).join(' '),
+    filterFn: (row, f) => {
+      if (f === 'active' || f === 'inactive') return statusActiveFilterFn(row, f);
+      return roleFilterFn(row, f);
+    },
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
+
   const getExportRows = () => {
     const headers = ['User', 'Email', 'Role', 'Status'];
-    const rowsList = users.map(u => [
+    const rowsList = displayUsers.map(u => [
       u.name,
       u.email,
       getRoleDisplayName(u.role),
@@ -48,15 +79,45 @@ export default function AdminUsersPage() {
         <div className="page-header-left"><h1>👥 Manage Users</h1><p>All users across the platform</p></div>
         <ExportCsvSplitButton 
           filenameBase="admin_users" 
-          currentCount={users.length} 
+          currentCount={displayUsers.length} 
           fullCount={users.length} 
           getRows={getExportRows} 
         />
       </div>
+
+      {!isLoading && totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search name, email, or role…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={[
+            FILTER_ALL,
+            ...ROLE_FILTER_OPTIONS.slice(1),
+            ...STATUS_FILTER_OPTIONS.slice(1),
+          ]}
+          filterLabel="Filter"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
+
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>{users.map(u => (
+          <tbody>
+            {displayUsers.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center text-secondary">No users match your search or filters.</td>
+              </tr>
+            ) : null}
+            {displayUsers.map(u => (
             <tr key={u.id}>
               <td><div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}><div className="avatar avatar-sm">{u.name.split(' ').map(n=>n[0]).join('')}</div><span className="font-semibold">{u.name}</span></div></td>
               <td className="text-sm">{u.email}</td>
@@ -65,7 +126,7 @@ export default function AdminUsersPage() {
               <td><button className="btn btn-ghost btn-sm" disabled title="Coming soon">Edit</button></td>
             </tr>
           ))}
-          {!isLoading && users.length === 0 ? (
+          {!isLoading && totalCount === 0 ? (
             <tr>
               <td colSpan={5} className="text-center text-secondary">{error || 'No users found.'}</td>
             </tr>

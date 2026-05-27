@@ -6,6 +6,7 @@ import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { isOfferDeadlinePassed } from '@/lib/offerDeadline';
 import { isPendingOfferStatus, normalizeOfferStatus, OFFER_PENDING_STATUS_SQL } from '@/lib/offerStatusNormalize';
 import { resolveStudentProfileByUserId } from '@/lib/studentProfileResolve';
+import { assertStudentMayAcceptOffer } from '@/lib/offerPlacementRules';
 
 function isMissingReportedColumnError(e) {
   const msg = String(e?.message || '');
@@ -226,25 +227,10 @@ export async function PATCH(request) {
       );
     }
 
-    if (action === 'accept' && tenantId) {
-      const settingsRes = await query(
-        `SELECT max_offers_per_student FROM college_settings WHERE tenant_id = $1::uuid`,
-        [tenantId],
-      );
-      const maxOffers = Number(settingsRes.rows[0]?.max_offers_per_student ?? 2);
-      if (Number.isFinite(maxOffers) && maxOffers > 0) {
-        const acceptedRes = await query(
-          `SELECT COUNT(*)::int AS n FROM offers WHERE student_id = $1::uuid AND status = 'accepted'`,
-          [studentId],
-        );
-        if ((acceptedRes.rows[0]?.n ?? 0) >= maxOffers) {
-          return NextResponse.json(
-            {
-              error: `You can accept at most ${maxOffers} offer(s) under your college placement rules. Decline an existing acceptance or contact your placement office.`,
-            },
-            { status: 403 },
-          );
-        }
+    if (action === 'accept') {
+      const ruleCheck = await assertStudentMayAcceptOffer(studentId, tenantId);
+      if (!ruleCheck.ok) {
+        return NextResponse.json({ error: ruleCheck.error }, { status: 403 });
       }
     }
 

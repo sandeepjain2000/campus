@@ -4,6 +4,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { formatDate } from '@/lib/utils';
+import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { CalendarCheck } from 'lucide-react';
@@ -185,6 +186,11 @@ export default function EmployerInterviewsPage() {
         time: formatTimeDisplay(r.time),
         meta: `${r.mode} · ${r.assigned} students`,
       })),
+    [rows],
+  );
+
+  const calendarCursor = useMemo(
+    () => getInitialCalendarCursorFromIsoDates(rows.map((r) => r.date)),
     [rows],
   );
 
@@ -378,7 +384,11 @@ export default function EmployerInterviewsPage() {
             </span>
           </div>
           {view === 'calendar' ? (
-            <EmployerCalendarGrid items={calItems} initialYear={2026} initialMonth={9} />
+            <EmployerCalendarGrid
+              items={calItems}
+              initialYear={calendarCursor.initialYear}
+              initialMonth={calendarCursor.initialMonth}
+            />
           ) : (
             <div style={{ display: 'grid', gap: '0.6rem' }}>
               {!selectedCampusId ? (

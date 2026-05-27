@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
 
 function getTenantId(session) {
   return session?.user?.tenantId || session?.user?.tenant_id || null;
@@ -51,7 +52,7 @@ export async function GET() {
         id: r.id,
         company: meta.company || r.title || '',
         round: meta.round || '',
-        date: r.start_date ? String(r.start_date).slice(0, 10) : '',
+        date: toDateOnlyString(r.start_date),
         startTime: meta.startTime,
         endTime: meta.endTime,
         interviewer: meta.interviewer,
@@ -119,7 +120,7 @@ export async function GET() {
       website: r.website || null,
       round: r.round || 'Interview',
       outcome: outcomeMap[r.outcome] || 'Pending',
-      date: r.date ? String(r.date).slice(0, 10) : '',
+      date: toDateOnlyString(r.date),
     }));
 
     return NextResponse.json({ slots, results });
@@ -153,6 +154,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'company, round, date, startTime, endTime, and interviewer are required' }, { status: 400 });
     }
 
+    const dateCheck = validatePlacementDate(date, { allowPast: false });
+    if (!dateCheck.ok) {
+      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    }
+
     const title = `${company} • ${round}`;
     const desc = JSON.stringify({ company, round, startTime, endTime, interviewer, panelNames, students, createdBy });
 
@@ -160,7 +166,7 @@ export async function POST(request) {
       `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
        VALUES ($1::uuid, $2, 'interview_slot', $3::date, $3::date, false, $4)
        RETURNING id, title, start_date, description`,
-      [tenantId, title, date, desc],
+      [tenantId, title, dateCheck.value, desc],
     );
 
     const row = inserted.rows[0];
@@ -169,7 +175,7 @@ export async function POST(request) {
         id: row.id,
         company,
         round,
-        date: String(row.start_date).slice(0, 10),
+        date: toDateOnlyString(row.start_date),
         startTime,
         endTime,
         interviewer,

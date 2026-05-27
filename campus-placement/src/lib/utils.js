@@ -2,6 +2,8 @@
  * Shared utility functions for the Campus Placement platform
  */
 
+import { parseYmdToLocalDate, toDateOnlyString } from '@/lib/dateOnly';
+
 /**
  * Format currency value (INR)
  */
@@ -38,8 +40,9 @@ export function formatLPA(amount) {
  */
 export function formatDate(date, options = {}) {
   if (!date) return '—';
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return '—';
+  const ymd = toDateOnlyString(date);
+  const d = ymd ? parseYmdToLocalDate(ymd) : new Date(date);
+  if (!d || Number.isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'short',

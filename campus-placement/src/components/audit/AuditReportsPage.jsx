@@ -3,6 +3,9 @@
 import { useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import { auditReportsFetcher } from '@/lib/auditReportsFetcher';
@@ -64,6 +67,22 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
   const { data: exportsData, mutate: mutateExports } = useSWR(exportsUrl, auditReportsFetcher, swrQuiet);
   const logs = logsData?.logs || [];
   const exportsList = exportsData?.exports || [];
+  const {
+    search: logSearch,
+    setSearch: setLogSearch,
+    sort: logSort,
+    setSort: setLogSort,
+    filtered: displayLogs,
+    filteredCount: logsFilteredCount,
+    totalCount: logsTotalCount,
+    hasActiveFilters: logsHasActiveFilters,
+    clearFilters: clearLogFilters,
+  } = useDataTableQuery(logs, {
+    getSearchText: (l) =>
+      [l.action, l.entity_type, l.entity_id, l.actor_email, l.actor_name, l.details].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const runExport = async () => {
     if (!from || !to) {
@@ -233,6 +252,22 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
         {logsLoading ? (
           <div className="skeleton skeleton-card" style={{ height: 180 }} />
         ) : (
+          <>
+            {logsTotalCount > 0 ? (
+              <DataTableToolbar
+                search={logSearch}
+                onSearchChange={setLogSearch}
+                searchPlaceholder="Search action, entity, or user…"
+                sort={logSort}
+                onSortChange={setLogSort}
+                sortOptions={COMMON_SORT_OPTIONS}
+                filteredCount={logsFilteredCount}
+                totalCount={logsTotalCount}
+                hasActiveFilters={logsHasActiveFilters}
+                onClear={clearLogFilters}
+                style={{ marginBottom: '1rem' }}
+              />
+            ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -246,7 +281,14 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((l) => (
+                {displayLogs.length === 0 && logsTotalCount > 0 ? (
+                  <tr>
+                    <td colSpan={isSuperAdmin && !tenantFilter ? 6 : 5} className="text-center text-secondary">
+                      No log entries match your search.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayLogs.map((l) => (
                   <tr key={l.id}>
                     <td>{l.created_at ? new Date(l.created_at).toLocaleString() : '—'}</td>
                     {isSuperAdmin && !tenantFilter ? (
@@ -258,7 +300,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
                     <td>{l.ip_address || '—'}</td>
                   </tr>
                 ))}
-                {logs.length === 0 && (
+                {logsTotalCount === 0 && (
                   <tr>
                     <td colSpan={isSuperAdmin && !tenantFilter ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                       No logs found for selected filters.
@@ -268,6 +310,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

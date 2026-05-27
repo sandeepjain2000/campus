@@ -92,6 +92,8 @@ const ROUTES_SORTED = [
   '/dashboard/admin/audit-reports',
   '/dashboard/admin/email-templates',
   '/dashboard/my-exports',
+  '/dashboard/admin/archived-students',
+  '/dashboard/student/jobs',
 ];
 
 /** @type {Record<string, string>} */

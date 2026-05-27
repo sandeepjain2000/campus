@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
-import { randomBytes } from 'crypto';
-import { hash } from 'bcryptjs';
-import { sendMail, STUDENT_WELCOME_SUBJECT, studentWelcomeEmailBody } from '@/lib/mailer';
+import { sendStudentWelcomeEmails } from '@/lib/mailer';
+import { SANDBOX_DEFAULT_PASSWORD, SANDBOX_PASSWORD_HASH } from '@/lib/sandboxCredentials';
 import {
   assertEmailAvailable,
   formatEmailDifferentTenantMessage,
@@ -106,8 +105,9 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const tenantRes = await query('SELECT short_code FROM tenants WHERE id = $1::uuid', [tenantId]);
+    const tenantRes = await query('SELECT short_code, name FROM tenants WHERE id = $1::uuid', [tenantId]);
     const collegeShortCode = tenantRes.rows[0]?.short_code || '';
+    const collegeName = tenantRes.rows[0]?.name || '';
     const parsed = parseCollegeStudentAdminPayload(body, { isEdit: false, collegeShortCode });
     if (parsed.error) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
@@ -162,9 +162,8 @@ export async function POST(req) {
           throw e;
         }
 
-        // New student — create user
-        generatedPass = randomBytes(10).toString('hex');
-        const passHash = await hash(generatedPass, 10);
+        // New student — create user (sandbox default password)
+        generatedPass = SANDBOX_DEFAULT_PASSWORD;
         const commEmail = userFields.communication_email || normalizedEmail;
         const newUser = await client.query(
           `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, phone, avatar_url, is_verified, is_active, email_verified_at)
@@ -173,7 +172,7 @@ export async function POST(req) {
             tenantId,
             normalizedEmail,
             commEmail,
-            passHash,
+            SANDBOX_PASSWORD_HASH,
             firstName,
             lastName,
             userFields.phone,
@@ -208,15 +207,13 @@ export async function POST(req) {
     // Send welcome email to student if new (same template as CSV bulk import)
     if (isNew && tempPass) {
       try {
-        await sendMail({
-          to: normalizedEmail,
-          subject: STUDENT_WELCOME_SUBJECT,
-          text: studentWelcomeEmailBody({
-            firstName,
-            email: normalizedEmail,
-            tempPass,
-            systemId,
-          }),
+        await sendStudentWelcomeEmails({
+          loginEmail: normalizedEmail,
+          firstName,
+          tempPass,
+          systemId,
+          collegeName,
+          userId: session.user.id,
         });
       } catch (mailErr) {
         console.error('[AddStudent] Welcome email failed:', mailErr.message);

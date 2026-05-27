@@ -1,12 +1,11 @@
-import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { transaction, query } from '@/lib/db';
-import { hash } from 'bcryptjs';
 import { parseCsvLine } from '@/lib/csvParse';
 import { validateStudentCsvHeaders } from '@/lib/collegeStudentsCsv';
-import { sendMail, STUDENT_WELCOME_SUBJECT, studentWelcomeEmailBody } from '@/lib/mailer';
+import { sendMail, sendStudentWelcomeEmails } from '@/lib/mailer';
+import { SANDBOX_DEFAULT_PASSWORD, SANDBOX_PASSWORD_HASH } from '@/lib/sandboxCredentials';
 import {
   assertEmailAvailable,
   formatEmailDifferentTenantMessage,
@@ -75,8 +74,12 @@ export async function POST(req) {
       const errors = [];
       const credentials = [];
 
-      const shortRes = await client.query('SELECT short_code FROM tenants WHERE id = $1', [tenantId]);
+      const shortRes = await client.query(
+        'SELECT short_code, name FROM tenants WHERE id = $1',
+        [tenantId],
+      );
       const shortCode = shortRes.rows[0]?.short_code || '';
+      const collegeName = shortRes.rows[0]?.name || '';
 
       for (let i = 1; i < allLines.length; i++) {
         const cells = parseCsvLine(allLines[i]);
@@ -167,20 +170,19 @@ export async function POST(req) {
               throw e;
             }
 
-            // Genuinely new student — create account
-            const tempPass = randomBytes(10).toString('hex');
-            const passHash = await hash(tempPass, 10);
+            // Genuinely new student — create account (sandbox default password; no CSV password column)
             const newUser = await client.query(
               `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active, email_verified_at)
                VALUES ($1, $2, $2, $3, 'student', $4, $5, true, true, NOW()) RETURNING id`,
-              [tenantId, email, passHash, firstName || 'Student', lastName]
+              [tenantId, email, SANDBOX_PASSWORD_HASH, firstName || 'Student', lastName]
             );
             userId = newUser.rows[0].id;
             credentials.push({
               email,
-              tempPass,
+              tempPass: SANDBOX_DEFAULT_PASSWORD,
               firstName: firstName || 'Student',
               systemId: rowSystemId,
+              collegeName,
             });
             console.log(`[BulkUpload] Row ${i+1}: New student created — Roll No "${roll}", email "${email}" (id=${userId})`);
           }
@@ -278,15 +280,12 @@ export async function POST(req) {
 
     for (const c of results.credentials) {
       try {
-        await sendMail({
-          to: c.email,
-          subject: STUDENT_WELCOME_SUBJECT,
-          text: studentWelcomeEmailBody({
-            firstName: c.firstName,
-            email: c.email,
-            tempPass: c.tempPass,
-            systemId: c.systemId,
-          }),
+        await sendStudentWelcomeEmails({
+          loginEmail: c.email,
+          firstName: c.firstName,
+          tempPass: c.tempPass,
+          systemId: c.systemId,
+          collegeName: c.collegeName,
         });
       } catch (mailErr) {
         console.error('[BulkUpload] Welcome email failed:', c.email, mailErr.message);

@@ -2,6 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
@@ -172,6 +175,21 @@ function EmployerAssessmentUploadsContent() {
   };
 
   const uploads = uploadsData?.uploads || [];
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayUploads,
+    filteredCount,
+    totalCount: uploadsTotalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(uploads, {
+    getSearchText: (u) => [u.original_file_name, u.drive_id, u.job_id, u.id].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   return (
     <div className="animate-fadeIn">
@@ -195,7 +213,7 @@ function EmployerAssessmentUploadsContent() {
           <ExportCsvSplitButton
             mode="dual"
             filenameBase="employer_assessment_uploads"
-            currentCount={uploads.length}
+            currentCount={displayUploads.length}
             fullCount={uploads.length}
             getRows={() => ({
               headers: ['id', 'created_at', 'target', 'original_file_name', 'total_rows', 'accepted_rows', 'rejected_rows'],
@@ -338,6 +356,22 @@ function EmployerAssessmentUploadsContent() {
         {isLoading ? (
           <div className="skeleton skeleton-card" style={{ height: 180 }} />
         ) : (
+          <>
+            {uploadsTotalCount > 0 ? (
+              <DataTableToolbar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search file name or target…"
+                sort={sort}
+                onSortChange={setSort}
+                sortOptions={COMMON_SORT_OPTIONS}
+                filteredCount={filteredCount}
+                totalCount={uploadsTotalCount}
+                hasActiveFilters={hasActiveFilters}
+                onClear={clearFilters}
+                style={{ marginBottom: '1rem' }}
+              />
+            ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -352,7 +386,14 @@ function EmployerAssessmentUploadsContent() {
                 </tr>
               </thead>
               <tbody>
-                {uploads.map((u) => (
+                {displayUploads.length === 0 && uploadsTotalCount > 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No uploads match your search.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayUploads.map((u) => (
                   <tr key={u.id}>
                     <td>{u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</td>
                     <td>{u.drive_id ? `Drive (${String(u.drive_id).slice(0, 8)}...)` : `Job (${String(u.job_id).slice(0, 8)}...)`}</td>
@@ -375,7 +416,7 @@ function EmployerAssessmentUploadsContent() {
                     </td>
                   </tr>
                 ))}
-                {uploads.length === 0 && (
+                {uploadsTotalCount === 0 && (
                   <tr>
                     <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                       No uploads yet.
@@ -385,6 +426,7 @@ function EmployerAssessmentUploadsContent() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

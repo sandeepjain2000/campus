@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
 
 async function getTenant(tenantId) {
   const res = await query(`SELECT id, name, settings FROM tenants WHERE id = $1::uuid LIMIT 1`, [tenantId]);
@@ -13,7 +14,39 @@ async function savePlans(tenantId, settings) {
     `UPDATE tenants
      SET settings = $1::jsonb, updated_at = NOW()
      WHERE id = $2::uuid`,
-    [JSON.stringify(settings), tenantId]
+    [JSON.stringify(settings), tenantId],
+  );
+}
+
+async function syncEmployerInterviewToCollegeCalendar({
+  tenantId,
+  employerUserId,
+  campusName,
+  round,
+  dateYmd,
+  time,
+  mode,
+  panelNames,
+  assigned,
+  planId,
+}) {
+  const title = `${campusName || 'Employer'} • ${round}`;
+  const desc = [
+    `Employer interview slot`,
+    time ? `Time: ${time}` : '',
+    mode ? `Mode: ${mode}` : '',
+    panelNames ? `Panel: ${panelNames}` : '',
+    assigned ? `Assigned: ${assigned}` : '',
+    `Plan: ${planId}`,
+    `Employer user: ${employerUserId}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  await query(
+    `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
+     VALUES ($1::uuid, $2, 'interview_slot', $3::date, $3::date, false, $4)`,
+    [tenantId, title, dateYmd, desc],
   );
 }
 
@@ -31,7 +64,9 @@ export async function GET(request) {
     if (!tenant) return NextResponse.json({ rows: [] });
 
     const list = Array.isArray(tenant.settings?.employerInterviewPlans) ? tenant.settings.employerInterviewPlans : [];
-    const rows = list.filter((r) => r.employerUserId === session.user.id);
+    const rows = list
+      .filter((r) => r.employerUserId === session.user.id)
+      .map((r) => ({ ...r, date: toDateOnlyString(r.date) || r.date }));
     return NextResponse.json({ rows, campusName: tenant.name });
   } catch (error) {
     console.error('GET /api/employer/interviews', error);
@@ -47,10 +82,11 @@ export async function POST(request) {
     }
     const userId = session.user.id || session.user.sub;
     const employerRes = await query(
-      `SELECT id FROM employer_profiles WHERE user_id = $1::uuid LIMIT 1`,
+      `SELECT id, company_name FROM employer_profiles WHERE user_id = $1::uuid LIMIT 1`,
       [userId],
     );
     const employerId = employerRes.rows[0]?.id;
+    const companyName = employerRes.rows[0]?.company_name || 'Employer';
     if (!employerId) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
     }
@@ -83,17 +119,24 @@ export async function POST(request) {
       return NextResponse.json({ error: 'round, date and time are required' }, { status: 400 });
     }
 
+    const dateCheck = validatePlacementDate(date, { allowPast: false });
+    if (!dateCheck.ok) {
+      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    }
+
     const tenant = await getTenant(campusId);
     if (!tenant) return NextResponse.json({ error: 'Campus not found' }, { status: 404 });
 
+    const planId = `ei-${Date.now()}`;
     const settings = tenant.settings || {};
     const rows = Array.isArray(settings.employerInterviewPlans) ? settings.employerInterviewPlans : [];
     rows.unshift({
-      id: `ei-${Date.now()}`,
+      id: planId,
       employerUserId: session.user.id,
       campus: campus || tenant.name,
+      companyName,
       round,
-      date,
+      date: dateCheck.value,
       time,
       mode,
       assigned: Number.isFinite(assigned) ? assigned : 0,
@@ -101,7 +144,30 @@ export async function POST(request) {
     });
     settings.employerInterviewPlans = rows;
     await savePlans(campusId, settings);
-    return NextResponse.json({ rows: rows.filter((r) => r.employerUserId === session.user.id) });
+
+    try {
+      await syncEmployerInterviewToCollegeCalendar({
+        tenantId: campusId,
+        employerUserId: session.user.id,
+        campusName: campus || tenant.name,
+        round,
+        dateYmd: dateCheck.value,
+        time,
+        mode,
+        panelNames,
+        assigned: Number.isFinite(assigned) ? assigned : 0,
+        planId,
+      });
+    } catch (calErr) {
+      console.warn('employer interview college_calendar sync:', calErr?.message || calErr);
+    }
+
+    return NextResponse.json({
+      rows: rows.filter((r) => r.employerUserId === session.user.id).map((r) => ({
+        ...r,
+        date: toDateOnlyString(r.date) || r.date,
+      })),
+    });
   } catch (error) {
     console.error('POST /api/employer/interviews', error);
     return NextResponse.json({ error: 'Failed to save interview plan' }, { status: 500 });

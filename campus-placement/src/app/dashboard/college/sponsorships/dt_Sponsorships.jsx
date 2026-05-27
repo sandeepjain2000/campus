@@ -1,5 +1,8 @@
 'use client';
 import { useMemo, useState } from 'react';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
 
@@ -43,6 +46,22 @@ export default function CollegeSponsorshipsPage() {
 
   const sponsorshipLevels = useMemo(() => (Array.isArray(data?.categories) ? data.categories : []), [data]);
   const payments = useMemo(() => (Array.isArray(data?.payments) ? data.payments : []), [data]);
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayPayments,
+    filteredCount,
+    totalCount: paymentsTotalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(payments, {
+    getSearchText: (p) =>
+      [p.companyName, p.tierName, p.method, p.status, p.billingLegalName, p.reference].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
   const collegeName = data?.collegeName || 'Your Institution';
   const placementEmail = String(settingsData?.placementOfficer?.email || '').trim();
 
@@ -151,9 +170,23 @@ export default function CollegeSponsorshipsPage() {
           <strong>legal name, PAN, and GSTIN</strong> appear under each company. Use <strong>Tax receipt</strong> only if
           the automatic receipt did not go out (e.g. SMTP was off); it is disabled once a receipt is logged.
         </p>
-        {payments.length === 0 ? (
+        {paymentsTotalCount === 0 ? (
           <p className="text-sm text-secondary" style={{ margin: 0 }}>No payments recorded yet.</p>
         ) : (
+          <>
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search employer, tier, or status…"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={paymentsTotalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+              style={{ marginBottom: '1rem' }}
+            />
           <div className="table-container" style={{ overflowX: 'auto' }}>
             <table className="data-table">
               <thead>
@@ -169,7 +202,14 @@ export default function CollegeSponsorshipsPage() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
+                {displayPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center text-secondary">
+                      No payments match your search.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayPayments.map((p) => (
                   <tr key={p.id}>
                     <td className="text-sm">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}</td>
                     <td>
@@ -216,6 +256,7 @@ export default function CollegeSponsorshipsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { Eye, Send, X } from 'lucide-react';
 
@@ -71,13 +74,30 @@ export default function EmployerCampusGuestNeedsPage() {
     return 'pending';
   };
 
-  const filteredRows = useMemo(() => {
+  const tabFilteredRows = useMemo(() => {
     return rows.filter((item) => {
       if (typeFilter && item.kind !== typeFilter) return false;
       if (!confirmationFilter) return true;
       return confirmationStatus(item) === confirmationFilter;
     });
   }, [rows, confirmationFilter, typeFilter]);
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: filteredRows,
+    filteredCount,
+    totalCount: tabTotalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(tabFilteredRows, {
+    getSearchText: (item) =>
+      [item.collegeName, item.title, item.summary, KIND_LABEL[item.kind], item.timingLabel].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const openConfirm = async (item) => {
     setConfirmItem(item);
@@ -202,10 +222,25 @@ export default function EmployerCampusGuestNeedsPage() {
               </select>
             </label>
             <span className="text-xs text-secondary" style={{ marginLeft: 'auto' }}>
-              Showing {filteredRows.length} of {rows.length}
+              Showing {filteredCount} of {rows.length}
             </span>
           </div>
         </div>
+        {tabTotalCount > 0 ? (
+          <DataTableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search college, title, or summary…"
+            sort={sort}
+            onSortChange={setSort}
+            sortOptions={COMMON_SORT_OPTIONS}
+            filteredCount={filteredCount}
+            totalCount={tabTotalCount}
+            hasActiveFilters={hasActiveFilters}
+            onClear={clearFilters}
+            style={{ marginBottom: '1rem' }}
+          />
+        ) : null}
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -221,6 +256,13 @@ export default function EmployerCampusGuestNeedsPage() {
               </tr>
             </thead>
             <tbody>
+              {filteredRows.length === 0 && tabTotalCount > 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center text-secondary">
+                    No listings match your search.
+                  </td>
+                </tr>
+              ) : null}
               {filteredRows.map((item) => {
                 const sent = Boolean(item.confirmationSentAt);
                 const canSend = item.canConfirm && !sent;

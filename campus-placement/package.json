@@ -28,6 +28,7 @@
     "seed:college-showcase-sql": "node scripts/generate_college_showcase_seed.js",
     "db:exec-sql-file": "node scripts/db_exec_sql_file.js",
     "db:reset-passwords": "node scripts/db_exec_sql_file.js db/migrations/062_reset_all_passwords_admin123.sql",
+    "db:migrate:064": "node scripts/db_exec_sql_file.js db/migrations/064_fix_year_2001_placement_dates.sql",
     "db:upsert-college-showcase": "node scripts/upsert_college_showcase_data.js",
     "seed:all-scenarios": "node scripts/db_exec_sql_file.js db/seeds/99_all_scenarios_extension.sql",
     "seed:college-applications-demo": "node scripts/seed_college_applications_demo.js",

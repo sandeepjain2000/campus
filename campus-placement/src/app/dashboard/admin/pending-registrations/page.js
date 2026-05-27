@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, PENDING_ROLE_FILTER_OPTIONS, roleFilterFn } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 
@@ -31,6 +34,28 @@ export default function AdminPendingRegistrationsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(rows, {
+    getSearchText: (r) =>
+      [r.label, r.firstName, r.lastName, r.email, r.role === 'college_admin' ? 'college' : 'employer']
+        .filter(Boolean)
+        .join(' '),
+    filterFn: roleFilterFn,
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const act = async (userId, action, reason) => {
     setProcessing(userId + action);
@@ -76,8 +101,8 @@ export default function AdminPendingRegistrationsPage() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <ExportCsvSplitButton 
             filenameBase="admin_pending_registrations" 
-            currentCount={rows.length} 
-            fullCount={rows.length} 
+            currentCount={displayRows.length}
+            fullCount={rows.length}
             getRows={getExportRows} 
           />
           <Link href="/dashboard/admin/colleges/add" className="btn btn-secondary btn-sm">
@@ -92,6 +117,25 @@ export default function AdminPendingRegistrationsPage() {
         </div>
       </div>
 
+      {!loading && totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search party, contact, or email…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={PENDING_ROLE_FILTER_OPTIONS}
+          filterLabel="Role"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
+
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -105,7 +149,14 @@ export default function AdminPendingRegistrationsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {displayRows.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center text-secondary">
+                  No registrations match your search or filters.
+                </td>
+              </tr>
+            ) : null}
+            {displayRows.map((r) => (
               <tr key={r.id}>
                 <td className="font-semibold">{r.label}</td>
                 <td>
@@ -146,7 +197,7 @@ export default function AdminPendingRegistrationsPage() {
                 </td>
               </tr>
             ))}
-            {!loading && rows.length === 0 ? (
+            {!loading && totalCount === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center text-secondary">
                   No accounts awaiting approval.

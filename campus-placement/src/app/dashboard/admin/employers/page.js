@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import {
+  COMMON_SORT_OPTIONS,
+  EMPLOYER_VERIFIED_FILTER_OPTIONS,
+  employerVerifiedFilterFn,
+} from '@/lib/tableQueryPresets';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import AdminRecordModal from '@/components/admin/AdminRecordModal';
@@ -68,6 +75,24 @@ export default function AdminEmployersPage() {
   useEffect(() => {
     loadEmployers();
   }, [loadEmployers]);
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayEmployers,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(employers, {
+    getSearchText: (e) => [e.name, e.industry].filter(Boolean).join(' '),
+    filterFn: employerVerifiedFilterFn,
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
 
   const closePanel = () => {
     setPanelMode(null);
@@ -156,12 +181,31 @@ export default function AdminEmployersPage() {
           </Link>
           <ExportCsvSplitButton
             filenameBase="admin_employers"
-            currentCount={employers.length}
+            currentCount={displayEmployers.length}
             fullCount={employers.length}
             getRows={getExportRows}
           />
         </div>
       </div>
+
+      {!isLoading && totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search company or industry…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={EMPLOYER_VERIFIED_FILTER_OPTIONS}
+          filterLabel="Verification"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
 
       <div className="table-container">
         <table className="data-table">
@@ -175,7 +219,14 @@ export default function AdminEmployersPage() {
             </tr>
           </thead>
           <tbody>
-            {employers.map((e) => (
+            {displayEmployers.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center text-secondary">
+                  No employers match your search or filters.
+                </td>
+              </tr>
+            ) : null}
+            {displayEmployers.map((e) => (
               <tr key={e.id}>
                 <td className="font-semibold">
                   <CompanyNameLink name={e.name} website={e.website} />
@@ -199,7 +250,7 @@ export default function AdminEmployersPage() {
                 </td>
               </tr>
             ))}
-            {!isLoading && employers.length === 0 ? (
+            {!isLoading && totalCount === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center text-secondary">
                   {listError || 'No employers found.'}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { validatePlacementDate } from '@/lib/dateOnly';
 
 export async function GET() {
   try {
@@ -50,10 +51,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'title, eventType and startDate are required' }, { status: 400 });
     }
 
+    const startCheck = validatePlacementDate(startDate, { allowPast: false });
+    if (!startCheck.ok) {
+      return NextResponse.json({ error: startCheck.error }, { status: 400 });
+    }
+    const endCheck = validatePlacementDate(endDate || startDate, { allowPast: false });
+    if (!endCheck.ok) {
+      return NextResponse.json({ error: endCheck.error }, { status: 400 });
+    }
+
     await query(
       `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
        VALUES ($1::uuid, $2, $3, $4::date, $5::date, $6, $7)`,
-      [tenantId, title, eventType, startDate, endDate || startDate, isBlocking, description || null]
+      [tenantId, title, eventType, startCheck.value, endCheck.value, isBlocking, description || null]
     );
 
     return NextResponse.json({ success: true });

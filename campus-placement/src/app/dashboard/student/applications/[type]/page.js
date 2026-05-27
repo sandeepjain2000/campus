@@ -14,6 +14,9 @@ import { ClipboardList, Eye, X } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { use, useMemo } from 'react';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMPANY_SORT_OPTIONS, applicationSearchText } from '@/lib/tableQueryPresets';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -85,7 +88,7 @@ export default function StudentApplicationsPage({ params }) {
   }
 
   const { addToast } = useToast();
-  const [filter, setFilter] = useState('');
+  const [statusTab, setStatusTab] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
   const apiEndpoint = type === 'drives' ? '/api/student/applications' : '/api/student/program-applications';
@@ -131,14 +134,26 @@ export default function StudentApplicationsPage({ params }) {
     return allApplications.filter(a => appTypeOf(a) === typeMatcher);
   }, [allApplications, typeMatcher]);
 
-  const filtered = useMemo(
-    () =>
-      typeApplications.filter((a) => {
-        if (filter && a.status !== filter) return false;
-        return true;
-      }),
-    [typeApplications, filter],
+  const tabFiltered = useMemo(
+    () => typeApplications.filter((a) => !statusTab || a.status === statusTab),
+    [typeApplications, statusTab],
   );
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayApplications,
+    filteredCount,
+    totalCount: tabTotalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(tabFiltered, {
+    getSearchText: applicationSearchText,
+    sortOptions: COMPANY_SORT_OPTIONS,
+    defaultSort: 'company_asc',
+  });
 
   const statusCounts = {
     all: typeApplications.length,
@@ -176,7 +191,7 @@ export default function StudentApplicationsPage({ params }) {
   };
 
   const buildCsvRows = (scope) => {
-    const dataset = scope === 'full' ? typeApplications : filtered;
+    const dataset = scope === 'full' ? typeApplications : displayApplications;
     const headers = ['Company', 'Role', 'Status', 'Current Stage', 'Applied Date'];
     if (type === 'jobs') headers.push('Drive Date');
     const rows = dataset.map((app) => {
@@ -221,7 +236,7 @@ export default function StudentApplicationsPage({ params }) {
           </a>
           <ExportCsvSplitButton
             filenameBase={`${type}_applications`}
-            currentCount={filtered.length}
+            currentCount={displayApplications.length}
             fullCount={typeApplications.length}
             getRows={buildCsvRows}
           />
@@ -230,18 +245,33 @@ export default function StudentApplicationsPage({ params }) {
 
       {/* Status Tabs */}
       <div className="tabs">
-        <button className={`tab ${filter === '' ? 'active' : ''}`} onClick={() => setFilter('')}>All ({statusCounts.all})</button>
-        <button className={`tab ${filter === 'applied' ? 'active' : ''}`} onClick={() => setFilter('applied')}>Applied ({statusCounts.applied})</button>
-        <button className={`tab ${filter === 'shortlisted' ? 'active' : ''}`} onClick={() => setFilter('shortlisted')}>Shortlisted ({statusCounts.shortlisted})</button>
-        <button className={`tab ${filter === 'selected' ? 'active' : ''}`} onClick={() => setFilter('selected')}>Selected ({statusCounts.selected})</button>
-        <button className={`tab ${filter === 'rejected' ? 'active' : ''}`} onClick={() => setFilter('rejected')}>Rejected ({statusCounts.rejected})</button>
+        <button className={`tab ${statusTab === '' ? 'active' : ''}`} onClick={() => setStatusTab('')}>All ({statusCounts.all})</button>
+        <button className={`tab ${statusTab === 'applied' ? 'active' : ''}`} onClick={() => setStatusTab('applied')}>Applied ({statusCounts.applied})</button>
+        <button className={`tab ${statusTab === 'shortlisted' ? 'active' : ''}`} onClick={() => setStatusTab('shortlisted')}>Shortlisted ({statusCounts.shortlisted})</button>
+        <button className={`tab ${statusTab === 'selected' ? 'active' : ''}`} onClick={() => setStatusTab('selected')}>Selected ({statusCounts.selected})</button>
+        <button className={`tab ${statusTab === 'rejected' ? 'active' : ''}`} onClick={() => setStatusTab('rejected')}>Rejected ({statusCounts.rejected})</button>
       </div>
 
       {/* Tabular Applications */}
       <div style={{ marginTop: '1.5rem' }}>
         {isLoading && <PageLoading message="Loading applications…" inline />}
 
-        {!isLoading && filtered.length > 0 && (
+        {!isLoading && tabTotalCount > 0 && (
+          <DataTableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search company, role, or status…"
+            sort={sort}
+            onSortChange={setSort}
+            sortOptions={COMPANY_SORT_OPTIONS}
+            filteredCount={filteredCount}
+            totalCount={tabTotalCount}
+            hasActiveFilters={hasActiveFilters}
+            onClear={clearFilters}
+          />
+        )}
+
+        {!isLoading && tabTotalCount > 0 && (
           <div className="card card-table-shell">
             <div className="table-container">
             <table className="data-table">
@@ -257,7 +287,14 @@ export default function StudentApplicationsPage({ params }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(app => (
+                {displayApplications.length === 0 ? (
+                  <tr>
+                    <td colSpan={type === 'jobs' ? 7 : 6} className="text-center text-secondary">
+                      No applications match your search.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayApplications.map(app => (
                   <tr key={app.id}>
                     <td style={{ paddingLeft: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -301,31 +338,31 @@ export default function StudentApplicationsPage({ params }) {
           </div>
         )}
 
-        {!isLoading && filtered.length === 0 && (
+        {!isLoading && tabTotalCount === 0 && (
           <div className="empty-state-container" style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)' }}>
             <div style={{ background: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
               <span style={{ fontSize: '1.75rem' }}>📝</span>
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-              {filter === '' ? `No ${type} applications yet` : `No ${filter} applications`}
+              {statusTab === '' ? `No ${type} applications yet` : `No ${statusTab} applications`}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
-              {filter === '' 
+              {statusTab === '' 
                 ? emptyMessage 
-                : `You don't have any applications in the '${filter}' stage at the moment.`}
+                : `You don't have any applications in the '${statusTab}' stage at the moment.`}
             </p>
-            {filter === '' && (
+            {statusTab === '' && (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <a href={browseHref} className="btn btn-primary">
                   {browseText}
                 </a>
               </div>
             )}
-            {filter !== '' && (
+            {statusTab !== '' && (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <button
                     className="btn btn-secondary"
-                    onClick={() => setFilter('')}
+                    onClick={() => setStatusTab('')}
                   >
                     View All
                   </button>

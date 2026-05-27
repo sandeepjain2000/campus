@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, STATUS_FILTER_OPTIONS, statusActiveFilterFn } from '@/lib/tableQueryPresets';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import AdminRecordModal from '@/components/admin/AdminRecordModal';
@@ -68,6 +71,24 @@ export default function AdminCollegesPage() {
   useEffect(() => {
     loadColleges();
   }, [loadColleges]);
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayColleges,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(colleges, {
+    getSearchText: (c) => [c.name, c.city, c.naac].filter(Boolean).join(' '),
+    filterFn: statusActiveFilterFn,
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
 
   const closePanel = () => {
     setPanelMode(null);
@@ -168,7 +189,7 @@ export default function AdminCollegesPage() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <ExportCsvSplitButton
             filenameBase="admin_colleges"
-            currentCount={colleges.length}
+            currentCount={displayColleges.length}
             fullCount={colleges.length}
             getRows={getExportRows}
           />
@@ -180,6 +201,25 @@ export default function AdminCollegesPage() {
           </Link>
         </div>
       </div>
+
+      {!isLoading && totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search college, city, or NAAC…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={STATUS_FILTER_OPTIONS}
+          filterLabel="Status"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
 
       <div className="table-container">
         <table className="data-table">
@@ -196,7 +236,14 @@ export default function AdminCollegesPage() {
             </tr>
           </thead>
           <tbody>
-            {colleges.map((c) => (
+            {displayColleges.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={8} className="text-center text-secondary">
+                  No colleges match your search or filters.
+                </td>
+              </tr>
+            ) : null}
+            {displayColleges.map((c) => (
               <tr key={c.id}>
                 <td className="font-semibold">{c.name}</td>
                 <td>{c.city}</td>
@@ -219,7 +266,7 @@ export default function AdminCollegesPage() {
                 </td>
               </tr>
             ))}
-            {!isLoading && colleges.length === 0 ? (
+            {!isLoading && totalCount === 0 ? (
               <tr>
                 <td colSpan={8} className="text-center text-secondary">
                   {listError || 'No colleges found.'}

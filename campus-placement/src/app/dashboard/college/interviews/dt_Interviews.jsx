@@ -1,6 +1,9 @@
 'use client';
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMPANY_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import CompanyNameLink from '@/components/CompanyNameLink';
@@ -39,6 +42,21 @@ export default function CollegeInterviewsPage() {
   const [section, setSection] = useState('schedule');
   const slots = Array.isArray(data?.slots) ? data.slots : [];
   const results = Array.isArray(data?.results) ? data.results : [];
+  const {
+    search: resultsSearch,
+    setSearch: setResultsSearch,
+    sort: resultsSort,
+    setSort: setResultsSort,
+    filtered: displayResults,
+    filteredCount: resultsFilteredCount,
+    totalCount: resultsTotalCount,
+    hasActiveFilters: resultsHasActiveFilters,
+    clearFilters: clearResultsFilters,
+  } = useDataTableQuery(results, {
+    getSearchText: (r) => [r.student, r.company, r.round, r.outcome].filter(Boolean).join(' '),
+    sortOptions: COMPANY_SORT_OPTIONS,
+    defaultSort: 'company_asc',
+  });
   const [form, setForm] = useState({
     company: '',
     round: '',
@@ -103,9 +121,9 @@ export default function CollegeInterviewsPage() {
   const getResultsCsv = useCallback(
     (_scope) => ({
       headers: ['Student', 'Company', 'Round', 'Outcome', 'Date'],
-      rows: results.map((r) => [r.student, r.company, r.round, r.outcome, r.date]),
+      rows: displayResults.map((r) => [r.student, r.company, r.round, r.outcome, r.date]),
     }),
-    [results],
+    [displayResults],
   );
 
   return (
@@ -237,6 +255,20 @@ export default function CollegeInterviewsPage() {
               are captured for the company workflow but are <strong>not displayed here</strong>.
             </p>
           </div>
+          {resultsTotalCount > 0 ? (
+            <DataTableToolbar
+              search={resultsSearch}
+              onSearchChange={setResultsSearch}
+              searchPlaceholder="Search student, company, or outcome…"
+              sort={resultsSort}
+              onSortChange={setResultsSort}
+              sortOptions={COMPANY_SORT_OPTIONS}
+              filteredCount={resultsFilteredCount}
+              totalCount={resultsTotalCount}
+              hasActiveFilters={resultsHasActiveFilters}
+              onClear={clearResultsFilters}
+            />
+          ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -249,7 +281,14 @@ export default function CollegeInterviewsPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((r) => (
+                {displayResults.length === 0 && resultsTotalCount > 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center text-secondary">
+                      No results match your search.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayResults.map((r) => (
                   <tr key={r.id}>
                     <td className="font-semibold">{r.student}</td>
                     <td>

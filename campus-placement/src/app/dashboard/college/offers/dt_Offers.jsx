@@ -2,6 +2,9 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
 import { FileUp, Send } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
 import { downloadCollegeOffersTemplate } from '@/lib/collegeOffersCsvTemplate';
@@ -10,6 +13,7 @@ import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import CompanyNameLink from '@/components/CompanyNameLink';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -37,6 +41,29 @@ export default function DtCollegeOffers() {
   const { data: studentsPayload } = useSWR('/api/college/students', fetcher);
 
   const offers = Array.isArray(data?.offers) ? data.offers : [];
+  const offerFilterOptions = useMemo(
+    () => [FILTER_ALL, ...STATUS_OPTIONS.map((s) => ({ value: s, label: formatStatus(s) }))],
+    [],
+  );
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayOffers,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(offers, {
+    getSearchText: (o) =>
+      [o.student_name, o.roll_number, o.college_name, o.job_title, o.location, o.status].filter(Boolean).join(' '),
+    filterFn: (row, f) => !f || String(row.status || '') === f,
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
   const summary = data?.summary || { total: 0, accepted: 0, pending: 0, rejected: 0, avgSalary: 0 };
   const students = useMemo(() => {
     const list = Array.isArray(studentsPayload?.students)
@@ -61,6 +88,7 @@ export default function DtCollegeOffers() {
     salary: '',
     location: '',
     deadline: '',
+    joiningDate: '',
     status: 'pending',
   });
   const [saving, setSaving] = useState(false);
@@ -75,9 +103,12 @@ export default function DtCollegeOffers() {
       salary: '',
       location: '',
       deadline: '',
+      joiningDate: '',
       status: 'pending',
     });
   };
+
+  const todayYmd = useMemo(() => toDateOnlyString(new Date()), []);
 
   const downloadAssessmentStarter = async () => {
     try {
@@ -132,6 +163,7 @@ export default function DtCollegeOffers() {
           salary: Number(form.salary || 0),
           location: form.location.trim() || null,
           deadline: form.deadline || null,
+          joiningDate: form.joiningDate || null,
           status: form.status,
         }),
       });
@@ -156,7 +188,8 @@ export default function DtCollegeOffers() {
       jobTitle: row.job_title || '',
       salary: row.salary != null ? String(row.salary) : '',
       location: row.location || '',
-      deadline: row.deadline ? String(row.deadline).slice(0, 10) : '',
+      deadline: row.deadline ? toDateOnlyString(row.deadline) : '',
+      joiningDate: row.joining_date ? toDateOnlyString(row.joining_date) : '',
       status: row.status || 'pending',
     });
   };
@@ -179,6 +212,7 @@ export default function DtCollegeOffers() {
           salary: Number(form.salary || 0),
           location: form.location.trim() || null,
           deadline: form.deadline || null,
+          joiningDate: form.joiningDate || null,
           status: form.status,
         }),
       });
@@ -409,8 +443,17 @@ export default function DtCollegeOffers() {
               <input
                 className="form-input"
                 type="date"
+                min={todayYmd}
                 value={form.deadline}
                 onChange={(e) => setForm((p) => ({ ...p, deadline: e.target.value }))}
+              />
+              <label className="form-label">Joining date</label>
+              <input
+                className="form-input"
+                type="date"
+                min={form.deadline || todayYmd}
+                value={form.joiningDate}
+                onChange={(e) => setForm((p) => ({ ...p, joiningDate: e.target.value }))}
               />
             </div>
             <div className="form-group">
@@ -434,6 +477,25 @@ export default function DtCollegeOffers() {
           </div>
         </div>
       )}
+
+      {!isLoading && totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search student, role, or company…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={offerFilterOptions}
+          filterLabel="Status"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
 
       <div className="card desktop-table" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
         <div className="table-container" style={{ border: 'none' }}>
@@ -468,9 +530,16 @@ export default function DtCollegeOffers() {
                 </td>
               </tr>
             ) : null}
+            {!isLoading && !error && displayOffers.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={OFFER_TABLE_COLUMNS.length} className="text-center text-secondary">
+                  No offers match your search or filters.
+                </td>
+              </tr>
+            ) : null}
             {!isLoading &&
               !error &&
-              offers.map((offer) => (
+              displayOffers.map((offer) => (
               <tr key={offer.id}>
                 <td className="font-semibold" style={{ paddingLeft: '1.5rem' }}>
                   {offer.student_name}

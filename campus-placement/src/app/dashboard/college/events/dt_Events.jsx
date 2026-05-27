@@ -2,6 +2,9 @@
 
 import useSWR from 'swr';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { PartyPopper, CalendarDays } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -15,6 +18,22 @@ const fetcher = async (url) => {
 export default function dt_Events() {
   const { data, isLoading, error } = useSWR('/api/college/events', fetcher);
   const events = Array.isArray(data?.events) ? data.events : [];
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayEvents,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(events, {
+    getSearchText: (ev) => [ev.title, ev.event_type, ev.is_blocking ? 'blocking' : 'non-blocking'].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -42,7 +61,7 @@ export default function dt_Events() {
 
       {!isLoading && !error && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
-          {events.length === 0 ? (
+          {totalCount === 0 ? (
             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
               <CalendarDays size={48} style={{ margin: '0 auto 1rem', opacity: 0.25 }} />
               <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No events scheduled</div>
@@ -51,6 +70,20 @@ export default function dt_Events() {
               </p>
             </div>
           ) : (
+            <>
+              <DataTableToolbar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search title or type…"
+                sort={sort}
+                onSortChange={setSort}
+                sortOptions={COMMON_SORT_OPTIONS}
+                filteredCount={filteredCount}
+                totalCount={totalCount}
+                hasActiveFilters={hasActiveFilters}
+                onClear={clearFilters}
+                style={{ margin: '1rem 1rem 0', border: '1px solid var(--border-default)' }}
+              />
             <div className="table-container" style={{ border: 'none' }}>
               <table className="data-table">
                 <thead>
@@ -62,7 +95,14 @@ export default function dt_Events() {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((ev) => (
+                  {displayEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center text-secondary">
+                        No events match your search.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {displayEvents.map((ev) => (
                     <tr key={ev.id}>
                       <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>{ev.title || '—'}</td>
                       <td><span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>{ev.event_type || 'event'}</span></td>
@@ -77,6 +117,7 @@ export default function dt_Events() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       )}

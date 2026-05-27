@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { formatDate } from '@/lib/utils';
 import { getCurrentAcademicYear } from '@/lib/academicYear';
-import { BarChart2, TrendingUp, DollarSign, Building2, Trophy, Search } from 'lucide-react';
+import { BarChart2, TrendingUp, DollarSign, Building2, Trophy } from 'lucide-react';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -22,7 +25,6 @@ export default function CollegeReportsPage() {
   const YOY = Array.isArray(data?.yoy) ? data.yoy : [];
   const STUDENT_COMPANY_EVENTS = Array.isArray(data?.studentCompanyEvents) ? data.studentCompanyEvents : [];
   const summary = data?.summary || { placementRate: 0, avgPackage: 0, highestPackage: 0, companiesVisited: 0 };
-  const [studentReportSearch, setStudentReportSearch] = useState('');
   const [studentReportCompany, setStudentReportCompany] = useState('');
   const [currentAcademicYear, setCurrentAcademicYear] = useState(getCurrentAcademicYear());
 
@@ -43,14 +45,26 @@ export default function CollegeReportsPage() {
   }, []);
 
   const studentEventCompanies = useMemo(() => Array.from(new Set(STUDENT_COMPANY_EVENTS.map((r) => r.company))).sort(), [STUDENT_COMPANY_EVENTS]);
-  const filteredStudentEvents = useMemo(() => {
-    const q = studentReportSearch.trim().toLowerCase();
-    return STUDENT_COMPANY_EVENTS.filter((r) => {
-      if (studentReportCompany && r.company !== studentReportCompany) return false;
-      if (!q) return true;
-      return r.student.toLowerCase().includes(q) || r.roll.toLowerCase().includes(q) || r.company.toLowerCase().includes(q) || r.eventType.toLowerCase().includes(q) || r.outcome.toLowerCase().includes(q);
-    });
-  }, [STUDENT_COMPANY_EVENTS, studentReportSearch, studentReportCompany]);
+  const companyFilteredEvents = useMemo(
+    () =>
+      STUDENT_COMPANY_EVENTS.filter((r) => !studentReportCompany || r.company === studentReportCompany),
+    [STUDENT_COMPANY_EVENTS, studentReportCompany],
+  );
+  const {
+    search: studentReportSearch,
+    setSearch: setStudentReportSearch,
+    sort: studentReportSort,
+    setSort: setStudentReportSort,
+    filtered: filteredStudentEvents,
+    filteredCount: studentEventsFilteredCount,
+    totalCount: studentEventsTotalCount,
+    hasActiveFilters: studentEventsHasActiveFilters,
+    clearFilters: clearStudentEventsFilters,
+  } = useDataTableQuery(companyFilteredEvents, {
+    getSearchText: (r) => [r.student, r.roll, r.dept, r.company, r.eventType, r.outcome, r.attended].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'name_asc',
+  });
 
   const reportExports = useMemo(() => [
     { id: 'dept', label: 'Department-wise placement', filename: 'reports_department_placement', rowCount: DEPT_PLACEMENT.length, getRows: () => ({ headers: ['Department', 'Placement_pct', 'Placed', 'Total'], rows: DEPT_PLACEMENT.map((d) => [d.dept, String(d.pct), String(d.placed), String(d.total)]) }) },
@@ -117,18 +131,28 @@ export default function CollegeReportsPage() {
             <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Student-Level Events & Outcomes</h3>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Who attended which company touchpoints and the recorded outcome.</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-              <input className="form-input" placeholder="Search…" value={studentReportSearch} onChange={e => setStudentReportSearch(e.target.value)} style={{ paddingLeft: '2.25rem', paddingTop: '0.5rem', paddingBottom: '0.5rem' }} />
-            </div>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <select className="form-select" style={{ width: 'auto' }} value={studentReportCompany} onChange={e => setStudentReportCompany(e.target.value)}>
               <option value="">All companies</option>
               {studentEventCompanies.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{filteredStudentEvents.length} rows</span>
           </div>
         </div>
+        {studentEventsTotalCount > 0 ? (
+          <DataTableToolbar
+            search={studentReportSearch}
+            onSearchChange={setStudentReportSearch}
+            searchPlaceholder="Search student, company, or outcome…"
+            sort={studentReportSort}
+            onSortChange={setStudentReportSort}
+            sortOptions={COMMON_SORT_OPTIONS}
+            filteredCount={studentEventsFilteredCount}
+            totalCount={studentEventsTotalCount}
+            hasActiveFilters={studentEventsHasActiveFilters}
+            onClear={clearStudentEventsFilters}
+            style={{ margin: '1rem 1.25rem 0', border: '1px solid var(--border-default)' }}
+          />
+        ) : null}
         <div className="table-container" style={{ border: 'none' }}>
           <table className="data-table">
             <thead><tr style={{ background: 'var(--bg-secondary)' }}><th style={{ paddingLeft: '1.5rem' }}>Student</th><th>Roll</th><th>Dept</th><th>Company</th><th>Event</th><th>Date</th><th>Attended</th><th style={{ paddingRight: '1.5rem' }}>Outcome</th></tr></thead>
@@ -145,7 +169,7 @@ export default function CollegeReportsPage() {
                   <td style={{ paddingRight: '1.5rem', fontSize: '0.9rem' }}>{r.outcome}</td>
                 </tr>
               ))}
-              {filteredStudentEvents.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-tertiary)' }}>No data found.</td></tr>}
+              {filteredStudentEvents.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-tertiary)' }}>{studentEventsTotalCount > 0 ? 'No rows match your search.' : 'No data found.'}</td></tr>}
             </tbody>
           </table>
         </div>

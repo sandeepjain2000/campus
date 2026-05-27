@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { toDateOnlyString } from '@/lib/dateOnly';
 
 export async function GET() {
   try {
@@ -49,7 +50,7 @@ export async function GET() {
       company: row.company || 'Company',
       website: row.website || null,
       round: row.round || 'Interview Round',
-      date: row.interview_date ? String(row.interview_date).slice(0, 10) : null,
+      date: row.interview_date ? toDateOnlyString(row.interview_date) : null,
       time: row.interview_time ? String(row.interview_time).slice(0, 5) : '',
       mode: row.mode === 'virtual' ? 'Virtual' : row.mode === 'on_campus' ? 'On-Campus' : 'Hybrid',
       location: row.location || 'TBD',

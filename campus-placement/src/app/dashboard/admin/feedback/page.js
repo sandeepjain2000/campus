@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate as mutateByKey } from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, FEEDBACK_STATUS_FILTER_OPTIONS, feedbackStatusFilterFn } from '@/lib/tableQueryPresets';
 import { formatDate, formatFeedbackRole } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import { useToast } from '@/components/ToastProvider';
@@ -42,6 +45,36 @@ export default function AdminFeedbackInboxPage() {
   const items = data?.items || [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayItems,
+    filteredCount,
+    totalCount: pageTotalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(items, {
+    getSearchText: (row) =>
+      [
+        row.title,
+        row.description,
+        row.category,
+        row.user_name,
+        row.user_email,
+        row.organization_name,
+        row.status,
+      ]
+        .filter(Boolean)
+        .join(' '),
+    filterFn: feedbackStatusFilterFn,
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const statusCounts = data?.statusCounts;
 
@@ -178,15 +211,28 @@ export default function AdminFeedbackInboxPage() {
   }
 
   const buildExportRows = (rows) => {
-    const headers = ['When', 'Title', 'Category', 'From', 'Organization', 'Role', 'Replies', 'Status'];
+    const headers = [
+      'When',
+      'Title',
+      'Description',
+      'Category',
+      'From',
+      'Organization',
+      'Role',
+      'Replies',
+      'Latest reply',
+      'Status',
+    ];
     const rowsList = rows.map((row) => [
       formatDate(row.created_at),
       row.title,
+      row.description || '',
       row.category,
       (row.user_name && row.user_name.trim()) || row.user_email || '—',
       row.organization_name || '—',
       formatFeedbackRole(row.user_role),
       String(row.reply_count || 0),
+      row.latest_reply || '',
       row.status,
     ]);
     return { headers, rows: rowsList };
@@ -197,7 +243,7 @@ export default function AdminFeedbackInboxPage() {
       const rows = exportData?.items || items;
       return buildExportRows(rows);
     }
-    return buildExportRows(items);
+    return buildExportRows(displayItems);
   };
 
   return (
@@ -209,7 +255,7 @@ export default function AdminFeedbackInboxPage() {
         </div>
         <ExportCsvSplitButton
           filenameBase="admin_feedback"
-          currentCount={items.length}
+          currentCount={displayItems.length}
           fullCount={total}
           getRows={getExportRows}
         />
@@ -242,6 +288,25 @@ export default function AdminFeedbackInboxPage() {
             )
           </h3>
         </div>
+        {pageTotalCount > 0 ? (
+          <DataTableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search title, category, or submitter…"
+            filter={filter}
+            onFilterChange={setFilter}
+            filterOptions={FEEDBACK_STATUS_FILTER_OPTIONS}
+            filterLabel="Status"
+            sort={sort}
+            onSortChange={setSort}
+            sortOptions={COMMON_SORT_OPTIONS}
+            filteredCount={filteredCount}
+            totalCount={pageTotalCount}
+            hasActiveFilters={hasActiveFilters}
+            onClear={clearFilters}
+            style={{ margin: '0 1.25rem 1rem', border: '1px solid var(--border-default)' }}
+          />
+        ) : null}
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -257,7 +322,14 @@ export default function AdminFeedbackInboxPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((row) => (
+              {displayItems.length === 0 && pageTotalCount > 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center text-secondary">
+                    No feedback on this page matches your search or filters.
+                  </td>
+                </tr>
+              ) : null}
+              {displayItems.map((row) => (
                 <tr key={row.id}>
                   <td className="text-sm">{formatDate(row.created_at)}</td>
                   <td>

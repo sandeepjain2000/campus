@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { Archive, RotateCcw } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
@@ -43,6 +46,23 @@ export default function AdminArchivedStudentsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayStudents,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(students, {
+    getSearchText: (s) =>
+      [s.name, s.email, s.collegeName, s.systemId, s.roll, s.dept, s.archivedBy].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const restoreOne = async (student) => {
     if (
@@ -106,6 +126,21 @@ export default function AdminArchivedStudentsPage() {
         </div>
       ) : null}
 
+      {!isLoading && totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search student, college, or ID…"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
+
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -127,8 +162,15 @@ export default function AdminArchivedStudentsPage() {
                 </td>
               </tr>
             ) : null}
+            {!isLoading && displayStudents.length === 0 && totalCount > 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center text-secondary">
+                  No archived students match your search.
+                </td>
+              </tr>
+            ) : null}
             {!isLoading &&
-              students.map((s) => (
+              displayStudents.map((s) => (
                 <tr key={s.id}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{s.name}</div>

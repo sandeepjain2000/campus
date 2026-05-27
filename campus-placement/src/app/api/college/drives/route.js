@@ -12,7 +12,9 @@ function getTenantId(session) {
 
 /** Older DBs may not have run db/migrations/012_employer_poc_drive_social_shared.sql yet. */
 async function loadDrivesForTenant(tenantId, academicYearId = null) {
-  const yearFilter = academicYearId ? ' AND d.academic_year_id = $2::uuid' : '';
+  const yearFilter = academicYearId
+    ? ` AND (d.academic_year_id = $2::uuid OR d.academic_year_id IS NULL OR d.status = 'requested')`
+    : '';
   const params = academicYearId ? [tenantId, academicYearId] : [tenantId];
   const baseFrom = `
       FROM placement_drives d

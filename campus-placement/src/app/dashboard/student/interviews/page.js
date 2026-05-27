@@ -1,6 +1,9 @@
 'use client';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { formatDate } from '@/lib/utils';
@@ -29,6 +32,22 @@ export default function StudentInterviewsPage() {
     [myInterviews],
   );
 
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayInterviews,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(myInterviews, {
+    getSearchText: (i) => [i.company, i.round, i.mode, i.location, i.status].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -51,7 +70,22 @@ export default function StudentInterviewsPage() {
       {view === 'calendar' ? (
         <EmployerCalendarGrid items={calItems} initialYear={initialYear} initialMonth={initialMonth} />
       ) : (
-        <div className="table-container">
+        <>
+          {!isLoading && totalCount > 0 ? (
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search company, round, or status…"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+            />
+          ) : null}
+          <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
@@ -65,7 +99,14 @@ export default function StudentInterviewsPage() {
               </tr>
             </thead>
             <tbody>
-              {myInterviews.map((i) => (
+              {displayInterviews.length === 0 && totalCount > 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-secondary">
+                    No interviews match your search.
+                  </td>
+                </tr>
+              ) : null}
+              {displayInterviews.map((i) => (
                 <tr key={i.id}>
                   <td className="font-semibold">
                     <CompanyNameLink name={i.company} website={i.website} />
@@ -82,7 +123,7 @@ export default function StudentInterviewsPage() {
                   </td>
                 </tr>
               ))}
-              {!isLoading && myInterviews.length === 0 ? (
+              {!isLoading && totalCount === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center text-secondary">
                     {error?.message || 'No interview schedule found. Try again later.'}
@@ -92,6 +133,7 @@ export default function StudentInterviewsPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

@@ -1,6 +1,9 @@
 'use client';
 import { useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { formatDate } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import CompanyNameLink from '@/components/CompanyNameLink';
@@ -19,7 +22,24 @@ async function collegeRequestsFetcher(url) {
 export default function EmployerRequestsPage() {
   const { addToast } = useToast();
   const { data: requests, error, isLoading, mutate } = useSWR('/api/college/employers/requests', collegeRequestsFetcher);
+  const requestList = Array.isArray(requests) ? requests : [];
   const [processing, setProcessing] = useState(null);
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayRequests,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(requestList, {
+    getSearchText: (r) => [r.company_name, r.industry, r.website].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const handleAction = async (approvalId, action) => {
     if (action !== 'approve' && action !== 'reject') {
@@ -62,6 +82,21 @@ export default function EmployerRequestsPage() {
         </div>
       </div>
 
+      {totalCount > 0 ? (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search company or industry…"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
+
       <div className="card">
         <div className="table-container" style={{ border: 'none', margin: 0 }}>
           <table className="data-table">
@@ -76,8 +111,15 @@ export default function EmployerRequestsPage() {
               </tr>
             </thead>
             <tbody>
-              {requests && requests.length > 0 ? (
-                requests.map((req, index) => (
+              {displayRequests.length === 0 && totalCount > 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center text-secondary">
+                    No requests match your search.
+                  </td>
+                </tr>
+              ) : null}
+              {totalCount > 0 ? (
+                displayRequests.map((req, index) => (
                   <tr key={req.approval_id}>
                     <td style={{ color: 'var(--text-tertiary)' }}>{index + 1}</td>
                     <td>
@@ -116,14 +158,14 @@ export default function EmployerRequestsPage() {
                     </td>
                   </tr>
                 ))
-              ) : (
+              ) : totalCount === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
                     No pending employer requests at the moment.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
           {requests && requests.length > 0 && (

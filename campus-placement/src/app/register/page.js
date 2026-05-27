@@ -5,6 +5,7 @@ import { PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
 import { validatePhone, validateEmail, validatePersonName, validateBatchYear } from '@/lib/validators';
 import { isRegistrationJobAidEnabled } from '@/lib/registrationJobAid';
 import RegisterJobAidPanel from '@/components/auth/RegisterJobAidPanel';
+import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
 import { redirectToLoginAfterRegistration } from '@/lib/postRegistrationRedirect';
 
 function buildRegisterPhone(formData) {
@@ -47,7 +48,20 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [departments, setDepartments] = useState([]);
+
+  const captchaReady = Boolean(captchaToken && captchaAnswer.trim() !== '');
+
+  const selectRegisterRole = (roleId) => {
+    setFormData((prev) => ({ ...prev, role: roleId }));
+    setCaptchaToken('');
+    setCaptchaAnswer('');
+    setCaptchaKey((k) => k + 1);
+    setError('');
+  };
   const showStudentJobAid =
     isRegistrationJobAidEnabled() && formData.role === 'student' && step >= 2;
 
@@ -82,7 +96,6 @@ export default function RegisterPage() {
   }, []);
 
   const roles = [
-    { id: 'student', label: 'Student', icon: '🎓', desc: 'Looking for placement opportunities' },
     { id: 'employer', label: 'Employer', icon: '🏢', desc: 'Hire talent from campuses' },
     { id: 'college_admin', label: 'College Admin', icon: '🏫', desc: 'Manage your institution\'s placements' },
   ];
@@ -105,18 +118,6 @@ export default function RegisterPage() {
       setError('Enter a valid email address.');
       return;
     }
-    if (formData.role === 'student') {
-      const bErr = validateBatchYear(formData.batchYear, { required: true });
-      if (bErr) {
-        setError(bErr);
-        return;
-      }
-      if (!formData.departmentId) {
-        setError('Please select your department.');
-        return;
-      }
-    }
-
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -135,7 +136,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...rest, phone }),
+        body: JSON.stringify({ ...rest, phone, captchaToken, captchaAnswer }),
       });
 
       let data = {};
@@ -151,6 +152,10 @@ export default function RegisterPage() {
             ? `${msg} You can sign in from the login page if you already have access.`
             : msg,
         );
+        if (res.status === 400 && String(msg).toLowerCase().includes('verification')) {
+          setCaptchaAnswer('');
+          setCaptchaKey((k) => k + 1);
+        }
         return;
       }
 
@@ -189,7 +194,7 @@ export default function RegisterPage() {
           </Link>
 
           <h1 className="auth-title">Create your account</h1>
-          <p className="auth-subtitle">Join thousands of students and employers on PlacementHub</p>
+          <p className="auth-subtitle">Employers and college administrators can request an account here.</p>
 
           {/* Steps indicator */}
           <div className="steps" style={{ marginBottom: '1.5rem' }}>
@@ -224,12 +229,31 @@ export default function RegisterPage() {
           {/* Step 1: Role Selection */}
           {step === 1 && (
             <div>
+              <div
+                style={{
+                  padding: '0.875rem 1rem',
+                  marginBottom: '1rem',
+                  background: 'var(--primary-50)',
+                  border: '1px solid var(--primary-100)',
+                  borderRadius: 'var(--radius-lg)',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <strong style={{ color: 'var(--text-primary)' }}>Students:</strong> self-registration is not used.
+                Your college uploads the master student list and PlacementHub emails your login address when your account
+                is ready. Use the password in that email (sandbox demo: <code>Admin@123</code>).
+                {' '}
+                <Link href="/login" style={{ color: 'var(--primary-600)', fontWeight: 600 }}>
+                  Sign in
+                </Link>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
                 {roles.map((role) => (
                   <div
                     key={role.id}
                     className={`role-card ${formData.role === role.id ? 'selected' : ''}`}
-                    onClick={() => setFormData({ ...formData, role: role.id })}
+                    onClick={() => selectRegisterRole(role.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left', padding: '1.25rem' }}
                   >
                     <div style={{ fontSize: '2rem' }}>{role.icon}</div>
@@ -240,11 +264,27 @@ export default function RegisterPage() {
                   </div>
                 ))}
               </div>
+              {formData.role ? (
+                <LoginCaptchaField
+                  key={`${formData.role}-${captchaKey}`}
+                  inputId="register-captcha"
+                  token={captchaToken}
+                  answer={captchaAnswer}
+                  onTokenChange={setCaptchaToken}
+                  onAnswerChange={setCaptchaAnswer}
+                />
+              ) : null}
               <button
                 className="btn btn-primary"
                 style={{ width: '100%' }}
-                disabled={!formData.role}
-                onClick={() => setStep(2)}
+                disabled={!formData.role || !captchaReady}
+                onClick={() => {
+                  if (!captchaReady) {
+                    setError('Answer the verification question to continue.');
+                    return;
+                  }
+                  setStep(2);
+                }}
               >
                 Continue →
               </button>

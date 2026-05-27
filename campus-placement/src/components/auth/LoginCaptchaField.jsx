@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, ShieldCheck } from 'lucide-react';
 
-export default function LoginCaptchaField({ token, answer, onTokenChange, onAnswerChange, disabled = false }) {
+export default function LoginCaptchaField({
+  token,
+  answer,
+  onTokenChange,
+  onAnswerChange,
+  disabled = false,
+  inputId = 'login-captcha',
+}) {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +51,7 @@ export default function LoginCaptchaField({ token, answer, onTokenChange, onAnsw
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
-        <label className="form-label" htmlFor="login-captcha" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+        <label className="form-label" htmlFor={inputId} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <ShieldCheck size={14} aria-hidden="true" />
           Verification
         </label>
@@ -64,7 +71,7 @@ export default function LoginCaptchaField({ token, answer, onTokenChange, onAnsw
         {loading ? 'Loading question…' : question}
       </p>
       <input
-        id="login-captcha"
+        id={inputId}
         type="text"
         inputMode="numeric"
         autoComplete="off"

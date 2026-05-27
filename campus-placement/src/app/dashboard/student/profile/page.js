@@ -184,6 +184,7 @@ export default function StudentProfilePage() {
   const email = session?.user?.email || '';
   const [activeTab, setActiveTab] = useState('academics');
   const [editingTab, setEditingTab] = useState(null);
+  const [suggestingSkills, setSuggestingSkills] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [cvUploading, setCvUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -1337,8 +1338,48 @@ export default function StudentProfilePage() {
 
         {activeTab === 'skills' && (
         <div className="card">
-          <div className="card-header">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h3 className="card-title">💡 Skills</h3>
+            {editing ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={suggestingSkills}
+                onClick={async () => {
+                  setSuggestingSkills(true);
+                  try {
+                    const res = await fetch('/api/student/profile/suggest-skills', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({}),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(json?.error || json?.message || 'Could not suggest skills');
+                    const next = Array.isArray(json.suggestions) ? json.suggestions : [];
+                    if (!next.length) {
+                      addToast(json.message || 'No new skills found from your CV or profile text.', 'info');
+                      return;
+                    }
+                    setProfile((p) => {
+                      const have = new Set((p.skills || []).map((s) => String(s).toLowerCase()));
+                      const merged = [...(p.skills || [])];
+                      for (const s of next) {
+                        if (!have.has(String(s).toLowerCase())) merged.push(s);
+                      }
+                      return { ...p, skills: merged };
+                    });
+                    addToast(`Added ${next.length} skill tag(s) from your profile/CV.`, 'success');
+                  } catch (err) {
+                    addToast(err.message || 'Suggest skills failed', 'error');
+                  } finally {
+                    setSuggestingSkills(false);
+                  }
+                }}
+              >
+                {suggestingSkills ? 'Analyzing…' : 'Suggest from CV'}
+              </button>
+            ) : null}
           </div>
           {editing ? (
             <>
@@ -1348,7 +1389,7 @@ export default function StudentProfilePage() {
                 placeholder="Type a skill and press Enter…"
               />
               <p className="text-sm" style={{ marginTop: '0.5rem', color: 'var(--text-tertiary)' }}>
-                Press Enter or comma to add a tag. Backspace removes the last tag when the field is empty.
+                Press Enter or comma to add a tag. Use &quot;Suggest from CV&quot; after uploading a résumé to pull likely skills.
               </p>
             </>
           ) : (

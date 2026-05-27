@@ -2,6 +2,14 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import {
+  COMPANY_SORT_OPTIONS,
+  STUDENT_OPPORTUNITY_FILTER_OPTIONS,
+  opportunityFilterFn,
+  opportunitySearchText,
+} from '@/lib/tableQueryPresets';
 import { GraduationCap, Eye, X, ExternalLink } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
@@ -28,6 +36,25 @@ export default function StudentInternshipsPage() {
 
   const items = data?.items || [];
   const canApply = data?.canApply !== false;
+
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayItems,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(items, {
+    getSearchText: opportunitySearchText,
+    filterFn: opportunityFilterFn,
+    sortOptions: COMPANY_SORT_OPTIONS,
+    defaultSort: 'company_asc',
+  });
 
   const apply = async (jobId, title) => {
     if (!canApply) {
@@ -69,7 +96,7 @@ export default function StudentInternshipsPage() {
         </div>
         <div className="page-header-actions">
           <span className="badge badge-blue" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-            {items.length} internship{items.length !== 1 ? 's' : ''} available
+            {totalCount} internship{totalCount !== 1 ? 's' : ''} available
           </span>
         </div>
       </div>
@@ -93,7 +120,7 @@ export default function StudentInternshipsPage() {
         </div>
       )}
 
-      {!isLoading && !error && items.length === 0 && (
+      {!isLoading && !error && totalCount === 0 && (
         <div className="empty-state-container" style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)' }}>
           <div style={{ background: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
             <GraduationCap size={28} />
@@ -105,8 +132,27 @@ export default function StudentInternshipsPage() {
         </div>
       )}
 
+      {!isLoading && totalCount > 0 && (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search company, role, or status…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={STUDENT_OPPORTUNITY_FILTER_OPTIONS}
+          filterLabel="Status"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMPANY_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      )}
+
       {/* ── Tabular list ── */}
-      {!isLoading && items.length > 0 && (
+      {!isLoading && totalCount > 0 && (
         <div className="card card-table-shell">
           <div className="table-container">
           <table className="data-table">
@@ -123,7 +169,14 @@ export default function StudentInternshipsPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((row) => (
+              {displayItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center text-secondary">
+                    No internships match your search or filters.
+                  </td>
+                </tr>
+              ) : null}
+              {displayItems.map((row) => (
                 <tr key={row.id}>
                   <td style={{ paddingLeft: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

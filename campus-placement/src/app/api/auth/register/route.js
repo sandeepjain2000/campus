@@ -4,24 +4,35 @@ import { query, transaction } from '@/lib/db';
 import { validateRegistration, validatePhone } from '@/lib/validators';
 import { slugify } from '@/lib/utils';
 import { generateSurfaceToken, normalizeSurfaceTokenInput } from '@/lib/shardBinding';
-import {
-  notifyRegistrationSubmitted,
-  notifyStudentRegistered,
-} from '@/lib/registrationNotify';
+import { notifyRegistrationSubmitted } from '@/lib/registrationNotify';
 import { newEmailVerificationToken, sendSignupVerificationEmail } from '@/lib/emailVerification';
 import { assertEmailAvailable, formatEmailDifferentTenantMessage, formatEmailInUseMessage } from '@/lib/userEmail';
-import {
-  assertStudentSelfRegistrationAllowed,
-  mapStudentRegistrationError,
-} from '@/lib/studentRegistrationGuards';
 import { getPostRegistrationLoginPath } from '@/lib/postRegistrationRedirect';
+import { verifyLoginCaptcha } from '@/lib/simpleCaptcha';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { role, firstName, lastName, password, phone } = body;
+    const { role, firstName, lastName, password, phone, captchaToken, captchaAnswer } = body;
     const email = String(body.email || '').trim().toLowerCase();
-    const allowedRoles = new Set(['college_admin', 'student', 'employer']);
+    const allowedRoles = new Set(['college_admin', 'employer']);
+
+    if (!verifyLoginCaptcha(captchaToken, captchaAnswer)) {
+      return NextResponse.json(
+        { error: 'Verification failed or expired. Answer the question again and retry.' },
+        { status: 400 },
+      );
+    }
+
+    if (body.role === 'student') {
+      return NextResponse.json(
+        {
+          error:
+            'Student self-registration is disabled. Your college adds students to the master list — check your email for login instructions from PlacementHub.',
+        },
+        { status: 403 },
+      );
+    }
 
     const validation = validateRegistration({
       email,
@@ -37,15 +48,6 @@ export async function POST(request) {
       return NextResponse.json({ error: Object.values(validation.errors)[0] }, { status: 400 });
     }
 
-    let resolvedDepartmentName = '';
-    if (role === 'student') {
-      const did = String(body.departmentId || '').trim();
-      const dep = await query(`SELECT name FROM reference_departments WHERE id = $1::uuid`, [did]);
-      if (!dep.rows.length) {
-        return NextResponse.json({ error: 'Select a valid department from the list.' }, { status: 400 });
-      }
-      resolvedDepartmentName = dep.rows[0].name;
-    }
     if (phone && !validatePhone(phone)) {
       return NextResponse.json(
         { error: 'Enter a valid mobile number with country code (e.g. +1 4155550100 or +91 9876543210), or leave blank.' },
@@ -113,53 +115,6 @@ export async function POST(request) {
         };
       }
 
-      if (role === 'student') {
-        const bind = await client.query(
-          `SELECT ref_scope_id FROM shard_binding_pairs WHERE lower(surface_token) = lower($1)`,
-          [bindingInput]
-        );
-        if (bind.rows.length === 0) {
-          throw new Error('INVALID_CAMPUS_KEY');
-        }
-        tenantId = bind.rows[0].ref_scope_id;
-
-        const rollNum = (body.rollNumber || '').trim();
-        const { profileId, userId, batchYear, graduationYear } =
-          await assertStudentSelfRegistrationAllowed(client, {
-            email,
-            rollNumber: rollNum,
-            tenantId,
-            batchYear: body.batchYear,
-          });
-
-        const userResult = await client.query(
-          `UPDATE users 
-           SET password_hash = $1, first_name = $2, last_name = $3, phone = $4, is_active = true, is_verified = true, email_verified_at = COALESCE(email_verified_at, NOW())
-           WHERE id = $5 RETURNING id, email, role`,
-          [passwordHash, firstName, lastName || '', phone || '', userId]
-        );
-
-        const user = userResult.rows[0];
-
-        await client.query(
-          `UPDATE student_profiles 
-           SET department = $1, batch_year = $2, graduation_year = $3 
-           WHERE id = $4`,
-          [resolvedDepartmentName, batchYear, graduationYear, profileId]
-        );
-
-        const tname = await client.query(`SELECT name FROM tenants WHERE id = $1`, [tenantId]);
-        return {
-          user,
-          studentNotify: {
-            studentEmail: email,
-            firstName,
-            tenantId,
-            collegeName: tname.rows[0]?.name || '',
-          },
-        };
-      }
-
       if (role === 'employer') {
         await assertEmailAvailable(client, email);
 
@@ -219,10 +174,6 @@ export async function POST(request) {
       });
     }
 
-    if (result.studentNotify) {
-      await notifyStudentRegistered(result.studentNotify);
-    }
-
     try {
       await sendSignupVerificationEmail({
         to: email,
@@ -264,46 +215,6 @@ export async function POST(request) {
     if (error.message === 'INVALID_CAMPUS_KEY') {
       return NextResponse.json(
         { error: 'Campus enrollment key was not recognized. Check with your institution.' },
-        { status: 400 }
-      );
-    }
-    if (error.message === 'MISSING_ROLL') {
-      return NextResponse.json(
-        { error: 'Roll number is required.' },
-        { status: 400 }
-      );
-    }
-    if (error.message === 'ROLL_NOT_FOUND') {
-      return NextResponse.json(
-        { error: 'Roll number not found in college records. Please verify with your college administrator.' },
-        { status: 400 }
-      );
-    }
-    if (error.message === 'EMAIL_MISMATCH') {
-      return NextResponse.json(
-        {
-          error:
-            mapStudentRegistrationError(error, { email }) ||
-            'This roll number is registered with a different email address. Please use the email your college provided.',
-        },
-        { status: 400 }
-      );
-    }
-    if (error.message === 'ACCOUNT_ALREADY_REGISTERED') {
-      return NextResponse.json(
-        {
-          error: mapStudentRegistrationError(error, {
-            email,
-            rollNumber: error.roll_number,
-          }),
-          code: 'ACCOUNT_ALREADY_REGISTERED',
-        },
-        { status: 409 }
-      );
-    }
-    if (error.message === 'BATCH_YEAR_MISMATCH') {
-      return NextResponse.json(
-        { error: mapStudentRegistrationError(error, { email }) },
         { status: 400 }
       );
     }

@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { Users, ClipboardList } from 'lucide-react';
 import { downloadCollegeOffersTemplate } from '@/lib/collegeOffersCsvTemplate';
 import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
@@ -85,6 +88,21 @@ export function CollegeOffersUploadMeta({ compact = false }) {
 
   const summary = data?.summary || { total: 0, accepted: 0, pending: 0, rejected: 0 };
   const recent = Array.isArray(data?.recentOffers) ? data.recentOffers : [];
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayRecent,
+    filteredCount,
+    totalCount: recentTotalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(recent, {
+    getSearchText: (o) => [o.student_name, o.roll_number, o.company_name, o.job_title, o.status].filter(Boolean).join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   if (isLoading) {
     return <div className="skeleton skeleton-card" style={{ height: compact ? 88 : 120, marginBottom: '1rem' }} />;
@@ -143,7 +161,7 @@ export function CollegeOffersUploadMeta({ compact = false }) {
         </Link>
       </div>
 
-      {recent.length > 0 ? (
+      {recentTotalCount > 0 ? (
         <div className="card" style={{ marginBottom: '1rem', padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
             <h2 className="card-title" style={{ margin: 0, fontSize: '1rem' }}>Recent offers</h2>
@@ -151,6 +169,19 @@ export function CollegeOffersUploadMeta({ compact = false }) {
               Latest on your campus — edit on <Link href="/dashboard/college/offers">Offers</Link>.
             </p>
           </div>
+          <DataTableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search student, company, or role…"
+            sort={sort}
+            onSortChange={setSort}
+            sortOptions={COMMON_SORT_OPTIONS}
+            filteredCount={filteredCount}
+            totalCount={recentTotalCount}
+            hasActiveFilters={hasActiveFilters}
+            onClear={clearFilters}
+            style={{ margin: '0 1rem', border: 'none', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
+          />
           <div className="table-container" style={{ border: 'none' }}>
             <table className="data-table">
               <thead>
@@ -164,7 +195,12 @@ export function CollegeOffersUploadMeta({ compact = false }) {
                 </tr>
               </thead>
               <tbody>
-                {recent.map((o) => (
+                {displayRecent.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center text-secondary">No offers match your search.</td>
+                  </tr>
+                ) : null}
+                {displayRecent.map((o) => (
                   <tr key={o.id}>
                     <td style={{ paddingLeft: '1.25rem' }}>
                       <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{o.student_name || '—'}</div>

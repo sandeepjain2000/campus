@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
 import { FolderGit2, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
@@ -58,6 +61,34 @@ export default function EmployerProjectsPage() {
     const jobs = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
     return jobs.filter((j) => j.type === 'short_project' || j.type === 'hackathon');
   }, [jobData]);
+
+  const projectStatusFilterOptions = useMemo(
+    () => [
+      FILTER_ALL,
+      { value: 'published', label: 'Published' },
+      { value: 'draft', label: 'Draft' },
+      { value: 'closed', label: 'Closed' },
+    ],
+    [],
+  );
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sort,
+    setSort,
+    filtered: displayProjects,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(projects, {
+    getSearchText: (p) => [p.title, p.keywords, p.type, p.status].filter(Boolean).join(' '),
+    filterFn: (row, f) => !f || String(row.status || '') === f,
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const openForm = () => {
     const sel = {};
@@ -344,7 +375,25 @@ export default function EmployerProjectsPage() {
           <p className="text-sm text-secondary" style={{ margin: 0 }}>No project postings yet. Publish one above.</p>
         </div>
       )}
-      {!jobsLoading && !jobsError && projects.length > 0 && (
+      {!jobsLoading && !jobsError && totalCount > 0 && (
+        <DataTableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search title or type…"
+          filter={filter}
+          onFilterChange={setFilter}
+          filterOptions={projectStatusFilterOptions}
+          filterLabel="Status"
+          sort={sort}
+          onSortChange={setSort}
+          sortOptions={COMMON_SORT_OPTIONS}
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
+        />
+      )}
+      {!jobsLoading && !jobsError && totalCount > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
           <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
             <table className="data-table" style={{ minWidth: 880 }}>
@@ -361,7 +410,14 @@ export default function EmployerProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((p) => (
+                {displayProjects.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No projects match your search or filters.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayProjects.map((p) => (
                   <tr key={String(p.id)}>
                     <td style={{ paddingLeft: '1.25rem', maxWidth: 280 }}>
                       <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{p.title}</div>

@@ -3,6 +3,9 @@
 import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import PageError from '@/components/PageError';
@@ -74,6 +77,30 @@ export default function StudentDocumentsPage() {
 
   const documents = data?.documents || [];
   const primaryResumeUrl = data?.primaryResumeUrl || '';
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayDocuments,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(documents, {
+    getSearchText: (doc) =>
+      [
+        doc.document_name,
+        doc.document_type,
+        doc.is_primary_resume ? 'primary cv' : '',
+        doc.is_verified ? 'verified' : 'pending',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+    defaultSort: 'date_desc',
+  });
 
   const { primaryResume, additionalResumes, otherDocuments } = useMemo(() => {
     const resumes = documents.filter((d) => String(d.document_type || '').toLowerCase() === 'resume');
@@ -344,6 +371,21 @@ export default function StudentDocumentsPage() {
 
       {!isLoading && view === 'table' && (
         <div className="card">
+          {totalCount > 0 ? (
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search document name or type…"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+              style={{ marginBottom: 0, borderRadius: 0, border: 'none', borderBottom: '1px solid var(--border-default)' }}
+            />
+          ) : null}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -358,7 +400,14 @@ export default function StudentDocumentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {documents.map((doc) => {
+                {displayDocuments.length === 0 && totalCount > 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No documents match your search.
+                    </td>
+                  </tr>
+                ) : null}
+                {displayDocuments.map((doc) => {
                   const isResume = String(doc.document_type || '').toLowerCase() === 'resume';
                   const dtype = isResume
                     ? { label: 'Resume' }
@@ -406,7 +455,7 @@ export default function StudentDocumentsPage() {
               </tbody>
             </table>
           </div>
-          {documents.length === 0 && (
+          {totalCount === 0 && (
             <p className="text-sm text-secondary" style={{ padding: '1rem' }}>
               No documents yet. Upload your primary CV on Profile, or use the buttons above.
             </p>

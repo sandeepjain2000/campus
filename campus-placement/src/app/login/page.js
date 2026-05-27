@@ -654,7 +654,13 @@ function LoginPageInner() {
         </p>
 
         <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
-          Don&apos;t have an account? <Link href="/register" style={{ color: 'var(--primary-600)', fontWeight: 600, textDecoration: 'none' }}>Sign up</Link>
+          Employers and colleges:{' '}
+          <Link href="/register" style={{ color: 'var(--primary-600)', fontWeight: 600, textDecoration: 'none' }}>
+            Request an account
+          </Link>
+          <span className="text-secondary" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.8125rem' }}>
+            Students are added by their college — use the login email from your welcome message.
+          </span>
         </div>
 
         <DocumentationHelpWidget fullDocHref="/help" />

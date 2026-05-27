@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import DataTableToolbar from '@/components/DataTableToolbar';
+import { useDataTableQuery } from '@/hooks/useDataTableQuery';
+import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { variablesToFormText } from '@/lib/messageTemplateUtils';
 import { FileEdit, Mail, Plus, Trash2, Pencil, X } from 'lucide-react';
@@ -49,6 +52,24 @@ export default function CollegeMessageTemplatesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const {
+    search,
+    setSearch,
+    sort,
+    setSort,
+    filtered: displayRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    clearFilters,
+  } = useDataTableQuery(rows, {
+    getSearchText: (t) =>
+      [t.name, t.subject, t.template_type, Array.isArray(t.variables) ? t.variables.join(' ') : '', t.is_active ? 'active' : 'inactive']
+        .filter(Boolean)
+        .join(' '),
+    sortOptions: COMMON_SORT_OPTIONS,
+  });
 
   const startEdit = (t) => {
     const id = t?.id != null ? String(t.id) : '';
@@ -251,6 +272,21 @@ export default function CollegeMessageTemplatesPage() {
       {loading ? (
         <div className="skeleton" style={{ height: 200 }} />
       ) : (
+        <>
+          {totalCount > 0 ? (
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search name, subject, or type…"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+            />
+          ) : null}
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -264,7 +300,14 @@ export default function CollegeMessageTemplatesPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((t) => (
+              {displayRows.length === 0 && totalCount > 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center text-secondary">
+                    No templates match your search.
+                  </td>
+                </tr>
+              ) : null}
+              {displayRows.map((t) => (
                 <tr key={t.id} style={editingId === String(t.id) ? { background: 'var(--primary-50)' } : undefined}>
                   <td className="font-medium">{t.name}</td>
                   <td>
@@ -291,7 +334,7 @@ export default function CollegeMessageTemplatesPage() {
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 ? (
+              {totalCount === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center text-secondary">
                     No templates yet. Add one above.
@@ -301,6 +344,7 @@ export default function CollegeMessageTemplatesPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );
