@@ -2,12 +2,18 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { getStudentResumeApplyState } from '@/lib/studentApplyEligibility';
+import { getStudentApplyGate } from '@/lib/studentApplyEligibility';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
+
 
 /**
  * Published program openings visible to the student's college.
@@ -47,9 +53,10 @@ export async function GET(request) {
             : ['internship'];
 
     const studentProfileId = await getOrCreateStudentProfileId(userId);
-    const { hasResume } = studentProfileId
-      ? await getStudentResumeApplyState(studentProfileId)
-      : { hasResume: false };
+    const tenantIdForGate = tenantIds[0] || sessionTenant || null;
+    const applyGate = studentProfileId
+      ? await getStudentApplyGate(studentProfileId, tenantIdForGate)
+      : { hasResume: false, placementLocked: false, canApply: false, applyBlockedReason: null };
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 1);
     const userIdx = 1 + tenantInParams.length;
@@ -77,7 +84,9 @@ export async function GET(request) {
        INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
        LEFT JOIN student_profiles sp ON sp.user_id = $${userIdx}::uuid
        LEFT JOIN program_applications pa ON pa.job_id = jp.id AND pa.student_id = sp.id
+         AND COALESCE(pa.is_deleted, false) = false
        WHERE jp.job_type = ANY($${typesIdx}::text[])
+         AND COALESCE(jp.is_deleted, false) = false
          AND (
            (
              jp.status = 'published'
@@ -90,6 +99,7 @@ export async function GET(request) {
                 AND ea.status = 'approved'
                WHERE jpv.job_id = jp.id
                  AND jpv.tenant_id IN (${tenantInSql})
+                 AND jpv.college_status = 'approved'
              )
            )
            OR pa.id IS NOT NULL
@@ -100,8 +110,10 @@ export async function GET(request) {
 
     return NextResponse.json({
       kind,
-      canApply: hasResume,
-      hasResume,
+      canApply: applyGate.canApply,
+      hasResume: applyGate.hasResume,
+      placementLocked: applyGate.placementLocked,
+      applyBlockedReason: applyGate.applyBlockedReason,
       items: result.rows.map((r) => ({
         id: r.id,
         title: r.title,

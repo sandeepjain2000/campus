@@ -2,12 +2,18 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { assertStudentResumeForApply } from '@/lib/studentApplyEligibility';
+import { assertStudentMayApplyToPlacement } from '@/lib/studentApplyEligibility';
 import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
+
 
 const PROGRAM_TYPES = new Set(['full_time', 'internship', 'short_project', 'hackathon']);
 
@@ -39,6 +45,8 @@ export async function GET() {
        JOIN job_postings jp ON jp.id = pa.job_id
        JOIN employer_profiles ep ON ep.id = jp.employer_id
        WHERE sp.user_id = $1::uuid
+         AND COALESCE(pa.is_deleted, false) = false
+         AND COALESCE(jp.is_deleted, false) = false
        ORDER BY pa.applied_at DESC`,
       [userId],
     );
@@ -93,9 +101,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Student profile not available' }, { status: 400 });
     }
 
-    const resumeGate = await assertStudentResumeForApply(studentId);
-    if (!resumeGate.ok) {
-      return NextResponse.json({ error: resumeGate.error }, { status: 400 });
+    const applyGate = await assertStudentMayApplyToPlacement(studentId, tenantIds[0] || sessionTenant);
+    if (!applyGate.ok) {
+      return NextResponse.json({ error: applyGate.error }, { status: 403 });
     }
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 2);
@@ -104,10 +112,12 @@ export async function POST(req) {
        FROM job_postings jp
        CROSS JOIN student_profiles sp
        INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
+         AND jpv.college_status = 'approved'
        INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
        INNER JOIN employer_approvals ea
          ON ea.employer_id = ep.id AND ea.tenant_id = jpv.tenant_id AND ea.status = 'approved'
-       WHERE jp.id = $1::uuid AND sp.id = $${tenantInParams.length + 2}::uuid`,
+       WHERE jp.id = $1::uuid AND sp.id = $${tenantInParams.length + 2}::uuid
+         AND COALESCE(jp.is_deleted, false) = false`,
       [jobId, ...tenantInParams, studentId],
     );
 
