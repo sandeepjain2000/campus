@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { buildSortedTimezoneIds, canonicalizeTimezoneId } from '@/lib/timezoneUi';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateAdminSettingsPayload } from '@/lib/apiInputValidation';
 
 const FALLBACK_TIMEZONES = [
   'UTC',
@@ -100,6 +103,15 @@ export default function AdminSettingsPage() {
   }, [addToast]);
 
   const saveSettings = async () => {
+    const settingsErr = validateAdminSettingsPayload({
+      sessionTimeoutValue,
+      smtpPort,
+      maxUploadSizeMb,
+    });
+    if (settingsErr) {
+      addToast(settingsErr, 'warning');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -243,7 +255,7 @@ export default function AdminSettingsPage() {
               onChange={(e) => setMarketingWebsiteUrl(e.target.value)}
             />
             <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-              When set, the home page Features / About / Contact links open this URL in the same tab (browser Back returns to PlacementHub). Built-in pages at <code>/features</code>, <code>/about</code>, and <code>/contact</code> always stay on this app with a Home link. Leave empty to use only built-in pages from the home page.
+              When set, the home page About / Contact links open this URL in the same tab (browser Back returns to PlacementHub). The <strong>Features</strong> link always opens the built-in <code>/features</code> page (program types, placement rules, role capabilities). Direct URLs <code>/features</code>, <code>/about</code>, and <code>/contact</code> always stay on this app. Leave empty to use built-in pages for all nav links.
             </p>
           </div>
           <div className="form-group"><label className="form-label">Support Email</label><input className="form-input" placeholder="Set support email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} /></div>
@@ -276,12 +288,10 @@ export default function AdminSettingsPage() {
           <div className="form-group">
             <label className="form-label">Session timeout</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                className="form-input"
-                type="number"
-                min={1}
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.ADMIN_SESSION_TIMEOUT}
                 value={sessionTimeoutValue}
-                onChange={(e) => setSessionTimeoutValue(Number(e.target.value || 1))}
+                onChange={(v) => setSessionTimeoutValue(v === '' ? 1 : Number(v))}
               />
               <select
                 className="form-select"
@@ -358,13 +368,13 @@ export default function AdminSettingsPage() {
             />
           </div>
           <div className="form-group"><label className="form-label">SMTP Host</label><input className="form-input" placeholder="smtp.gmail.com" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} /></div>
-          <div className="form-group"><label className="form-label">SMTP Port</label><input className="form-input" type="number" value={smtpPort} onChange={(e) => setSmtpPort(Number(e.target.value || 587))} /></div>
+          <div className="form-group"><label className="form-label">SMTP Port</label><ValidatedNumberInput fieldId={FIELD_IDS.ADMIN_SMTP_PORT} value={smtpPort} onChange={(v) => setSmtpPort(v === '' ? 587 : Number(v))} /></div>
           <div className="form-group"><label className="form-label">From Email</label><input className="form-input" placeholder="noreply@placementhub.com" value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} /></div>
         </div>
         <div className="card">
           <div className="card-header"><h3 className="card-title">📦 Storage</h3></div>
           <div className="form-group"><label className="form-label">Storage Provider</label><select className="form-select" value={storageProvider} onChange={(e) => setStorageProvider(e.target.value)}><option value="">Select storage provider</option><option>Local Filesystem</option><option>AWS S3</option><option>Supabase Storage</option></select></div>
-          <div className="form-group"><label className="form-label">Max Upload Size (MB)</label><input className="form-input" type="number" value={maxUploadSizeMb} onChange={(e) => setMaxUploadSizeMb(Number(e.target.value || 5))} /></div>
+          <div className="form-group"><label className="form-label">Max Upload Size (MB)</label><ValidatedNumberInput fieldId={FIELD_IDS.ADMIN_MAX_UPLOAD_MB} value={maxUploadSizeMb} onChange={(v) => setMaxUploadSizeMb(v === '' ? 5 : Number(v))} /></div>
         </div>
         <div className="card" style={{ gridColumn: '1 / -1' }}>
           <div className="card-header"><h3 className="card-title">🔐 Change Password</h3></div>

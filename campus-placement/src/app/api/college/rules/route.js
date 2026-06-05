@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { validateCollegeRulesPayload } from '@/lib/apiInputValidation';
+import { MAX_INTERNSHIPS_PER_STUDENT } from '@/lib/internshipPlacementRules';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET() {
   try {
@@ -19,6 +27,7 @@ export async function GET() {
 
     const defaultRules = {
       maxOffers: 1,
+      maxInternshipsPerStudent: MAX_INTERNSHIPS_PER_STUDENT,
       acceptanceWindow: 7,
       minCGPA: 6,
       allowBacklogs: false,
@@ -38,6 +47,7 @@ export async function GET() {
     const dbRules = result.rows[0];
     return NextResponse.json({
       maxOffers: dbRules.max_offers_per_student,
+      maxInternshipsPerStudent: MAX_INTERNSHIPS_PER_STUDENT,
       acceptanceWindow: dbRules.offer_acceptance_window_days,
       minCGPA: parseFloat(dbRules.min_cgpa_threshold),
       allowBacklogs: dbRules.allow_backlog_students,
@@ -67,6 +77,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
     const data = await req.json();
+    const rulesErr = validateCollegeRulesPayload(data);
+    if (rulesErr) {
+      return NextResponse.json({ error: rulesErr }, { status: 400 });
+    }
 
     const saved = await query(
       `INSERT INTO college_settings (

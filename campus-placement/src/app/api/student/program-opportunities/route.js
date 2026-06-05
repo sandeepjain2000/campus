@@ -2,10 +2,27 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import {
+  jobPostingNotDeletedSql,
+  jobVisibilityCollegeApprovedSql,
+  programApplicationNotDeletedSql,
+} from '@/lib/migrationReady';
 import { getStudentApplyGate } from '@/lib/studentApplyEligibility';
+import { getStudentBrowseGate } from '@/lib/studentBrowseGate';
+import {
+  getStudentInternshipSelectionLock,
+  mapProgramOpportunityRow,
+  STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE,
+} from '@/lib/internshipPlacementRules';
+import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
+import { studentListedJobPostingSql } from '@/lib/studentOpportunityQuery';
+import {
+  getStudentOpportunityListCache,
+  setStudentOpportunityListCache,
+} from '@/lib/jobPostingPublishState';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -57,12 +74,41 @@ export async function GET(request) {
     const applyGate = studentProfileId
       ? await getStudentApplyGate(studentProfileId, tenantIdForGate)
       : { hasResume: false, placementLocked: false, canApply: false, applyBlockedReason: null };
+    const browseGate = studentProfileId
+      ? await getStudentBrowseGate(studentProfileId, tenantIdForGate)
+      : {
+          canBrowseListings: false,
+          profileComplete: false,
+          hasResume: false,
+          browseGateTitle: 'Complete your profile and upload your CV',
+          browseGateMessage: null,
+          profileMissingLabels: [],
+        };
+
+    const applyProfile = studentProfileId
+      ? await loadStudentApplyProfile(studentProfileId, tenantIdForGate)
+      : null;
+
+    const internshipLock =
+      kind === 'internship' && studentProfileId
+        ? await getStudentInternshipSelectionLock(studentProfileId)
+        : { locked: false, selectedJobId: null, selection: null };
+
+    const cached = getStudentOpportunityListCache(tenantIds, kind);
+    const cachedItems = Array.isArray(cached?.payload?.items) ? cached.payload.items : null;
+
+    const collegeApprovedSql = await jobVisibilityCollegeApprovedSql();
+    const listedSql = studentListedJobPostingSql('jp');
+    const paNotDeletedSql = await programApplicationNotDeletedSql('pa');
+    const jpNotDeletedSql = await jobPostingNotDeletedSql('jp');
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 1);
     const userIdx = 1 + tenantInParams.length;
     const typesIdx = userIdx + 1;
 
-    const result = await query(
+    const result = cachedItems
+      ? null
+      : await query(
       `SELECT
          jp.id,
          jp.title,
@@ -71,9 +117,13 @@ export async function GET(request) {
          jp.salary_min,
          jp.salary_max,
          jp.min_cgpa,
+         jp.max_backlogs,
+         jp.eligible_branches,
+         jp.batch_year,
          jp.vacancies,
          jp.skills_required,
          jp.application_deadline,
+         jp.status,
          jp.created_at,
          ep.id AS employer_id,
          ep.company_name,
@@ -84,12 +134,12 @@ export async function GET(request) {
        INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
        LEFT JOIN student_profiles sp ON sp.user_id = $${userIdx}::uuid
        LEFT JOIN program_applications pa ON pa.job_id = jp.id AND pa.student_id = sp.id
-         AND COALESCE(pa.is_deleted, false) = false
+         ${paNotDeletedSql}
        WHERE jp.job_type = ANY($${typesIdx}::text[])
-         AND COALESCE(jp.is_deleted, false) = false
+         ${jpNotDeletedSql}
          AND (
            (
-             jp.status = 'published'
+             ${listedSql}
              AND EXISTS (
                SELECT 1
                FROM job_posting_visibility jpv
@@ -99,42 +149,107 @@ export async function GET(request) {
                 AND ea.status = 'approved'
                WHERE jpv.job_id = jp.id
                  AND jpv.tenant_id IN (${tenantInSql})
-                 AND jpv.college_status = 'approved'
+                 ${collegeApprovedSql}
              )
            )
            OR pa.id IS NOT NULL
          )
        ORDER BY COALESCE(pa.applied_at, jp.created_at) DESC`,
       [...tenantInParams, userId, types],
-    );
+      );
 
-    return NextResponse.json({
+    const allItems = cachedItems ?? result.rows.map(mapProgramOpportunityRow);
+
+    if (!cachedItems && browseGate.canBrowseListings) {
+      setStudentOpportunityListCache(tenantIds, kind, { kind, items: allItems });
+    }
+
+    let items = allItems;
+    let notProcessedCount = 0;
+
+    if (kind === 'internship' && internshipLock.locked && internshipLock.selectedJobId) {
+      items = allItems.filter((row) => row.id === internshipLock.selectedJobId);
+      if (!items.length && internshipLock.selection) {
+        items = [
+          {
+            id: internshipLock.selection.jobId,
+            title: internshipLock.selection.title,
+            description: '',
+            jobType: 'internship',
+            salaryMin: null,
+            salaryMax: null,
+            minCgpa: null,
+            vacancies: null,
+            skillsRequired: [],
+            applicationDeadline: null,
+            createdAt: null,
+            employerId: null,
+            companyName: internshipLock.selection.companyName,
+            website: internshipLock.selection.website,
+            hasApplied: true,
+            applicationStatus: internshipLock.selection.status,
+          },
+        ];
+      }
+      notProcessedCount = allItems.filter(
+        (row) => row.id !== internshipLock.selectedJobId && !row.hasApplied,
+      ).length;
+    }
+
+    const internshipLocked = kind === 'internship' && internshipLock.locked;
+    const canApplyInternship = applyGate.canApply && !internshipLocked;
+    let applyBlockedReason = applyGate.applyBlockedReason;
+    if (internshipLocked && canApplyInternship === false) {
+      applyBlockedReason = STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE;
+    }
+
+    const responsePayload = {
       kind,
-      canApply: applyGate.canApply,
-      hasResume: applyGate.hasResume,
+      canApply: canApplyInternship,
+      hasResume: browseGate.hasResume,
+      profileComplete: browseGate.profileComplete,
+      canBrowseListings: browseGate.canBrowseListings,
+      browseGateTitle: browseGate.browseGateTitle,
+      browseGateMessage: browseGate.browseGateMessage,
+      profileMissingLabels: browseGate.profileMissingLabels,
       placementLocked: applyGate.placementLocked,
-      applyBlockedReason: applyGate.applyBlockedReason,
-      items: result.rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        description: r.description,
-        jobType: r.job_type,
-        salaryMin: r.salary_min != null ? Number(r.salary_min) : null,
-        salaryMax: r.salary_max != null ? Number(r.salary_max) : null,
-        minCgpa: r.min_cgpa != null ? Number(r.min_cgpa) : null,
-        vacancies: r.vacancies,
-        skillsRequired: r.skills_required || [],
-        applicationDeadline: r.application_deadline,
-        createdAt: r.created_at,
-        employerId: r.employer_id,
-        companyName: r.company_name,
-        website: r.website,
-        hasApplied: Boolean(r.application_id),
-        applicationStatus: r.application_status || null,
-      })),
-    });
+      applyBlockedReason,
+      internshipLocked,
+      selectedInternship: internshipLock.selection,
+      notProcessedCount: browseGate.canBrowseListings ? notProcessedCount : 0,
+      currentStudent: applyProfile
+        ? {
+            cgpa: applyProfile.cgpa,
+            branch: applyProfile.branch,
+            department: applyProfile.department,
+            batchYear: applyProfile.batchYear,
+            backlogsActive: applyProfile.backlogsActive,
+            hasResume: applyProfile.hasResume,
+            isPlacementLocked: applyProfile.isPlacementLocked,
+          }
+        : {
+            cgpa: null,
+            branch: '',
+            department: '',
+            batchYear: null,
+            backlogsActive: 0,
+            hasResume: browseGate.hasResume,
+            isPlacementLocked: applyGate.placementLocked,
+          },
+      items: browseGate.canBrowseListings ? items : [],
+    };
+
+    return NextResponse.json(responsePayload);
   } catch (e) {
     console.error('GET /api/student/program-opportunities', e);
-    return NextResponse.json({ error: 'Failed to load opportunities' }, { status: 500 });
+    const msg = String(e?.message || '');
+    const hint =
+      e?.code === '42703' || /college_status|is_deleted|does not exist/i.test(msg)
+        ? 'Run npm run db:migrate:066 and npm run db:migrate:067, then reload.'
+        : undefined;
+    return NextResponse.json(
+      { error: 'Failed to load opportunities', ...(hint ? { hint } : {}) },
+      { status: 500 },
+    );
   }
 }

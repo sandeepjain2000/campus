@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function POST(req) {
   try {
@@ -24,6 +32,7 @@ export async function POST(req) {
       JOIN student_profiles sp ON a.student_id = sp.id
       JOIN placement_drives d ON a.drive_id = d.id
       WHERE a.id = $1::uuid AND sp.user_id = $2::uuid
+        AND ${SP_ACTIVE_CLAUSE} ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
     `, [application_id, userId]);
 
     if (appQuery.rowCount === 0) {
@@ -46,8 +55,9 @@ export async function POST(req) {
       // Check current capacity of active people in the drive
       const activeCountReq = await query(`
         SELECT COUNT(*) as count 
-        FROM applications 
-        WHERE drive_id = $1 AND status IN ('applied', 'shortlisted', 'in_progress', 'selected')
+        FROM applications a
+        WHERE a.drive_id = $1 AND a.status IN ('applied', 'shortlisted', 'in_progress', 'selected')
+          ${AND_APP_NOT_DELETED}
       `, [drive_id]);
       
       const activeCount = parseInt(activeCountReq.rows[0].count);
@@ -59,8 +69,8 @@ export async function POST(req) {
         
         const nextWaiting = await query(`
           SELECT id 
-          FROM applications
-          WHERE drive_id = $1 AND status = 'on_hold'
+          FROM applications a
+          WHERE a.drive_id = $1 AND a.status = 'on_hold' ${AND_APP_NOT_DELETED}
           ORDER BY applied_at ASC
           LIMIT 1
         `, [drive_id]);
@@ -84,7 +94,8 @@ export async function POST(req) {
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Application withdrawn successfully',
+      message:
+        'Application withdrawn permanently. You cannot apply again to this opening, and employers will no longer see you as an applicant.',
       waitlist_promoted: promotedStudent !== null
     });
 

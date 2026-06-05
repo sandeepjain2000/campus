@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_DRIVE_PD_NOT_DELETED, AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { displayEmployerTieUpStatus } from '@/lib/employerTieUp';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
+
 
 async function resolveCollegeTenantId(session) {
   const sessionTenantId = session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
@@ -38,17 +47,20 @@ export async function GET() {
           ep.company_type,
           ep.website,
           ep.reliability_score,
+          COALESCE(NULLIF(TRIM(u.email), ''), NULLIF(TRIM(ep.contact_email), '')) AS email,
           COALESCE((
             SELECT COUNT(*)::int FROM placement_drives pd
-            WHERE pd.tenant_id = $1::uuid AND pd.employer_id = ep.id
+            WHERE pd.tenant_id = $1::uuid AND pd.employer_id = ep.id ${AND_DRIVE_PD_NOT_DELETED}
           ), 0) AS drives_count,
           COALESCE((
             SELECT COUNT(*)::int FROM offers o
             INNER JOIN student_profiles sp ON sp.id = o.student_id
             WHERE sp.tenant_id = $1::uuid AND o.employer_id = ep.id AND o.status = 'accepted'
+              AND ${SP_ACTIVE_CLAUSE} ${AND_OFFER_NOT_DELETED}
           ), 0) AS past_hires
         FROM employer_approvals ea
         INNER JOIN employer_profiles ep ON ep.id = ea.employer_id
+        LEFT JOIN users u ON u.id = ep.user_id
         WHERE ea.tenant_id = $1::uuid
         ORDER BY
           CASE ea.status
@@ -56,6 +68,7 @@ export async function GET() {
             WHEN 'approved' THEN 1
             WHEN 'rejected' THEN 2
             WHEN 'blacklisted' THEN 3
+            WHEN 'revoked' THEN 3
             ELSE 4
           END,
           ea.created_at DESC`,
@@ -89,6 +102,7 @@ export async function GET() {
     return NextResponse.json({
       employers: result.rows.map((row) => ({
         ...row,
+        status: displayEmployerTieUpStatus(row.status),
         coordination_poc_user_ids: pocMap[row.approval_id] || [],
       })),
       staffDirectory: staff.rows.map((s) => ({

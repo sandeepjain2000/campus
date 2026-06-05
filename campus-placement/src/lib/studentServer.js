@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 /**
  * Resolve student_profiles.id for the logged-in student, creating a minimal row if needed.
@@ -7,7 +8,7 @@ import { query } from '@/lib/db';
 async function selectActiveStudentProfileId(userId) {
   try {
     const r = await query(
-      `SELECT id FROM student_profiles WHERE user_id = $1::uuid AND archived_at IS NULL LIMIT 1`,
+      `SELECT id FROM student_profiles WHERE user_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE} LIMIT 1`,
       [userId],
     );
     return r.rows[0]?.id || null;

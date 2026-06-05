@@ -1,11 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getInitials } from '@/lib/utils';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 
 /**
  * Entity logo: uses explicit logoUrl when provided (uploaded / saved URL).
- * Otherwise shows initials — no third-party logo guessing.
+ * Optional placeholderUrl (e.g. default circle) is tried before initials.
  */
 export default function EntityLogo({
   name = '',
@@ -14,15 +14,30 @@ export default function EntityLogo({
   size = 'md',
   shape = 'rounded',
   className = '',
+  placeholderUrl = null,
 }) {
-  const candidates = [logoUrl].filter(Boolean).map((u) => toSignedViewUrl(u));
+  const candidates = useMemo(() => {
+    const urls = [logoUrl, placeholderUrl]
+      .filter(Boolean)
+      .map((u) => toSignedViewUrl(u))
+      .filter(Boolean);
+    return [...new Set(urls)];
+  }, [logoUrl, placeholderUrl]);
 
   const [idx, setIdx] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setIdx(0);
+    setImageFailed(false);
+  }, [logoUrl, candidates.join('|')]);
 
   const handleError = () => {
     if (idx + 1 < candidates.length) {
-      setIdx(idx + 1);
+      setIdx((i) => i + 1);
+      return;
     }
+    setImageFailed(true);
   };
 
   const sizeMap = {
@@ -34,7 +49,9 @@ export default function EntityLogo({
   };
   const { boxSize, borderRadius } = sizeMap[size] || sizeMap.md;
 
-  if (!candidates.length || idx >= candidates.length) {
+  const showInitials = !candidates.length || idx >= candidates.length || imageFailed;
+
+  if (showInitials) {
     return (
       <div
         className={`entity-logo ${className}`}
@@ -82,7 +99,8 @@ export default function EntityLogo({
     >
       <img
         src={candidates[idx]}
-        alt={name}
+        alt=""
+        aria-hidden="true"
         onError={handleError}
         style={{
           width: '100%',

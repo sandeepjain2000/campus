@@ -5,6 +5,12 @@ import { query } from '@/lib/db';
 import { randomUUID } from 'crypto';
 import { sendAutomatedSponsorshipPaymentEmails } from '@/lib/sponsorshipAutoEmails';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 const METHODS = new Set(['online', 'cheque', 'bank_transfer']);
 const MAX_PROOF_CHARS = 450_000;
 

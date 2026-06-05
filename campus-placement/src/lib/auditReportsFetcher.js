@@ -27,7 +27,10 @@ export async function auditReportsFetcher(url) {
       data = {};
     }
     if (!res.ok) {
-      return emptyPayloadForUrl(url);
+      return {
+        ...emptyPayloadForUrl(url),
+        error: data.error || `Could not load audit data (${res.status}).`,
+      };
     }
     return data;
   } catch {

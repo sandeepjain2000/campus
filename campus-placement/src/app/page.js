@@ -11,10 +11,10 @@ import {
   ShieldCheck,
   ArrowRight,
   Mail,
-  Database,
 } from 'lucide-react';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
+import DevScreenTag from '@/components/DevScreenTag';
 
 export default function LandingPage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '?';
@@ -48,8 +48,9 @@ export default function LandingPage() {
   }, [appVersion, buildTimeIso, gitSha, deployId]);
 
   /** Same-tab navigation so browser Back returns to the landing page. */
-  function MarketingNavLink({ internalHref, children, ...rest }) {
-    if (marketingUrl) {
+  function MarketingNavLink({ internalHref, children, alwaysInternal = false, ...rest }) {
+    const useBuiltIn = alwaysInternal || internalHref === '/features';
+    if (marketingUrl && !useBuiltIn) {
       return (
         <a href={marketingUrl} {...rest}>
           {children}
@@ -67,19 +68,56 @@ export default function LandingPage() {
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', display: 'flex', flexDirection: 'column' }}>
       
       {/* Demo Email Banner */}
-      <div style={{ backgroundColor: 'var(--primary-50)', borderBottom: '1px solid var(--primary-200)', padding: '0.75rem 1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--primary-800)', zIndex: 60, position: 'relative' }}>
-        <strong>Demo Emails:</strong> All System emails can be checked on this disposable mail id: <strong>placementhub@yopmail.com</strong> at <a href="https://yopmail.com/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--primary-900)' }}>https://yopmail.com/</a>
+      <div style={{ backgroundColor: 'var(--primary-50)', borderBottom: '1px solid var(--primary-200)', padding: '0.75rem 1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-primary)', zIndex: 60, position: 'relative' }}>
+        <strong>Demo Emails:</strong> All System emails can be checked on this disposable mail id: <strong>placementhub@yopmail.com</strong> at{' '}
+        <a href="https://yopmail.com/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--primary-900)' }}>https://yopmail.com/</a>
+        {' · '}
+        <Link href="/developer" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Developer</Link>
+        {' · '}
+        <Link href="/data-entry" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Data</Link>
       </div>
 
-      {/* Fixed Demo Links - Bottom Left (Moved away from prime focus) */}
-      <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Demo Tools</div>
-        <Link href="/data-entry" style={{ borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-primary)'}>
-          <Database size={14} /> Data entry
-        </Link>
-        <Link href="/email-notifications" style={{ borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-primary)'}>
-          <Mail size={14} /> Email workflows
-        </Link>
+      {/* Bottom-left: email workflows only */}
+      <div
+        data-ph-demo-stack
+        style={{
+          position: 'fixed',
+          bottom: '1.5rem',
+          left: '1.5rem',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          pointerEvents: 'auto',
+          maxWidth: '12rem',
+        }}
+      >
+        <div data-ph-runner-slot aria-hidden="true" style={{ display: 'none' }} />
+        <div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem', marginBottom: '0.35rem' }}>
+            Demo Tools
+          </div>
+          <Link
+            href="/email-notifications"
+            prefetch={false}
+            style={{
+              borderRadius: 'var(--radius-md)',
+              padding: '0.5rem 0.75rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              backgroundColor: 'var(--bg-primary)',
+              border: '1px solid var(--border-default)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              textDecoration: 'none',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            <Mail size={14} aria-hidden /> Email workflows
+          </Link>
+        </div>
       </div>
 
       {/* Top Navbar */}
@@ -99,7 +137,8 @@ export default function LandingPage() {
               <MarketingNavLink internalHref="/about" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>About</MarketingNavLink>
               <MarketingNavLink internalHref="/contact" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact</MarketingNavLink>
             </nav>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <DevScreenTag />
               <ThemeToggleButton />
               <Link href="/register" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
                 Register
@@ -238,6 +277,7 @@ export default function LandingPage() {
               <MarketingNavLink internalHref="/contact" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact</MarketingNavLink>
               <Link href="/register" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Register</Link>
               <Link href="/login" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Sign in</Link>
+              <Link href="/developer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Developer</Link>
             </nav>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center', margin: 0 }}>© 2026 PlacementHub. All rights reserved.</p>
         </div>

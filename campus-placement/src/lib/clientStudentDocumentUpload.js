@@ -1,4 +1,4 @@
-import { validateStudentDocumentFile } from '@/lib/studentDocumentUpload';
+import { validateStudentDocumentFileForTypeAsync } from '@/lib/studentDocumentUpload';
 
 /**
  * Upload a student document through the app server (recommended — avoids S3 CORS issues).
@@ -7,14 +7,15 @@ import { validateStudentDocumentFile } from '@/lib/studentDocumentUpload';
  * @returns {Promise<{ ok: true, document: object, fileUrl: string } | { ok: false, error: string, hint?: string }>}
  */
 export async function uploadStudentDocumentViaServer(file, opts = {}) {
-  const validated = validateStudentDocumentFile(file);
+  const documentType = opts.documentType || 'resume';
+  const validated = await validateStudentDocumentFileForTypeAsync(file, documentType);
   if (!validated.ok) {
     return { ok: false, error: validated.error };
   }
 
   const formData = new FormData();
   formData.append('file', file, validated.fileName);
-  formData.append('document_type', opts.documentType || 'resume');
+  formData.append('document_type', documentType);
   if (opts.setAsPrimaryResume) {
     formData.append('set_as_primary', '1');
   }

@@ -26,6 +26,8 @@ import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import { Menu, Mail, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
 import { writeActiveAcademicYearContext } from '@/lib/collegeAcademicYearContext';
+import { resolveBrandLogoUrl } from '@/lib/resolveBrandLogoUrl';
+import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 
 const settingsFetcher = async (url) => {
   const res = await fetch(url);
@@ -35,7 +37,7 @@ const settingsFetcher = async (url) => {
 };
 
 export default function DashboardLayout({ children }) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -62,8 +64,12 @@ export default function DashboardLayout({ children }) {
   }, [sidebarCollapsed]);
   const [employerCampusLabel, setEmployerCampusLabel] = useState(null);
   const [academicYearOverride, setAcademicYearOverride] = useState(null);
-  const { data: collegeSettings } = useSWR(
+  const { data: collegeSettings, isLoading: collegeSettingsLoading } = useSWR(
     session?.user?.role === 'college_admin' ? '/api/college/settings' : null,
+    settingsFetcher,
+  );
+  const { data: employerProfileData, isLoading: employerProfileLoading } = useSWR(
+    session?.user?.role === 'employer' ? '/api/employer/profile' : null,
     settingsFetcher,
   );
   const { data: academicYearsBundle } = useSWR(
@@ -154,17 +160,50 @@ export default function DashboardLayout({ children }) {
     }
   }, [status, router]);
 
+  const role = session?.user?.role;
+  const brandProfileLoaded =
+    role === 'employer'
+      ? !employerProfileLoading
+      : role === 'college_admin'
+        ? !collegeSettingsLoading
+        : true;
+  const resolvedBrandLogoUrl = useMemo(
+    () =>
+      session?.user
+        ? resolveBrandLogoUrl({
+            role,
+            employerProfile: employerProfileData?.profile,
+            collegeSettings,
+            sessionUser: session.user,
+            profileLoaded: brandProfileLoaded,
+          })
+        : null,
+    [session?.user, role, employerProfileData?.profile, collegeSettings, brandProfileLoaded],
+  );
+
+  useEffect(() => {
+    if (!session?.user || !brandProfileLoaded || !resolvedBrandLogoUrl) return;
+    if (role !== 'employer' && role !== 'college_admin') return;
+    if (session.user.brandLogoUrl === resolvedBrandLogoUrl) return;
+    updateSession({ brandLogoUrl: resolvedBrandLogoUrl });
+  }, [session?.user, brandProfileLoaded, resolvedBrandLogoUrl, role, updateSession]);
+
   if (status === 'loading') {
     return <PageLoading message="Signing you in…" delayMs={0} />;
   }
 
   if (!session) return null;
 
-  const role = session.user.role;
   const menu = menuConfig[role] || menuConfig.student;
   const sectionId = findSectionIdByPath(menu, pathname);
   const activeSection = menu.sections.find((s) => s.id === sectionId) || menu.sections[0];
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
+  const employerDisplayName =
+    role === 'employer'
+      ? (employerProfileData?.profile?.company_name && String(employerProfileData.profile.company_name).trim()) ||
+        session.user.tenantName ||
+        session.user.name
+      : null;
   const isHub = isRoleDashboardHome(pathname, role);
   /** Super admin: show every workspace link in the sidebar (not only the current section). */
   const showFullSidebarNav = role === 'super_admin';
@@ -276,8 +315,13 @@ export default function DashboardLayout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem' }}>
             {(role === 'employer' || role === 'college_admin') ? (
               <EntityLogo
-                name={session.user.tenantName || session.user.name}
-                logoUrl={session.user.brandLogoUrl || null}
+                name={
+                  role === 'employer'
+                    ? employerDisplayName || session.user.name
+                    : (collegeSettings?.institution?.collegeName || session.user.tenantName || session.user.name)
+                }
+                logoUrl={resolvedBrandLogoUrl}
+                placeholderUrl={DEFAULT_ENTITY_LOGO_URL}
                 size="sm"
                 shape="rounded"
               />
@@ -331,27 +375,71 @@ export default function DashboardLayout({ children }) {
               </Link>
               <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, maxWidth: 'min(100%, 22rem)' }}>
-                <div className="avatar avatar-sm" style={{ width: '32px', height: '32px', fontSize: '0.875rem', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <EntityLogo
-                    name={role === 'super_admin' ? 'PlacementHub' : (session.user.tenantName || session.user.name)}
-                    logoUrl={role === 'super_admin' ? session.user.avatar || null : session.user.brandLogoUrl || null}
-                    size="sm"
-                    shape="rounded"
-                  />
-                </div>
+                <EntityLogo
+                  name={
+                    role === 'super_admin'
+                      ? 'PlacementHub'
+                      : role === 'employer'
+                        ? employerDisplayName || session.user.name
+                        : (collegeSettings?.institution?.collegeName || '').trim() ||
+                          session.user.tenantName ||
+                          session.user.name
+                  }
+                  logoUrl={resolvedBrandLogoUrl}
+                  placeholderUrl={
+                    role === 'employer' || role === 'college_admin' ? DEFAULT_ENTITY_LOGO_URL : null
+                  }
+                  size="sm"
+                  shape="rounded"
+                />
                 <div style={{ minWidth: 0 }}>
                   <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {role === 'super_admin'
                       ? 'PlacementHub SuperAdmin'
-                      : (collegeSettings?.institution?.collegeName || '').trim() ||
-                        session.user.tenantName ||
-                        session.user.name}
+                      : role === 'employer'
+                        ? employerDisplayName
+                        : (collegeSettings?.institution?.collegeName || '').trim() ||
+                          session.user.tenantName ||
+                          session.user.name}
                   </h2>
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
                     {role === 'employer' ? 'Corporate Partner' : role === 'student' ? 'Student Portal' : 'College Administration'}
                   </p>
                 </div>
               </div>
+
+              {role === 'employer' && (
+                <>
+                  <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', flexShrink: 0 }}>Campus:</span>
+                    <Link
+                      href="/dashboard/employer/select-campus"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '4px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border)',
+                        fontSize: '0.875rem',
+                        color: employerCampusLabel ? 'var(--text-primary)' : 'var(--warning-700)',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        maxWidth: '14rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={employerCampusLabel ? `Active campus: ${employerCampusLabel}` : 'Choose or switch campus'}
+                    >
+                      {employerCampusLabel || 'Choose campus'}
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)' }}>▼</span>
+                    </Link>
+                  </div>
+                </>
+              )}
 
               {role === 'college_admin' && (
                 <>

@@ -152,7 +152,7 @@ export default function CollegeSponsorshipsPage() {
             Live sponsorship opportunities for {collegeName}. Use this as your college-facing catalog of active sponsor tiers.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn" onClick={downloadGuide} style={{ background: 'white', color: 'var(--primary-800)', border: 'none', fontWeight: 700 }}>Download Guide</button>
+            <button type="button" className="btn banner-cta-solid" onClick={downloadGuide}>Download Guide</button>
             <button className="btn" onClick={scheduleMeeting} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(10px)' }}>Schedule Meeting</button>
           </div>
         </div>

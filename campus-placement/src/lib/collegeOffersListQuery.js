@@ -1,4 +1,6 @@
 import { query } from '@/lib/db';
+import { AND_OFFER_NOT_DELETED, AND_SP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 /** Prefer roster name; fall back to email, roll, Unknown. */
 const STUDENT_NAME_SQL = `COALESCE(
@@ -37,7 +39,7 @@ function buildCollegeOffersSql(latestOnly, useReported) {
   LEFT JOIN users u ON u.id = sp.user_id
   JOIN tenants ten ON ten.id = sp.tenant_id
   LEFT JOIN employer_profiles ep ON ep.id = o.employer_id
-  WHERE sp.tenant_id = $1::uuid AND sp.archived_at IS NULL ${latestClause}
+  WHERE sp.tenant_id = $1::uuid AND ${SP_ACTIVE_CLAUSE} ${AND_OFFER_NOT_DELETED} ${latestClause}
   ORDER BY o.created_at DESC
   LIMIT 500`;
 }
@@ -57,7 +59,7 @@ async function queryWithLatestFallback(latestOnly, useReported, tenantId) {
     const countRes = await query(
       `SELECT COUNT(*)::int AS n FROM offers o
        JOIN student_profiles sp ON sp.id = o.student_id
-       WHERE sp.tenant_id = $1::uuid AND sp.archived_at IS NULL`,
+       WHERE sp.tenant_id = $1::uuid AND ${SP_ACTIVE_CLAUSE} ${AND_OFFER_NOT_DELETED}`,
       [tenantId],
     );
     const total = Number(countRes.rows[0]?.n) || 0;

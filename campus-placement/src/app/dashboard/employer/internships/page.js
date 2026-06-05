@@ -8,6 +8,14 @@ import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
 import { GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { toCsvIsoDate } from '@/lib/csvExport';
+import { formatEmployerMinCgpa, normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
+import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
+import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 
 async function swrFetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -22,6 +30,18 @@ function buildDescription(durationMonths, notes) {
     lines.push('', notes.trim());
   }
   return lines.join('\n');
+}
+
+function parseInternshipDescription(description) {
+  const text = String(description || '').trim();
+  const match = text.match(/^Duration:\s*(\d+)\s*months\.?\s*(?:\n\n([\s\S]*))?$/i);
+  if (match) {
+    return {
+      durationMonths: match[1] || '6',
+      notes: (match[2] || '').trim(),
+    };
+  }
+  return { durationMonths: '6', notes: text };
 }
 
 export default function EmployerInternshipsPage() {
@@ -51,6 +71,9 @@ export default function EmployerInternshipsPage() {
   const [campusSyncJobId, setCampusSyncJobId] = useState(null);
   const [campusSyncSelection, setCampusSyncSelection] = useState({});
   const [campusSyncSubmitting, setCampusSyncSubmitting] = useState(false);
+  const [detailInternship, setDetailInternship] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [closingId, setClosingId] = useState(null);
 
   const approvedCampuses = useMemo(
     () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
@@ -86,12 +109,7 @@ export default function EmployerInternshipsPage() {
     defaultSort: 'date_desc',
   });
 
-  const openForm = () => {
-    const sel = {};
-    approvedCampuses.forEach((c) => {
-      sel[c.id] = true;
-    });
-    setSelectedTenantIds(sel);
+  const resetFormFields = useCallback(() => {
     setTitle('');
     setDurationMonths('6');
     setStipend('');
@@ -100,8 +118,74 @@ export default function EmployerInternshipsPage() {
     setMinCgpa('');
     setKeywords('');
     setNotes('');
+    setEditingId(null);
+  }, []);
+
+  const closeForm = useCallback(() => {
+    setShowForm(false);
+    resetFormFields();
+  }, [resetFormFields]);
+
+  const openForm = () => {
+    resetFormFields();
+    setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses));
     setShowForm(true);
   };
+
+  const openDetails = useCallback((intern) => {
+    setDetailInternship(intern);
+  }, []);
+
+  const openManage = useCallback(
+    (intern) => {
+      const parsed = parseInternshipDescription(intern.description || '');
+      setEditingId(intern.id);
+      setTitle(intern.title || '');
+      setDurationMonths(parsed.durationMonths);
+      setStipend(intern.salaryMin ?? '');
+      setStipendMax(intern.salaryMax ?? '');
+      setVacancies(String(intern.vacancies ?? '5'));
+      const cgpaVal = normalizeEmployerMinCgpa(intern.minCgpa ?? intern.cgpa);
+      setMinCgpa(cgpaVal != null ? String(cgpaVal) : '');
+      setKeywords(intern.keywords || '');
+      setNotes(parsed.notes);
+      setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses, intern.tenantIds));
+      setShowForm(true);
+      setDetailInternship(null);
+      requestAnimationFrame(() => {
+        document.getElementById('internship-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
+    [approvedCampuses],
+  );
+
+  const closePublishedInternship = useCallback(
+    async (intern) => {
+      if (!intern?.id) return;
+      setClosingId(intern.id);
+      try {
+        const res = await fetch('/api/employer/jobs', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'close', id: intern.id }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          addToast(json.error || 'Could not close internship', 'error');
+          return;
+        }
+        addToast('Internship closed. It remains listed under Closed for your records.', 'success');
+        setDetailInternship(null);
+        if (editingId === intern.id) closeForm();
+        await mutateInternships();
+      } catch {
+        addToast('Network error', 'error');
+      } finally {
+        setClosingId(null);
+      }
+    },
+    [addToast, mutateInternships, editingId, closeForm],
+  );
 
   const stats = useMemo(() => {
     const n = internships.length;
@@ -128,11 +212,17 @@ export default function EmployerInternshipsPage() {
     };
   }, [internships]);
 
-  const publishInternship = useCallback(async () => {
+  const editingInternship = useMemo(
+    () => (editingId ? internships.find((i) => i.id === editingId) : null),
+    [editingId, internships],
+  );
+
+  const saveInternship = useCallback(async () => {
     if (!title.trim()) {
       addToast('Internship title is required', 'error');
       return;
     }
+    const isEditing = !!editingId;
     const tenantIds = Object.entries(selectedTenantIds)
       .filter(([, v]) => v)
       .map(([k]) => k);
@@ -140,43 +230,58 @@ export default function EmployerInternshipsPage() {
       addToast('Select at least one approved campus.', 'warning');
       return;
     }
+    const validated = validateAndResolveEmployerJobSubmit({
+      salaryMin: stipend,
+      salaryMax: stipendMax,
+      minCgpa,
+      vacancies,
+      jobType: 'internship',
+    });
+    if (validated.error) {
+      addToast(validated.error, 'warning');
+      return;
+    }
     const sm = stipend === '' ? null : Number(stipend);
     const sx = stipendMax === '' ? null : Number(stipendMax);
-    if (stipend !== '' && Number.isNaN(sm)) {
-      addToast('Stipend must be a number (monthly INR)', 'error');
-      return;
-    }
-    if (stipendMax !== '' && Number.isNaN(sx)) {
-      addToast('Max stipend must be a number', 'error');
-      return;
-    }
 
     setSubmitting(true);
     try {
       const description = buildDescription(durationMonths, notes);
+      const payload = {
+        title: title.trim(),
+        description,
+        jobType: 'internship',
+        status: isEditing ? editingInternship?.status || 'published' : 'published',
+        salaryMin: sm,
+        salaryMax: sx != null && !Number.isNaN(sx) ? sx : sm,
+        minCgpa: validated.minCgpa,
+        vacancies: vacancies === '' ? 1 : vacancies,
+        keywords,
+      };
+      if (isEditing) {
+        payload.id = editingId;
+        payload.tenantIds = tenantIds;
+      } else {
+        payload.tenantIds = tenantIds;
+      }
+
       const res = await fetch('/api/employer/jobs', {
-        method: 'POST',
+        method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          description,
-          jobType: 'internship',
-          status: 'published',
-          salaryMin: sm,
-          salaryMax: sx != null && !Number.isNaN(sx) ? sx : sm,
-          minCgpa: minCgpa === '' ? null : Number(minCgpa),
-          vacancies: vacancies === '' ? 1 : vacancies,
-          keywords,
-          tenantIds,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) {
-        addToast(json.error || 'Could not publish', 'error');
+        addToast(json.error || (isEditing ? 'Could not save changes' : 'Could not publish'), 'error');
         return;
       }
-      addToast('Internship published to the database. Partner colleges and students were notified.', 'success');
-      setShowForm(false);
+      addToast(
+        isEditing
+          ? 'Internship updated.'
+          : 'Internship published to the database. Partner colleges and students were notified.',
+        'success',
+      );
+      closeForm();
       await mutateInternships();
     } catch {
       addToast('Network error', 'error');
@@ -193,20 +298,20 @@ export default function EmployerInternshipsPage() {
     minCgpa,
     vacancies,
     keywords,
+    editingId,
+    editingInternship,
     addToast,
     mutateInternships,
+    closeForm,
   ]);
 
   const openCampusSync = useCallback(
     (jobId) => {
-      const sel = {};
-      approvedCampuses.forEach((c) => {
-        sel[c.id] = true;
-      });
-      setCampusSyncSelection(sel);
+      const intern = internships.find((i) => i.id === jobId);
+      setCampusSyncSelection(buildDefaultTenantSelection(approvedCampuses, intern?.tenantIds));
       setCampusSyncJobId(jobId);
     },
-    [approvedCampuses],
+    [approvedCampuses, internships],
   );
 
   const submitCampusSync = useCallback(async () => {
@@ -245,6 +350,45 @@ export default function EmployerInternshipsPage() {
     }
   }, [campusSyncJobId, campusSyncSelection, addToast]);
 
+  const getInternshipsCsv = useCallback(
+    (scope) => {
+      const list = scope === 'current' ? displayInternships : internships;
+      return {
+        headers: [
+          'id',
+          'title',
+          'keywords',
+          'stipend_min_inr',
+          'stipend_max_inr',
+          'min_cgpa',
+          'openings',
+          'status',
+          'posted_at',
+          'duration_months',
+          'campus_tenant_ids',
+        ],
+        rows: list.map((intern) => {
+          const parsed = parseInternshipDescription(intern.description || '');
+          const cgpaVal = normalizeEmployerMinCgpa(intern.minCgpa ?? intern.cgpa);
+          return [
+            intern.id,
+            intern.title ?? '',
+            intern.keywords ?? '',
+            intern.salaryMin != null ? String(intern.salaryMin) : '',
+            intern.salaryMax != null ? String(intern.salaryMax) : '',
+            cgpaVal != null ? String(cgpaVal) : '',
+            intern.vacancies != null ? String(intern.vacancies) : '',
+            intern.status ?? '',
+            intern.createdAt ? toCsvIsoDate(intern.createdAt) : '',
+            parsed.durationMonths ?? '',
+            Array.isArray(intern.tenantIds) ? intern.tenantIds.join(';') : '',
+          ];
+        }),
+      };
+    },
+    [displayInternships, internships],
+  );
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -256,51 +400,48 @@ export default function EmployerInternshipsPage() {
             Post internships to <span className="font-mono text-xs">job_postings</span> (same pipeline as Job Postings). Stipend fields are stored as monthly INR.
           </p>
         </div>
-        <div className="page-header-actions">
-          <button type="button" className="btn btn-primary" onClick={() => (showForm ? setShowForm(false) : openForm())}>
+        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          {totalCount > 0 ? (
+            <ExportCsvSplitButton
+              mode="dual"
+              filenameBase="employer_internships"
+              currentCount={filteredCount}
+              fullCount={totalCount}
+              getRows={getInternshipsCsv}
+            />
+          ) : null}
+          <button type="button" className="btn btn-primary" onClick={() => (showForm ? closeForm() : openForm())}>
             <Plus size={16} /> {showForm ? 'Close form' : 'Post Internship'}
           </button>
         </div>
       </div>
 
       {showForm && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div id="internship-form" className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="card-header">
-            <h3 className="card-title">Post New Internship</h3>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>
+            <h3 className="card-title">{editingId ? 'Edit Internship' : 'Post New Internship'}</h3>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={closeForm}>
               ✕ Close
             </button>
           </div>
+          {editingId ? (
+            <p className="text-sm text-secondary" style={{ marginTop: 0, marginBottom: '1rem' }}>
+              Campus visibility is unchanged here. Use <strong>Sync</strong> on a published row to add campuses.
+            </p>
+          ) : null}
           <div className="grid grid-2">
+            {!editingId ? (
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Target campuses (approved) <span className="required">*</span></label>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                  gap: '0.75rem',
-                  background: 'var(--bg-secondary)',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                {approvedCampuses.length === 0 ? (
-                  <span className="text-sm text-secondary">No approved campuses. Request access from the campus directory first.</span>
-                ) : (
-                  approvedCampuses.map((c) => (
-                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!selectedTenantIds[c.id]}
-                        onChange={() => setSelectedTenantIds((p) => ({ ...p, [c.id]: !p[c.id] }))}
-                      />
-                      {c.name}
-                    </label>
-                  ))
-                )}
-              </div>
+              <EmployerCampusTargetPicker
+                campuses={approvedCampuses}
+                selection={selectedTenantIds}
+                onSelectionChange={setSelectedTenantIds}
+                label="Target campuses (approved)"
+                required
+                emptyMessage="No approved campuses. Request access from the campus directory first."
+              />
             </div>
+            ) : null}
             <div className="form-group">
               <label className="form-label">Internship Title <span className="required">*</span></label>
               <input className="form-input" placeholder="e.g., Summer Data Intern" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -315,19 +456,19 @@ export default function EmployerInternshipsPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Stipend / month (min, INR)</label>
-              <input className="form-input" type="number" placeholder="40000" value={stipend} onChange={(e) => setStipend(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MIN} placeholder="40000" value={stipend} onChange={setStipend} />
             </div>
             <div className="form-group">
               <label className="form-label">Stipend / month (max, optional)</label>
-              <input className="form-input" type="number" placeholder="Same as min if empty" value={stipendMax} onChange={(e) => setStipendMax(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MAX} context={{ salaryMin: stipend }} placeholder="Same as min if empty" value={stipendMax} onChange={setStipendMax} />
             </div>
             <div className="form-group">
               <label className="form-label">Openings</label>
-              <input className="form-input" type="number" value={vacancies} onChange={(e) => setVacancies(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} value={vacancies} onChange={setVacancies} />
             </div>
             <div className="form-group">
               <label className="form-label">Min CGPA</label>
-              <input className="form-input" type="number" step="0.1" min="0" max="10" value={minCgpa} onChange={(e) => setMinCgpa(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" value={minCgpa} onChange={setMinCgpa} />
             </div>
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">Skills (comma-separated)</label>
@@ -338,13 +479,27 @@ export default function EmployerInternshipsPage() {
               <textarea className="form-textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Eligibility, location, PPO hint…" />
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-secondary" disabled={submitting} onClick={() => setShowForm(false)}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn-primary" disabled={submitting} onClick={publishInternship}>
-              {submitting ? 'Publishing…' : 'Publish Internship'}
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            {editingId && editingInternship?.status === 'published' ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={submitting || closingId === editingId}
+                onClick={() => void closePublishedInternship(editingInternship)}
+              >
+                {closingId === editingId ? 'Closing…' : 'Close posting'}
+              </button>
+            ) : (
+              <span />
+            )}
+            <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
+              <button type="button" className="btn btn-secondary" disabled={submitting} onClick={closeForm}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" disabled={submitting} onClick={saveInternship}>
+                {submitting ? (editingId ? 'Saving…' : 'Publishing…') : editingId ? 'Save changes' : 'Publish Internship'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -432,7 +587,7 @@ export default function EmployerInternshipsPage() {
                       ) : null}
                     </td>
                     <td className="text-sm">{stipendLabel(intern.salaryMin, intern.salaryMax)}</td>
-                    <td className="text-sm">{intern.cgpa ?? '—'}</td>
+                    <td className="text-sm">{formatEmployerMinCgpa(intern.minCgpa ?? intern.cgpa)}</td>
                     <td className="text-sm">{intern.vacancies ?? '—'}</td>
                     <td>
                       <span className={`badge badge-${getStatusColor(intern.status)} badge-dot`}>{formatStatus(intern.status)}</span>
@@ -444,10 +599,10 @@ export default function EmployerInternshipsPage() {
                           <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync
                         </button>
                       )}
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(intern.title, 'info')}>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => openDetails(intern)}>
                         <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
                       </button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('Manage via Job Postings when edit API is available.', 'info')}>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => openManage(intern)}>
                         <Settings size={14} style={{ marginRight: '0.25rem' }} /> Manage
                       </button>
                     </td>
@@ -465,6 +620,16 @@ export default function EmployerInternshipsPage() {
         </div>
       </div>
 
+      {detailInternship ? (
+        <InternshipDetailDialog
+          internship={detailInternship}
+          closingId={closingId}
+          onClose={() => setDetailInternship(null)}
+          onManage={openManage}
+          onClosePosting={closePublishedInternship}
+        />
+      ) : null}
+
       {campusSyncJobId && (
         <div className="card" style={{ marginTop: '1.25rem' }}>
           <div className="card-header">
@@ -477,29 +642,13 @@ export default function EmployerInternshipsPage() {
             If this internship is published but does not appear on the college or student dashboards, add visibility rows for the
             campuses that should see it (approved tie-up required).
           </p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '0.75rem',
-              marginBottom: '1rem',
-            }}
-          >
-            {approvedCampuses.length === 0 ? (
-              <span className="text-sm text-secondary">No approved campuses.</span>
-            ) : (
-              approvedCampuses.map((c) => (
-                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!campusSyncSelection[c.id]}
-                    onChange={() => setCampusSyncSelection((p) => ({ ...p, [c.id]: !p[c.id] }))}
-                  />
-                  {c.name}
-                </label>
-              ))
-            )}
-          </div>
+          <EmployerCampusTargetPicker
+            campuses={approvedCampuses}
+            selection={campusSyncSelection}
+            onSelectionChange={setCampusSyncSelection}
+            compact
+            emptyMessage="No approved campuses."
+          />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <button type="button" className="btn btn-secondary" disabled={campusSyncSubmitting} onClick={() => setCampusSyncJobId(null)}>
               Cancel
@@ -510,6 +659,81 @@ export default function EmployerInternshipsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InternshipDetailDialog({ internship, closingId, onClose, onManage, onClosePosting }) {
+  const parsed = parseInternshipDescription(internship.description || '');
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="internship-detail-title"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.5rem',
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Close details"
+        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', border: 'none', cursor: 'pointer' }}
+        onClick={onClose}
+      />
+      <div
+        className="card animate-slideUp"
+        style={{ position: 'relative', width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}
+      >
+        <div className="card-header">
+          <h3 id="internship-detail-title" className="card-title">{internship.title}</h3>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+            ✕ Close
+          </button>
+        </div>
+        <div style={{ display: 'grid', gap: '0.85rem' }}>
+          <DetailRow label="Status">
+            <span className={`badge badge-${getStatusColor(internship.status)} badge-dot`}>{formatStatus(internship.status)}</span>
+          </DetailRow>
+          <DetailRow label="Stipend / month">{stipendLabel(internship.salaryMin, internship.salaryMax)}</DetailRow>
+          <DetailRow label="Duration">{parsed.durationMonths} months</DetailRow>
+          <DetailRow label="Min CGPA">{formatEmployerMinCgpa(internship.minCgpa ?? internship.cgpa)}</DetailRow>
+          <DetailRow label="Openings">{internship.vacancies ?? '—'}</DetailRow>
+          <DetailRow label="Posted">{internship.createdAt ? formatDate(internship.createdAt) : '—'}</DetailRow>
+          {internship.keywords ? <DetailRow label="Skills">{internship.keywords}</DetailRow> : null}
+          {parsed.notes ? <DetailRow label="Notes">{parsed.notes}</DetailRow> : null}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+          {internship.status === 'published' ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={closingId === internship.id}
+              onClick={() => void onClosePosting(internship)}
+            >
+              {closingId === internship.id ? 'Closing…' : 'Close posting'}
+            </button>
+          ) : null}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onManage(internship)}>
+            Manage
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, children }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.75rem', alignItems: 'start' }}>
+      <span className="text-xs font-semibold text-tertiary" style={{ paddingTop: '0.15rem' }}>{label}</span>
+      <span className="text-sm" style={{ color: 'var(--text-primary)', lineHeight: 1.5 }}>{children}</span>
     </div>
   );
 }

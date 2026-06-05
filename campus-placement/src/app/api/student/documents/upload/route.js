@@ -4,7 +4,17 @@ import { authOptions } from '@/lib/auth';
 import { completeStudentDocumentRecord } from '@/lib/completeStudentDocument';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { isS3Configured, uploadStudentDocumentBuffer } from '@/lib/s3';
-import { normalizeStudentDocumentContentType, validateStudentDocumentFile } from '@/lib/studentDocumentUpload';
+import {
+  normalizeStudentDocumentContentType,
+  validateStudentDocumentBuffer,
+  validateStudentDocumentFileForType,
+} from '@/lib/studentDocumentUpload';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export const runtime = 'nodejs';
 
@@ -37,11 +47,20 @@ export async function POST(req) {
     }
 
     const fileName = file.name || 'document';
-    const validated = validateStudentDocumentFile({
-      name: fileName,
-      type: file.type,
-      size: file.size,
-    });
+    const meta = validateStudentDocumentFileForType(
+      {
+        name: fileName,
+        type: file.type,
+        size: file.size,
+      },
+      document_type,
+    );
+    if (!meta.ok) {
+      return NextResponse.json({ error: meta.error }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const validated = validateStudentDocumentBuffer(buffer, meta);
     if (!validated.ok) {
       return NextResponse.json({ error: validated.error }, { status: 400 });
     }
@@ -59,7 +78,6 @@ export async function POST(req) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
     const uploaded = await uploadStudentDocumentBuffer({
       userId,
       fileName: validated.fileName,

@@ -10,6 +10,24 @@ function parseDate(value, fallback) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : fallback;
 }
 
+/** Human-readable summary for audit log table search/display. */
+function formatAuditDetails(row) {
+  const nv = row?.new_values;
+  if (!nv || typeof nv !== 'object') return null;
+  if (row.action === 'DEMO_PURGE') {
+    const parts = [nv.label].filter(Boolean);
+    if (nv.cascade && typeof nv.cascade === 'object') {
+      const hits = Object.entries(nv.cascade).filter(([, v]) => Number(v) > 0);
+      if (hits.length) {
+        parts.push(hits.map(([k, v]) => `${k}:${v}`).join(', '));
+      }
+    }
+    return parts.join(' · ') || null;
+  }
+  if (typeof nv.summary === 'string') return nv.summary;
+  return null;
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -32,30 +50,48 @@ export async function GET(request) {
     const params = scopeResult.scope === 'tenant' ? [scopeResult.tenantId, from, to] : [from, to];
     const where =
       scopeResult.scope === 'tenant'
-        ? ['tenant_id = $1::uuid', 'DATE(created_at) >= $2::date', 'DATE(created_at) <= $3::date']
-        : ['DATE(created_at) >= $1::date', 'DATE(created_at) <= $2::date'];
+        ? [
+            `(al.tenant_id = $1::uuid OR (
+              al.action = 'DEMO_PURGE'
+              AND COALESCE(al.new_values->>'contextTenantId', al.new_values->>'entityTenantId') = $1::text
+            ))`,
+            `al.created_at >= $2::date`,
+            `al.created_at < ($3::date + interval '1 day')`,
+          ]
+        : [
+            `al.created_at >= $1::date`,
+            `al.created_at < ($2::date + interval '1 day')`,
+          ];
     if (action) {
       params.push(action);
-      where.push(`action = $${params.length}`);
+      where.push(`al.action = $${params.length}`);
     }
     if (entityType) {
       params.push(entityType);
-      where.push(`entity_type = $${params.length}`);
+      where.push(`al.entity_type = $${params.length}`);
     }
     params.push(limit);
 
     const res = await query(
       `SELECT al.id, al.user_id, al.tenant_id, t.name AS tenant_name,
-              al.action, al.entity_type, al.entity_id, al.old_values, al.new_values, al.ip_address, al.created_at
+              al.action, al.entity_type, al.entity_id, al.old_values, al.new_values, al.ip_address, al.created_at,
+              u.email AS actor_email,
+              NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), '') AS actor_name
        FROM audit_logs al
        LEFT JOIN tenants t ON t.id = al.tenant_id
+       LEFT JOIN users u ON u.id = al.user_id
        WHERE ${where.join(' AND ')}
        ORDER BY al.created_at DESC
        LIMIT $${params.length}`,
       params,
     );
 
-    return NextResponse.json({ logs: res.rows, scope: scopeResult.scope });
+    const logs = res.rows.map((row) => ({
+      ...row,
+      details: formatAuditDetails(row),
+    }));
+
+    return NextResponse.json({ logs, scope: scopeResult.scope });
   } catch (error) {
     console.error('GET /api/audit/logs failed:', error);
     const code = error?.code;

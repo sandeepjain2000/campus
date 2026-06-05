@@ -20,6 +20,8 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
   const { data: session } = useSession();
   const { addToast } = useToast();
   const isSuperAdmin = session?.user?.role === 'super_admin';
+  const isCollegeScope = session?.user?.role === 'college_admin';
+  const demoPurgeFilterActive = action.trim().toUpperCase() === 'DEMO_PURGE';
   const today = useMemo(() => new Date(), []);
   const thirtyDaysAgo = useMemo(() => new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), []);
   const [from, setFrom] = useState(toYmd(thirtyDaysAgo));
@@ -155,7 +157,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
           </div>
           <div className="form-group">
             <label className="form-label">Action (optional)</label>
-            <input className="form-input" placeholder="e.g. UPDATE_ADMIN_SETTINGS" value={action} onChange={(e) => setAction(e.target.value)} />
+            <input className="form-input" placeholder="e.g. DEMO_PURGE, UPDATE_ADMIN_SETTINGS" value={action} onChange={(e) => setAction(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Entity type (optional)</label>
@@ -166,6 +168,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
           <button className="btn btn-ghost btn-sm" onClick={() => setPresetDays(7)}>Last 7 days</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setPresetDays(30)}>Last 30 days</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setPresetDays(90)}>Last 90 days</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setAction('DEMO_PURGE')}>Demo purges</button>
         </div>
         <div className="grid grid-2" style={{ marginTop: '0.75rem' }}>
           <div className="form-group">
@@ -295,15 +298,23 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
                       <td className="text-sm">{l.tenant_name || '—'}</td>
                     ) : null}
                     <td><span className="badge badge-gray">{l.action || '—'}</span></td>
-                    <td>{l.entity_type || '—'} {l.entity_id ? `(${String(l.entity_id).slice(0, 8)}...)` : ''}</td>
-                    <td>{l.user_id ? String(l.user_id).slice(0, 8) : '—'}</td>
+                    <td>
+                      <div>{l.entity_type || '—'}{l.new_values?.label ? ` — ${l.new_values.label}` : ''}</div>
+                      {l.details ? <div className="text-xs text-tertiary">{l.details}</div> : null}
+                      {l.entity_id ? <div className="text-xs text-tertiary">{String(l.entity_id).slice(0, 8)}…</div> : null}
+                    </td>
+                    <td>{l.actor_email || l.actor_name || (l.user_id ? `${String(l.user_id).slice(0, 8)}…` : '—')}</td>
                     <td>{l.ip_address || '—'}</td>
                   </tr>
                 ))}
                 {logsTotalCount === 0 && (
                   <tr>
                     <td colSpan={isSuperAdmin && !tenantFilter ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      No logs found for selected filters.
+                      {demoPurgeFilterActive
+                        ? 'No demo purges logged for this college yet. Run a purge from Data Entry while logged in, then refresh.'
+                        : isCollegeScope
+                          ? 'No audit entries for your college in this date range. Try Last 90 days or clear filters.'
+                          : 'No logs found for selected filters.'}
                     </td>
                   </tr>
                 )}

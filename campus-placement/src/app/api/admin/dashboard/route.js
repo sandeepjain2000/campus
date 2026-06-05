@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET(request) {
   try {
@@ -15,17 +22,25 @@ export async function GET(request) {
       SELECT 
         (SELECT COUNT(*) FROM tenants WHERE type = 'college') as "colleges",
         (SELECT COUNT(*) FROM employer_profiles) as "employers",
-        (SELECT COUNT(*) FROM student_profiles) as "students",
+        (SELECT COUNT(*) FROM student_profiles WHERE ${STUDENT_PROFILE_ACTIVE_CLAUSE}) as "students",
         (SELECT COUNT(*) FROM users) as "totalUsers"
     `);
 
-    const collegesQuery = await query(`
-      SELECT id, name
-      FROM tenants
-      WHERE type = 'college'
-      ORDER BY created_at DESC
-      LIMIT 5
-    `);
+    const [collegesQuery, employersQuery] = await Promise.all([
+      query(`
+        SELECT id, name
+        FROM tenants
+        WHERE type = 'college'
+        ORDER BY created_at DESC
+        LIMIT 5
+      `),
+      query(`
+        SELECT id, company_name AS name
+        FROM employer_profiles
+        ORDER BY created_at DESC
+        LIMIT 5
+      `),
+    ]);
 
     const stats = statsQuery?.rows?.[0] || {};
     return NextResponse.json({
@@ -36,6 +51,7 @@ export async function GET(request) {
         totalUsers: parseInt(stats.totalUsers || 0, 10),
       },
       registeredColleges: collegesQuery?.rows || [],
+      registeredEmployers: employersQuery?.rows || [],
     });
   } catch (error) {
     console.error('Failed to load admin dashboard data:', error.message);

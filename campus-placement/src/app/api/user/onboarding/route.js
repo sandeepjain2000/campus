@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export async function GET() {
   try {
@@ -23,7 +25,7 @@ export async function GET() {
       // Step 1: Complete Academic Profile
       // Step 2: Upload Resume
       const profileRes = await query(
-        `SELECT id, cgpa, resume_url FROM student_profiles WHERE user_id = $1 LIMIT 1`,
+        `SELECT id, cgpa, resume_url FROM student_profiles WHERE user_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE} LIMIT 1`,
         [userId]
       );
       const profile = profileRes.rows[0];
@@ -35,7 +37,7 @@ export async function GET() {
       let hasApplications = false;
       if (profile) {
         const appsRes = await query(
-          `SELECT 1 FROM applications WHERE student_id = $1 LIMIT 1`,
+          `SELECT 1 FROM applications a WHERE a.student_id = $1 ${AND_APP_NOT_DELETED} LIMIT 1`,
           [profile.id]
         );
         hasApplications = appsRes.rowCount > 0;
@@ -67,11 +69,11 @@ export async function GET() {
             [profile.id]
           ),
           query(
-            `SELECT 1 FROM placement_drives WHERE employer_id = $1 LIMIT 1`,
+            `SELECT 1 FROM placement_drives d WHERE d.employer_id = $1 ${AND_DRIVE_NOT_DELETED} LIMIT 1`,
             [profile.id]
           ),
           query(
-            `SELECT 1 FROM job_postings WHERE employer_id = $1 LIMIT 1`,
+            `SELECT 1 FROM job_postings jp WHERE jp.employer_id = $1 ${AND_JP_NOT_DELETED} LIMIT 1`,
             [profile.id]
           ),
         ]);

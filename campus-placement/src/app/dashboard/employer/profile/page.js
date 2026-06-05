@@ -1,10 +1,15 @@
 'use client';
 import { useMemo, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
+import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/ToastProvider';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 import EntityLogo from '@/components/EntityLogo';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
-import { inferImageContentType } from '@/lib/inferImageContentType';
+import { validateImageFileContent } from '@/lib/inferImageContentType';
+import { pickBrowserAssetUrl } from '@/lib/resolveBrandLogoUrl';
+import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 import {
   EMPLOYER_COMPANY_TYPE_OPTIONS,
   EMPLOYER_COMPANY_SIZE_OPTIONS,
@@ -23,6 +28,7 @@ export default function EmployerProfilePage() {
   const [editing, setEditing] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const { addToast } = useToast();
+  const { update: updateSession } = useSession();
   const { data, error, mutate } = useSWR('/api/employer/profile', fetcher);
   const [form, setForm] = useState(null);
 
@@ -45,7 +51,7 @@ export default function EmployerProfilePage() {
       companyTypeRaw: (p.company_type && String(p.company_type).trim()) || '',
       companySizeRaw: (p.company_size && String(p.company_size).trim()) || '',
       foundedRaw: p.founded_year != null ? String(p.founded_year) : '',
-      logoUrl: p.logo_url != null && String(p.logo_url).trim() !== '' ? String(p.logo_url).trim() : '',
+      logoUrl: pickBrowserAssetUrl(p.logo_url) || '',
       website: p.website != null && String(p.website).trim() !== '' ? String(p.website).trim() : '',
       headquarters: str(p.headquarters),
       locations: Array.isArray(p.locations) ? p.locations : [],
@@ -130,6 +136,11 @@ export default function EmployerProfilePage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to update profile');
       await mutate();
+      await globalMutate('/api/employer/profile');
+      const safeLogoUrl = pickBrowserAssetUrl(form.logoUrl);
+      if (safeLogoUrl) {
+        await updateSession({ brandLogoUrl: safeLogoUrl });
+      }
       setEditing(false);
       addToast('Profile updated successfully.', 'success');
     } catch (e) {
@@ -142,11 +153,12 @@ export default function EmployerProfilePage() {
     e.target.value = '';
     if (!file) return;
 
-    const contentType = inferImageContentType(file);
-    if (!contentType) {
-      addToast('Choose a JPEG, PNG, WebP, or GIF.', 'warning');
+    const imageCheck = await validateImageFileContent(file);
+    if (!imageCheck.ok) {
+      addToast(imageCheck.error, 'warning');
       return;
     }
+    const contentType = imageCheck.contentType;
     if (file.size > 2 * 1024 * 1024) {
       addToast('Image too large (max 2MB).', 'warning');
       return;
@@ -188,6 +200,8 @@ export default function EmployerProfilePage() {
       
       if (form) setForm((p) => ({ ...p, logoUrl: presign.fileUrl }));
       await mutate();
+      await globalMutate('/api/employer/profile');
+      await updateSession({ brandLogoUrl: presign.fileUrl });
       addToast('Company logo updated successfully.', 'success');
     } catch (err) {
       addToast(err?.message || 'Upload failed.', 'error');
@@ -235,6 +249,7 @@ export default function EmployerProfilePage() {
                 <EntityLogo
                   name={profile.companyName}
                   logoUrl={profile.logoUrl}
+                  placeholderUrl={DEFAULT_ENTITY_LOGO_URL}
                   size="xl"
                   shape="rounded"
                 />
@@ -460,7 +475,13 @@ export default function EmployerProfilePage() {
             
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', padding: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)' }}>
-                <EntityLogo name={profile.companyName} logoUrl={form.logoUrl} size="lg" shape="rounded" />
+                <EntityLogo
+                  name={profile.companyName}
+                  logoUrl={form.logoUrl}
+                  placeholderUrl={DEFAULT_ENTITY_LOGO_URL}
+                  size="lg"
+                  shape="rounded"
+                />
                 <div style={{ flex: 1 }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 600 }}>Company Logo</h4>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -469,12 +490,12 @@ export default function EmployerProfilePage() {
                       {logoUploading ? 'Uploading…' : 'Upload New Logo'}
                       <input type="file" accept="image/*" hidden disabled={logoUploading} onChange={onLogoChange} />
                     </label>
-                    <input 
-                      className="form-input form-input-sm" 
+                    <input
+                      className="form-input form-input-sm"
                       style={{ flex: 1, minWidth: '200px' }}
-                      value={form.logoUrl} 
-                      onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))} 
-                      placeholder="Or paste an image URL" 
+                      value={form.logoUrl}
+                      onChange={(e) => setForm((p) => ({ ...p, logoUrl: e.target.value }))}
+                      placeholder="Or paste https://… or /logos/No-Selection-Icon.png"
                     />
                   </div>
                 </div>
@@ -517,7 +538,7 @@ export default function EmployerProfilePage() {
 
                 <div className="form-group">
                   <label className="form-label">Founded Year</label>
-                  <input className="form-input" type="number" min={1600} max={new Date().getFullYear() + 1} value={form.foundedYear} onChange={(e) => setForm((p) => ({ ...p, foundedYear: e.target.value }))} placeholder="e.g. 1998" />
+                  <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_FOUNDED_YEAR} value={form.foundedYear} onChange={(v) => setForm((p) => ({ ...p, foundedYear: v }))} placeholder="e.g. 1998" />
                 </div>
 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>

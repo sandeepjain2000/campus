@@ -312,7 +312,7 @@ export default function CollegeInfrastructurePage() {
         </div>
         <button
           type="button"
-          className="btn"
+          className="btn banner-cta-solid"
           onClick={() => {
             if (!showForm && assets.length === 0) {
               setErrorMsg('Add at least one campus resource above before booking.');
@@ -321,7 +321,7 @@ export default function CollegeInfrastructurePage() {
             setShowForm(!showForm);
             if (!showForm) setErrorMsg('');
           }}
-          style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}
+          style={{ position: 'relative', zIndex: 1 }}
         >
           {showForm ? 'Cancel' : '+ New Booking'}
         </button>

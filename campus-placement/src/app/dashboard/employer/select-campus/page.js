@@ -5,12 +5,16 @@ import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
 import EntityLogo from '@/components/EntityLogo';
 import { Search, Plus, ChevronDown, X, Eye, Trash2, Building2 } from 'lucide-react';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { TIE_UP_REVOKE_MESSAGES, canRequestEmployerTieUp } from '@/lib/employerTieUpShared';
 
 const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load');
-  if (!data.colleges || !Array.isArray(data.colleges)) throw new Error(data.error || 'Invalid response');
+  const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Failed to load (${res.status})`);
+  if (!data.colleges || !Array.isArray(data.colleges)) {
+    throw new Error(data.error || 'Invalid response from server');
+  }
   return data;
 };
 
@@ -18,18 +22,19 @@ const STATUS_CONFIG = {
   approved:      { label: 'Approved',      color: 'var(--success-700)', bg: 'var(--success-50)', border: 'var(--success-200)', dot: 'var(--success-500)' },
   pending:       { label: 'Pending',       color: 'var(--warning-700)', bg: 'var(--warning-50)', border: 'var(--warning-200)', dot: 'var(--warning-500)' },
   rejected:      { label: 'Rejected',      color: 'var(--danger-700)', bg: 'var(--danger-50)', border: 'var(--danger-200)', dot: 'var(--danger-500)' },
-  blacklisted:   { label: 'Blacklisted',   color: 'var(--danger-900)', bg: 'var(--danger-100)', border: 'var(--danger-300)', dot: 'var(--danger-700)' },
+  blacklisted:   { label: 'Revoked',       color: 'var(--danger-900)', bg: 'var(--danger-100)', border: 'var(--danger-300)', dot: 'var(--danger-700)' },
+  revoked:       { label: 'Revoked',       color: 'var(--danger-900)', bg: 'var(--danger-100)', border: 'var(--danger-300)', dot: 'var(--danger-700)' },
   null:          { label: 'Available',     color: 'var(--primary-700)', bg: 'var(--primary-50)', border: 'var(--primary-200)', dot: 'var(--primary-500)' },
 };
 
 function normalizeApprovalStatus(raw) {
   if (raw == null || raw === '') return null;
   const s = String(raw).trim().toLowerCase();
-  return ['approved','pending','rejected','blacklisted'].includes(s) ? s : null;
+  if (s === 'blacklisted') return 'revoked';
+  return ['approved','pending','rejected','revoked'].includes(s) ? s : null;
 }
 function canRequestTieUp(status) {
-  const s = normalizeApprovalStatus(status);
-  return s === null || s === 'rejected' || s === 'blacklisted';
+  return canRequestEmployerTieUp(status);
 }
 function statusRank(s) {
   const n = normalizeApprovalStatus(s);
@@ -131,11 +136,12 @@ export default function SelectCampusPage() {
   const { data: session } = useSession();
   const { data, error, isLoading, mutate } = useSWR('/api/employer/campuses', fetcher);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('approved');
   const [sortOption, setSortOption] = useState('status');
   const [focusCampusId, setFocusCampusId] = useState('');
   const [requesting, setRequesting] = useState(null);
   const [revoking, setRevoking] = useState(null);
+  const [revokeTarget, setRevokeTarget] = useState(null);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => {
@@ -175,13 +181,16 @@ export default function SelectCampusPage() {
   };
 
   const handleRevokeAccess = async (college) => {
-    if (!confirm(`Cancel your partnership with ${college.name}?`)) return;
     setRevoking(college.id);
     try {
-      const res = await fetch('/api/college/employers/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target_tenant_id: college.id }) });
+      const res = await fetch('/api/college/employers/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_tenant_id: college.id, confirmed: true }),
+      });
       const json = await res.json();
       if (res.ok) {
-        showToast(`Partnership with ${college.name} cancelled`);
+        showToast(json.message || `Tie-up with ${college.name} revoked. The college has been notified.`);
         try {
           const active = JSON.parse(sessionStorage.getItem('activeCampus') || '{}');
           if (active?.id === college.id) {
@@ -224,7 +233,7 @@ export default function SelectCampusPage() {
   ];
 
   return (
-    <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
+    <div className="animate-fadeIn select-campus-page" style={{ paddingBottom: '2rem', width: '100%' }}>
       {/* Toast */}
       {toast && (
         <div className="animate-slideUp" style={{
@@ -240,43 +249,81 @@ export default function SelectCampusPage() {
         </div>
       )}
 
-      {/* High-Fidelity Glassmorphic Hero Banner */}
-      <div 
+      {/* Page header */}
+      <div
+        className="page-header"
         style={{
-          position: 'relative',
-          background: 'var(--banner-gradient)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '2.5rem',
-          color: 'white',
-          overflow: 'hidden',
-          marginBottom: '2.5rem',
-          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+          marginBottom: '1.25rem',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1.5rem',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: '1rem',
         }}
       >
-        {/* Decorative Elements */}
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)', borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', bottom: '-50px', left: '10%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', borderRadius: '50%' }} />
-
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
-          <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Building2 size={28} /> Campus Partnerships
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Building2 size={22} aria-hidden /> Campus Partnerships
           </h1>
-          <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>
-            {isLoading ? 'Loading campus directory...' : `${counts.total} colleges in directory · ${counts.approved} approved · ${counts.pending} pending`}
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            {isLoading ? 'Loading campus directory…' : `${counts.total} colleges · ${counts.approved} approved · ${counts.pending} pending`}
           </p>
         </div>
-        
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <button className="btn" type="button" onClick={() => router.push('/dashboard/employer/select-campus/create')} style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontSize: '1.05rem', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={18} /> Request Tie-up
-          </button>
-        </div>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => router.push('/dashboard/employer/select-campus/create')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
+        >
+          <Plus size={16} aria-hidden /> Request Tie-up
+        </button>
       </div>
+
+      {/* Switch campus help */}
+      {!isLoading && !error && (
+        <div
+          className="card"
+          style={{
+            marginBottom: '1.25rem',
+            padding: '1rem 1.25rem',
+            border: '1px solid var(--primary-200)',
+            background: 'var(--primary-50)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ fontSize: '0.9rem', color: 'var(--primary-900)', lineHeight: 1.5 }}>
+            <strong>Switch campus:</strong> filter <strong>Approved</strong>, then click{' '}
+            <strong>Use campus</strong> — blue button in the <strong>Actions</strong> column (pinned on the right; scroll the table if needed).
+          </div>
+          {counts.approved > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+              {colleges
+                .filter((c) => normalizeApprovalStatus(c.approval_status) === 'approved')
+                .slice(0, 5)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => handleSelectCampus(c)}
+                    title={`Use ${c.name} as your active campus`}
+                  >
+                    Use {c.name?.split('(')[0]?.trim().slice(0, 28) || 'campus'}
+                  </button>
+                ))}
+            </div>
+          )}
+          {counts.approved === 0 && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push('/data-entry')}>
+              Demo data → Ensure IIT Madras tie-up
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Pill-based Filter Tabs */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
@@ -316,7 +363,7 @@ export default function SelectCampusPage() {
       </div>
 
       {/* Search and Sort Toolbar */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--border-default)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+      <div className="card" style={{ padding: '1rem', marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--border-default)' }}>
         <div style={{ position: 'relative', flex: '1 1 240px' }}>
           <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
           <input
@@ -341,23 +388,40 @@ export default function SelectCampusPage() {
 
       {/* Table */}
       {isLoading && <div className="skeleton skeleton-card" style={{ height: 400 }} />}
-      {error && <div className="card" style={{ textAlign: 'center', padding: '4rem', color: 'var(--danger-600)', fontWeight: 600 }}>{error.message}</div>}
+      {error && <div className="card" style={{ textAlign: 'center', padding: '4rem', color: 'var(--danger-600)', fontWeight: 600 }}>{error.message || 'Failed to load colleges.'}</div>}
 
       {!isLoading && !error && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
-          <div className="table-container" style={{ border: 'none' }}>
-            <table className="data-table">
+        <div className="card card-table-shell select-campus-table-shell" style={{ border: '1px solid var(--border-default)' }}>
+          <div
+            style={{
+              margin: 0,
+              padding: '0.65rem 1rem',
+              borderBottom: '1px solid var(--border-default)',
+              background: 'var(--bg-secondary)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span className="text-sm text-secondary">
+              Showing <strong>{displayRows.length}</strong> campus{displayRows.length === 1 ? '' : 'es'} · scroll horizontally for all columns (Actions on the right)
+            </span>
+          </div>
+          <div className="table-container select-campus-table-scroll" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="data-table select-campus-table">
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)' }}>
                   <th style={{ width: 40, paddingLeft: '1.5rem' }}>#</th>
                   <th>College Name</th>
-                  <th>Location</th>
-                  <th>Contact Details</th>
-                  <th>Accreditation</th>
+                  <th className="select-campus-table__optional">Location</th>
+                  <th className="select-campus-table__optional">Contact Details</th>
+                  <th className="select-campus-table__optional">Accreditation</th>
                   <th style={{ textAlign: 'right' }}>Students</th>
-                  <th style={{ textAlign: 'right' }}>Placement</th>
+                  <th className="select-campus-table__optional" style={{ textAlign: 'right' }}>Placement</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'right', paddingRight: '1.5rem' }}>Actions</th>
+                  <th className="select-campus-table__actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,7 +450,7 @@ export default function SelectCampusPage() {
                   ].filter(Boolean);
 
                   return (
-                    <tr key={c.id} style={{ transition: 'background 0.2s', ':hover': { background: 'var(--bg-secondary)' } }}>
+                    <tr key={c.id}>
                       <td style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', paddingLeft: '1.5rem' }}>{i + 1}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -404,10 +468,10 @@ export default function SelectCampusPage() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                      <td style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }} className="select-campus-table__optional">
                         {[c.city, c.state].filter(Boolean).join(', ') || '—'}
                       </td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }} className="select-campus-table__optional">
                         <div>
                           {c.email ? (
                             <a href={`mailto:${c.email}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }} title={`Email ${c.name}`}>
@@ -423,11 +487,11 @@ export default function SelectCampusPage() {
                           ) : '—'}
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }} className="select-campus-table__optional">
                         {accParts.length ? accParts.join(' · ') : '—'}
                       </td>
                       <td style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>{c.total_students ?? 0}</td>
-                      <td style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 500, color: placementPct != null && placementPct >= 70 ? 'var(--success-600)' : 'var(--text-primary)' }}>
+                      <td style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 500, color: placementPct != null && placementPct >= 70 ? 'var(--success-600)' : 'var(--text-primary)' }} className="select-campus-table__optional">
                         {placementPct != null ? `${placementPct}%` : '—'}
                       </td>
                       <td>
@@ -441,10 +505,18 @@ export default function SelectCampusPage() {
                           {cfg.label}
                         </span>
                       </td>
-                      <td style={{ paddingRight: '1.5rem', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <td className="select-campus-table__actions">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'nowrap' }}>
                           {isApproved && (
                             <>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleSelectCampus(c)}
+                                title={`Use ${c.name} as your active campus`}
+                              >
+                                Use campus
+                              </button>
                               <button
                                 className="btn btn-ghost btn-sm"
                                 style={{ padding: '0.4rem', border: '1px solid var(--border-default)', color: 'var(--primary-600)' }}
@@ -456,7 +528,7 @@ export default function SelectCampusPage() {
                               <button
                                 className="btn btn-ghost btn-sm"
                                 style={{ padding: '0.4rem', border: '1px solid var(--border-default)', color: 'var(--danger-600)' }}
-                                onClick={() => handleRevokeAccess(c)}
+                                onClick={() => setRevokeTarget(c)}
                                 disabled={revoking === c.id}
                                 title={`Revoke tie-up with ${c.name}`}
                               >
@@ -480,6 +552,22 @@ export default function SelectCampusPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(revokeTarget)}
+        title={TIE_UP_REVOKE_MESSAGES.employerConfirmTitle}
+        message={revokeTarget ? TIE_UP_REVOKE_MESSAGES.employerConfirmBody(revokeTarget.name) : ''}
+        confirmLabel="Revoke tie-up & notify"
+        confirmTone="danger"
+        onCancel={() => setRevokeTarget(null)}
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          const college = revokeTarget;
+          setRevokeTarget(null);
+          await handleRevokeAccess(college);
+        }}
+        loading={Boolean(revokeTarget && revoking === revokeTarget.id)}
+      />
     </div>
   );
 }

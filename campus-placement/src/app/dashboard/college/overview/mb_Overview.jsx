@@ -117,7 +117,7 @@ export default function mb_Overview() {
             <Link href="/dashboard/college/settings" className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', padding: '0.35rem 0.75rem', borderRadius: '8px' }}>
               <Pencil size={12} /> Edit
             </Link>
-            <Link href="/dashboard/college/drives" className="btn btn-sm" style={{ background: 'white', color: 'var(--primary-800)', border: 'none', padding: '0.35rem 0.75rem', borderRadius: '8px' }}>
+            <Link href="/dashboard/college/drives" className="btn btn-sm banner-cta-solid" style={{ padding: '0.35rem 0.75rem', borderRadius: '8px' }}>
               <Plus size={12} /> Drive
             </Link>
           </div>

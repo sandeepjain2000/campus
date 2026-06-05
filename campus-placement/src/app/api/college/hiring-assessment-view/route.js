@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getSessionTenantId } from '@/lib/tenantContext';
-import {
-  buildAssessmentSummary,
-  fetchAssessmentRowsForView,
-  fetchLatestRoundLabelsForTenant,
-} from '@/lib/assessmentHiringView';
+import { buildAssessmentSummary, fetchAssessmentRowsForView } from '@/lib/assessmentHiringView';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /** GET — read-only: all assessment upload rows for this college tenant. */
 export async function GET() {
@@ -22,12 +21,10 @@ export async function GET() {
     }
 
     const rows = await fetchAssessmentRowsForView({ tenantId });
-    const roundLabels = await fetchLatestRoundLabelsForTenant(tenantId);
     const summary = buildAssessmentSummary(rows);
 
     return NextResponse.json({
       rows,
-      roundLabels,
       summary,
     });
   } catch (e) {

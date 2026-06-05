@@ -3,6 +3,14 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { AND_APP_NOT_DELETED, AND_DRIVE_PD_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET() {
   try {
@@ -15,7 +23,7 @@ export async function GET() {
     const studentRes = await query(
       `SELECT id
        FROM student_profiles
-       WHERE user_id = $1
+       WHERE user_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
        LIMIT 1`,
       [userId]
     );
@@ -39,7 +47,7 @@ export async function GET() {
        LEFT JOIN drive_rounds dr
          ON dr.drive_id = pd.id
         AND dr.round_number = CASE WHEN a.current_round > 0 THEN a.current_round ELSE 1 END
-       WHERE a.student_id = $1
+       WHERE a.student_id = $1 ${AND_APP_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}
          AND a.status IN ('shortlisted', 'in_progress', 'selected')
        ORDER BY pd.drive_date ASC NULLS LAST, COALESCE(dr.start_time, pd.start_time) ASC NULLS LAST`,
       [studentId]

@@ -4,10 +4,16 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { sendMail } from '@/lib/mailer';
 import {
+
+
   loadSystemEmailTemplate,
   renderTemplates,
 } from '@/lib/campusGuestConfirmation';
 import { SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY } from '@/lib/systemEmailTemplates';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 function getTenantId(session) {
   return session?.user?.tenantId || session?.user?.tenant_id;

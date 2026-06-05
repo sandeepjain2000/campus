@@ -1,10 +1,11 @@
 /**
  * Common ITU-T E.164 calling codes for signup / profile.
- * Default is not “India-only”: India is first for this deployment’s primary market;
- * use "__full__" for any other region without maintaining an exhaustive list.
+ * India is first in the list and the default selection; use "__full__" for any other region.
  */
+export const DEFAULT_PHONE_DIAL_CODE = '+91';
+
 export const PHONE_DIAL_CODES = [
-  { code: '+91', label: 'India (+91)' },
+  { code: DEFAULT_PHONE_DIAL_CODE, label: 'India (+91)' },
   { code: '+1', label: 'United States / Canada (+1)' },
   { code: '+44', label: 'United Kingdom (+44)' },
   { code: '+61', label: 'Australia (+61)' },

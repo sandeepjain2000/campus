@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { restoreCollegeStudentProfile } from '@/lib/collegeStudentArchive';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 export async function POST(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);

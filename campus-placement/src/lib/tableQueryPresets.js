@@ -98,7 +98,9 @@ export const EMPLOYER_STATUS_FILTER_OPTIONS = [
 
 export function employerStatusFilterFn(row, filter) {
   if (!filter) return true;
-  return String(row.status || '').toLowerCase() === filter;
+  const status = String(row.status || '').toLowerCase();
+  if (filter === 'revoked') return status === 'revoked' || status === 'blacklisted';
+  return status === filter;
 }
 
 export const EMPLOYER_VERIFIED_FILTER_OPTIONS = [

@@ -3,6 +3,14 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { EMPLOYER_COMPANY_TYPE_OPTIONS } from '@/lib/employerCompanyTypeLabels';
+import { isBrowserLoadableAssetUrl } from '@/lib/clientAssetUrl';
+import { pickBrowserAssetUrl } from '@/lib/resolveBrandLogoUrl';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 const ALLOWED_COMPANY_TYPES = new Set(EMPLOYER_COMPANY_TYPE_OPTIONS.map((o) => o.value));
 
@@ -79,7 +87,13 @@ export async function GET() {
 
     const profile = await getEmployerByUser(session.user.id);
     if (!profile) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
-    return NextResponse.json({ profile });
+    const safeLogoUrl = pickBrowserAssetUrl(profile.logo_url);
+    return NextResponse.json({
+      profile: {
+        ...profile,
+        logo_url: safeLogoUrl,
+      },
+    });
   } catch (error) {
     console.error('GET /api/employer/profile', error);
     return NextResponse.json({ error: 'Failed to load employer profile' }, { status: 500 });
@@ -103,7 +117,17 @@ export async function PATCH(request) {
     const contactPhone = String(body?.contactPhone || '').trim();
     const headquarters = String(body?.headquarters || '').trim();
     const website = String(body?.website || '').trim();
-    const logoUrl = String(body?.logoUrl || '').trim();
+    const logoUrlRaw = String(body?.logoUrl || '').trim();
+    if (logoUrlRaw && !isBrowserLoadableAssetUrl(logoUrlRaw)) {
+      return NextResponse.json(
+        {
+          error:
+            'Logo URL must be a web address (https://…) or site path (/…). Use Upload New Logo instead of a file path on your computer.',
+        },
+        { status: 400 },
+      );
+    }
+    const logoUrl = logoUrlRaw;
     const industry = String(body?.industry || '').trim();
     const companyTypeRaw = String(body?.companyType || body?.company_type || '').trim().toLowerCase();
     const companySize = String(body?.companySize || body?.company_size || '').trim().slice(0, 50);

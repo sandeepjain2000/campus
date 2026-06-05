@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 /**
  * @param {string} userId
@@ -8,7 +9,7 @@ export async function resolveStudentProfileByUserId(userId) {
   if (!userId) return null;
   try {
     const r = await query(
-      `SELECT id, tenant_id FROM student_profiles WHERE user_id = $1::uuid AND archived_at IS NULL LIMIT 1`,
+      `SELECT id, tenant_id FROM student_profiles WHERE user_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE} LIMIT 1`,
       [userId],
     );
     return r.rows[0] || null;

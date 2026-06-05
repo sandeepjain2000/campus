@@ -43,7 +43,10 @@ export default function ConfirmDialog({
         <h3 className="card-title" style={{ marginBottom: '0.75rem' }}>
           {title}
         </h3>
-        <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.5 }}>
+        <p
+          className="text-sm text-secondary"
+          style={{ margin: 0, lineHeight: 1.55, whiteSpace: 'pre-line' }}
+        >
           {message}
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>

@@ -7,7 +7,17 @@ import { useToast } from '@/components/ToastProvider';
 import MonthYearPicker from '@/components/MonthYearPicker';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
+import StudentBrowsePrerequisitePanel from '@/components/student/StudentBrowsePrerequisitePanel';
+import PostingEligibilitySection from '@/components/student/PostingEligibilitySection';
+import StudentApplyEligibilityControls from '@/components/student/StudentApplyEligibilityControls';
 import PageLoading from '@/components/PageLoading';
+import {
+  globalApplyBlockedReason,
+  resolveApplyBlockReason,
+} from '@/lib/getApplyBlockReason';
+import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/studentApplyContext';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 function getTimeLeft(deadline) {
   if (!deadline) return null;
@@ -97,6 +107,24 @@ export default function StudentDrivesPage() {
   }, [drivesData]);
 
   const canApply = drivesData?.canApply !== false;
+  const globalBlockedReason = globalApplyBlockedReason(canApply, applyBlockedReason);
+  const canBrowseListings = drivesData?.canBrowseListings !== false;
+  const browseGateProps = {
+    canBrowseListings,
+    browseGateTitle: drivesData?.browseGateTitle,
+    browseGateMessage: drivesData?.browseGateMessage,
+    profileComplete: drivesData?.profileComplete !== false,
+    hasResume: drivesData?.hasResume !== false,
+    profileMissingLabels: drivesData?.profileMissingLabels || [],
+  };
+  const placementLocked = drivesData?.placementLocked === true;
+  const applyBlockedReason = drivesData?.applyBlockedReason || '';
+  const currentStudent = buildStudentApplyContext(drivesData);
+  const driveOpenStatuses = ['approved', 'scheduled'];
+
+  function driveOpportunity(drive) {
+    return programOpportunityFromRow(drive);
+  }
 
   const monthBounds = useMemo(() => {
     const y = new Date().getFullYear();
@@ -139,10 +167,11 @@ export default function StudentDrivesPage() {
 
   const openApplyModal = (drive) => {
     if (drive.applied) return;
-    if (!canApply) {
-      addToast('Upload your primary CV on your profile before applying.', 'warning');
-      return;
-    }
+    const blockReason = resolveApplyBlockReason(driveOpportunity(drive), currentStudent, {
+      openStatuses: driveOpenStatuses,
+      globalBlockedReason,
+    });
+    if (blockReason) return;
     setApplyingTo(drive);
     setLocationPref('');
   };
@@ -184,7 +213,21 @@ export default function StudentDrivesPage() {
         </div>
       </div>
 
-      <StudentApplyResumeBanner canApply={canApply} />
+      {drivesError && (
+        <div className="card" style={{ color: 'var(--danger-600)' }}>
+          <p>{drivesError.message || 'Could not load drives.'}</p>
+        </div>
+      )}
+
+      {drivesLoading && <PageLoading message="Loading placement drives…" variant="skeleton-card" inline />}
+
+      {!drivesLoading && !drivesError && (
+      <StudentBrowsePrerequisitePanel {...browseGateProps}>
+      <StudentApplyResumeBanner
+        canApply={canApply}
+        placementLocked={placementLocked}
+        applyBlockedReason={applyBlockedReason}
+      />
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -249,24 +292,24 @@ export default function StudentDrivesPage() {
                   <label className="form-label text-xs" htmlFor="drive-range-from">
                     From
                   </label>
-                  <input
+                  <ValidatedDateInput
                     id="drive-range-from"
-                    className="form-input"
-                    type="date"
+                    fieldId={FIELD_IDS.DATE_RANGE_FROM}
+                    context={{ dateTo: rangeTo, maxSpanYears: 5 }}
                     value={rangeFrom}
-                    onChange={(e) => setRangeFrom(e.target.value)}
+                    onChange={setRangeFrom}
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', flex: '0 0 auto' }}>
                   <label className="form-label text-xs" htmlFor="drive-range-to">
                     To
                   </label>
-                  <input
+                  <ValidatedDateInput
                     id="drive-range-to"
-                    className="form-input"
-                    type="date"
+                    fieldId={FIELD_IDS.DATE_RANGE_TO}
+                    context={{ dateFrom: rangeFrom, maxSpanYears: 5 }}
                     value={rangeTo}
-                    onChange={(e) => setRangeTo(e.target.value)}
+                    onChange={setRangeTo}
                   />
                 </div>
               </>
@@ -325,13 +368,7 @@ export default function StudentDrivesPage() {
         </div>
       </div>
 
-      {drivesLoading && <PageLoading message="Loading placement drives…" variant="skeleton-card" inline />}
-      {drivesError && (
-        <div className="card" style={{ color: 'var(--danger-600)' }}>
-          <p>{drivesError.message || 'Could not load drives.'}</p>
-        </div>
-      )}
-      {!drivesLoading && !drivesError && filteredDrives.length === 0 && (
+      {canBrowseListings && filteredDrives.length === 0 && (
         <div className="card">
           <p className="text-secondary">No drives found for your current filters.</p>
         </div>
@@ -343,16 +380,16 @@ export default function StudentDrivesPage() {
           const timeLeft = getTimeLeft(drive.deadline);
           const activeApplication = Boolean(drive.applied);
           const st = drive.applicationStatus ? String(drive.applicationStatus).toLowerCase() : '';
-          const hasPriorApplication = st === 'withdrawn' || st === 'rejected';
-          const applyLabel = isExpired
-            ? 'Closed'
-            : hasPriorApplication
-              ? st === 'withdrawn'
-                ? 'Withdrawn'
-                : 'Rejected'
-              : !canApply
-                ? 'CV required'
-                : 'Apply now';
+          const isWithdrawnFinal = st === 'withdrawn';
+          const isRejected = st === 'rejected';
+          const hasPriorApplication = isWithdrawnFinal || isRejected;
+          const blockReason =
+            !isExpired && !hasPriorApplication && !activeApplication
+              ? resolveApplyBlockReason(driveOpportunity(drive), currentStudent, {
+                  openStatuses: driveOpenStatuses,
+                  globalBlockedReason,
+                })
+              : null;
 
           return (
             <div
@@ -377,14 +414,25 @@ export default function StudentDrivesPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                   {activeApplication ? (
                     <span className="badge badge-green">Applied</span>
-                  ) : (
-                    <button
-                      className={`btn ${isExpired || hasPriorApplication || !canApply ? 'btn-outline' : 'btn-primary'} btn-sm`}
-                      disabled={isExpired || hasPriorApplication || !canApply}
-                      onClick={() => openApplyModal(drive)}
-                    >
-                      {applyLabel}
+                  ) : isExpired ? (
+                    <button type="button" className="btn btn-outline btn-sm" disabled aria-disabled="true">
+                      Closed
                     </button>
+                  ) : hasPriorApplication ? (
+                    <button type="button" className="btn btn-outline btn-sm" disabled aria-disabled="true">
+                      {isWithdrawnFinal ? 'Withdrawn (final)' : 'Rejected'}
+                    </button>
+                  ) : (
+                    <StudentApplyEligibilityControls
+                      opportunity={driveOpportunity(drive)}
+                      student={currentStudent}
+                      applyLabel="Apply now"
+                      blockReason={blockReason}
+                      globalBlockedReason={globalBlockedReason}
+                      openStatuses={driveOpenStatuses}
+                      size="sm"
+                      onApply={() => openApplyModal(drive)}
+                    />
                   )}
                   {timeLeft && (
                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: isExpired ? 'var(--danger-500)' : 'var(--warning-600)' }}>
@@ -430,12 +478,29 @@ export default function StudentDrivesPage() {
                   </span>
                 ))}
               </div>
+              {!activeApplication && !isExpired && !hasPriorApplication ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <PostingEligibilitySection
+                    opportunity={driveOpportunity(drive)}
+                    student={currentStudent}
+                    audience="student"
+                    openStatuses={driveOpenStatuses}
+                  />
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
+      </StudentBrowsePrerequisitePanel>
+      )}
 
-      {applyingTo && (
+      {applyingTo && (() => {
+        const confirmBlockReason = resolveApplyBlockReason(driveOpportunity(applyingTo), currentStudent, {
+          openStatuses: driveOpenStatuses,
+          globalBlockedReason,
+        });
+        return (
         <div
           style={{
             position: 'fixed',
@@ -458,10 +523,16 @@ export default function StudentDrivesPage() {
                 return `Apply to ${applyingTo.company}`;
               })()}
             </h3>
-            <p className="text-secondary" style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+            <p className="text-secondary" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
               Confirm application for <strong>{applyingTo.role}</strong>. You can note a location preference if the role has multiple bases.
             </p>
-            <div className="form-group">
+            <PostingEligibilitySection
+              opportunity={driveOpportunity(applyingTo)}
+              student={currentStudent}
+              audience="student"
+              openStatuses={driveOpenStatuses}
+            />
+            <div className="form-group" style={{ marginTop: '1rem' }}>
               <label className="form-label">Preferred location (optional)</label>
               <input
                 type="text"
@@ -476,13 +547,26 @@ export default function StudentDrivesPage() {
               <button type="button" className="btn btn-outline" onClick={() => setApplyingTo(null)} disabled={isSubmitting}>
                 Cancel
               </button>
-              <button type="button" className="btn btn-primary" onClick={confirmApply} disabled={isSubmitting}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={confirmApply}
+                disabled={isSubmitting || Boolean(confirmBlockReason)}
+                aria-disabled={isSubmitting || confirmBlockReason ? 'true' : undefined}
+                title={confirmBlockReason || undefined}
+              >
                 {isSubmitting ? 'Submitting…' : 'Confirm application'}
               </button>
             </div>
+            {confirmBlockReason ? (
+              <p className="text-sm" style={{ marginTop: '0.75rem', color: 'var(--warning-700, #b45309)' }}>
+                {confirmBlockReason}
+              </p>
+            ) : null}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

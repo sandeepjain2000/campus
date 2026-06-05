@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import {
+
+
   OFFER_STATUSES,
   parseCsvLine,
   normalizeHeader,
@@ -12,6 +14,11 @@ import {
 } from '@/lib/csvImportUtils';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 function getTenantId(session) {
   return session.user.tenantId || session.user.tenant_id;
@@ -61,7 +68,7 @@ export async function POST(request) {
 
       const sr = await query(
         `SELECT id FROM student_profiles
-         WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2 AND archived_at IS NULL
+         WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
          LIMIT 1`,
         [tenantId, roll],
       );

@@ -20,7 +20,7 @@ Your experience depends on your role: students see drives and applications; empl
         title: 'Roles at a glance',
         content: `Student — apply to drives, manage profile and documents, view interviews and offers, read published clarifications, join discussions where enabled.
 
-Employer — maintain company profile, request campus tie-ups, post jobs and drives, run assessments and interviews, manage offers.
+Employer — maintain company profile, request campus tie-ups, post jobs and drives, record assessment round results (CSV or online), run interviews, manage offers.
 
 College admin — approve employers and students, publish drives visibility, manage enrollment keys, interviews, clarifications, campus calendar, rules, and reports.
 
@@ -37,6 +37,8 @@ The full-screen hub lists every destination in grouped columns. Your last-used s
         id: 'alerts-exports-feedback',
         title: 'Alerts, exports, and feedback',
         content: `Alerts — central inbox for notifications (bell). Check regularly for deadlines and status changes.
+
+Help (sparkle button) — ask natural-language questions; answers are generated from indexed help documentation, developer QA notes, and FAQs. After major doc updates, admins run npm run qa:sync-help-knowledge (requires OPENAI_API_KEY for best semantic search).
 
 My data export — request downloadable exports of your data where the product supports it (GDPR-style self-service).
 
@@ -74,8 +76,8 @@ Tip: if something is blocked, check profile verification and eligibility (CGPA, 
 2. Under Campus Partnerships, request tie-ups with target institutes. Track Approved vs Pending; follow up with the TPO if needed.
 3. When working on more than one campus, pick the Active campus so jobs and drives target the correct audience.
 4. Create Job Postings with clear eligibility (branches, CGPA, batch). Schedule Placement Drives (mode, venue, dates) and link them to roles.
-5. Run your process: Hiring Assessment, Interview Scheduling, and review Applications / assessment uploads as agreed with the college.
-6. Record outcomes under Offers (or bulk upload if your deployment allows). Coordinate Sponsorships or guest sessions if you use those modules.
+5. Record assessment round results: set round display names in Assessment map, then use Assessment uploads (CSV) or Assessment Update Online. Review outcomes on Hiring Results Dashboard (read-only). Run Interview Scheduling and review Applications as agreed with the college.
+6. Record Offers individually or via bulk CSV from the Offers page (upload link on that screen — not in the sidebar). Coordinate Sponsorships or guest sessions if you use those modules.
 7. Respond to Clarification batches and join Discussions when the college publishes threads.
 
 Tip: no campus unlocked usually means partnership is still pending — resolve that before expecting student applications.`,
@@ -90,7 +92,7 @@ Tip: no campus unlocked usually means partnership is still pending — resolve t
 2. Manage Employers: approve or reject partnership requests before companies run drives on your campus.
 3. Publish or curate Placement Drives / Internships visibility as your process requires. Keep the Enrollment key secure; rotate it if it leaks.
 4. Verify Students from the Students screen so eligible candidates are not blocked by the “pending approval” state.
-5. Operate selection support: Hiring Assessment visibility, Interview Scheduling coordination, and monitoring Applications / Offers (including CSV uploads if used).
+5. Operate selection support: Hiring Assessment (read-only mirror of employer CSV/online updates), Interview Scheduling coordination, and monitoring Applications / Offers (bulk offers CSV via the Offers page when used).
 6. Publish Clarifications (batched Q&A to companies) and moderate Discussions where enabled.
 7. Use Calendar, Events, and Guest faculty / lectures to communicate visit days and engagement.
 8. Enforce Placement Rules and use Reports / Audit reports for compliance and leadership reviews.
@@ -201,15 +203,37 @@ Internships & Projects — publish student programs separate from full-time driv
       {
         id: 'employer-pipeline',
         title: 'Assessments, interviews, applications, offers',
-        content: `Hiring Assessment — configure or review assessment steps agreed with the college.
+        content: `Assessment map — optional legacy screen to configure display names for round_1…round_5 per opportunity type. Hiring results now use a single hiring_result column (Shortlist, Reject, Select, Decline, Withdraw); the map is not used by CSV upload or online update.
+
+Assessment uploads (CSV) — tabbed by opportunity type. Select campus and target, export all campus students for the current academic year, fill hiring_result, and upload. Failed rows can be corrected on the import review screen before accepting.
+
+Assessment Update Online — set hiring_result inline for campus students (same data as CSV).
+
+Hiring Results Dashboard — consolidated view of hiring_result by tab (draft and submitted); export available.
 
 Interview Scheduling — propose or confirm slots; students see updates on their side.
 
 Applications — review the candidate pipeline with filters.
 
-Assessment map & uploads — consolidate assessment artifacts where your process uses file uploads.
+Offers — record outcomes individually. Bulk offers CSV opens from the Offers page (link on that screen); it is not a separate sidebar menu item.`,
+      },
+      {
+        id: 'employer-assessments-detail',
+        title: 'Assessment CSV workflow (step by step)',
+        diagramId: 'flow-employer-assessment',
+        content: `Use this when you need to record hiring outcomes for many students at once.
 
-Offers — record outcomes; use CSV upload only if your deployment enables bulk offer import for your account.`,
+1. Open Assessment uploads (CSV) or Assessment Update Online and pick the tab (Internship, Jobs, Drive, or Projects).
+2. Select campus and drive/job target.
+3. Click Export CSV — the file lists all campus students for the current academic year with columns system_id, college_roll_no, placement_drive_id, job_id, tenant_id, candidate_name, hiring_result, remarks.
+4. Fill hiring_result offline (allowed values: Shortlist, Reject, Select, Decline, Withdraw; blank = no decision). Save as CSV.
+5. Upload the file. If validation fails, fix rows on the import review screen and Accept; otherwise rows import immediately.
+6. Submit results when finished — after submit, hiring_result cannot be changed from CSV or online update.
+7. Confirm on Hiring Results Dashboard. The college sees the same data on Hiring Assessment (read-only).
+
+Alternative: use Assessment Update Online to set hiring_result in the browser and Save — no file required. CSV and online updates can be combined; both appear on the dashboard.
+
+Assessment updates do not send email to students; they appear in dashboard views only.`,
       },
       {
         id: 'employer-engagement',
@@ -246,7 +270,7 @@ Students — verify student profiles, fix data issues, and enforce placement rul
 
 Enrollment key — rotate or copy the campus enrollment key students use at registration; treat it like a secret.
 
-Applications & Offers — monitor pipeline health; use offers screens and CSV upload if enabled for your institute.`,
+Applications & Offers — monitor pipeline health. Bulk offers CSV is linked from the Offers page (not a separate sidebar item).`,
         screenshot: {
           src: '/help/help-college-students.png',
           alt: 'Illustration of college admin Students list with verification and roll numbers',
@@ -256,7 +280,7 @@ Applications & Offers — monitor pipeline health; use offers screens and CSV up
       {
         id: 'college-selection-comms',
         title: 'Assessments, interviews, clarifications, discussions',
-        content: `Hiring Assessment — operational view of employer assessments for your campus.
+        content: `Hiring Assessment — read-only view of employer assessment round results for your campus (from Assessment uploads (CSV) or Assessment Update Online). Export for reporting; you cannot edit employer-submitted rows here.
 
 Interview Scheduling — coordinate panels and slots with employers.
 
@@ -343,6 +367,10 @@ You will also enter department, roll number, and batch year as your college defi
 
 Employer: no campus — complete partnership approval and select an active campus.
 
+Assessment CSV rejected — confirm round labels are saved in Assessment map; use Export CSV column layout; check roll numbers exist in the campus master list.
+
+Cannot find Upload offers (CSV) in the sidebar — open Offers and use the upload link on that page.
+
 Missing data — refresh the page; if the API failed, try again later. Persistent errors may indicate maintenance or configuration.
 
 Still stuck — use Feedback from your dashboard or contact your placement office / platform support with your role, page URL, and approximate time of the issue.`,
@@ -372,8 +400,8 @@ export const HELP_DIAGRAMS = {
       { label: 'Company profile', detail: 'Brand & contacts' },
       { label: 'Campus tie-up', detail: 'Partnership approved' },
       { label: 'Jobs & drives', detail: 'Eligibility & dates' },
-      { label: 'Selection', detail: 'Assessments & interviews' },
-      { label: 'Offers', detail: 'Record outcomes' },
+      { label: 'Selection', detail: 'CSV or online update' },
+      { label: 'Offers', detail: 'Record / CSV via Offers' },
       { label: 'Clarifications', detail: 'Official Q&A' },
     ],
   },
@@ -398,6 +426,18 @@ export const HELP_DIAGRAMS = {
       { label: 'Registrations', detail: 'Activate accounts' },
       { label: 'Users & feedback', detail: 'Support inbox' },
       { label: 'Settings', detail: 'SMTP, storage, flags' },
+    ],
+  },
+  'flow-employer-assessment': {
+    type: 'flow',
+    caption: 'Employer assessment results — map labels, then CSV or online update.',
+    steps: [
+      { label: 'Assessment map', detail: 'Round display names' },
+      { label: 'Export CSV', detail: 'Per opportunity tab' },
+      { label: 'Edit rounds', detail: 'Or use Update Online' },
+      { label: 'Upload / Save', detail: 'CSV or inline' },
+      { label: 'Hiring Results', detail: 'Read-only review' },
+      { label: 'College view', detail: 'Hiring Assessment' },
     ],
   },
   'flow-cross-role': {

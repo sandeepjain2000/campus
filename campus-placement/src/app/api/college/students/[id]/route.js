@@ -6,12 +6,19 @@ import { COLLEGE_STUDENT_SELECT_SQL, mapCollegeStudentRow } from '@/lib/collegeS
 import { archiveCollegeStudentProfile, ARCHIVE_COLUMN_HINT } from '@/lib/collegeStudentArchive';
 import { parseCollegeStudentAdminPayload } from '@/lib/collegeStudentAdminFields';
 import {
+
+
   applyCollegeStudentUserFields,
   replaceStudentSkills,
   updateCollegeStudentProfileRow,
 } from '@/lib/collegeStudentProfileWrite';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { displaySemesterForStudentList } from '@/lib/academicYearTenant';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 function getTenantId(session) {
   return session.user.tenant_id ?? session.user.tenantId;
@@ -23,7 +30,7 @@ async function loadStudentForTenant(tenantId, studentId, semesterDisplay) {
      FROM student_profiles sp
      JOIN users u ON u.id = sp.user_id
      JOIN tenants t ON t.id = sp.tenant_id
-     WHERE sp.tenant_id = $1::uuid AND sp.id = $2::uuid AND sp.archived_at IS NULL`,
+     WHERE sp.tenant_id = $1::uuid AND sp.id = $2::uuid AND ${SP_ACTIVE_CLAUSE}`,
     [tenantId, studentId],
   );
   if (!result.rows.length) return null;
@@ -101,7 +108,7 @@ export async function PATCH(request, { params }) {
     await transaction(async (client) => {
       const existing = await client.query(
         `SELECT sp.id, sp.user_id FROM student_profiles sp
-         WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND sp.archived_at IS NULL`,
+         WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND ${SP_ACTIVE_CLAUSE}`,
         [studentId, tenantId],
       );
       if (!existing.rows.length) {

@@ -4,8 +4,15 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { resolveCollegeAdminTenantId } from '@/lib/sessionTenant';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
+import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
+
 
 /**
  * Published job postings from employers with an approved tie-up to this college.
@@ -61,7 +68,7 @@ export async function GET(request) {
           AND ea.tenant_id = $1::uuid
           AND ea.status = 'approved'
          WHERE jp.job_type IN ('full_time', 'part_time', 'contract', 'ppo')
-           AND jp.status = 'published'${yearClause}
+           AND jp.status = 'published'${yearClause} ${AND_JP_NOT_DELETED}
          ORDER BY jp.created_at DESC`,
         params,
       );
@@ -95,7 +102,7 @@ export async function GET(request) {
             AND ea.tenant_id = $1::uuid
             AND ea.status = 'approved'
            WHERE jp.job_type IN ('full_time', 'part_time', 'contract', 'ppo')
-             AND jp.status = 'published'
+             AND jp.status = 'published' ${AND_JP_NOT_DELETED}
            ORDER BY jp.created_at DESC`,
           [tenantId],
         );

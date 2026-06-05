@@ -10,6 +10,10 @@ import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateEmployerOfferPayload } from '@/lib/apiInputValidation';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -74,6 +78,15 @@ export default function EmployerOffersPage() {
   const submitCreateOffer = async () => {
     if (!form.studentId || !form.jobTitle.trim()) {
       addToast('Student and job title are required.', 'warning');
+      return;
+    }
+    const offerErr = validateEmployerOfferPayload({
+      salary: form.salary,
+      deadline: form.deadlineAt,
+      joiningDate: form.joiningDate,
+    });
+    if (offerErr) {
+      addToast(offerErr, 'warning');
       return;
     }
     setSubmitting(true);
@@ -151,6 +164,15 @@ export default function EmployerOffersPage() {
 
   const submitEditOffer = async () => {
     if (!editId) return;
+    const offerErr = validateEmployerOfferPayload({
+      salary: editForm.salary,
+      deadline: editForm.deadlineAt,
+      joiningDate: editForm.joiningDate,
+    });
+    if (offerErr) {
+      addToast(offerErr, 'warning');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/employer/offers', {
@@ -331,7 +353,7 @@ export default function EmployerOffersPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Salary (INR annual)</label>
-              <input className="form-input" type="number" value={editForm.salary} onChange={(e) => setEditForm((p) => ({ ...p, salary: e.target.value }))} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={editForm.salary} onChange={(v) => setEditForm((p) => ({ ...p, salary: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Location</label>
@@ -339,11 +361,11 @@ export default function EmployerOffersPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Joining date</label>
-              <input className="form-input" type="date" value={editForm.joiningDate} onChange={(e) => setEditForm((p) => ({ ...p, joiningDate: e.target.value }))} />
+              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} context={{ deadline: editForm.deadlineAt }} value={editForm.joiningDate} onChange={(v) => setEditForm((p) => ({ ...p, joiningDate: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Response deadline</label>
-              <input className="form-input" type="date" value={editForm.deadlineAt} onChange={(e) => setEditForm((p) => ({ ...p, deadlineAt: e.target.value }))} />
+              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={editForm.deadlineAt} onChange={(v) => setEditForm((p) => ({ ...p, deadlineAt: v }))} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
@@ -387,7 +409,7 @@ export default function EmployerOffersPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Salary (INR annual)</label>
-              <input className="form-input" type="number" value={form.salary} onChange={(e) => setForm((p) => ({ ...p, salary: e.target.value }))} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={form.salary} onChange={(v) => setForm((p) => ({ ...p, salary: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Location</label>
@@ -395,11 +417,11 @@ export default function EmployerOffersPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Joining date</label>
-              <input className="form-input" type="date" value={form.joiningDate} onChange={(e) => setForm((p) => ({ ...p, joiningDate: e.target.value }))} />
+              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} context={{ deadline: form.deadlineAt }} value={form.joiningDate} onChange={(v) => setForm((p) => ({ ...p, joiningDate: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Response deadline</label>
-              <input className="form-input" type="date" value={form.deadlineAt} onChange={(e) => setForm((p) => ({ ...p, deadlineAt: e.target.value }))} />
+              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={form.deadlineAt} onChange={(v) => setForm((p) => ({ ...p, deadlineAt: v }))} />
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>

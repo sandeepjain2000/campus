@@ -202,6 +202,10 @@ def login_as_demo(page, base_url: str, email: str, role: str | None = None, *, f
         time.sleep(0.25)
     else:
         raise RuntimeError(f"Login form not prefilled for {email} (url={page.url})")
+    page.wait_for_function(
+        "() => { const b = document.querySelector('#login-submit'); return b && !b.disabled; }",
+        timeout=45_000,
+    )
     page.click("#login-submit")
     dash = ROLE_DASHBOARD_PREFIX.get((role or "").strip())
     if dash:

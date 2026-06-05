@@ -6,6 +6,10 @@ import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateDataEntryOfferPayload } from '@/lib/apiInputValidation';
 
 export default function DataEntryOffersPage() {
   const [options, setOptions] = useState({ studentProfiles: [], drives: [], employers: [] });
@@ -117,6 +121,11 @@ export default function DataEntryOffersPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const offerErr = validateDataEntryOfferPayload({ salary: form.salary, joiningDate: form.joiningDate });
+    if (offerErr) {
+      setError(offerErr);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     setSuccess('');
@@ -238,11 +247,11 @@ export default function DataEntryOffersPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Salary (INR)</label>
-              <input className="form-input" type="number" min="0" value={form.salary} onChange={onChange('salary')} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={form.salary} onChange={(v) => setForm((p) => ({ ...p, salary: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Joining date</label>
-              <input className="form-input" type="date" value={form.joiningDate} onChange={onChange('joiningDate')} />
+              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} value={form.joiningDate} onChange={(v) => setForm((p) => ({ ...p, joiningDate: v }))} />
             </div>
           </div>
 

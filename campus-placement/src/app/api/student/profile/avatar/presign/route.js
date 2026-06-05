@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { createStudentAvatarPresign, isS3Configured } from '@/lib/s3';
 import { normalizeStudentAvatarContentType, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);

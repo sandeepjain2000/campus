@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isArchiveSchemaError, ARCHIVE_COLUMN_HINT } from '@/lib/collegeStudentArchive';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 function getTenantId(session) {
   return session?.user?.tenantId || session?.user?.tenant_id || null;
@@ -17,20 +24,21 @@ const APPLICATIONS_SQL = `
       a.current_round,
       a.applied_at,
       d.title AS drive_title,
-      COALESCE(jp.title, d.title) AS opening_title,
+      d.title AS opening_title,
       ep.company_name,
       ep.website AS company_website,
       sp.department,
       sp.roll_number,
       COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student_name,
-      COALESCE(jp.job_type::text, 'placement_drive') AS job_type
+      'placement_drive'::text AS job_type
     FROM applications a
     INNER JOIN student_profiles sp ON sp.id = a.student_id AND sp.tenant_id = $1::uuid
     INNER JOIN placement_drives d ON d.id = a.drive_id
     LEFT JOIN users u ON u.id = sp.user_id
     LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-    LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
     WHERE __ACTIVE_STUDENT__
+      AND COALESCE(a.is_deleted, false) = false
+      AND COALESCE(d.is_deleted, false) = false
 
     UNION ALL
 
@@ -54,6 +62,8 @@ const APPLICATIONS_SQL = `
     LEFT JOIN users u ON u.id = sp.user_id
     LEFT JOIN employer_profiles ep ON ep.id = jp.employer_id
     WHERE __ACTIVE_STUDENT__
+      AND COALESCE(pa.is_deleted, false) = false
+      AND COALESCE(jp.is_deleted, false) = false
   ) combined
   ORDER BY applied_at DESC NULLS LAST
   LIMIT 1000`;
@@ -62,13 +72,19 @@ const COUNTS_SQL = `
   SELECT
     (SELECT COUNT(*)::int FROM applications a
      INNER JOIN student_profiles sp ON sp.id = a.student_id AND sp.tenant_id = $1::uuid
-     WHERE __ACTIVE_STUDENT__) AS drives,
+     INNER JOIN placement_drives d ON d.id = a.drive_id
+     WHERE __ACTIVE_STUDENT__
+       AND COALESCE(a.is_deleted, false) = false
+       AND COALESCE(d.is_deleted, false) = false) AS drives,
     (SELECT COUNT(*)::int FROM program_applications pa
      INNER JOIN student_profiles sp ON sp.id = pa.student_id AND sp.tenant_id = $1::uuid
-     WHERE __ACTIVE_STUDENT__) AS programs`;
+     INNER JOIN job_postings jp ON jp.id = pa.job_id
+     WHERE __ACTIVE_STUDENT__
+       AND COALESCE(pa.is_deleted, false) = false
+       AND COALESCE(jp.is_deleted, false) = false) AS programs`;
 
 function sqlWithActiveClause(baseSql, includeArchivedFilter) {
-  const active = includeArchivedFilter ? 'sp.archived_at IS NULL' : 'TRUE';
+  const active = includeArchivedFilter ? SP_ACTIVE_CLAUSE : 'TRUE';
   return baseSql.replaceAll('__ACTIVE_STUDENT__', active);
 }
 

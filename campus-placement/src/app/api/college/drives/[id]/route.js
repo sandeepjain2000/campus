@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
 }
@@ -100,6 +106,7 @@ export async function PATCH(request, { params }) {
          SET ${sets.join(', ')}
          WHERE id = $${driveIdParam}::uuid
            AND tenant_id = $${tenantParam}::uuid
+           AND COALESCE(is_deleted, false) = false
          RETURNING id, social_shared, attached_staff_user_ids`,
         values,
       );

@@ -5,12 +5,27 @@ import { query } from '@/lib/db';
 import { isFacebookPageShareConfigured } from '@/lib/facebookPageShare';
 import { emailPlacementDriveApproved } from '@/lib/placementDriveEmail';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
 }
 
-/** Older DBs may not have run db/migrations/012_employer_poc_drive_social_shared.sql yet. */
+function mapDriveRow(row, { socialShared = [], staffIds = [] } = {}) {
+  return {
+    ...row,
+    social_shared: socialShared,
+    attached_staff_user_ids: staffIds,
+  };
+}
+
+/**
+ * Load drives with tiered SELECTs for DBs missing optional columns
+ * (e.g. social_shared from migration 012).
+ */
 async function loadDrivesForTenant(tenantId, academicYearId = null) {
   const yearFilter = academicYearId
     ? ` AND (d.academic_year_id = $2::uuid OR d.academic_year_id IS NULL OR d.status = 'requested')`
@@ -19,11 +34,10 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
   const baseFrom = `
       FROM placement_drives d
       LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-      WHERE d.tenant_id = $1::uuid${yearFilter}
+      WHERE d.tenant_id = $1::uuid${yearFilter} ${AND_DRIVE_NOT_DELETED}
       ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC`;
-  try {
-    return await query(
-      `SELECT
+
+  const coreSelect = `
         d.id,
         ep.company_name AS company,
         ep.website AS website,
@@ -33,49 +47,49 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
         d.status,
         d.registered_count AS registered,
         d.selected_count AS selected,
-        d.venue,
+        d.venue`;
+
+  const tiers = [
+    {
+      select: `${coreSelect},
         COALESCE(d.social_shared, ARRAY[]::text[]) AS social_shared,
-        COALESCE(d.attached_staff_user_ids, ARRAY[]::uuid[]) AS attached_staff_user_ids
-      ${baseFrom}`,
-      params,
-    );
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (
-      err?.code === '42703' &&
-      (msg.includes('social_shared') ||
-        msg.includes('academic_year_id') ||
-        msg.includes('attached_staff_user_ids'))
-    ) {
-      if (msg.includes('academic_year_id')) {
-        return loadDrivesForTenant(tenantId, null);
+        COALESCE(d.attached_staff_user_ids, ARRAY[]::uuid[]) AS attached_staff_user_ids`,
+      map: (r) =>
+        mapDriveRow(r, {
+          socialShared: r.social_shared ?? [],
+          staffIds: r.attached_staff_user_ids ?? [],
+        }),
+    },
+    {
+      select: `${coreSelect},
+        COALESCE(d.attached_staff_user_ids, ARRAY[]::uuid[]) AS attached_staff_user_ids`,
+      map: (r) => mapDriveRow(r, { socialShared: [], staffIds: r.attached_staff_user_ids ?? [] }),
+    },
+    {
+      select: coreSelect,
+      map: (r) => mapDriveRow(r),
+    },
+  ];
+
+  let lastErr = null;
+  for (const tier of tiers) {
+    try {
+      const res = await query(`SELECT ${tier.select} ${baseFrom}`, params);
+      return { rows: res.rows.map(tier.map) };
+    } catch (err) {
+      lastErr = err;
+      if (err?.code === '42703') {
+        const msg = String(err?.message || '');
+        if (msg.includes('academic_year_id') && academicYearId) {
+          return loadDrivesForTenant(tenantId, null);
+        }
+        continue;
       }
-      const slim = await query(
-        `SELECT
-        d.id,
-        ep.company_name AS company,
-        ep.website AS website,
-        d.title AS role,
-        d.drive_date AS date,
-        d.drive_type AS type,
-        d.status,
-        d.registered_count AS registered,
-        d.selected_count AS selected,
-        d.venue,
-        COALESCE(d.social_shared, ARRAY[]::text[]) AS social_shared
-      ${baseFrom}`,
-        params,
-      );
-      return {
-        rows: slim.rows.map((r) => ({
-          ...r,
-          social_shared: r.social_shared ?? [],
-          attached_staff_user_ids: [],
-        })),
-      };
+      throw err;
     }
-    throw err;
   }
+
+  throw lastErr || new Error('Could not load placement drives');
 }
 
 export async function GET(request) {
@@ -91,8 +105,15 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const ay = await resolveTenantAcademicYear(tenantId, searchParams);
-    const drives = await loadDrivesForTenant(tenantId, ay.year?.id || null);
+    let academicYearId = null;
+    try {
+      const ay = await resolveTenantAcademicYear(tenantId, searchParams);
+      academicYearId = ay.year?.id || null;
+    } catch (ayErr) {
+      console.warn('College drives: academic year filter skipped:', ayErr?.message || ayErr);
+    }
+
+    const drives = await loadDrivesForTenant(tenantId, academicYearId);
 
     const staff = await query(
       `SELECT id, first_name, last_name, role
@@ -101,7 +122,7 @@ export async function GET(request) {
          AND role = 'college_admin'
          AND is_active = true
        ORDER BY first_name ASC, last_name ASC`,
-      [tenantId]
+      [tenantId],
     );
 
     return NextResponse.json({
@@ -112,17 +133,18 @@ export async function GET(request) {
         role: s.role === 'college_admin' ? 'Placement Coordinator' : s.role,
       })),
       integrations: {
-        /** True when FACEBOOK_PAGE_ID + FACEBOOK_PAGE_ACCESS_TOKEN are set (enables “Post to FB Page” on the UI). */
         facebookPageShare: isFacebookPageShareConfigured(),
       },
     });
   } catch (error) {
     console.error('Failed to load college drives:', error);
-    const body = { error: 'Failed to load college drives' };
-    if (process.env.NODE_ENV === 'development') {
-      body.details = error?.message || String(error);
-    }
-    return NextResponse.json(body, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Failed to load college drives',
+        details: error?.message || String(error),
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -154,12 +176,12 @@ export async function PATCH(request) {
          AND tenant_id = $4::uuid
          AND status = 'requested'
        RETURNING id, status, title, drive_date, drive_type, tenant_id, employer_id`,
-      [nextStatus, session.user.id, driveId, tenantId]
+      [nextStatus, session.user.id, driveId, tenantId],
     );
 
     if (!updated.rows.length) {
       const meta = await query(
-        `SELECT status FROM placement_drives WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+        `SELECT status FROM placement_drives d WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid ${AND_DRIVE_NOT_DELETED}`,
         [driveId, tenantId],
       );
       if (!meta.rows[0]) {
@@ -181,7 +203,7 @@ export async function PATCH(request) {
          FROM placement_drives d
          JOIN tenants t ON t.id = d.tenant_id
          JOIN employer_profiles ep ON ep.id = d.employer_id
-         WHERE d.id = $1::uuid`,
+         WHERE d.id = $1::uuid ${AND_DRIVE_NOT_DELETED}`,
         [row.id],
       );
       const m = meta.rows[0];
@@ -201,6 +223,9 @@ export async function PATCH(request) {
     return NextResponse.json({ success: true, drive: { id: row.id, status: row.status } });
   } catch (error) {
     console.error('Failed to update drive status:', error);
-    return NextResponse.json({ error: 'Failed to update drive status: ' + (error?.message || String(error)) }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update drive status: ' + (error?.message || String(error)) },
+      { status: 500 },
+    );
   }
 }

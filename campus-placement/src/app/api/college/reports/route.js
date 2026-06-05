@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET() {
   try {
@@ -21,7 +29,7 @@ export async function GET() {
            COUNT(*)::int AS total_students,
            COUNT(*) FILTER (WHERE placement_status = 'placed')::int AS placed_students
          FROM student_profiles
-         WHERE tenant_id = $1::uuid AND archived_at IS NULL`,
+         WHERE tenant_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}`,
         [tenantId],
       ),
       query(
@@ -29,7 +37,7 @@ export async function GET() {
                 COUNT(*)::int AS total,
                 COUNT(*) FILTER (WHERE placement_status = 'placed')::int AS placed
          FROM student_profiles
-         WHERE tenant_id = $1::uuid AND archived_at IS NULL
+         WHERE tenant_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
          GROUP BY department
          ORDER BY department`,
         [tenantId],
@@ -44,9 +52,9 @@ export async function GET() {
              ELSE '₹25+ LPA'
            END AS range,
            COUNT(*)::int AS count
-         FROM offers
-         WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND archived_at IS NULL)
-           AND status = 'accepted'
+         FROM offers o
+         WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE})
+           AND o.status = 'accepted' ${AND_OFFER_NOT_DELETED}
          GROUP BY 1`,
         [tenantId],
       ),
@@ -56,8 +64,8 @@ export async function GET() {
                 ROUND(AVG(o.salary))::int AS avg_ctc
          FROM offers o
          LEFT JOIN employer_profiles ep ON ep.id = o.employer_id
-         WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND archived_at IS NULL)
-           AND o.status = 'accepted'
+         WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE})
+           AND o.status = 'accepted' ${AND_OFFER_NOT_DELETED}
          GROUP BY ep.company_name
          ORDER BY hires DESC
          LIMIT 10`,
@@ -71,9 +79,9 @@ export async function GET() {
 
     const acceptedOffersAvgRes = await query(
       `SELECT ROUND(AVG(salary))::int AS avg_ctc, MAX(salary)::int AS highest
-       FROM offers
-       WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND archived_at IS NULL)
-         AND status = 'accepted'`,
+       FROM offers o
+       WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE})
+         AND o.status = 'accepted' ${AND_OFFER_NOT_DELETED}`,
       [tenantId],
     );
     const avgPackage = Number(acceptedOffersAvgRes.rows[0]?.avg_ctc || 0);

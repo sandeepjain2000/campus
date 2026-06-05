@@ -10,6 +10,36 @@ import CompanyNameLink from '@/components/CompanyNameLink';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import { CalendarDays, Users, Building2, Plus, ChevronRight } from 'lucide-react';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
+import { findDuplicateCollegeInterviewSlot } from '@/lib/interviewSlotDuplicate';
+import InterviewSlotActions from '@/components/interviews/InterviewSlotActions';
+
+const EMPTY_COLLEGE_FORM = {
+  company: '',
+  round: '',
+  date: '',
+  startTime: '',
+  endTime: '',
+  interviewer: '',
+  panelNames: '',
+  students: '',
+  createdBy: 'TPO',
+};
+
+function slotToForm(slot) {
+  return {
+    company: slot.company || '',
+    round: slot.round || '',
+    date: slot.date || '',
+    startTime: slot.startTime || '',
+    endTime: slot.endTime || '',
+    interviewer: slot.interviewer || '',
+    panelNames: slot.panelNames || '',
+    students: Array.isArray(slot.students) ? slot.students.join(', ') : '',
+    createdBy: slot.createdBy || 'TPO',
+  };
+}
 
 function formatTimeDisplay(t) {
   if (!t) return '';
@@ -57,37 +87,70 @@ export default function CollegeInterviewsPage() {
     sortOptions: COMPANY_SORT_OPTIONS,
     defaultSort: 'company_asc',
   });
-  const [form, setForm] = useState({
-    company: '',
-    round: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    interviewer: '',
-    panelNames: '',
-    students: '',
-    createdBy: 'TPO',
-  });
+  const [form, setForm] = useState(EMPTY_COLLEGE_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(EMPTY_COLLEGE_FORM);
+  };
+
+  const startEdit = (slot) => {
+    setEditingId(slot.id);
+    setForm(slotToForm(slot));
+  };
+
+  const removeSlot = async (slot) => {
+    if (!window.confirm(`Delete interview slot for ${slot.company} · ${slot.round}?`)) return;
+    try {
+      const res = await fetch(`/api/college/interviews/${slot.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to delete slot');
+      if (editingId === slot.id) cancelEdit();
+      await mutate();
+      addToast('Interview slot deleted.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to delete interview slot', 'error');
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.company.trim() || !form.round.trim() || !form.date || !form.startTime || !form.endTime || !form.interviewer.trim()) return;
+    const dateErr = validateFieldOrError(FIELD_IDS.COLLEGE_INTERVIEW_DATE, form.date);
+    if (dateErr) {
+      addToast(dateErr, 'warning');
+      return;
+    }
+    const payload = {
+      ...form,
+      students: form.students ? form.students.split(',').map((s) => s.trim()).filter(Boolean) : [],
+    };
+    const duplicate = findDuplicateCollegeInterviewSlot(slots, payload, editingId);
+    if (duplicate) {
+      addToast('An interview slot with the same company, round, date, time, and interviewer already exists.', 'warning');
+      return;
+    }
+
+    setSaving(true);
+    const isEdit = Boolean(editingId);
     try {
-      const res = await fetch('/api/college/interviews', {
-        method: 'POST',
+      const url = isEdit ? `/api/college/interviews/${editingId}` : '/api/college/interviews';
+      const res = await fetch(url, {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          students: form.students ? form.students.split(',').map((s) => s.trim()).filter(Boolean) : [],
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed to create slot');
+      if (!res.ok) throw new Error(json?.error || (isEdit ? 'Failed to update slot' : 'Failed to create slot'));
       await mutate();
-      setForm((prev) => ({ ...prev, company: '', round: '', date: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: '' }));
-      addToast('Interview slot created successfully.', 'success');
+      cancelEdit();
+      addToast(isEdit ? 'Interview slot updated.' : 'Interview slot created successfully.', 'success');
     } catch (err) {
-      addToast(err.message || 'Failed to create interview slot', 'error');
+      addToast(err.message || 'Failed to save interview slot', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -181,13 +244,18 @@ export default function CollegeInterviewsPage() {
 
           <div className="grid grid-2">
             <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Create Interview Slot</h3>
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 className="card-title">{editingId ? 'Edit Interview Slot' : 'Create Interview Slot'}</h3>
+                {editingId ? (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEdit}>
+                    Cancel edit
+                  </button>
+                ) : null}
               </div>
               <form onSubmit={submit} style={{ display: 'grid', gap: '0.65rem' }}>
                 <input className="form-input" placeholder="Company" value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} />
                 <input className="form-input" placeholder="Round (e.g. Round 2 - HR)" value={form.round} onChange={(e) => setForm((p) => ({ ...p, round: e.target.value }))} />
-                <input className="form-input" type="date" min={new Date().toISOString().split('T')[0]} value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
+                <ValidatedDateInput fieldId={FIELD_IDS.COLLEGE_INTERVIEW_DATE} value={form.date} onChange={(v) => setForm((p) => ({ ...p, date: v }))} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div>
                     <label className="form-label" style={{ marginBottom: '0.35rem', display: 'block' }}>
@@ -214,8 +282,8 @@ export default function CollegeInterviewsPage() {
                   <option value="TPO">Scheduled by College (TPO)</option>
                   <option value="Company">Scheduled by Company</option>
                 </select>
-                <button className="btn btn-primary" type="submit">
-                  Create Slot
+                <button className="btn btn-primary" type="submit" disabled={saving}>
+                  {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create Slot'}
                 </button>
               </form>
             </div>
@@ -227,12 +295,27 @@ export default function CollegeInterviewsPage() {
               {isLoading ? <div className="text-sm text-secondary">Loading slots...</div> : null}
               <div style={{ display: 'grid', gap: '0.6rem' }}>
                 {slots.map((slot) => (
-                  <div key={slot.id} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.7rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div
+                    key={slot.id}
+                    style={{
+                      border: `1px solid ${editingId === slot.id ? 'var(--primary-400)' : 'var(--border-default)'}`,
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.7rem',
+                      background: editingId === slot.id ? 'var(--primary-50)' : undefined,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                       <div className="font-semibold">
                         {slot.company} • {slot.round}
                       </div>
-                      <span className={`badge ${slot.createdBy === 'TPO' ? 'badge-indigo' : 'badge-blue'}`}>{slot.createdBy}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span className={`badge ${slot.createdBy === 'TPO' ? 'badge-indigo' : 'badge-blue'}`}>{slot.createdBy}</span>
+                        <InterviewSlotActions
+                          onEdit={() => startEdit(slot)}
+                          onDelete={() => removeSlot(slot)}
+                          disabled={saving}
+                        />
+                      </div>
                     </div>
                     <div className="text-sm text-secondary">
                       {formatDate(slot.date)} · {formatSlotRange(slot)} · {slot.interviewer}

@@ -42,6 +42,28 @@ export async function putObjectText({ key, body, contentType = 'text/plain; char
   };
 }
 
+/**
+ * Download an object body from the configured bucket (server-side).
+ * @param {string} key
+ * @returns {Promise<{ buffer: Buffer, contentType: string | null }>}
+ */
+export async function getObjectBufferFromKey(key) {
+  if (!isS3Configured()) {
+    throw new Error('S3 is not configured (missing AWS env vars).');
+  }
+  const client = getClient();
+  const bucket = process.env.S3_BUCKET_NAME;
+  const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  const chunks = [];
+  for await (const chunk of out.Body) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return {
+    buffer: Buffer.concat(chunks),
+    contentType: out.ContentType || null,
+  };
+}
+
 export async function createDownloadUrlForKey(key, expiresInSeconds = 60 * 60 * 24 * 7) {
   if (!isS3Configured()) {
     throw new Error('S3 is not configured (missing AWS env vars).');

@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function getEmployerId(session) {
   const userId = session?.user?.id;
@@ -27,8 +35,8 @@ export async function GET() {
     const [drivesRes, studentsRes] = await Promise.all([
       query(
         `SELECT id, title, drive_date
-         FROM placement_drives
-         WHERE employer_id = $1
+         FROM placement_drives d
+         WHERE d.employer_id = $1 ${AND_DRIVE_NOT_DELETED}
          ORDER BY drive_date DESC, created_at DESC
          LIMIT 300`,
         [employerId]
@@ -40,7 +48,7 @@ export async function GET() {
          JOIN student_profiles sp ON sp.id = a.student_id
          JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
-         WHERE d.employer_id = $1
+         WHERE d.employer_id = $1 ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED} AND ${SP_ACTIVE_CLAUSE}
          ORDER BY u.first_name ASC, u.last_name ASC
          LIMIT 500`,
         [employerId]

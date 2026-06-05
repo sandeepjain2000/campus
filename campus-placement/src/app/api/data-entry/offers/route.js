@@ -4,6 +4,9 @@ import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEnt
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
 import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
+import { validateDataEntryOfferPayload } from '@/lib/apiInputValidation';
+import { AND_DRIVE_NOT_DELETED, AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
@@ -35,7 +38,7 @@ export async function GET(request) {
        LEFT JOIN users u ON u.id = sp.user_id
        LEFT JOIN placement_drives d ON d.id = o.drive_id
        LEFT JOIN employer_profiles e ON e.id = o.employer_id
-       WHERE sp.tenant_id = $1 ${clause}
+       WHERE sp.tenant_id = $1 AND ${SP_ACTIVE_CLAUSE} ${AND_OFFER_NOT_DELETED} ${clause}
        ORDER BY o.created_at DESC
        LIMIT 300`;
     };
@@ -75,6 +78,10 @@ export async function POST(request) {
 
     if (!studentId || !jobTitle) {
       return NextResponse.json({ error: 'studentId and jobTitle are required' }, { status: 400 });
+    }
+    const offerErr = validateDataEntryOfferPayload({ salary, joiningDate });
+    if (offerErr) {
+      return NextResponse.json({ error: offerErr }, { status: 400 });
     }
     if (!ALLOWED_STATUS.has(status)) {
       return NextResponse.json({ error: 'Invalid offer status' }, { status: 400 });

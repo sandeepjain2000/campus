@@ -212,6 +212,9 @@ export default function DesktopCollegeStudents() {
             {sessionMeta?.semesterNumber ?? sessionMeta?.semesterLabel ?? CURRENT_SEMESTER} · {students.length}{' '}
             enrolled
           </p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: '0.35rem 0 0', maxWidth: 520 }}>
+            CSV import: fill every column in the template; only <strong>Remarks</strong> may be left blank.
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" className="btn btn-ghost btn-sm" onClick={downloadTemplate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border-default)', fontSize: '0.85rem' }}>

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 import { Building2, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
@@ -170,12 +172,10 @@ export default function InfrastructureResourceManager({ assets, onAssetsChange, 
           </div>
           <div className="form-group" style={compact ? undefined : { margin: 0 }}>
             <label className="form-label">Capacity (optional)</label>
-            <input
-              className="form-input"
-              type="number"
-              min={0}
+            <ValidatedNumberInput
+              fieldId={FIELD_IDS.COLLEGE_FACILITY_CAPACITY}
               value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
+              onChange={setCapacity}
               placeholder="e.g. 200"
             />
           </div>

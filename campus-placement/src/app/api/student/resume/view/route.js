@@ -6,6 +6,12 @@ import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 function extractS3Key(fileUrl) {
   try {
     const u = new URL(String(fileUrl || ''));

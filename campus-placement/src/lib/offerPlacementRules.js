@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
 
 /**
  * Load college placement offer rules for a tenant.
@@ -30,7 +31,7 @@ export async function assertStudentMayAcceptOffer(studentId, tenantId) {
 
   const acceptedRes = await query(
     `SELECT COUNT(*)::int AS n, MIN(accepted_at) AS first_accepted
-     FROM offers WHERE student_id = $1::uuid AND status = 'accepted'`,
+     FROM offers o WHERE o.student_id = $1::uuid AND o.status = 'accepted' ${AND_OFFER_NOT_DELETED}`,
     [studentId],
   );
   const acceptedCount = acceptedRes.rows[0]?.n ?? 0;

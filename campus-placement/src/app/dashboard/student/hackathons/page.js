@@ -6,7 +6,14 @@ import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/
 import { useToast } from '@/components/ToastProvider';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
+import PostingEligibilitySection from '@/components/student/PostingEligibilitySection';
+import StudentApplyEligibilityControls from '@/components/student/StudentApplyEligibilityControls';
 import PageLoading from '@/components/PageLoading';
+import {
+  globalApplyBlockedReason,
+  resolveApplyBlockReason,
+} from '@/lib/getApplyBlockReason';
+import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/studentApplyContext';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -23,13 +30,18 @@ export default function StudentHackathonsPage() {
   });
 
   const items = data?.items || [];
+  const placementLocked = data?.placementLocked === true;
+  const applyBlockedReason = data?.applyBlockedReason || '';
+  const currentStudent = buildStudentApplyContext(data);
   const canApply = data?.canApply !== false;
+  const globalBlockedReason = globalApplyBlockedReason(canApply, applyBlockedReason);
 
   const apply = async (jobId, title) => {
-    if (!canApply) {
-      addToast('Upload your primary CV on your profile before applying.', 'warning');
-      return;
-    }
+    const row = items.find((i) => i.id === jobId);
+    const blockReason = row
+      ? resolveApplyBlockReason(programOpportunityFromRow(row), currentStudent, { globalBlockedReason })
+      : null;
+    if (blockReason) return;
     try {
       const res = await fetch('/api/student/program-applications', {
         method: 'POST',
@@ -63,7 +75,11 @@ export default function StudentHackathonsPage() {
         </div>
       </div>
 
-      <StudentApplyResumeBanner canApply={canApply} />
+      <StudentApplyResumeBanner
+        canApply={canApply}
+        placementLocked={placementLocked}
+        applyBlockedReason={applyBlockedReason}
+      />
 
       {isLoading && <PageLoading message="Loading hackathons…" inline />}
       {error && (
@@ -129,21 +145,29 @@ export default function StudentHackathonsPage() {
                     ))}
                   </div>
                 )}
+                {!row.hasApplied ? (
+                  <div style={{ marginTop: '1rem' }}>
+                    <PostingEligibilitySection
+                      opportunity={programOpportunityFromRow(row)}
+                      student={currentStudent}
+                      audience="student"
+                    />
+                  </div>
+                ) : null}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', minWidth: '11rem' }}>
                 {row.hasApplied ? (
                   <span className={`badge badge-${getStatusColor(row.applicationStatus)} badge-dot`}>
                     {formatStatus(row.applicationStatus)}
                   </span>
                 ) : (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={!canApply}
-                    onClick={() => apply(row.id, row.title)}
-                  >
-                    {canApply ? 'Apply' : 'CV required'}
-                  </button>
+                  <StudentApplyEligibilityControls
+                    opportunity={programOpportunityFromRow(row)}
+                    student={currentStudent}
+                    applyLabel="Apply"
+                    globalBlockedReason={globalBlockedReason}
+                    onApply={() => apply(row.id, row.title)}
+                  />
                 )}
               </div>
             </div>

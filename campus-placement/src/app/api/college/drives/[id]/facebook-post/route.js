@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { formatDriveFacebookMessage, isFacebookPageShareConfigured, postToFacebookPageFeed } from '@/lib/facebookPageShare';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
@@ -54,7 +61,7 @@ export async function POST(_request, { params }) {
        FROM placement_drives d
        LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
        INNER JOIN tenants t ON t.id = d.tenant_id
-       WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid`,
+       WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid ${AND_DRIVE_NOT_DELETED}`,
       [driveId, tenantId],
     );
 

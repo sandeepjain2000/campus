@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getSessionTenantId } from '@/lib/tenantContext';
 import {
+
+
   COLLEGE_EMAIL_TEMPLATE_KEY_SET,
   COLLEGE_EMAIL_TEMPLATE_KEYS,
   deleteEmailTemplateOverride,
@@ -11,6 +13,10 @@ import {
   upsertEmailTemplateOverride,
 } from '@/lib/emailTemplateResolve';
 import { SYSTEM_EMAIL_TEMPLATE_META } from '@/lib/systemEmailTemplates';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 export async function GET() {
   try {

@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import {
+  assertActiveEmployerTieUp,
+  resolveEmployerIdByCompanyName,
+} from '@/lib/employerTieUp';
 
 const MAX_QUESTIONS = 5;
 
@@ -101,6 +105,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'company, postedBy and at least one question are required' }, { status: 400 });
     }
 
+    if (session.user.role === 'student') {
+      const employerId = await resolveEmployerIdByCompanyName(tenantId, company);
+      if (employerId) {
+        const tieUp = await assertActiveEmployerTieUp(tenantId, employerId);
+        if (!tieUp.ok) {
+          return NextResponse.json({ error: tieUp.error }, { status: 403 });
+        }
+      }
+    }
+
     const batchInsert = await query(
       `INSERT INTO clarification_batches (tenant_id, company, posted_by, posted_at, created_by)
        VALUES ($1::uuid, $2, $3, CURRENT_DATE, $4::uuid)
@@ -141,6 +155,27 @@ export async function PATCH(request) {
     const answeredBy = String(body?.answeredBy || '').trim();
     if (!batchId || !questionId || !answer) {
       return NextResponse.json({ error: 'batchId, questionId and answer are required' }, { status: 400 });
+    }
+
+    if (session.user.role === 'employer') {
+      const batchRow = await query(
+        `SELECT company FROM clarification_batches WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1`,
+        [batchId, tenantId],
+      );
+      const batchCompany = batchRow.rows[0]?.company;
+      if (batchCompany) {
+        const employerIdRes = await query(
+          `SELECT id FROM employer_profiles WHERE user_id = $1::uuid LIMIT 1`,
+          [session.user.id || session.user.sub],
+        );
+        const employerId = employerIdRes.rows[0]?.id;
+        if (employerId) {
+          const tieUp = await assertActiveEmployerTieUp(tenantId, employerId);
+          if (!tieUp.ok) {
+            return NextResponse.json({ error: tieUp.error }, { status: 403 });
+          }
+        }
+      }
     }
 
     const ownership = await query(

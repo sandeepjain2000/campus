@@ -4,6 +4,14 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { isUuid } from '@/lib/tenantContext';
 import { writeEmployerAssessmentAudit } from '@/lib/employerAssessmentAudit';
+import { formatStudentSystemId } from '@/lib/studentSystemId';
+import { AND_EAU_NOT_DELETED, AND_SP_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function getEmployerProfileId(session) {
   const userId = session?.user?.id;
@@ -15,15 +23,15 @@ async function getEmployerProfileId(session) {
 async function assertOwnsUpload(employerId, uploadId) {
   const r = await query(
     `SELECT id, tenant_id, drive_id, job_id, original_file_name, total_rows, accepted_rows, rejected_rows, created_at
-     FROM employer_assessment_uploads
-     WHERE id = $1::uuid AND employer_id = $2::uuid
+     FROM employer_assessment_uploads eau
+     WHERE eau.id = $1::uuid AND eau.employer_id = $2::uuid ${AND_EAU_NOT_DELETED}
      LIMIT 1`,
     [uploadId, employerId],
   );
   return r.rows[0] || null;
 }
 
-/** GET — upload metadata, round labels, and accepted rows (for view/edit after CSV). */
+/** GET — upload metadata and accepted rows (for view/edit after CSV). */
 export async function GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
@@ -40,35 +48,31 @@ export async function GET(_request, { params }) {
     const upload = await assertOwnsUpload(employerId, uploadId);
     if (!upload) return NextResponse.json({ error: 'Upload not found' }, { status: 404 });
 
-    const rounds = await query(
-      `SELECT round_no, round_label FROM employer_assessment_rounds WHERE upload_id = $1::uuid ORDER BY round_no ASC`,
-      [uploadId],
-    );
     const rowsRes = await query(
       `SELECT
          ear.id,
          ear.roll_number,
          ear.candidate_name,
-         ear.round_1_result,
-         ear.round_2_result,
-         ear.round_3_result,
-         ear.round_4_result,
-         ear.round_5_result,
+         ear.hiring_result,
          ear.remarks,
          ear.is_unregistered_student,
-         TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS account_name
+         TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS account_name,
+         t.short_code
        FROM employer_assessment_rows ear
        JOIN student_profiles sp ON sp.id = ear.student_profile_id
        JOIN users u ON u.id = sp.user_id
-       WHERE ear.upload_id = $1::uuid
+       LEFT JOIN tenants t ON t.id = sp.tenant_id
+       WHERE ear.upload_id = $1::uuid ${AND_SP_NOT_DELETED}
        ORDER BY ear.roll_number ASC NULLS LAST, ear.created_at ASC`,
       [uploadId],
     );
 
     return NextResponse.json({
       upload,
-      rounds: rounds.rows,
-      rows: rowsRes.rows,
+      rows: rowsRes.rows.map((row) => ({
+        ...row,
+        system_id: formatStudentSystemId(row.short_code, row.roll_number),
+      })),
     });
   } catch (e) {
     console.error('GET /api/employer/assessments/[uploadId]', e);
@@ -82,7 +86,7 @@ function trimText(v, maxLen) {
   return s;
 }
 
-/** PATCH — batch-update round cells / remarks / candidate_name for rows in this upload. */
+/** PATCH — batch-update hiring_result / remarks / candidate_name for rows in this upload. */
 export async function PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
@@ -118,19 +122,11 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'No valid row ids' }, { status: 400 });
     }
 
-    const ROW_FIELDS = [
-      'round_1_result',
-      'round_2_result',
-      'round_3_result',
-      'round_4_result',
-      'round_5_result',
-      'remarks',
-      'candidate_name',
-    ];
+    const ROW_FIELDS = ['hiring_result', 'remarks', 'candidate_name'];
 
     await transaction(async (client) => {
       const prevRes = await client.query(
-        `SELECT id, roll_number, round_1_result, round_2_result, round_3_result, round_4_result, round_5_result, remarks, candidate_name
+        `SELECT id, roll_number, hiring_result, remarks, candidate_name
          FROM employer_assessment_rows
          WHERE upload_id = $1::uuid AND id = ANY($2::uuid[])`,
         [uploadId, rowIds],
@@ -153,11 +149,7 @@ export async function PATCH(request, { params }) {
         if (!own.rows.length) continue;
 
         const next = {
-          round_1_result: trimText(r.round_1_result, 2000),
-          round_2_result: trimText(r.round_2_result, 2000),
-          round_3_result: trimText(r.round_3_result, 2000),
-          round_4_result: trimText(r.round_4_result, 2000),
-          round_5_result: trimText(r.round_5_result, 2000),
+          hiring_result: trimText(r.hiring_result, 2000) || null,
           remarks: trimText(r.remarks, 4000) || null,
           candidate_name: trimText(r.candidate_name, 255) || null,
         };
@@ -177,24 +169,11 @@ export async function PATCH(request, { params }) {
 
         await client.query(
           `UPDATE employer_assessment_rows
-           SET round_1_result = $1,
-               round_2_result = $2,
-               round_3_result = $3,
-               round_4_result = $4,
-               round_5_result = $5,
-               remarks = $6,
-               candidate_name = $7
-           WHERE id = $8::uuid`,
-          [
-            next.round_1_result,
-            next.round_2_result,
-            next.round_3_result,
-            next.round_4_result,
-            next.round_5_result,
-            next.remarks,
-            next.candidate_name,
-            rowId,
-          ],
+           SET hiring_result = $1,
+               remarks = $2,
+               candidate_name = $3
+           WHERE id = $4::uuid`,
+          [next.hiring_result, next.remarks, next.candidate_name, rowId],
         );
 
         if (touched) {

@@ -3,7 +3,17 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isS3Configured, uploadStudentAvatarBuffer } from '@/lib/s3';
-import { normalizeStudentAvatarContentType, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
+import {
+  normalizeStudentAvatarContentType,
+  validateStudentAvatarBuffer,
+  validateStudentAvatarFile,
+} from '@/lib/studentAvatarUpload';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export const runtime = 'nodejs';
 
@@ -30,13 +40,13 @@ export async function POST(req) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const validated = validateStudentAvatarFile({
+    const meta = validateStudentAvatarFile({
       name: file.name,
       type: file.type,
       size: file.size,
     });
-    if (!validated.ok) {
-      return NextResponse.json({ error: validated.error }, { status: 400 });
+    if (!meta.ok) {
+      return NextResponse.json({ error: meta.error }, { status: 400 });
     }
 
     const userId = session.user.id || session.user.sub;
@@ -45,6 +55,11 @@ export async function POST(req) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const validated = validateStudentAvatarBuffer(buffer, meta.contentType);
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.error }, { status: 400 });
+    }
+
     const uploaded = await uploadStudentAvatarBuffer({
       userId,
       fileName: file.name || 'photo',

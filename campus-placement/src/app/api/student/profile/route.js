@@ -5,6 +5,13 @@ import { query, transaction } from '@/lib/db';
 import { profileFromDb, payloadToDbParts } from '@/lib/studentProfileDbMap';
 import { resolveStudentResumeUrl, resolveStudentResumeFileName } from '@/lib/studentResumeUrl';
 import { validateStudentAcademicScores, validateStudentBranchField } from '@/lib/validators';
+import { validateStudentAcademicPayload, validateEducationDetailsPayload } from '@/lib/apiInputValidation';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function ensureStudentProfileRow(userId) {
   const ins = await query(
@@ -115,10 +122,16 @@ export async function PUT(request) {
 
     const body = await request.json().catch(() => ({}));
     const accountEmail = session.user.email || '';
+
+    await ensureStudentProfileRow(session.user.id);
+
+    const existingRes = await query(`SELECT cgpa FROM student_profiles WHERE user_id = $1::uuid`, [session.user.id]);
+    const existingCgpa = existingRes.rows[0]?.cgpa ?? null;
+
     const parts = payloadToDbParts({ ...body, emails: body.emails, phones: body.phones, communicationEmail: body.communicationEmail });
 
     const academicErr = validateStudentAcademicScores({
-      cgpa: parts.cgpa ?? body.cgpa,
+      cgpa: existingCgpa,
       tenthPercentage: parts.tenth_percentage,
       twelfthPercentage: parts.twelfth_percentage,
       diplomaPercentage: parts.diploma_percentage,
@@ -136,30 +149,26 @@ export async function PUT(request) {
       return NextResponse.json({ error: deptErr }, { status: 400 });
     }
 
-    const MAX_EXPECTED_SALARY = 50_000_000; // ₹5 Cr / year — sanity cap
-    const smin = parts.expected_salary_min;
-    const smax = parts.expected_salary_max;
-    if (smin != null) {
-      if (!Number.isFinite(smin) || smin < 0) {
-        return NextResponse.json({ error: 'Expected salary minimum must be a non‑negative number' }, { status: 400 });
-      }
-      if (smin > MAX_EXPECTED_SALARY) {
-        return NextResponse.json({ error: 'Expected salary minimum is above the allowed maximum' }, { status: 400 });
-      }
-    }
-    if (smax != null) {
-      if (!Number.isFinite(smax) || smax < 0) {
-        return NextResponse.json({ error: 'Expected salary maximum must be a non‑negative number' }, { status: 400 });
-      }
-      if (smax > MAX_EXPECTED_SALARY) {
-        return NextResponse.json({ error: 'Expected salary maximum is above the allowed maximum' }, { status: 400 });
-      }
-    }
-    if (smin != null && smax != null && smin > smax) {
-      return NextResponse.json({ error: 'Expected salary minimum cannot be greater than maximum' }, { status: 400 });
+    const salaryPayloadErr = validateStudentAcademicPayload({
+      cgpa: existingCgpa,
+      tenthPercentage: parts.tenth_percentage,
+      twelfthPercentage: parts.twelfth_percentage,
+      diplomaPercentage: parts.diploma_percentage,
+      batchYear: parts.batch_year ?? body.batchYear,
+      graduationYear: parts.graduation_year ?? body.graduationYear,
+      backlogsActive: parts.backlogs_active,
+      backlogsHistory: parts.backlogs_history,
+      expectedSalaryMin: parts.expected_salary_min ?? body.expectedSalaryMin,
+      expectedSalaryMax: parts.expected_salary_max ?? body.expectedSalaryMax,
+    });
+    if (salaryPayloadErr) {
+      return NextResponse.json({ error: salaryPayloadErr }, { status: 400 });
     }
 
-    await ensureStudentProfileRow(session.user.id);
+    const educationErr = validateEducationDetailsPayload(body.educationDetails);
+    if (educationErr) {
+      return NextResponse.json({ error: educationErr }, { status: 400 });
+    }
 
     const auxProfileAvailable = await hasAuxProfileColumn();
 
@@ -179,30 +188,28 @@ export async function PUT(request) {
              branch = $2,
              batch_year = $3,
              graduation_year = $4,
-             cgpa = $5,
-             tenth_percentage = $6,
-             twelfth_percentage = $7,
-             diploma_percentage = $8,
-             backlogs_active = $9,
-             backlogs_history = $10,
-             gender = $11,
-             bio = $12,
-             linkedin_url = $13,
-             github_url = $14,
-             portfolio_url = $15,
-             expected_salary_min = $16,
-             expected_salary_max = $17,
-             preferred_locations = $18,
-             willing_to_relocate = $19,
-             aux_profile = $20::jsonb,
+             tenth_percentage = $5,
+             twelfth_percentage = $6,
+             diploma_percentage = $7,
+             backlogs_active = $8,
+             backlogs_history = $9,
+             gender = $10,
+             bio = $11,
+             linkedin_url = $12,
+             github_url = $13,
+             portfolio_url = $14,
+             expected_salary_min = $15,
+             expected_salary_max = $16,
+             preferred_locations = $17,
+             willing_to_relocate = $18,
+             aux_profile = $19::jsonb,
              updated_at = NOW()
-           WHERE user_id = $21::uuid`,
+           WHERE user_id = $20::uuid`,
           [
             parts.department,
             parts.branch,
             parts.batch_year,
             parts.graduation_year,
-            parts.cgpa,
             parts.tenth_percentage,
             parts.twelfth_percentage,
             parts.diploma_percentage,
@@ -228,29 +235,27 @@ export async function PUT(request) {
              branch = $2,
              batch_year = $3,
              graduation_year = $4,
-             cgpa = $5,
-             tenth_percentage = $6,
-             twelfth_percentage = $7,
-             diploma_percentage = $8,
-             backlogs_active = $9,
-             backlogs_history = $10,
-             gender = $11,
-             bio = $12,
-             linkedin_url = $13,
-             github_url = $14,
-             portfolio_url = $15,
-             expected_salary_min = $16,
-             expected_salary_max = $17,
-             preferred_locations = $18,
-             willing_to_relocate = $19,
+             tenth_percentage = $5,
+             twelfth_percentage = $6,
+             diploma_percentage = $7,
+             backlogs_active = $8,
+             backlogs_history = $9,
+             gender = $10,
+             bio = $11,
+             linkedin_url = $12,
+             github_url = $13,
+             portfolio_url = $14,
+             expected_salary_min = $15,
+             expected_salary_max = $16,
+             preferred_locations = $17,
+             willing_to_relocate = $18,
              updated_at = NOW()
-           WHERE user_id = $20::uuid`,
+           WHERE user_id = $19::uuid`,
           [
             parts.department,
             parts.branch,
             parts.batch_year,
             parts.graduation_year,
-            parts.cgpa,
             parts.tenth_percentage,
             parts.twelfth_percentage,
             parts.diploma_percentage,

@@ -5,6 +5,8 @@ import { query, transaction } from '@/lib/db';
 import { sendStudentWelcomeEmails } from '@/lib/mailer';
 import { SANDBOX_DEFAULT_PASSWORD, SANDBOX_PASSWORD_HASH } from '@/lib/sandboxCredentials';
 import {
+
+
   assertEmailAvailable,
   formatEmailDifferentTenantMessage,
   formatEmailInUseMessage,
@@ -18,6 +20,11 @@ import {
 } from '@/lib/collegeStudentProfileWrite';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { displaySemesterForStudentList } from '@/lib/academicYearTenant';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 export async function GET(request) {
   try {
@@ -46,7 +53,7 @@ export async function GET(request) {
        FROM student_profiles sp
        JOIN users u ON u.id = sp.user_id
        JOIN tenants t ON t.id = sp.tenant_id
-       WHERE sp.tenant_id = $1 AND sp.archived_at IS NULL
+       WHERE sp.tenant_id = $1 AND ${SP_ACTIVE_CLAUSE}
        ORDER BY u.first_name ASC, u.last_name ASC`,
       [tenantId],
     );

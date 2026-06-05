@@ -133,7 +133,7 @@ export default function CollegeOverviewPage() {
           <button type="button" className="btn" onClick={exportOverview} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)' }}>
             <Download size={16} /> Export
           </button>
-          <Link href="/dashboard/college/drives" className="btn" style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <Link href="/dashboard/college/drives" className="btn banner-cta-solid">
             <Plus size={16} /> Schedule Drive
           </Link>
         </div>

@@ -4,6 +4,22 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { isUuid } from '@/lib/tenantContext';
 import { writeEmployerAssessmentAudit } from '@/lib/employerAssessmentAudit';
+import { resolveRollFromCsvIdentifiers } from '@/lib/studentSystemId';
+import { normalizeHiringResult, validateHiringResult } from '@/lib/hiringResult';
+import {
+  assertEmployerMayConfirmStudent,
+  fcfsTrackFromAssessmentTarget,
+  isFcfsHiringSelect,
+} from '@/lib/campusFcfsSelection';
+import {
+  isStudentWithdrawnFromTarget,
+  WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE,
+} from '@/lib/applicationWithdrawal';
+import { AND_APP_NOT_DELETED, AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
   const userId = session?.user?.id;
@@ -36,8 +52,8 @@ export async function POST(request, { params }) {
 
     const up = await query(
       `SELECT id, tenant_id, drive_id, job_id
-       FROM employer_assessment_uploads
-       WHERE id = $1::uuid AND employer_id = $2::uuid
+       FROM employer_assessment_uploads eau
+       WHERE eau.id = $1::uuid AND eau.employer_id = $2::uuid ${AND_EAU_NOT_DELETED}
        LIMIT 1`,
       [uploadId, employerId],
     );
@@ -45,20 +61,31 @@ export async function POST(request, { params }) {
     if (!upload) return NextResponse.json({ error: 'Upload not found' }, { status: 404 });
 
     const body = await request.json().catch(() => ({}));
-    const roll = String(body?.college_roll_no || body?.roll_number || '').trim();
-    if (!roll) {
-      return NextResponse.json({ error: 'college_roll_no is required' }, { status: 400 });
-    }
-
     const tenantId = upload.tenant_id;
+    const tenantMeta = await query(`SELECT short_code FROM tenants WHERE id = $1::uuid LIMIT 1`, [tenantId]);
+    const tenantShortCode = tenantMeta.rows[0]?.short_code || '';
+    const resolved = resolveRollFromCsvIdentifiers({
+      systemIdCell: body?.system_id,
+      rollCell: body?.college_roll_no || body?.roll_number,
+      shortCode: tenantShortCode,
+    });
+    if (resolved.error) {
+      return NextResponse.json({ error: resolved.error }, { status: 400 });
+    }
+    const roll = resolved.rollNumber;
     const targetDriveId = upload.drive_id;
     const targetJobId = upload.job_id;
+
+    const hiringErr = validateHiringResult(body?.hiring_result);
+    if (hiringErr) {
+      return NextResponse.json({ error: hiringErr }, { status: 400 });
+    }
 
     const out = await transaction(async (client) => {
       const studentRes = await client.query(
         `SELECT id, roll_number
          FROM student_profiles
-         WHERE tenant_id = $1::uuid
+         WHERE tenant_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
            AND (LOWER(COALESCE(roll_number, '')) = LOWER($2) OR LOWER(COALESCE(enrollment_number, '')) = LOWER($2))
          LIMIT 1`,
         [tenantId, roll],
@@ -71,6 +98,39 @@ export async function POST(request, { params }) {
       const studentId = studentRes.rows[0].id;
       const canonicalRoll = studentRes.rows[0].roll_number || roll;
 
+      const withdrawn = await isStudentWithdrawnFromTarget(client, studentId, {
+        driveId: targetDriveId,
+        jobId: targetJobId,
+      });
+      if (withdrawn) {
+        const e = new Error(WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE);
+        e.statusCode = 400;
+        throw e;
+      }
+
+      if (isFcfsHiringSelect(body?.hiring_result)) {
+        const track = fcfsTrackFromAssessmentTarget({
+          targetDriveId,
+          targetJobId,
+        });
+        if (track) {
+          const fcfs = await assertEmployerMayConfirmStudent(
+            {
+              tenantId,
+              studentProfileId: studentId,
+              track,
+              employerId,
+            },
+            client,
+          );
+          if (!fcfs.ok) {
+            const e = new Error(fcfs.error);
+            e.statusCode = 409;
+            throw e;
+          }
+        }
+      }
+
       const existed = await client.query(
         `SELECT id FROM employer_assessment_rows WHERE upload_id = $1::uuid AND student_profile_id = $2::uuid LIMIT 1`,
         [uploadId, studentId],
@@ -80,7 +140,7 @@ export async function POST(request, { params }) {
       const appRes = await client.query(
         `SELECT id
          FROM applications
-         WHERE student_id = $1::uuid
+         WHERE student_id = $1::uuid ${AND_APP_NOT_DELETED}
            AND (
              ($2::uuid IS NOT NULL AND drive_id = $2::uuid) OR
              ($3::uuid IS NOT NULL AND job_id = $3::uuid)
@@ -95,17 +155,13 @@ export async function POST(request, { params }) {
       await client.query(
         `INSERT INTO employer_assessment_rows
            (upload_id, student_profile_id, application_id, roll_number, is_unregistered_student,
-            round_1_result, round_2_result, round_3_result, round_4_result, round_5_result, remarks, candidate_name)
+            hiring_result, remarks, candidate_name)
          VALUES
-           ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8)
          ON CONFLICT (upload_id, student_profile_id) DO UPDATE
            SET application_id = EXCLUDED.application_id,
                is_unregistered_student = EXCLUDED.is_unregistered_student,
-               round_1_result = EXCLUDED.round_1_result,
-               round_2_result = EXCLUDED.round_2_result,
-               round_3_result = EXCLUDED.round_3_result,
-               round_4_result = EXCLUDED.round_4_result,
-               round_5_result = EXCLUDED.round_5_result,
+               hiring_result = EXCLUDED.hiring_result,
                remarks = EXCLUDED.remarks,
                candidate_name = EXCLUDED.candidate_name`,
         [
@@ -114,11 +170,7 @@ export async function POST(request, { params }) {
           applicationId,
           canonicalRoll,
           isUnregistered,
-          trimText(body?.round_1_result, 2000),
-          trimText(body?.round_2_result, 2000),
-          trimText(body?.round_3_result, 2000),
-          trimText(body?.round_4_result, 2000),
-          trimText(body?.round_5_result, 2000),
+          normalizeHiringResult(body?.hiring_result) || null,
           trimText(body?.remarks, 4000) || null,
           trimText(body?.candidate_name, 255) || null,
         ],

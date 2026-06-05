@@ -7,6 +7,36 @@ import { useToast } from '@/components/ToastProvider';
 import { CalendarDays, Users, Building2, Plus, ChevronRight } from 'lucide-react';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import CompanyNameLink from '@/components/CompanyNameLink';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
+import { findDuplicateCollegeInterviewSlot } from '@/lib/interviewSlotDuplicate';
+import InterviewSlotActions from '@/components/interviews/InterviewSlotActions';
+
+const EMPTY_COLLEGE_FORM = {
+  company: '',
+  round: '',
+  date: '',
+  startTime: '',
+  endTime: '',
+  interviewer: '',
+  panelNames: '',
+  students: '',
+  createdBy: 'TPO',
+};
+
+function slotToForm(slot) {
+  return {
+    company: slot.company || '',
+    round: slot.round || '',
+    date: slot.date || '',
+    startTime: slot.startTime || '',
+    endTime: slot.endTime || '',
+    interviewer: slot.interviewer || '',
+    panelNames: slot.panelNames || '',
+    students: Array.isArray(slot.students) ? slot.students.join(', ') : '',
+    createdBy: slot.createdBy || 'TPO',
+  };
+}
 
 function formatTimeDisplay(t) {
   if (!t) return '';
@@ -41,38 +71,71 @@ export default function mb_Interviews() {
   const slots = Array.isArray(data?.slots) ? data.slots : [];
   const results = Array.isArray(data?.results) ? data.results : [];
   
-  const [form, setForm] = useState({
-    company: '',
-    round: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    interviewer: '',
-    panelNames: '',
-    students: '',
-    createdBy: 'TPO',
-  });
+  const [form, setForm] = useState(EMPTY_COLLEGE_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(EMPTY_COLLEGE_FORM);
+    setShowCreate(false);
+  };
+
+  const startEdit = (slot) => {
+    setEditingId(slot.id);
+    setForm(slotToForm(slot));
+    setShowCreate(true);
+  };
+
+  const removeSlot = async (slot) => {
+    if (!window.confirm(`Delete interview slot for ${slot.company}?`)) return;
+    try {
+      const res = await fetch(`/api/college/interviews/${slot.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to delete slot');
+      if (editingId === slot.id) cancelEdit();
+      await mutate();
+      addToast('Interview slot deleted.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to delete interview slot', 'error');
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.company.trim() || !form.round.trim() || !form.date || !form.startTime || !form.endTime || !form.interviewer.trim()) return;
+    const dateErr = validateFieldOrError(FIELD_IDS.COLLEGE_INTERVIEW_DATE, form.date);
+    if (dateErr) {
+      addToast(dateErr, 'warning');
+      return;
+    }
+    const payload = {
+      ...form,
+      students: form.students ? form.students.split(',').map((s) => s.trim()).filter(Boolean) : [],
+    };
+    const duplicate = findDuplicateCollegeInterviewSlot(slots, payload, editingId);
+    if (duplicate) {
+      addToast('An interview slot with the same company, round, date, time, and interviewer already exists.', 'warning');
+      return;
+    }
+
+    setSaving(true);
+    const isEdit = Boolean(editingId);
     try {
-      const res = await fetch('/api/college/interviews', {
-        method: 'POST',
+      const res = await fetch(isEdit ? `/api/college/interviews/${editingId}` : '/api/college/interviews', {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          students: form.students ? form.students.split(',').map((s) => s.trim()).filter(Boolean) : [],
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed to create slot');
+      if (!res.ok) throw new Error(json?.error || 'Failed to save slot');
       await mutate();
-      setForm((prev) => ({ ...prev, company: '', round: '', date: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: '' }));
-      setShowCreate(false);
-      addToast('Interview slot created successfully.', 'success');
+      cancelEdit();
+      addToast(isEdit ? 'Interview slot updated.' : 'Interview slot created successfully.', 'success');
     } catch (err) {
-      addToast(err.message || 'Failed to create interview slot', 'error');
+      addToast(err.message || 'Failed to save interview slot', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -91,7 +154,13 @@ export default function mb_Interviews() {
         title="Interviews" 
         action={
           section === 'schedule' ? (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                if (showCreate) cancelEdit();
+                else setShowCreate(true);
+              }}
+            >
               <Plus size={16} /> {showCreate ? 'Cancel' : 'New'}
             </button>
           ) : null
@@ -115,11 +184,11 @@ export default function mb_Interviews() {
 
         {section === 'schedule' && showCreate && (
           <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid var(--primary-300)' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Create Interview Slot</h3>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{editingId ? 'Edit Interview Slot' : 'Create Interview Slot'}</h3>
             <form onSubmit={submit} style={{ display: 'grid', gap: '0.75rem' }}>
               <input className="form-input" placeholder="Company Name" value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} />
               <input className="form-input" placeholder="Round (e.g. Round 2 - HR)" value={form.round} onChange={(e) => setForm((p) => ({ ...p, round: e.target.value }))} />
-              <input className="form-input" type="date" min={new Date().toISOString().split('T')[0]} value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
+              <ValidatedDateInput fieldId={FIELD_IDS.COLLEGE_INTERVIEW_DATE} value={form.date} onChange={(v) => setForm((p) => ({ ...p, date: v }))} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
                   <label className="text-xs text-secondary mb-1 block">Start Time</label>
@@ -137,7 +206,9 @@ export default function mb_Interviews() {
                 <option value="TPO">Scheduled by College (TPO)</option>
                 <option value="Company">Scheduled by Company</option>
               </select>
-              <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '0.5rem' }}>Create Slot</button>
+              <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '0.5rem' }} disabled={saving}>
+                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create Slot'}
+              </button>
             </form>
           </div>
         )}
@@ -174,9 +245,16 @@ export default function mb_Interviews() {
                   <div key={slot.id} className="card" style={{ padding: '1rem', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: slot.createdBy === 'TPO' ? 'var(--info-500)' : 'var(--warning-500)' }} />
                     
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: '0.35rem' }}>
                       <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{slot.company}</div>
-                      <span className={`badge ${slot.createdBy === 'TPO' ? 'badge-indigo' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>{slot.createdBy}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span className={`badge ${slot.createdBy === 'TPO' ? 'badge-indigo' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>{slot.createdBy}</span>
+                        <InterviewSlotActions
+                          onEdit={() => startEdit(slot)}
+                          onDelete={() => removeSlot(slot)}
+                          disabled={saving}
+                        />
+                      </div>
                     </div>
                     
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>

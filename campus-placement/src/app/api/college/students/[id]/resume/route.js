@@ -5,8 +5,15 @@ import { query } from '@/lib/db';
 import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import { extractS3Key, getLatestResumeForStudent } from '@/lib/employerApplicationAccess';
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
+
 
 function isS3Url(url) {
   try {
@@ -41,7 +48,7 @@ export async function GET(_request, { params }) {
     const profileRow = await query(
       `SELECT sp.id, sp.resume_url
        FROM student_profiles sp
-       WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND sp.archived_at IS NULL`,
+       WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND ${SP_ACTIVE_CLAUSE}`,
       [studentId, tenantId],
     );
     if (!profileRow.rows[0]) {

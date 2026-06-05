@@ -4,6 +4,8 @@ import useSWR from 'swr';
 import { ClipboardList, Search, Building2, GraduationCap } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import CompanyNameLink from '@/components/CompanyNameLink';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import ApplicationDetailModal from './ApplicationDetailModal';
 import { useState, useMemo } from 'react';
 
 const fetcher = async (url) => {
@@ -22,6 +24,7 @@ const TABLE_COLUMNS = [
   'Opening',
   'Status',
   'Applied',
+  'Actions',
 ];
 
 function openingLabel(a) {
@@ -44,6 +47,7 @@ export default function DtCollegeApplications() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [kindFilter, setKindFilter] = useState('');
+  const [viewRow, setViewRow] = useState(null);
 
   const filtered = useMemo(
     () =>
@@ -199,7 +203,18 @@ export default function DtCollegeApplications() {
           className="table-container"
           style={{ border: 'none', borderRadius: 'inherit', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
         >
-          <table className="data-table">
+          <table className="data-table college-applications-table">
+            <colgroup>
+              <col className="college-applications-col-student" />
+              <col className="college-applications-col-roll" />
+              <col className="college-applications-col-dept" />
+              <col className="college-applications-col-company" />
+              <col className="college-applications-col-type" />
+              <col className="college-applications-col-opening" />
+              <col className="college-applications-col-status" />
+              <col className="college-applications-col-applied" />
+              <col className="college-applications-col-actions" />
+            </colgroup>
             <thead>
               <tr style={{ background: 'var(--bg-secondary)' }}>
                 {TABLE_COLUMNS.map((col, i) => (
@@ -209,7 +224,7 @@ export default function DtCollegeApplications() {
                       i === 0
                         ? { paddingLeft: '1.5rem' }
                         : i === TABLE_COLUMNS.length - 1
-                          ? { paddingRight: '1.5rem' }
+                          ? { textAlign: 'right', paddingRight: '1.5rem', width: 1 }
                           : undefined
                     }
                   >
@@ -282,7 +297,7 @@ export default function DtCollegeApplications() {
                           {a.department || '—'}
                         </div>
                       </td>
-                      <td>
+                      <td className="cell-truncate" title={a.company_name || undefined}>
                         <div
                           style={{
                             display: 'flex',
@@ -290,21 +305,31 @@ export default function DtCollegeApplications() {
                             gap: '0.35rem',
                             fontSize: '0.9rem',
                             fontWeight: 500,
+                            minWidth: 0,
                           }}
                         >
                           <Building2 size={13} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} aria-hidden />
-                          <CompanyNameLink name={a.company_name} website={a.company_website} />
+                          <span className="cell-truncate" style={{ display: 'block' }}>
+                            <CompanyNameLink name={a.company_name} website={a.company_website} />
+                          </span>
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{applicationKindLabel(a)}</td>
-                      <td style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', minWidth: 140 }}>{openingLabel(a)}</td>
+                      <td className="text-sm text-secondary cell-truncate" title={applicationKindLabel(a)}>
+                        {applicationKindLabel(a)}
+                      </td>
+                      <td className="text-sm text-secondary cell-truncate" title={openingLabel(a)}>
+                        {openingLabel(a)}
+                      </td>
                       <td>
                         <span className={`badge badge-${getStatusColor(a.status)} badge-dot`} style={{ fontSize: '0.75rem' }}>
                           {formatStatus(a.status)}
                         </span>
                       </td>
-                      <td style={{ paddingRight: '1.5rem', fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+                      <td className="text-sm text-secondary cell-truncate" title={a.applied_at ? formatDate(a.applied_at) : undefined}>
                         {a.applied_at ? formatDate(a.applied_at) : '—'}
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: '1.5rem', whiteSpace: 'nowrap' }}>
+                        <StandardTableIconAction action="view" showLabel={false} onClick={() => setViewRow(a)} />
                       </td>
                     </tr>
                   );
@@ -329,6 +354,8 @@ export default function DtCollegeApplications() {
           </table>
         </div>
       </div>
+
+      <ApplicationDetailModal row={viewRow} onClose={() => setViewRow(null)} />
     </div>
   );
 }

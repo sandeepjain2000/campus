@@ -1,11 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
+import { DEFAULT_PHONE_DIAL_CODE, PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
 import { validatePhone, validateEmail, validatePersonName, validateBatchYear } from '@/lib/validators';
 import { isRegistrationJobAidEnabled } from '@/lib/registrationJobAid';
 import RegisterJobAidPanel from '@/components/auth/RegisterJobAidPanel';
 import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
+import { verifyCaptchaAnswer } from '@/lib/captchaClient';
 import { redirectToLoginAfterRegistration } from '@/lib/postRegistrationRedirect';
 
 function buildRegisterPhone(formData) {
@@ -29,7 +30,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    phoneDialCode: '+1',
+    phoneDialCode: DEFAULT_PHONE_DIAL_CODE,
     phoneNational: '',
     // Student fields
     collegeName: '',
@@ -51,6 +52,8 @@ export default function RegisterPage() {
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [captchaKey, setCaptchaKey] = useState(0);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [captchaChecking, setCaptchaChecking] = useState(false);
   const [departments, setDepartments] = useState([]);
 
   const captchaReady = Boolean(captchaToken && captchaAnswer.trim() !== '');
@@ -60,7 +63,33 @@ export default function RegisterPage() {
     setCaptchaToken('');
     setCaptchaAnswer('');
     setCaptchaKey((k) => k + 1);
+    setCaptchaVerified(false);
     setError('');
+  };
+
+  const refreshCaptchaAfterFailure = () => {
+    setCaptchaAnswer('');
+    setCaptchaVerified(false);
+    setCaptchaKey((k) => k + 1);
+  };
+
+  const ensureCaptchaVerified = async () => {
+    if (!captchaReady) {
+      setError('Answer the verification question to continue.');
+      return false;
+    }
+    if (captchaVerified) return true;
+    setCaptchaChecking(true);
+    setError('');
+    const result = await verifyCaptchaAnswer(captchaToken, captchaAnswer);
+    setCaptchaChecking(false);
+    if (!result.ok) {
+      setError(result.error || 'Verification failed. Check your answer and try again.');
+      refreshCaptchaAfterFailure();
+      return false;
+    }
+    setCaptchaVerified(true);
+    return true;
   };
   const showStudentJobAid =
     isRegistrationJobAidEnabled() && formData.role === 'student' && step >= 2;
@@ -80,19 +109,6 @@ export default function RegisterPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    if (typeof navigator === 'undefined') return;
-    try {
-      const locale = (navigator.language || '').toLowerCase();
-      let dial = '+1';
-      if (locale.endsWith('-in')) dial = '+91';
-      else if (locale === 'en-gb') dial = '+44';
-      setFormData((f) => ({ ...f, phoneDialCode: dial }));
-    } catch {
-      /* ignore */
-    }
   }, []);
 
   const roles = [
@@ -129,6 +145,17 @@ export default function RegisterPage() {
       return;
     }
 
+    const captchaOk = await verifyCaptchaAnswer(captchaToken, captchaAnswer);
+    if (!captchaOk.ok) {
+      setError(
+        captchaOk.error ||
+          'Verification expired or incorrect. Go back to step 1, answer the question again, then continue.',
+      );
+      refreshCaptchaAfterFailure();
+      setStep(1);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -153,8 +180,8 @@ export default function RegisterPage() {
             : msg,
         );
         if (res.status === 400 && String(msg).toLowerCase().includes('verification')) {
-          setCaptchaAnswer('');
-          setCaptchaKey((k) => k + 1);
+          refreshCaptchaAfterFailure();
+          setStep(1);
         }
         return;
       }
@@ -272,21 +299,21 @@ export default function RegisterPage() {
                   answer={captchaAnswer}
                   onTokenChange={setCaptchaToken}
                   onAnswerChange={setCaptchaAnswer}
+                  verifyEarly
+                  onVerifiedChange={setCaptchaVerified}
+                  disabled={captchaChecking}
                 />
               ) : null}
               <button
                 className="btn btn-primary"
                 style={{ width: '100%' }}
-                disabled={!formData.role || !captchaReady}
-                onClick={() => {
-                  if (!captchaReady) {
-                    setError('Answer the verification question to continue.');
-                    return;
-                  }
-                  setStep(2);
+                disabled={!formData.role || !captchaReady || captchaChecking}
+                onClick={async () => {
+                  const ok = await ensureCaptchaVerified();
+                  if (ok) setStep(2);
                 }}
               >
-                Continue →
+                {captchaChecking ? 'Verifying…' : captchaVerified ? 'Continue →' : 'Verify & continue →'}
               </button>
             </div>
           )}
@@ -354,7 +381,7 @@ export default function RegisterPage() {
                   )}
                 </div>
                 <span className="form-hint">
-                  Country defaults from your browser where possible; pick <strong>Other</strong> for any region not listed.
+                  Defaults to <strong>India (+91)</strong>; change the country if needed, or pick <strong>Other</strong> for any region not listed.
                 </span>
               </div>
 

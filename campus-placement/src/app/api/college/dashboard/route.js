@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_DRIVE_PD_NOT_DELETED, AND_JP_NOT_DELETED, AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET(request) {
   try {
@@ -18,10 +26,10 @@ export async function GET(request) {
       SELECT 
         COUNT(*) as "totalStudents",
         SUM(CASE WHEN placement_status = 'placed' THEN 1 ELSE 0 END) as "placedStudents",
-        (SELECT COUNT(DISTINCT employer_id) FROM placement_drives WHERE tenant_id = $1 AND status IN ('approved', 'scheduled', 'completed')) as "activeEmployers",
-        (SELECT COUNT(*) FROM placement_drives WHERE tenant_id = $1 AND status IN ('approved', 'scheduled')) as "activeDrives",
-        (SELECT AVG(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1 AND archived_at IS NULL) AND status = 'accepted') as "avgPackage",
-        (SELECT MAX(salary) FROM offers WHERE student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1 AND archived_at IS NULL) AND status = 'accepted') as "highestPackage",
+        (SELECT COUNT(DISTINCT employer_id) FROM placement_drives pd WHERE pd.tenant_id = $1 AND pd.status IN ('approved', 'scheduled', 'completed') ${AND_DRIVE_PD_NOT_DELETED}) as "activeEmployers",
+        (SELECT COUNT(*) FROM placement_drives pd WHERE pd.tenant_id = $1 AND pd.status IN ('approved', 'scheduled') ${AND_DRIVE_PD_NOT_DELETED}) as "activeDrives",
+        (SELECT AVG(salary) FROM offers o WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}) AND o.status = 'accepted' ${AND_OFFER_NOT_DELETED}) as "avgPackage",
+        (SELECT MAX(salary) FROM offers o WHERE o.student_id IN (SELECT id FROM student_profiles WHERE tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}) AND o.status = 'accepted' ${AND_OFFER_NOT_DELETED}) as "highestPackage",
         (
           SELECT MIN(COALESCE(NULLIF(jp.salary_min, 0), jp.salary_max))
           FROM job_postings jp
@@ -29,6 +37,7 @@ export async function GET(request) {
           WHERE jpv.tenant_id = $1
             AND jp.status = 'published'
             AND jp.job_type IN ('full_time', 'part_time')
+            ${AND_JP_NOT_DELETED}
         ) as "minJobAmount",
         (
           SELECT MIN(COALESCE(NULLIF(jp.salary_min, 0), jp.salary_max))
@@ -37,9 +46,10 @@ export async function GET(request) {
           WHERE jpv.tenant_id = $1
             AND jp.status = 'published'
             AND jp.job_type = 'internship'
+            ${AND_JP_NOT_DELETED}
         ) as "minInternshipAmount"
-      FROM student_profiles
-      WHERE tenant_id = $1 AND archived_at IS NULL
+      FROM student_profiles sp
+      WHERE sp.tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
     `, [tenantId]);
 
     // Fetch department stats
@@ -49,8 +59,8 @@ export async function GET(request) {
         COUNT(*) as total,
         SUM(CASE WHEN placement_status = 'placed' THEN 1 ELSE 0 END) as placed,
         ROUND(SUM(CASE WHEN placement_status = 'placed' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0)) as pct
-      FROM student_profiles
-      WHERE tenant_id = $1 AND archived_at IS NULL
+      FROM student_profiles sp
+      WHERE sp.tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
       GROUP BY department
       ORDER BY pct DESC
     `, [tenantId]);
@@ -58,8 +68,8 @@ export async function GET(request) {
     // Determine pending actions
     const pendingQuery = await query(`
       SELECT
-        (SELECT COUNT(*) FROM placement_drives WHERE tenant_id = $1 AND status = 'requested') as "drivesCount",
-        (SELECT COUNT(*) FROM users u JOIN student_profiles sp ON u.id = sp.user_id WHERE sp.tenant_id = $1 AND sp.archived_at IS NULL AND u.is_verified = false) as "studentsCount"
+        (SELECT COUNT(*) FROM placement_drives pd WHERE pd.tenant_id = $1 AND pd.status = 'requested' ${AND_DRIVE_PD_NOT_DELETED}) as "drivesCount",
+        (SELECT COUNT(*) FROM users u JOIN student_profiles sp ON u.id = sp.user_id WHERE sp.tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE} AND u.is_verified = false) as "studentsCount"
     `, [tenantId]);
 
     const s = statsQuery.rows[0];

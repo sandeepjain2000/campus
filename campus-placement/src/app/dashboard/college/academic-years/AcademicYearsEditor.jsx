@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { Plus, Trash2, CalendarRange } from 'lucide-react';
 import { parseAcademicYearLabel } from '@/lib/academicYearTenant';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateAcademicYearsList } from '@/lib/apiInputValidation';
 
 function emptyYear(sequenceNumber = 1) {
   return {
@@ -99,6 +103,11 @@ export default function AcademicYearsEditor({ compact = false }) {
         addToast(p.error || 'Invalid academic year label', 'error');
         return;
       }
+    }
+    const yearsErr = validateAcademicYearsList(years);
+    if (yearsErr) {
+      addToast(yearsErr, 'warning');
+      return;
     }
     setSaving(true);
     try {
@@ -247,30 +256,28 @@ export default function AcademicYearsEditor({ compact = false }) {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Sequence</label>
-                  <input
-                    type="number"
-                    min={1}
+                  <ValidatedNumberInput
+                    fieldId={FIELD_IDS.COLLEGE_ACAD_YEAR_SEQ}
                     className="form-input"
                     value={year.sequenceNumber}
-                    onChange={(e) => updateYear(yi, { sequenceNumber: Number(e.target.value) })}
+                    onChange={(v) => updateYear(yi, { sequenceNumber: v === '' ? '' : Number(v) })}
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Period start</label>
-                  <input
-                    type="date"
-                    className="form-input"
+                  <ValidatedDateInput
+                    fieldId={FIELD_IDS.COLLEGE_ACAD_PERIOD_START}
                     value={year.periodStart}
-                    onChange={(e) => updateYear(yi, { periodStart: e.target.value })}
+                    onChange={(v) => updateYear(yi, { periodStart: v })}
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Period end</label>
-                  <input
-                    type="date"
-                    className="form-input"
+                  <ValidatedDateInput
+                    fieldId={FIELD_IDS.COLLEGE_ACAD_PERIOD_END}
+                    context={{ dateFrom: year.periodStart }}
                     value={year.periodEnd}
-                    onChange={(e) => updateYear(yi, { periodEnd: e.target.value })}
+                    onChange={(v) => updateYear(yi, { periodEnd: v })}
                   />
                 </div>
                 <div className="form-group">
@@ -315,20 +322,21 @@ export default function AcademicYearsEditor({ compact = false }) {
                     <div style={{ fontWeight: 600, alignSelf: 'center' }}>Semester {sem.sequenceNumber}</div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">Start</label>
-                      <input
-                        type="date"
+                      <ValidatedDateInput
+                        fieldId={FIELD_IDS.PROJECT_START}
                         className="form-input"
                         value={sem.periodStart}
-                        onChange={(e) => updateSemester(yi, si, { periodStart: e.target.value })}
+                        onChange={(v) => updateSemester(yi, si, { periodStart: v })}
                       />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">End</label>
-                      <input
-                        type="date"
+                      <ValidatedDateInput
+                        fieldId={FIELD_IDS.PROJECT_END}
+                        context={{ dateFrom: sem.periodStart }}
                         className="form-input"
                         value={sem.periodEnd}
-                        onChange={(e) => updateSemester(yi, si, { periodEnd: e.target.value })}
+                        onChange={(v) => updateSemester(yi, si, { periodEnd: v })}
                       />
                     </div>
                   </div>

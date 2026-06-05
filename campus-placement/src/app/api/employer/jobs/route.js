@@ -2,10 +2,34 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
-import { fetchCollegeAdminUserIds, notifyStudentsOfTenant, notifyUsersOneAtATime } from '@/lib/notificationService';
+import { validateEmployerJobPayload } from '@/lib/apiInputValidation';
+import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import {
+  PROGRAM_JOB_TYPES,
+  resolvePublishTenantIds,
+  syncJobPostingVisibility,
+} from '@/lib/jobPostingVisibility';
+import {
+  normalizeEmployerMinCgpa,
+  resolveEmployerMinCgpaForSubmit,
+} from '@/lib/employerJobDisplay';
+import { JOB_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
+import {
+  applyJobPostingStatusTransition,
+  assertEmployerMaySetJobStatus,
+  buildPublishedEmployerPatchSql,
+  invalidateStudentOpportunityListCache,
+  publishedCoreFieldsChanged,
+} from '@/lib/jobPostingPublishState';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 
 /** Avoid stale lists after posting (Next may cache GET route handlers). */
-export const dynamic = 'force-dynamic';
 
 async function getEmployerId(userId) {
   const r = await query(`SELECT id, company_name FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
@@ -20,7 +44,6 @@ function parseKeywords(keywords) {
 }
 
 const JOB_TYPES = new Set(['full_time', 'internship', 'contract', 'ppo', 'hackathon', 'short_project', 'mentorship', 'guest_faculty']);
-const PROGRAM_JOB_TYPES = new Set(['internship', 'short_project', 'hackathon']);
 
 export async function GET(request) {
   try {
@@ -44,28 +67,37 @@ export async function GET(request) {
     const params = jobTypeFilter && JOB_TYPES.has(jobTypeFilter) ? [emp.id, jobTypeFilter] : [emp.id];
 
     const jobs = await query(
-      `SELECT id, title, description, job_type, status, salary_min, salary_max, min_cgpa, vacancies,
-              skills_required, eligible_branches, created_at
-       FROM job_postings
-       WHERE employer_id = $1::uuid${typeClause}
-       ORDER BY created_at DESC`,
+      `SELECT jp.id, jp.title, jp.description, jp.job_type, jp.status, jp.salary_min, jp.salary_max,
+              jp.min_cgpa, jp.vacancies, jp.skills_required, jp.eligible_branches, jp.created_at,
+              ${JOB_APPLICANT_COUNT_SUBQUERY} AS application_count,
+              COALESCE(
+                (SELECT array_agg(jpv.tenant_id::text)
+                 FROM job_posting_visibility jpv
+                 WHERE jpv.job_id = jp.id),
+                ARRAY[]::text[]
+              ) AS tenant_ids
+       FROM job_postings jp
+       WHERE jp.employer_id = $1::uuid${typeClause.replace(/job_type/g, 'jp.job_type')} ${AND_JP_NOT_DELETED}
+       ORDER BY jp.created_at DESC`,
       params,
     );
 
     const rows = jobs.rows.map((j) => ({
       id: j.id,
       title: j.title,
+      description: j.description || '',
       keywords: (j.skills_required || []).join(', '),
       type: j.job_type,
       salaryMin: j.salary_min != null ? Number(j.salary_min) : null,
       salaryMax: j.salary_max != null ? Number(j.salary_max) : null,
       status: j.status,
       vacancies: j.vacancies,
-      applications: 0,
+      applications: Number(j.application_count) || 0,
       branches: j.eligible_branches?.length ? j.eligible_branches : [],
-      cgpa: j.min_cgpa != null ? Number(j.min_cgpa) : null,
+      cgpa: normalizeEmployerMinCgpa(j.min_cgpa),
+      minCgpa: normalizeEmployerMinCgpa(j.min_cgpa),
       createdAt: j.created_at ? new Date(j.created_at).toISOString().slice(0, 10) : '',
-      placementDriveId: '',
+      tenantIds: Array.isArray(j.tenant_ids) ? j.tenant_ids.filter(Boolean) : [],
     }));
 
     return NextResponse.json({ jobs: rows, companyName: emp.company_name });
@@ -108,6 +140,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
     }
 
+    const jobInputErr = validateEmployerJobPayload({
+      salaryMin,
+      salaryMax,
+      minCgpa,
+      vacancies,
+      jobType,
+    });
+    if (jobInputErr) {
+      return NextResponse.json({ error: jobInputErr }, { status: 400 });
+    }
+
+    const minCgpaResolved = resolveEmployerMinCgpaForSubmit(minCgpa);
+    if (minCgpaResolved.error) {
+      return NextResponse.json({ error: minCgpaResolved.error }, { status: 400 });
+    }
+
     if (!JOB_TYPES.has(jobType)) {
       return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
     }
@@ -120,33 +168,15 @@ export async function POST(request) {
     const skills = parseKeywords(keywords);
     const skillsRequired = skills.length ? skills : ['General'];
 
-    const uniqueTenants = [...new Set((tenantIds || []).map((t) => String(t).trim()).filter(Boolean))];
-
-    if (status === 'published' && PROGRAM_JOB_TYPES.has(jobType) && uniqueTenants.length === 0) {
-      return NextResponse.json(
-        { error: 'Select at least one approved campus so students and the college can see this posting.' },
-        { status: 400 },
-      );
-    }
-
     const result = await transaction(async (client) => {
-      let tenantsToPublish = [];
-      if (status === 'published' && uniqueTenants.length) {
-        for (const tenantId of uniqueTenants) {
-          const appr = await client.query(
-            `SELECT 1 FROM employer_approvals
-             WHERE tenant_id = $1::uuid AND employer_id = $2::uuid AND status = 'approved'`,
-            [tenantId, emp.id],
-          );
-          if (appr.rows.length) tenantsToPublish.push(tenantId);
-        }
-        if (PROGRAM_JOB_TYPES.has(jobType) && tenantsToPublish.length === 0) {
-          const err = new Error(
-            'Cannot publish: none of the selected campuses have an approved employer tie-up. Ask the college to approve access, then try again.',
-          );
-          err.statusCode = 400;
-          throw err;
-        }
+      const tenantsToPublish = await resolvePublishTenantIds(client, emp.id, tenantIds, { status });
+
+      if (status === 'published' && PROGRAM_JOB_TYPES.has(jobType) && tenantsToPublish.length === 0) {
+        const err = new Error(
+          'Cannot publish: none of the selected campuses have an approved employer tie-up. Ask the college to approve access, then try again.',
+        );
+        err.statusCode = 400;
+        throw err;
       }
 
       const ins = await client.query(
@@ -172,7 +202,7 @@ export async function POST(request) {
               : 'Engineering',
           salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
           salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
-          minCgpa != null && minCgpa !== '' ? Number(minCgpa) : 0,
+          minCgpaResolved.value,
           skillsRequired,
           Math.max(1, parseInt(String(vacancies), 10) || 1),
           status,
@@ -182,70 +212,25 @@ export async function POST(request) {
       const job = ins.rows[0];
 
       if (status === 'published' && tenantsToPublish.length) {
-        for (const tenantId of tenantsToPublish) {
-          await client.query(
-            `INSERT INTO job_posting_visibility (job_id, tenant_id) VALUES ($1::uuid, $2::uuid)
-             ON CONFLICT (job_id, tenant_id) DO NOTHING`,
-            [job.id, tenantId],
-          );
-
-          const college = await client.query(`SELECT name FROM tenants WHERE id = $1::uuid`, [tenantId]);
-          const collegeName = college.rows[0]?.name || 'Campus';
-
-          const adminIds = await fetchCollegeAdminUserIds(tenantId, client);
-          const isProgram =
-            jobType === 'internship' || jobType === 'short_project' || jobType === 'hackathon';
-          await notifyUsersOneAtATime(
-            adminIds,
-            {
-              title:
-                jobType === 'internship'
-                  ? `${emp.company_name} posted an internship`
-                  : isProgram
-                    ? `${emp.company_name} posted a student program`
-                    : `${emp.company_name} published a job`,
-              message: `${emp.company_name} published "${job.title}" (${String(jobType).replace(/_/g, ' ')}) for ${collegeName}.`,
-              type: jobType === 'internship' ? 'info' : 'application',
-              link:
-                jobType === 'internship'
-                  ? '/dashboard/college/internships'
-                  : isProgram
-                    ? '/dashboard/college/internships'
-                    : '/dashboard/college/drives',
-            },
-            client,
-          );
-
-          if (jobType === 'internship') {
-            await notifyStudentsOfTenant(
-              tenantId,
-              {
-                title: `New internship: ${job.title}`,
-                message: `${emp.company_name} posted an internship. Open Internships under Placements to apply.`,
-                type: 'drive',
-                link: '/dashboard/student/internships',
-              },
-              client,
-            );
-          }
-          if (jobType === 'short_project' || jobType === 'hackathon') {
-            await notifyStudentsOfTenant(
-              tenantId,
-              {
-                title: `New project: ${job.title}`,
-                message: `${emp.company_name} posted a ${String(jobType).replace(/_/g, ' ')}. Open Projects under Placements to apply.`,
-                type: 'info',
-                link: '/dashboard/student/projects',
-              },
-              client,
-            );
-          }
-        }
+        await syncJobPostingVisibility(client, {
+          jobId: job.id,
+          employerId: emp.id,
+          tenantIds: tenantsToPublish,
+          jobType,
+          jobTitle: job.title,
+          companyName: emp.company_name,
+          notifyAdmins: true,
+        });
       }
 
-      return { ok: true, job };
+      if (status !== job.status) {
+        await applyJobPostingStatusTransition(client, job.id, status);
+      }
+
+      return { ok: true, job, tenantIds: tenantsToPublish };
     });
 
+    invalidateStudentOpportunityListCache();
     return NextResponse.json(result);
   } catch (e) {
     console.error('POST /api/employer/jobs', e);
@@ -279,7 +264,7 @@ export async function PATCH(request) {
       }
       const closed = await query(
         `UPDATE job_postings
-         SET status = 'closed', updated_at = NOW()
+         SET status = 'closed', is_visible = false, updated_at = NOW()
          WHERE id = $1::uuid AND employer_id = $2::uuid AND status = 'published'
          RETURNING id, title, job_type, status`,
         [closeId, emp.id],
@@ -293,6 +278,7 @@ export async function PATCH(request) {
           { status: 404 },
         );
       }
+      invalidateStudentOpportunityListCache();
       return NextResponse.json({ ok: true, job: closed.rows[0] });
     }
 
@@ -307,12 +293,30 @@ export async function PATCH(request) {
       minCgpa = null,
       vacancies = 1,
       keywords = '',
+      tenantIds,
+      additionalInfo,
     } = body;
 
     const jobId = String(id || '').trim();
     if (!jobId || !title?.trim()) {
       return NextResponse.json({ error: 'id and title are required' }, { status: 400 });
     }
+    const patchInputErr = validateEmployerJobPayload({
+      salaryMin,
+      salaryMax,
+      minCgpa,
+      vacancies,
+      jobType,
+    });
+    if (patchInputErr) {
+      return NextResponse.json({ error: patchInputErr }, { status: 400 });
+    }
+
+    const minCgpaResolved = resolveEmployerMinCgpaForSubmit(minCgpa);
+    if (minCgpaResolved.error) {
+      return NextResponse.json({ error: minCgpaResolved.error }, { status: 400 });
+    }
+
     if (!JOB_TYPES.has(jobType)) {
       return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
     }
@@ -324,42 +328,113 @@ export async function PATCH(request) {
     const skills = parseKeywords(keywords);
     const skillsRequired = skills.length ? skills : ['General'];
 
-    const updated = await query(
-      `UPDATE job_postings
-       SET title = $1,
-           description = $2,
-           job_type = $3,
-           status = $4,
-           salary_min = $5,
-           salary_max = $6,
-           min_cgpa = $7,
-           vacancies = $8,
-           skills_required = $9::text[],
-           updated_at = NOW()
-       WHERE id = $10::uuid AND employer_id = $11::uuid
-       RETURNING id, title, job_type, status`,
-      [
-        title.trim(),
-        description || '',
-        jobType,
-        status,
-        salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
-        salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
-        minCgpa != null && minCgpa !== '' ? Number(minCgpa) : 0,
-        Math.max(1, parseInt(String(vacancies), 10) || 1),
-        skillsRequired,
-        jobId,
-        emp.id,
-      ],
-    );
+    const result = await transaction(async (client) => {
+      const existingRes = await client.query(
+        `SELECT id, employer_id, title, description, job_type, status, salary_min, salary_max,
+                min_cgpa, vacancies, skills_required, additional_info
+         FROM job_postings
+         WHERE id = $1::uuid AND employer_id = $2::uuid ${AND_JP_NOT_DELETED}`,
+        [jobId, emp.id],
+      );
+      if (!existingRes.rows.length) {
+        const err = new Error('Job not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      const existing = existingRes.rows[0];
 
-    if (!updated.rows.length) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
+      assertEmployerMaySetJobStatus(existing.status, status);
 
-    return NextResponse.json({ ok: true, job: updated.rows[0] });
+      let updated;
+      if (existing.status === 'published' && status === 'published') {
+        if (publishedCoreFieldsChanged(existing, body, skillsRequired)) {
+          const err = new Error(
+            'Core requirements cannot be changed after publish. Use Additional information, or ask the college to update the listing.',
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+        const patch = buildPublishedEmployerPatchSql(existing, { additionalInfo, description });
+        updated = await client.query(patch.sql, patch.params);
+      } else {
+        updated = await client.query(
+          `UPDATE job_postings
+           SET title = $1,
+               description = $2,
+               job_type = $3,
+               status = $4,
+               salary_min = $5,
+               salary_max = $6,
+               min_cgpa = $7,
+               vacancies = $8,
+               skills_required = $9::text[],
+               updated_at = NOW()
+           WHERE id = $10::uuid AND employer_id = $11::uuid
+           RETURNING id, title, job_type, status`,
+          [
+            title.trim(),
+            description || '',
+            jobType,
+            status,
+            salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+            salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+            minCgpaResolved.value,
+            Math.max(1, parseInt(String(vacancies), 10) || 1),
+            skillsRequired,
+            jobId,
+            emp.id,
+          ],
+        );
+      }
+
+      if (!updated.rows.length) {
+        const err = new Error('Job not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      if (existing.status !== status) {
+        await applyJobPostingStatusTransition(client, jobId, status);
+      }
+
+      let syncedTenantIds = [];
+      if (status === 'published') {
+        const visRes = await client.query(
+          `SELECT tenant_id::text AS id FROM job_posting_visibility WHERE job_id = $1::uuid`,
+          [jobId],
+        );
+        const savedTenantIds = visRes.rows.map((r) => r.id);
+        const tenantInput = tenantIds !== undefined ? tenantIds : savedTenantIds;
+        syncedTenantIds = await resolvePublishTenantIds(client, emp.id, tenantInput, { status });
+        if (PROGRAM_JOB_TYPES.has(jobType) && syncedTenantIds.length === 0) {
+          const err = new Error(
+            'Select at least one approved campus with an active employer tie-up before publishing.',
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+        if (syncedTenantIds.length) {
+          await syncJobPostingVisibility(client, {
+            jobId,
+            employerId: emp.id,
+            tenantIds: syncedTenantIds,
+            jobType,
+            jobTitle: title.trim(),
+            companyName: emp.company_name,
+            notifyAdmins: tenantIds !== undefined,
+          });
+        }
+      }
+
+      return { ok: true, job: updated.rows[0], tenantIds: syncedTenantIds };
+    });
+
+    invalidateStudentOpportunityListCache();
+    return NextResponse.json(result);
   } catch (e) {
     console.error('PATCH /api/employer/jobs', e);
-    return NextResponse.json({ error: 'Failed to update job' }, { status: 500 });
+    const status = e.statusCode === 400 ? 400 : e.statusCode === 404 ? 404 : 500;
+    const safeMsg = status >= 500 ? 'Failed to update job' : (e.message || 'Failed to update job');
+    return NextResponse.json({ error: safeMsg }, { status });
   }
 }

@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getSessionTenantId } from '@/lib/tenantContext';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 async function requireCollegeAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user || session.user.role !== 'college_admin') {

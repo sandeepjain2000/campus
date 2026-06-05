@@ -1,6 +1,7 @@
 import { query } from '@/lib/db';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { AND_OFFER_NOT_DELETED, AND_SP_NOT_DELETED } from '@/lib/softDeleteSql';
 
 function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
@@ -32,7 +33,7 @@ export class OfferService {
        LEFT JOIN student_profiles sp ON sp.id = o.student_id
        LEFT JOIN users u ON u.id = sp.user_id
        LEFT JOIN tenants t ON t.id = sp.tenant_id
-       WHERE o.employer_id = $1 ${clause}
+       WHERE o.employer_id = $1 ${clause} ${AND_OFFER_NOT_DELETED} ${AND_SP_NOT_DELETED}
        ORDER BY o.created_at DESC
        LIMIT 500`;
     };
@@ -59,7 +60,7 @@ export class OfferService {
            LEFT JOIN student_profiles sp ON sp.id = o.student_id
            LEFT JOIN users u ON u.id = sp.user_id
            LEFT JOIN tenants t ON t.id = sp.tenant_id
-           WHERE o.employer_id = $1
+           WHERE o.employer_id = $1 ${AND_OFFER_NOT_DELETED} ${AND_SP_NOT_DELETED}
            ORDER BY o.created_at DESC
            LIMIT 500`,
           [employerId],

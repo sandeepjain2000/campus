@@ -6,10 +6,10 @@ import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS, EMPLOYER_STATUS_FILTER_OPTIONS, employerStatusFilterFn } from '@/lib/tableQueryPresets';
 import Link from 'next/link';
 import { formatStatus, getStatusColor } from '@/lib/utils';
-import EntityLogo from '@/components/EntityLogo';
-import CompanyNameLink from '@/components/CompanyNameLink';
+import EmployerCompanyCell from '@/components/employer/EmployerCompanyCell';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { TIE_UP_REVOKE_MESSAGES } from '@/lib/employerTieUpShared';
 import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
 import { Building2, Globe, Users, Shield, Star, ExternalLink, X, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
@@ -69,7 +69,7 @@ export default function DesktopEmployers() {
     hasActiveFilters,
     clearFilters,
   } = useDataTableQuery(list, {
-    getSearchText: (e) => [e.name, e.industry, e.status, labelEmployerCompanyType(e.company_type)].filter(Boolean).join(' '),
+    getSearchText: (e) => [e.name, e.industry, e.status, e.email, labelEmployerCompanyType(e.company_type)].filter(Boolean).join(' '),
     filterFn: employerStatusFilterFn,
     sortOptions: COMMON_SORT_OPTIONS,
   });
@@ -80,14 +80,37 @@ export default function DesktopEmployers() {
     setPocStaffSelection(Array.isArray(ids) ? ids.map((id) => String(id)) : []);
   }, [pocModal]);
 
-  const handleRevoke = async (employerId) => {
+  const handleRevoke = async (employerId, reason) => {
     setProcessingId(employerId);
     try {
-      const res = await fetch('/api/college/employers/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employer_id: employerId }) });
+      const res = await fetch('/api/college/employers/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employer_id: employerId, confirmed: true, reason: reason || null }),
+      });
       const data = await res.json();
-      if (res.ok) { await mutate(); addToast('Employer access blocked.', 'success'); }
-      else addToast(data.error || 'Failed to block employer.', 'error');
-    } catch { addToast('Network error while blocking access.', 'error'); }
+      if (res.ok) {
+        await mutate();
+        addToast(data.message || 'Tie-up revoked. The employer has been notified.', 'success');
+      } else addToast(data.error || 'Failed to revoke tie-up.', 'error');
+    } catch { addToast('Network error while revoking tie-up.', 'error'); }
+    finally { setProcessingId(null); }
+  };
+
+  const handleReinstate = async (employerId) => {
+    setProcessingId(employerId);
+    try {
+      const res = await fetch('/api/college/employers/reinstate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employer_id: employerId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await mutate();
+        addToast(data.message || 'Tie-up restored.', 'success');
+      } else addToast(data.error || 'Failed to restore tie-up.', 'error');
+    } catch { addToast('Network error while restoring tie-up.', 'error'); }
     finally { setProcessingId(null); }
   };
 
@@ -196,15 +219,7 @@ export default function DesktopEmployers() {
                       <tr key={emp.approval_id}>
                         <td style={{ color: 'var(--text-tertiary)', paddingLeft: '1.25rem', fontSize: '0.825rem' }}>{index + 1}</td>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <EntityLogo name={emp.name} website={emp.website} size="sm" shape="rounded" />
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: '0.925rem', color: 'var(--text-primary)' }}>
-                                <CompanyNameLink name={emp.name} website={emp.website} />
-                              </div>
-                              {emp.website && <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>{emp.website.replace(/^https?:\/\//, '')}</div>}
-                            </div>
-                          </div>
+                          <EmployerCompanyCell name={emp.name} website={emp.website} email={emp.email} />
                         </td>
                         <td style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{emp.industry || '—'}</td>
                         <td><span className="badge badge-gray" style={{ fontSize: '0.72rem' }}>{labelEmployerCompanyType(emp.company_type)}</span></td>
@@ -240,10 +255,15 @@ export default function DesktopEmployers() {
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPocModal(emp)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border-default)', fontSize: '0.8rem' }}>
                                   <Users size={13} /> POCs
                                 </button>
-                                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', padding: '0.35rem' }} onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={processingId === emp.employer_id} title="Block employer">
+                                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', padding: '0.35rem' }} onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={processingId === emp.employer_id} title="Revoke tie-up">
                                   {processingId === emp.employer_id ? '…' : <X size={13} />}
                                 </button>
                               </>
+                            )}
+                            {emp.status === 'revoked' && (
+                              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.8rem', border: '1px solid var(--success-500)', color: 'var(--success-700)' }} onClick={() => handleReinstate(emp.employer_id)} disabled={processingId === emp.employer_id}>
+                                {processingId === emp.employer_id ? '…' : 'Restore tie-up'}
+                              </button>
                             )}
                           </div>
                         </td>
@@ -304,11 +324,17 @@ export default function DesktopEmployers() {
 
       <ConfirmDialog
         open={Boolean(revokeTarget)}
-        title="Block employer access?"
-        message={revokeTarget ? `${revokeTarget.name} will lose access to this campus until re-approved.` : ''}
-        confirmLabel="Block employer"
+        title={TIE_UP_REVOKE_MESSAGES.collegeConfirmTitle}
+        message={revokeTarget ? TIE_UP_REVOKE_MESSAGES.collegeConfirmBody(revokeTarget.name) : ''}
+        confirmLabel="Revoke tie-up & notify"
+        confirmTone="danger"
         onCancel={() => setRevokeTarget(null)}
-        onConfirm={async () => { if (!revokeTarget) return; const targetId = revokeTarget.id; setRevokeTarget(null); await handleRevoke(targetId); }}
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          const targetId = revokeTarget.id;
+          setRevokeTarget(null);
+          await handleRevoke(targetId);
+        }}
         loading={Boolean(revokeTarget && processingId === revokeTarget.id)}
       />
 

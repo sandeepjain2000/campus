@@ -3,6 +3,7 @@ import AuthProvider from '@/components/AuthProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ToastProvider } from '@/components/ToastProvider';
 import PreventWheelOnNumberInputs from '@/components/PreventWheelOnNumberInputs';
+import GuidedRunnerShell from '@/components/guided/GuidedRunnerShell';
 
 export const metadata = {
   title: 'PlacementHub — Campus Placement & Engagement Platform',
@@ -27,6 +28,7 @@ export default function RootLayout({ children }) {
           <ThemeProvider>
             <ToastProvider>
               <PreventWheelOnNumberInputs />
+              <GuidedRunnerShell />
               {children}
             </ToastProvider>
           </ThemeProvider>

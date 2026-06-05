@@ -7,6 +7,7 @@ import EntityLogo from '@/components/EntityLogo';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { TIE_UP_REVOKE_MESSAGES } from '@/lib/employerTieUpShared';
 import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
 import { Building2, Globe, Users, Shield, Star, ExternalLink, X, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import MobileHeader from '@/components/mobile/MobileHeader';
@@ -63,11 +64,30 @@ export default function MobileEmployers() {
   const handleRevoke = async (employerId) => {
     setProcessingId(employerId);
     try {
-      const res = await fetch('/api/college/employers/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employer_id: employerId }) });
+      const res = await fetch('/api/college/employers/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employer_id: employerId, confirmed: true }),
+      });
       const data = await res.json();
-      if (res.ok) { await mutate(); addToast('Employer access blocked.', 'success'); }
-      else addToast(data.error || 'Failed to block employer.', 'error');
-    } catch { addToast('Network error while blocking access.', 'error'); }
+      if (res.ok) { await mutate(); addToast(data.message || 'Tie-up revoked.', 'success'); }
+      else addToast(data.error || 'Failed to revoke tie-up.', 'error');
+    } catch { addToast('Network error while revoking tie-up.', 'error'); }
+    finally { setProcessingId(null); }
+  };
+
+  const handleReinstate = async (employerId) => {
+    setProcessingId(employerId);
+    try {
+      const res = await fetch('/api/college/employers/reinstate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employer_id: employerId }),
+      });
+      const data = await res.json();
+      if (res.ok) { await mutate(); addToast(data.message || 'Tie-up restored.', 'success'); }
+      else addToast(data.error || 'Failed to restore tie-up.', 'error');
+    } catch { addToast('Network error.', 'error'); }
     finally { setProcessingId(null); }
   };
 
@@ -176,9 +196,14 @@ export default function MobileEmployers() {
                           <Users size={13} /> POCs
                         </button>
                         <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem' }} onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={processingId === emp.employer_id}>
-                          <X size={13} /> {processingId === emp.employer_id ? 'Blocking…' : 'Block'}
+                          <X size={13} /> Revoke
                         </button>
                       </>
+                    )}
+                    {emp.status === 'revoked' && (
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.8rem', color: 'var(--success-700)', border: '1px solid var(--success-500)' }} onClick={() => handleReinstate(emp.employer_id)} disabled={processingId === emp.employer_id}>
+                        Restore tie-up
+                      </button>
                     )}
                   </div>
                 </div>
@@ -233,9 +258,10 @@ export default function MobileEmployers() {
 
       <ConfirmDialog
         open={Boolean(revokeTarget)}
-        title="Block employer access?"
-        message={revokeTarget ? `${revokeTarget.name} will lose access to this campus until re-approved.` : ''}
-        confirmLabel="Block employer"
+        title={TIE_UP_REVOKE_MESSAGES.collegeConfirmTitle}
+        message={revokeTarget ? TIE_UP_REVOKE_MESSAGES.collegeConfirmBody(revokeTarget.name) : ''}
+        confirmLabel="Revoke tie-up & notify"
+        confirmTone="danger"
         onCancel={() => setRevokeTarget(null)}
         onConfirm={async () => { if (!revokeTarget) return; const targetId = revokeTarget.id; setRevokeTarget(null); await handleRevoke(targetId); }}
         loading={Boolean(revokeTarget && processingId === revokeTarget.id)}

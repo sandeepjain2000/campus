@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { ARCHIVE_COLUMN_HINT } from '@/lib/collegeStudentArchive';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -32,6 +38,7 @@ export async function GET() {
        JOIN tenants t ON t.id = sp.tenant_id
        LEFT JOIN users arch ON arch.id = sp.archived_by
        WHERE sp.archived_at IS NOT NULL
+         AND COALESCE(sp.is_deleted, false) = false
        ORDER BY sp.archived_at DESC
        LIMIT 500`,
     );

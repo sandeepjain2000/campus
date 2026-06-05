@@ -1,4 +1,12 @@
 import { query } from '@/lib/db';
+import {
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_NOT_DELETED,
+  AND_EAU_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+  AND_PA_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 /**
  * @param {{ id: string; role: string; tenantId?: string | null }} sessionUser
@@ -26,14 +34,14 @@ export async function buildUserDataExportPayload(sessionUser) {
         `SELECT d.id, t.name AS college, d.title, d.drive_date, d.drive_type, d.status, d.venue, d.registered_count, d.ctc_breakup
          FROM placement_drives d
          JOIN tenants t ON t.id = d.tenant_id
-         WHERE d.employer_id = $1::uuid
+         WHERE d.employer_id = $1::uuid ${AND_DRIVE_NOT_DELETED}
          ORDER BY d.created_at DESC
          LIMIT 500`,
         [employerId],
       ),
       query(
         `SELECT id, title, job_type, status, created_at
-         FROM job_postings WHERE employer_id = $1::uuid
+         FROM job_postings jp WHERE jp.employer_id = $1::uuid ${AND_JP_NOT_DELETED}
          ORDER BY created_at DESC
          LIMIT 500`,
         [employerId],
@@ -43,7 +51,7 @@ export async function buildUserDataExportPayload(sessionUser) {
          FROM applications a
          JOIN student_profiles sp ON sp.id = a.student_id
          JOIN placement_drives d ON d.id = a.drive_id
-         WHERE d.employer_id = $1::uuid
+         WHERE d.employer_id = $1::uuid ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
          ORDER BY a.applied_at DESC
          LIMIT 2000`,
         [employerId],
@@ -53,23 +61,23 @@ export async function buildUserDataExportPayload(sessionUser) {
          FROM program_applications pa
          JOIN job_postings jp ON jp.id = pa.job_id
          JOIN student_profiles sp ON sp.id = pa.student_id
-         WHERE jp.employer_id = $1::uuid
+         WHERE jp.employer_id = $1::uuid ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
          ORDER BY pa.applied_at DESC
          LIMIT 2000`,
         [employerId],
       ),
       query(
         `SELECT id, original_file_name, total_rows, accepted_rows, rejected_rows, created_at, drive_id, job_id, tenant_id
-         FROM employer_assessment_uploads
-         WHERE employer_id = $1::uuid
-         ORDER BY created_at DESC
+         FROM employer_assessment_uploads eau
+         WHERE eau.employer_id = $1::uuid ${AND_EAU_NOT_DELETED}
+         ORDER BY eau.created_at DESC
          LIMIT 200`,
         [employerId],
       ),
       query(
         `SELECT COUNT(*)::int AS n FROM employer_assessment_rows ear
          WHERE ear.upload_id IN (
-           SELECT id FROM employer_assessment_uploads WHERE employer_id = $1::uuid
+           SELECT id FROM employer_assessment_uploads eau WHERE eau.employer_id = $1::uuid ${AND_EAU_NOT_DELETED}
          )`,
         [employerId],
       ),
@@ -90,7 +98,7 @@ export async function buildUserDataExportPayload(sessionUser) {
       `SELECT sp.*, u.email AS account_email
        FROM student_profiles sp
        JOIN users u ON u.id = sp.user_id
-       WHERE sp.user_id = $1::uuid LIMIT 1`,
+       WHERE sp.user_id = $1::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE} LIMIT 1`,
       [userId],
     );
     const student = sp.rows[0] || null;
@@ -105,7 +113,7 @@ export async function buildUserDataExportPayload(sessionUser) {
         `SELECT a.id, a.status, a.notes, a.applied_at, a.drive_id, a.job_id, d.title AS drive_title
          FROM applications a
          LEFT JOIN placement_drives d ON d.id = a.drive_id
-         WHERE a.student_id = $1::uuid
+         WHERE a.student_id = $1::uuid ${AND_APP_NOT_DELETED}
          ORDER BY a.applied_at DESC
          LIMIT 2000`,
         [sid],
@@ -114,7 +122,7 @@ export async function buildUserDataExportPayload(sessionUser) {
         `SELECT pa.id, pa.status, pa.applied_at, pa.job_id, jp.title AS job_title
          FROM program_applications pa
          JOIN job_postings jp ON jp.id = pa.job_id
-         WHERE pa.student_id = $1::uuid
+         WHERE pa.student_id = $1::uuid ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
          ORDER BY pa.applied_at DESC
          LIMIT 1000`,
         [sid],
@@ -133,7 +141,7 @@ export async function buildUserDataExportPayload(sessionUser) {
       query(`SELECT COUNT(*)::int AS n FROM users WHERE tenant_id = $1::uuid AND role = 'student'`, [tenantId]),
       query(
         `SELECT id, title, status, drive_date, registered_count, employer_id, created_at
-         FROM placement_drives WHERE tenant_id = $1::uuid
+         FROM placement_drives d WHERE d.tenant_id = $1::uuid ${AND_DRIVE_NOT_DELETED}
          ORDER BY created_at DESC
          LIMIT 500`,
         [tenantId],
@@ -141,7 +149,7 @@ export async function buildUserDataExportPayload(sessionUser) {
       query(
         `SELECT COUNT(*)::int AS n FROM applications a
          JOIN placement_drives d ON d.id = a.drive_id
-         WHERE d.tenant_id = $1::uuid`,
+         WHERE d.tenant_id = $1::uuid ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}`,
         [tenantId],
       ),
     ]);

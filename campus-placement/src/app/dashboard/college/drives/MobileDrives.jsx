@@ -18,26 +18,23 @@ import {
   readActiveAcademicYearContext,
 } from '@/lib/collegeAcademicYearContext';
 import { mapCollegeDriveFromApi, isDriveStaffDirty } from '@/lib/collegeDrivesClient';
+import { fetchCollegeDrivesList } from '@/lib/collegeDrivesApi';
 
 const STATUS_META = {
-  requested:   { label: 'Awaiting Approval', color: '#b45309', bg: '#fef3c7', icon: AlertCircle },
-  approved:    { label: 'Approved',           color: '#1d4ed8', bg: '#dbeafe', icon: CheckCircle2 },
-  scheduled:   { label: 'Scheduled',          color: '#6d28d9', bg: '#ede9fe', icon: Clock },
-  in_progress: { label: 'In Progress',        color: '#059669', bg: '#d1fae5', icon: Target },
-  completed:   { label: 'Completed',          color: '#374151', bg: '#f3f4f6', icon: CheckCircle },
-  cancelled:   { label: 'Cancelled',          color: '#dc2626', bg: '#fee2e2', icon: XCircle },
+  requested: { label: 'Awaiting Approval', icon: AlertCircle },
+  approved: { label: 'Approved', icon: CheckCircle2 },
+  scheduled: { label: 'Scheduled', icon: Clock },
+  in_progress: { label: 'In Progress', icon: Target },
+  completed: { label: 'Completed', icon: CheckCircle },
+  cancelled: { label: 'Cancelled', icon: XCircle },
 };
 
 function StatusPill({ status }) {
-  const meta = STATUS_META[status] || { label: status, color: '#374151', bg: '#f3f4f6', icon: AlertCircle };
+  const meta = STATUS_META[status] || { label: status, icon: AlertCircle };
+  const pillClass = STATUS_META[status] ? `drive-status-pill--${status}` : 'drive-status-pill--completed';
   const Icon = meta.icon;
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-      padding: '0.25rem 0.65rem', borderRadius: '999px', fontSize: '0.75rem',
-      fontWeight: 600, color: meta.color, background: meta.bg,
-      border: `1px solid ${meta.color}22`
-    }}>
+    <span className={`drive-status-pill ${pillClass}`}>
       <Icon size={11} strokeWidth={2.5} />
       {meta.label}
     </span>
@@ -61,9 +58,7 @@ export default function MobileDrives() {
     setIsLoading(true);
     try {
       const qs = academicYearQueryString(readActiveAcademicYearContext());
-      const res = await fetch(`/api/college/drives${qs}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed to load drives');
+      const json = await fetchCollegeDrivesList(qs);
       setStaffDirectory(Array.isArray(json.staffDirectory) ? json.staffDirectory : []);
       setFacebookPageShare(Boolean(json.integrations?.facebookPageShare));
       setDrives((json.drives || []).map(mapCollegeDriveFromApi));

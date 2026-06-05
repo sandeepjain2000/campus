@@ -5,6 +5,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import { RotateCcw, Star, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { getInitials, timeAgo } from '@/lib/utils';
+import AlertsInboxSkeleton from '@/components/AlertsInboxSkeleton';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -57,6 +58,15 @@ export default function AlertsEmailPage() {
     [data],
   );
   const [openEmailId, setOpenEmailId] = useState(null);
+  const [confirmTrashId, setConfirmTrashId] = useState(null);
+
+  const requestMoveToTrash = (id) => {
+    setConfirmTrashId(id);
+  };
+
+  const cancelMoveToTrash = () => {
+    setConfirmTrashId(null);
+  };
 
   const moveToTrash = async (id) => {
     try {
@@ -68,6 +78,7 @@ export default function AlertsEmailPage() {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || 'Could not move to trash');
       setOpenEmailId((cur) => (cur === id ? null : cur));
+      setConfirmTrashId(null);
       addToast('Moved to Trash.', 'success');
       await invalidateAllNotificationCaches(mutate, globalMutate);
     } catch (e) {
@@ -166,7 +177,7 @@ export default function AlertsEmailPage() {
   };
 
   if (isLoading) {
-    return <div className="skeleton skeleton-card" style={{ height: 240, margin: '2rem' }} />;
+    return <AlertsInboxSkeleton />;
   }
 
   if (error) {
@@ -307,7 +318,7 @@ export default function AlertsEmailPage() {
                       title="Move to trash"
                       onClick={(e) => {
                         e.stopPropagation();
-                        moveToTrash(email.id);
+                        requestMoveToTrash(email.id);
                       }}
                     >
                       <Trash2 size={18} strokeWidth={2} aria-hidden />
@@ -344,6 +355,39 @@ export default function AlertsEmailPage() {
                 <div className="alerts-inbox-row-time">{email.time}</div>
               </div>
 
+              {confirmTrashId === email.id && mailbox !== 'trash' ? (
+                <div
+                  role="alert"
+                  className="alerts-trash-confirm"
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    alignItems: 'center',
+                    padding: '0.65rem 1rem',
+                    margin: '0 0.5rem 0.35rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--danger-200, #fecaca)',
+                    background: 'var(--danger-50, #fef2f2)',
+                  }}
+                >
+                  <span className="text-sm" style={{ flex: '1 1 12rem', color: 'var(--danger-800, #991b1b)' }}>
+                    Move this alert to Trash?
+                  </span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={cancelMoveToTrash}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    style={{ background: 'var(--danger-600, #dc2626)', borderColor: 'transparent' }}
+                    onClick={() => void moveToTrash(email.id)}
+                  >
+                    Move to trash
+                  </button>
+                </div>
+              ) : null}
+
               {openEmailId === email.id && (
                 <div className="alerts-inbox-detail">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -364,9 +408,49 @@ export default function AlertsEmailPage() {
                             />
                             {email.starred ? 'Unstar' : 'Star'}
                           </button>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveToTrash(email.id)}>
-                            Move to trash
-                          </button>
+                          {confirmTrashId === email.id ? (
+                            <div
+                              role="alert"
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '0.5rem',
+                                alignItems: 'center',
+                                padding: '0.65rem 0.75rem',
+                                marginBottom: '0.75rem',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--danger-200, #fecaca)',
+                                background: 'var(--danger-50, #fef2f2)',
+                              }}
+                            >
+                              <span className="text-sm" style={{ flex: '1 1 12rem', color: 'var(--danger-800, #991b1b)' }}>
+                                Move this alert to Trash?
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={cancelMoveToTrash}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                style={{ background: 'var(--danger-600, #dc2626)', borderColor: 'transparent' }}
+                                onClick={() => void moveToTrash(email.id)}
+                              >
+                                Move to trash
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => requestMoveToTrash(email.id)}
+                            >
+                              Move to trash
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>

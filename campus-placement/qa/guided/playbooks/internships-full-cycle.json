@@ -1,0 +1,312 @@
+{
+  "id": "internships-full-cycle",
+  "title": "Internship full cycle — Employer → College → Student → Employer",
+  "oneLiner": "End-to-end guided test: partnership setup, employer publish, college visibility, student apply, employer shortlist & select. One session marker (GT-…) links every step.",
+  "useStoredMarker": false,
+  "skipPartnershipSetupWhenApproved": true,
+  "sourceCases": [
+    "UC-001",
+    "EI-01",
+    "EI-02",
+    "EI-03",
+    "CI-01",
+    "SI-04",
+    "EI-15",
+    "EI-16",
+    "SI-09"
+  ],
+  "steps": [
+    {
+      "phase": "SETUP",
+      "label": "Landing page ready",
+      "observe": "Home page is open. Full cycle starts with employer sign-in (automatic).",
+      "action": { "type": "wait", "ms": 400 }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Log in as employer (TechCorp)",
+      "observe": "Employer dashboard loads. Password Admin@123 via guided sign-in.",
+      "action": { "type": "login", "account": "employer" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Open campus tie-up directory",
+      "observe": "Colleges list — IIT Madras should be Approved (or request tie-up if needed).",
+      "action": { "type": "goto", "path": "/dashboard/employer/select-campus" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Request tie-up with IIT Madras (if not already Approved)",
+      "observe": "Toast confirms request, or row already shows Approved.",
+      "action": {
+        "type": "clickInRow",
+        "rowText": "Indian Institute of Technology",
+        "buttonName": "Request Tie-up",
+        "skipIfMissing": true
+      }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Log in as college admin (IIT Madras)",
+      "observe": "College hub loads — approve partnership if employer just requested tie-up.",
+      "action": { "type": "login", "account": "college_admin" }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Open Employer Partnership Requests",
+      "observe": "Pending list shows TechCorp Solutions (if request was sent).",
+      "action": { "type": "goto", "path": "/dashboard/college/employers/requests" }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Approve TechCorp partnership request",
+      "observe": "TechCorp row approved or already absent from pending list.",
+      "action": { "type": "clickInRow", "rowText": "TechCorp", "buttonName": "Approve", "skipIfMissing": true }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Log in as employer again",
+      "observe": "Back on employer hub — ready to publish internship.",
+      "action": { "type": "login", "account": "employer" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Navigate to Internship Programs",
+      "observe": "Internship Programs list or empty state.",
+      "action": { "type": "goto", "path": "/dashboard/employer/internships" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Scan internship list and status filter",
+      "observe": "Note draft / published / closed postings.",
+      "action": { "type": "wait", "ms": 500 }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Click Post Internship to open the create form",
+      "observe": "Post New Internship form with campus checkboxes.",
+      "action": { "type": "click", "role": "button", "name": "Post Internship" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Review target campuses (pre-selected)",
+      "observe": "At least one approved campus checkbox is checked.",
+      "action": { "type": "wait", "ms": 400 }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type internship title (includes session marker GT-…)",
+      "observe": "Title shows {{marker}} Summer Data Intern — use this marker in later steps.",
+      "action": {
+        "type": "type",
+        "nearLabel": "Internship Title",
+        "value": "{{marker}} Summer Data Intern"
+      }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Select duration — 3 months",
+      "observe": "Duration dropdown shows 3 Months.",
+      "action": { "type": "select", "nearLabel": "Duration", "value": "3" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type stipend minimum (INR/month)",
+      "observe": "Stipend min field shows 25000.",
+      "action": { "type": "type", "nearLabel": "Stipend / month (min", "value": "25000" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type stipend maximum (INR/month)",
+      "observe": "Stipend max field shows 35000.",
+      "action": { "type": "type", "nearLabel": "Stipend / month (max", "value": "35000" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type number of openings",
+      "observe": "Openings field shows 3.",
+      "action": { "type": "type", "nearLabel": "Openings", "value": "3" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type minimum CGPA",
+      "observe": "Min CGPA field shows 7.5.",
+      "action": { "type": "type", "nearLabel": "Min CGPA", "value": "7.5" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type skills / keywords",
+      "observe": "Skills: Python, SQL, Data Analysis.",
+      "action": {
+        "type": "type",
+        "placeholder": "Python, SQL, ML",
+        "value": "Python, SQL, Data Analysis"
+      }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type additional notes",
+      "observe": "Notes include guided test marker.",
+      "action": {
+        "type": "type",
+        "nearLabel": "Additional notes",
+        "value": "Guided test {{marker}} — on-campus preferred."
+      }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Review complete form before publish",
+      "observe": "All fields populated; campuses selected.",
+      "action": { "type": "wait", "ms": 500 }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Click Publish Internship",
+      "observe": "Success toast; new row in list with GT- title; status Published.",
+      "action": { "type": "click", "role": "button", "name": "Publish Internship" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Confirm posting in published list",
+      "observe": "Employer publish complete — handoff to College next.",
+      "action": { "type": "wait", "ms": 1000 }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Log in as college admin",
+      "observe": "Verify employer posting is visible to campus.",
+      "action": { "type": "login", "account": "college_admin" }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Open college Internships list",
+      "observe": "Published listings from partner employers. New postings show Campus = Pending review until approved.",
+      "action": { "type": "goto", "path": "/dashboard/college/internships" }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Search for the guided internship by marker",
+      "observe": "Table filters to {{marker}} in the title column.",
+      "action": {
+        "type": "fillSearch",
+        "placeholder": "Search title, employer, or skills",
+        "value": "{{marker}}"
+      }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Filter campus status to Pending review",
+      "observe": "Only listings awaiting college approval remain visible.",
+      "action": { "type": "select", "id": "college-listing-approval-filter", "value": "pending" }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Approve guided internship for campus",
+      "observe": "Row with {{marker}} — click Approve (skipped if already Approved from a prior run).",
+      "action": {
+        "type": "clickInRow",
+        "rowText": "{{marker}}",
+        "buttonName": "Approve",
+        "skipIfMissing": true
+      }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Confirm campus status is Approved",
+      "observe": "Filter Campus status → Approved; {{marker}} row shows Approved badge. Students can now browse it.",
+      "action": { "type": "select", "id": "college-listing-approval-filter", "value": "approved" }
+    },
+    {
+      "phase": "COLLEGE",
+      "label": "Open college Applications (monitor pipeline)",
+      "observe": "Campus application list — student row appears after student applies.",
+      "action": { "type": "goto", "path": "/dashboard/college/applications" }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Log in as student (Arjun Verma)",
+      "observe": "Student dashboard — profile must have a primary CV to apply.",
+      "action": { "type": "login", "account": "student" }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Open Browse Internships",
+      "observe": "Internships visible to IIT Madras including GT- posting.",
+      "action": { "type": "goto", "path": "/dashboard/student/internships" }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Search for the guided internship by marker",
+      "observe": "Table filters to {{marker}} in role/title.",
+      "action": {
+        "type": "fillSearch",
+        "placeholder": "Search company, role, or status",
+        "value": "{{marker}}"
+      }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Click Apply on the guided internship row",
+      "observe": "Success toast; status Applied. Student step done — handoff to Employer.",
+      "action": { "type": "clickInRow", "rowText": "{{marker}}", "buttonName": "Apply" }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Confirm application status on list",
+      "observe": "Row shows Applied (not Open).",
+      "action": { "type": "wait", "ms": 800 }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Log in as employer",
+      "observe": "Review and advance the student application.",
+      "action": { "type": "login", "account": "employer" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Open Applications — Internships tab",
+      "observe": "Program applications table; Internships tab active.",
+      "action": { "type": "goto", "path": "/dashboard/employer/applications?tab=internships" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Search applicants by guided internship marker",
+      "observe": "Arjun Verma row for GT- internship opening.",
+      "action": {
+        "type": "fillSearch",
+        "placeholder": "Search by name, email, college, or opening",
+        "value": "{{marker}}"
+      }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Shortlist the applicant",
+      "observe": "Status Applied → Shortlisted.",
+      "action": { "type": "clickInRow", "rowText": "Arjun", "buttonName": "Shortlist" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Select the shortlisted candidate",
+      "observe": "Status becomes Selected — employer cycle complete.",
+      "action": { "type": "clickInRow", "rowText": "Arjun", "buttonName": "Select" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Filter list to Selected and confirm pipeline",
+      "observe": "Applicant shows Selected badge. Full E2E cycle complete.",
+      "action": { "type": "click", "role": "button", "name": "Selected" }
+    },
+    {
+      "phase": "CLOSURE",
+      "label": "Log in as student — verify Selected status",
+      "observe": "My Applications → Internships shows Selected for {{marker}} posting.",
+      "action": { "type": "login", "account": "student" }
+    },
+    {
+      "phase": "CLOSURE",
+      "label": "Open My Applications — Internships",
+      "observe": "Student sees Selected — internship full cycle verified end-to-end.",
+      "action": { "type": "goto", "path": "/dashboard/student/applications/internships" }
+    }
+  ]
+}

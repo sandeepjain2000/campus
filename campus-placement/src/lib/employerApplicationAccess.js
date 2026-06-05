@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED, AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
 import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 
 export async function getEmployerProfileId(userId) {
@@ -14,12 +15,16 @@ export async function canEmployerAccessStudent(employerId, studentId) {
        INNER JOIN placement_drives d ON d.id = a.drive_id
        WHERE d.employer_id = $1::uuid
          AND a.student_id = $2::uuid
+         ${AND_APP_NOT_DELETED}
+         ${AND_DRIVE_NOT_DELETED}
      ) OR EXISTS (
        SELECT 1
        FROM program_applications pa
        INNER JOIN job_postings jp ON jp.id = pa.job_id
        WHERE jp.employer_id = $1::uuid
          AND pa.student_id = $2::uuid
+         ${AND_PA_NOT_DELETED}
+         ${AND_JP_NOT_DELETED}
      ) AS allowed`,
     [employerId, studentId],
   );

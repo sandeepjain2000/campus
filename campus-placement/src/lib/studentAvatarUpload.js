@@ -1,3 +1,5 @@
+import { readUploadHeader, validateBufferContentType, validateUploadHeader } from '@/lib/fileMagicBytes';
+
 /** Matches `src/app/api/student/profile/avatar/presign/route.js` */
 export const STUDENT_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -36,6 +38,24 @@ export function validateStudentAvatarFile(file) {
     return { ok: false, error: 'File is empty.' };
   }
   return { ok: true, contentType };
+}
+
+/**
+ * @param {Uint8Array | Buffer} buffer
+ * @param {string} declaredContentType
+ */
+export function validateStudentAvatarBuffer(buffer, declaredContentType) {
+  const magic = validateBufferContentType(buffer, declaredContentType);
+  if (!magic.ok) return magic;
+  return { ok: true, contentType: magic.contentType };
+}
+
+/** @param {File} file */
+export async function validateStudentAvatarFileAsync(file) {
+  const meta = validateStudentAvatarFile(file);
+  if (!meta.ok) return meta;
+  const bytes = await readUploadHeader(file);
+  return validateUploadHeader(bytes, meta.contentType);
 }
 
 export function studentAvatarAcceptAttr() {

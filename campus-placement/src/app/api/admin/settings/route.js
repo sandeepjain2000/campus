@@ -8,6 +8,12 @@ import { invalidatePlatformSettingsCache, PLATFORM_SETTINGS_DEFAULTS } from '@/l
 import { normalizeMarketingWebsiteUrl } from '@/lib/marketingWebsiteUrl';
 import { canonicalizeTimezoneId } from '@/lib/timezoneUi';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 /** Respect explicit empty strings (e.g. clear platform name); only fall back when key absent or null. */
 function pickString(payload, key, defaultVal) {
   if (!payload || !Object.prototype.hasOwnProperty.call(payload, key)) {

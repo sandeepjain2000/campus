@@ -1,7 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { STUDENT_DOCUMENT_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
+import {
+  STUDENT_RESUME_ACCEPT_ATTR,
+  STUDENT_RESUME_VALIDATION_ERROR,
+  validateStudentResumeFileAsync,
+} from '@/lib/studentDocumentUpload';
 
 /**
  * Always-visible résumé upload on the student profile (not gated by edit mode or tab).
@@ -12,7 +17,26 @@ export default function StudentResumeUploadCard({
   cvUploading = false,
   onCvChange,
 }) {
+  const [cvError, setCvError] = useState('');
   const hasResume = Boolean(resumeViewUrl);
+
+  const handleCvInputChange = async (e) => {
+    const file = e.target.files?.[0];
+    setCvError('');
+
+    if (!file) return;
+
+    const validated = await validateStudentResumeFileAsync(file);
+    if (!validated.ok) {
+      setCvError(validated.error || STUDENT_RESUME_VALIDATION_ERROR);
+      e.target.value = '';
+      return;
+    }
+
+    if (typeof onCvChange === 'function') {
+      onCvChange(e);
+    }
+  };
 
   return (
     <section
@@ -65,6 +89,15 @@ export default function StudentResumeUploadCard({
           <p className="text-xs text-tertiary" style={{ margin: '0.25rem 0 0' }}>
             PDF or Word, up to 5 MB
           </p>
+          {cvError ? (
+            <p
+              className="text-sm"
+              role="alert"
+              style={{ margin: '0.5rem 0 0', color: 'var(--danger-600, #dc2626)', fontWeight: 500 }}
+            >
+              {cvError}
+            </p>
+          ) : null}
         </div>
 
         <div
@@ -98,10 +131,10 @@ export default function StudentResumeUploadCard({
             {cvUploading ? 'Uploading…' : hasResume ? 'Replace résumé' : 'Upload résumé'}
             <input
               type="file"
-              accept={STUDENT_DOCUMENT_ACCEPT_ATTR}
+              accept={STUDENT_RESUME_ACCEPT_ATTR}
               hidden
               disabled={cvUploading}
-              onChange={onCvChange}
+              onChange={handleCvInputChange}
             />
           </label>
           <Link href="/dashboard/student/documents" className="btn btn-ghost btn-sm">

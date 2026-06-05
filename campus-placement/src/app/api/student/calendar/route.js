@@ -3,6 +3,14 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
+import { AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 function rowDateToYmd(v) {
   if (v == null) return '';
@@ -31,13 +39,12 @@ export async function GET() {
     /* Same visibility rules as GET /api/student/drives — avoids calendar vs browse mismatch */
     const res = await query(
       `SELECT d.id, COALESCE(ep.company_name, 'Company') AS company,
-              COALESCE(j.title, d.title) AS role, d.drive_date, d.drive_type, d.status
+              d.title AS role, d.drive_date, d.drive_type, d.status
        FROM placement_drives d
        LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-       LEFT JOIN job_postings j ON j.id = d.job_id
        JOIN student_profiles sp ON sp.id = $1::uuid
-       WHERE d.tenant_id = sp.tenant_id
-         AND d.status IN ('approved', 'scheduled')
+       WHERE d.tenant_id = sp.tenant_id AND ${SP_ACTIVE_CLAUSE}
+         AND d.status IN ('approved', 'scheduled') ${AND_DRIVE_NOT_DELETED}
        ORDER BY d.drive_date ASC, d.created_at DESC
        LIMIT 500`,
       [studentId],

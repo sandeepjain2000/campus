@@ -65,7 +65,7 @@ export default function EmployerOffersUploadPage() {
     try {
       const q = assessmentCampusId ? `?tenantId=${encodeURIComponent(assessmentCampusId)}` : '';
       await downloadCsvFromApi(`/api/employer/offers/assessment-starter${q}`, EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME);
-      addToast('Every master-list student on the selected campus(es) is listed with tenant_id; drive_id filled when the latest assessment batch had a drive.', 'success');
+      addToast('Every master-list student is listed with system_id, roll_number, and tenant_id; drive_id filled when the latest assessment batch had a drive.', 'success');
     } catch (e) {
       addToast(e.message || 'Download failed', 'error');
     }
@@ -105,7 +105,7 @@ export default function EmployerOffersUploadPage() {
             <FileUp size={24} aria-hidden /> Upload offers (CSV)
           </h1>
           <p className="text-secondary" style={{ margin: '0.25rem 0 0', fontSize: '0.9375rem' }}>
-            Import offers by campus roll number. Each student must already have <strong>applied</strong> to one of your placement drives. Open{' '}
+            Import offers by campus <strong>system ID</strong> or roll number. Each student must already have <strong>applied</strong> to one of your placement drives. Open{' '}
             <Link href="/dashboard/employer/offers" className="link-inline" style={{ fontWeight: 600 }}>
               Offers
             </Link>{' '}
@@ -151,7 +151,7 @@ export default function EmployerOffersUploadPage() {
             ))}
           </select>
           <p className="text-xs text-tertiary" style={{ margin: '0.5rem 0 0', lineHeight: 1.5 }}>
-            Lists <strong>every</strong> student on the campus master roster (same as the college&apos;s Students list). <code>tenant_id</code> is always set;{' '}
+            Lists <strong>every</strong> student on the campus master roster (same as the college&apos;s Students list). <code>system_id</code> and <code>tenant_id</code> are always set;{' '}
             <code>drive_id</code> comes from the <strong>newest</strong> assessment upload row for that student when present.
           </p>
           <button type="button" className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={downloadAssessmentStarter}>

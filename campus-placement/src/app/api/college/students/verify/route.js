@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function POST(request) {
   try {
@@ -26,7 +33,7 @@ export async function POST(request) {
     const check = await query(
       `SELECT sp.id, sp.user_id
        FROM student_profiles sp
-       WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND sp.archived_at IS NULL`,
+       WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND ${SP_ACTIVE_CLAUSE}`,
       [studentProfileId, tenantId]
     );
 

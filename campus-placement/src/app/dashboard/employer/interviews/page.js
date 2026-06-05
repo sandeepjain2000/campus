@@ -6,8 +6,22 @@ import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid
 import { formatDate } from '@/lib/utils';
 import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { findDuplicateEmployerInterviewSlot } from '@/lib/interviewSlotDuplicate';
 import { useToast } from '@/components/ToastProvider';
 import { CalendarCheck } from 'lucide-react';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
+import InterviewSlotActions from '@/components/interviews/InterviewSlotActions';
+
+const EMPTY_EMPLOYER_FORM = {
+  round: 'Round 1 - DSA',
+  date: '',
+  time: '',
+  assigned: 0,
+  mode: 'Virtual',
+  panelNames: '',
+};
 
 const campusesFetcher = (url) =>
   fetch(url, { credentials: 'include' }).then(async (res) => {
@@ -66,14 +80,9 @@ export default function EmployerInterviewsPage() {
   const [rows, setRows] = useState([]);
   const [selectedCampusId, setSelectedCampusId] = useState('');
   const [view, setView] = useState('list');
-  const [form, setForm] = useState({
-    round: 'Round 1 - DSA',
-    date: '',
-    time: '',
-    assigned: 0,
-    mode: 'Virtual',
-    panelNames: '',
-  });
+  const [form, setForm] = useState(EMPTY_EMPLOYER_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const { data: campusData, isLoading: campusesLoading } = useSWR(
     '/api/employer/campuses',
@@ -141,39 +150,105 @@ export default function EmployerInterviewsPage() {
 
   const handleCampusChange = (campusId) => {
     setSelectedCampusId(campusId);
+    cancelEdit();
     const campus = approvedCampuses.find((c) => c.id === campusId);
     if (campus) persistActiveCampus(campus);
   };
 
-  const create = async (e) => {
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(EMPTY_EMPLOYER_FORM);
+  };
+
+  const startEdit = (row) => {
+    setEditingId(row.id);
+    setForm({
+      round: row.round || '',
+      date: row.date || '',
+      time: row.time || '',
+      assigned: row.assigned ?? 0,
+      mode: row.mode || 'Virtual',
+      panelNames: row.panelNames || '',
+    });
+  };
+
+  const removeSlot = async (row) => {
+    if (!selectedCampusId) return;
+    if (!window.confirm(`Delete interview slot ${row.campus} · ${row.round}?`)) return;
+    try {
+      const res = await fetch(
+        `/api/employer/interviews/${row.id}?campusId=${encodeURIComponent(selectedCampusId)}`,
+        { method: 'DELETE', credentials: 'include' },
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to delete interview slot');
+      setRows(Array.isArray(json.rows) ? json.rows : []);
+      if (editingId === row.id) cancelEdit();
+      addToast('Interview slot deleted.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to delete interview slot', 'error');
+    }
+  };
+
+  const saveSlot = async (e) => {
     e.preventDefault();
     if (!form.date || !form.time || !selectedCampusId) {
       addToast('Select a college, date, and time.', 'warning');
       return;
     }
+    const dateErr = validateFieldOrError(FIELD_IDS.EMPLOYER_INTERVIEW_DATE, form.date);
+    if (dateErr) {
+      addToast(dateErr, 'warning');
+      return;
+    }
+    const assignedErr = validateFieldOrError(FIELD_IDS.EMPLOYER_INTERVIEW_ASSIGNED, form.assigned);
+    if (assignedErr) {
+      addToast(assignedErr, 'warning');
+      return;
+    }
+    const candidate = {
+      campusId: selectedCampusId,
+      campus: selectedCampus?.name || '',
+      date: form.date,
+      time: form.time,
+      round: form.round,
+      mode: form.mode,
+    };
+    const duplicate = findDuplicateEmployerInterviewSlot(rows, candidate, editingId);
+    if (duplicate) {
+      addToast('An interview slot with the same campus, date, time, round, and mode already exists.', 'warning');
+      return;
+    }
+
+    const body = {
+      campusId: selectedCampusId,
+      campus: selectedCampus?.name || '',
+      round: form.round,
+      date: form.date,
+      time: form.time,
+      assigned: Number(form.assigned) || 0,
+      mode: form.mode,
+      panelNames: form.panelNames,
+    };
+
+    setSaving(true);
+    const isEdit = Boolean(editingId);
     try {
-      const res = await fetch('/api/employer/interviews', {
-        method: 'POST',
+      const res = await fetch(isEdit ? `/api/employer/interviews/${editingId}` : '/api/employer/interviews', {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          campusId: selectedCampusId,
-          campus: selectedCampus?.name || '',
-          round: form.round,
-          date: form.date,
-          time: form.time,
-          assigned: Number(form.assigned) || 0,
-          mode: form.mode,
-          panelNames: form.panelNames,
-        }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to save interview slot');
       setRows(Array.isArray(json.rows) ? json.rows : []);
-      setForm((p) => ({ ...p, date: '', time: '', assigned: 0, panelNames: '' }));
-      addToast('Interview slot added.', 'success');
+      cancelEdit();
+      addToast(isEdit ? 'Interview slot updated.' : 'Interview slot added.', 'success');
     } catch (err) {
       addToast(err.message || 'Failed to save interview slot', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -276,11 +351,16 @@ export default function EmployerInterviewsPage() {
 
       <div className="grid grid-2">
         <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Create Slot</h3>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 className="card-title">{editingId ? 'Edit Slot' : 'Create Slot'}</h3>
+            {editingId ? (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEdit}>
+                Cancel edit
+              </button>
+            ) : null}
           </div>
           <form
-            onSubmit={create}
+            onSubmit={saveSlot}
             style={{
               display: 'grid',
               gap: '0.65rem',
@@ -319,13 +399,11 @@ export default function EmployerInterviewsPage() {
               onChange={(e) => setForm((p) => ({ ...p, round: e.target.value }))}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <input
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.EMPLOYER_INTERVIEW_DATE}
                 className="form-input"
-                type="date"
-                min={new Date().toISOString().split('T')[0]}
                 value={form.date}
-                onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                required
+                onChange={(v) => setForm((p) => ({ ...p, date: v }))}
               />
               <input
                 className="form-input"
@@ -335,13 +413,12 @@ export default function EmployerInterviewsPage() {
                 required
               />
             </div>
-            <input
+            <ValidatedNumberInput
+              fieldId={FIELD_IDS.EMPLOYER_INTERVIEW_ASSIGNED}
               className="form-input"
-              type="number"
-              min={0}
               placeholder="Assigned students"
               value={form.assigned}
-              onChange={(e) => setForm((p) => ({ ...p, assigned: e.target.value }))}
+              onChange={(v) => setForm((p) => ({ ...p, assigned: v }))}
             />
             <input
               className="form-input"
@@ -361,14 +438,14 @@ export default function EmployerInterviewsPage() {
             <button
               className="btn btn-primary"
               type="submit"
-              disabled={!selectedCampusId || approvedCampuses.length === 0}
+              disabled={!selectedCampusId || approvedCampuses.length === 0 || saving}
               title={
                 !selectedCampusId || approvedCampuses.length === 0
                   ? 'Select an approved college partnership first'
                   : 'Save interview slot'
               }
             >
-              Add Interview Slot
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add Interview Slot'}
             </button>
           </form>
         </div>
@@ -404,13 +481,21 @@ export default function EmployerInterviewsPage() {
                   <div
                     key={r.id}
                     style={{
-                      border: '1px solid var(--border-default)',
+                      border: `1px solid ${editingId === r.id ? 'var(--primary-400)' : 'var(--border-default)'}`,
                       borderRadius: 'var(--radius-md)',
                       padding: '0.7rem',
+                      background: editingId === r.id ? 'var(--primary-50)' : undefined,
                     }}
                   >
-                    <div className="font-semibold">
-                      {r.campus} • {r.round}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <div className="font-semibold">
+                        {r.campus} • {r.round}
+                      </div>
+                      <InterviewSlotActions
+                        onEdit={() => startEdit(r)}
+                        onDelete={() => removeSlot(r)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="text-sm text-secondary">
                       {formatDate(r.date)} • {formatTimeDisplay(r.time)} • {r.mode}

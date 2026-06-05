@@ -8,6 +8,12 @@ import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
 import { FolderGit2, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
+import { formatEmployerMinCgpa } from '@/lib/employerJobDisplay';
+import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
+import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 
 function projectPrizeLabel(min, max) {
   if (min == null && max == null) return '—';
@@ -91,11 +97,7 @@ export default function EmployerProjectsPage() {
   });
 
   const openForm = () => {
-    const sel = {};
-    approvedCampuses.forEach((c) => {
-      sel[c.id] = true;
-    });
-    setSelectedTenantIds(sel);
+    setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses));
     setProjectKind('short_project');
     setTitle('');
     setStipend('');
@@ -127,16 +129,19 @@ export default function EmployerProjectsPage() {
       addToast('Select at least one approved campus.', 'warning');
       return;
     }
+    const validated = validateAndResolveEmployerJobSubmit({
+      salaryMin: stipend,
+      salaryMax: stipendMax,
+      minCgpa,
+      vacancies,
+      jobType: projectKind,
+    });
+    if (validated.error) {
+      addToast(validated.error, 'warning');
+      return;
+    }
     const sm = stipend === '' ? null : Number(stipend);
     const sx = stipendMax === '' ? null : Number(stipendMax);
-    if (stipend !== '' && Number.isNaN(sm)) {
-      addToast('Amount must be a number (INR)', 'error');
-      return;
-    }
-    if (stipendMax !== '' && Number.isNaN(sx)) {
-      addToast('Max amount must be a number', 'error');
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -150,7 +155,7 @@ export default function EmployerProjectsPage() {
           status: 'published',
           salaryMin: sm,
           salaryMax: sx != null && !Number.isNaN(sx) ? sx : sm,
-          minCgpa: minCgpa === '' ? null : Number(minCgpa),
+          minCgpa: validated.minCgpa,
           vacancies: vacancies === '' ? 1 : vacancies,
           keywords,
           tenantIds,
@@ -185,14 +190,11 @@ export default function EmployerProjectsPage() {
 
   const openCampusSync = useCallback(
     (jobId) => {
-      const sel = {};
-      approvedCampuses.forEach((c) => {
-        sel[c.id] = true;
-      });
-      setCampusSyncSelection(sel);
+      const job = projects.find((j) => j.id === jobId);
+      setCampusSyncSelection(buildDefaultTenantSelection(approvedCampuses, job?.tenantIds));
       setCampusSyncJobId(jobId);
     },
-    [approvedCampuses],
+    [approvedCampuses, projects],
   );
 
   const submitCampusSync = useCallback(async () => {
@@ -261,33 +263,14 @@ export default function EmployerProjectsPage() {
           </div>
           <div className="grid grid-2">
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Target campuses (approved) <span className="required">*</span></label>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                  gap: '0.75rem',
-                  background: 'var(--bg-secondary)',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                {approvedCampuses.length === 0 ? (
-                  <span className="text-sm text-secondary">No approved campuses. Complete a campus tie-up first.</span>
-                ) : (
-                  approvedCampuses.map((c) => (
-                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!selectedTenantIds[c.id]}
-                        onChange={() => setSelectedTenantIds((p) => ({ ...p, [c.id]: !p[c.id] }))}
-                      />
-                      {c.name}
-                    </label>
-                  ))
-                )}
-              </div>
+              <EmployerCampusTargetPicker
+                campuses={approvedCampuses}
+                selection={selectedTenantIds}
+                onSelectionChange={setSelectedTenantIds}
+                label="Target campuses (approved)"
+                required
+                emptyMessage="No approved campuses. Complete a campus tie-up first."
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Type</label>
@@ -302,19 +285,19 @@ export default function EmployerProjectsPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Prize / stipend min (INR, optional)</label>
-              <input className="form-input" type="number" value={stipend} onChange={(e) => setStipend(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MIN} value={stipend} onChange={setStipend} />
             </div>
             <div className="form-group">
               <label className="form-label">Max (optional)</label>
-              <input className="form-input" type="number" value={stipendMax} onChange={(e) => setStipendMax(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MAX} context={{ salaryMin: stipend }} value={stipendMax} onChange={setStipendMax} />
             </div>
             <div className="form-group">
               <label className="form-label">Team slots / openings</label>
-              <input className="form-input" type="number" value={vacancies} onChange={(e) => setVacancies(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} value={vacancies} onChange={setVacancies} />
             </div>
             <div className="form-group">
               <label className="form-label">Min CGPA</label>
-              <input className="form-input" type="number" step="0.1" min="0" max="10" value={minCgpa} onChange={(e) => setMinCgpa(e.target.value)} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" value={minCgpa} onChange={setMinCgpa} />
             </div>
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">Skills (comma-separated)</label>
@@ -429,7 +412,7 @@ export default function EmployerProjectsPage() {
                       <span className="badge badge-gray">{p.type === 'hackathon' ? 'Hackathon' : 'Short project'}</span>
                     </td>
                     <td className="text-sm">{projectPrizeLabel(p.salaryMin, p.salaryMax)}</td>
-                    <td className="text-sm">{p.cgpa ?? '—'}</td>
+                    <td className="text-sm">{formatEmployerMinCgpa(p.minCgpa ?? p.cgpa)}</td>
                     <td className="text-sm">{p.vacancies ?? '—'}</td>
                     <td>
                       <span className={`badge badge-${getStatusColor(p.status)} badge-dot`}>{formatStatus(p.status)}</span>
@@ -467,29 +450,13 @@ export default function EmployerProjectsPage() {
           <p className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
             Use this if the posting is published but students do not see it. Requires an approved tie-up per campus.
           </p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '0.75rem',
-              marginBottom: '1rem',
-            }}
-          >
-            {approvedCampuses.length === 0 ? (
-              <span className="text-sm text-secondary">No approved campuses.</span>
-            ) : (
-              approvedCampuses.map((c) => (
-                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!campusSyncSelection[c.id]}
-                    onChange={() => setCampusSyncSelection((prev) => ({ ...prev, [c.id]: !prev[c.id] }))}
-                  />
-                  {c.name}
-                </label>
-              ))
-            )}
-          </div>
+          <EmployerCampusTargetPicker
+            campuses={approvedCampuses}
+            selection={campusSyncSelection}
+            onSelectionChange={setCampusSyncSelection}
+            compact
+            emptyMessage="No approved campuses."
+          />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <button type="button" className="btn btn-secondary" disabled={campusSyncSubmitting} onClick={() => setCampusSyncJobId(null)}>
               Cancel

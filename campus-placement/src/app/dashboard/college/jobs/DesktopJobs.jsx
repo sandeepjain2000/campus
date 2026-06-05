@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { Briefcase, Building2, IndianRupee, BookOpen, Calendar } from 'lucide-react';
+import { Briefcase, Building2, IndianRupee, BookOpen, Calendar, LayoutGrid, List } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus } from '@/lib/utils';
 import { useCollegeAcademicYearApiPath } from '@/lib/collegeAcademicYearContext';
 import CompanyNameLink from '@/components/CompanyNameLink';
+import PostingEligibilitySection from '@/components/student/PostingEligibilitySection';
 import PageLoading from '@/components/PageLoading';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
@@ -23,6 +24,7 @@ function salaryLabel(min, max) {
 }
 
 export default function DesktopJobs() {
+  const [viewMode, setViewMode] = useState('card');
   const jobsPath = useCollegeAcademicYearApiPath('/api/college/jobs');
   const { data, error, isLoading } = useSWR(jobsPath, fetcher);
   const list = useMemo(() => (Array.isArray(data?.jobs) ? data.jobs : []), [data]);
@@ -97,6 +99,121 @@ export default function DesktopJobs() {
         </div>
       )}
 
+      {!isLoading && !error && list.length > 0 ? (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '1.25rem',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}
+        >
+          <span className="badge badge-gray" style={{ fontSize: '0.85rem' }}>
+            {list.length} {list.length === 1 ? 'job' : 'jobs'}
+          </span>
+          <div
+            role="group"
+            aria-label="View mode"
+            style={{
+              display: 'flex',
+              background: 'var(--bg-secondary)',
+              borderRadius: '10px',
+              padding: '3px',
+              gap: '2px',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            {[
+              { mode: 'card', icon: LayoutGrid, label: 'Card view' },
+              { mode: 'list', icon: List, label: 'List view' },
+            ].map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                title={label}
+                aria-label={label}
+                aria-pressed={viewMode === mode}
+                onClick={() => setViewMode(mode)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '7px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  transition: 'background 0.15s ease, color 0.15s ease',
+                  background: viewMode === mode ? 'var(--bg-primary)' : 'transparent',
+                  color: viewMode === mode ? 'var(--primary-600)' : 'var(--text-tertiary)',
+                  boxShadow: viewMode === mode ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                }}
+              >
+                <Icon size={15} aria-hidden />
+                {mode === 'card' ? 'Cards' : 'List'}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {viewMode === 'list' && !isLoading && !error && list.length > 0 ? (
+        <div className="card card-table-shell" style={{ border: '1px solid var(--border-default)', padding: 0 }}>
+          <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
+            <table className="data-table college-applications-table college-jobs-table">
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)' }}>
+                  <th className="college-jobs-col-title" style={{ paddingLeft: '1.25rem' }}>
+                    Job Title
+                  </th>
+                  <th className="college-jobs-col-company">Company</th>
+                  <th className="college-jobs-col-type">Type</th>
+                  <th className="college-jobs-col-salary">Salary</th>
+                  <th className="college-jobs-col-cgpa">CGPA</th>
+                  <th className="college-jobs-col-openings">Openings</th>
+                  <th className="college-jobs-col-posted" style={{ paddingRight: '1.25rem' }}>
+                    Posted
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((row) => (
+                  <tr key={row.id}>
+                    <td className="college-jobs-col-title" style={{ paddingLeft: '1.25rem' }}>
+                      <div className="font-semibold text-sm cell-truncate" title={row.title}>
+                        {row.title}
+                      </div>
+                      {row.skills_required?.length ? (
+                        <div className="text-xs text-tertiary cell-truncate" title={row.skills_required.join(', ')}>
+                          {row.skills_required.slice(0, 3).join(', ')}
+                          {row.skills_required.length > 3 ? '…' : ''}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="text-sm college-jobs-col-company">
+                      <CompanyNameLink name={row.company_name} website={row.website} />
+                    </td>
+                    <td className="college-jobs-col-type">
+                      <span className="badge badge-indigo badge-dot">{formatStatus(row.job_type)}</span>
+                    </td>
+                    <td className="text-sm college-jobs-col-salary">{salaryLabel(row.salary_min, row.salary_max)}</td>
+                    <td className="text-sm college-jobs-col-cgpa">{row.min_cgpa != null ? Number(row.min_cgpa) : '—'}</td>
+                    <td className="text-sm college-jobs-col-openings">{row.vacancies ?? '—'}</td>
+                    <td className="text-sm text-secondary college-jobs-col-posted" style={{ paddingRight: '1.25rem' }}>
+                      {row.created_at ? formatDate(row.created_at) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {viewMode === 'card' ? (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {list.map((row) => (
           <div key={row.id} className="card card-hover">
@@ -139,11 +256,21 @@ export default function DesktopJobs() {
                     ))}
                   </div>
                 ) : null}
+                <div style={{ marginTop: '1rem' }}>
+                  <PostingEligibilitySection
+                    opportunity={{
+                      minCgpa: row.min_cgpa != null ? Number(row.min_cgpa) : null,
+                      status: 'published',
+                    }}
+                    audience="college"
+                  />
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+      ) : null}
     </div>
   );
 }

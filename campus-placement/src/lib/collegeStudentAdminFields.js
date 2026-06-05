@@ -17,6 +17,7 @@ import {
   validateStudentBranchField,
 } from '@/lib/validators';
 import { parseJoiningBatch, reconcileBatchFields } from '@/lib/studentBatch';
+import { validateFieldOrError, FIELD_IDS } from '@/lib/inputConstraints';
 
 export const ADD_STUDENT_DEPARTMENTS = [
   'Computer Science', 'Electrical Engineering', 'Mechanical Engineering',
@@ -174,30 +175,34 @@ export function validateCollegeStudentForm(form, { isEdit = false, collegeShortC
   const intern = normalizeInternshipStatus(form.internship_status);
   if (!intern) errors.internship_status = 'Invalid internship status.';
 
-  for (const [key, label] of [
-    ['tenth_percentage', 'Class X %'],
-    ['twelfth_percentage', 'Class XII %'],
-    ['diploma_percentage', 'Diploma %'],
-  ]) {
-    const r = parseOptionalPercent(form[key], label);
-    if (r.error) errors[key] = r.error;
+  const percentFields = [
+    ['tenth_percentage', FIELD_IDS.STUDENT_PERCENT, 'Class X %'],
+    ['twelfth_percentage', FIELD_IDS.STUDENT_PERCENT, 'Class XII %'],
+    ['diploma_percentage', FIELD_IDS.STUDENT_PERCENT, 'Diploma %'],
+  ];
+  for (const [key, fieldId, label] of percentFields) {
+    const e = validateFieldOrError(fieldId, form[key], { label });
+    if (e) errors[key] = e;
   }
 
-  for (const [key, label] of [
-    ['backlogs_active', 'Active backlogs'],
-    ['backlogs_history', 'Total backlogs'],
-  ]) {
-    const r = parseOptionalInt(form[key], label, { min: 0, max: 99 });
-    if (r.error) errors[key] = r.error;
+  const backlogFields = [
+    ['backlogs_active', FIELD_IDS.STUDENT_BACKLOGS_ACTIVE],
+    ['backlogs_history', FIELD_IDS.STUDENT_BACKLOGS_TOTAL],
+  ];
+  for (const [key, fieldId] of backlogFields) {
+    const e = validateFieldOrError(fieldId, form[key]);
+    if (e) errors[key] = e;
   }
 
-  for (const [key, label] of [
-    ['batch_year', 'Admission year'],
-    ['graduation_year', 'Graduation year'],
-  ]) {
-    const r = parseOptionalInt(form[key], label, { min: 1990, max: 2040 });
-    if (r.error) errors[key] = r.error;
-  }
+  const batchErr = validateFieldOrError(FIELD_IDS.STUDENT_BATCH_YEAR, form.batch_year);
+  if (batchErr) errors.batch_year = batchErr;
+  const gradErr = validateFieldOrError(FIELD_IDS.STUDENT_GRAD_YEAR, form.graduation_year, {
+    batchYear: form.batch_year,
+  });
+  if (gradErr) errors.graduation_year = gradErr;
+
+  const dobErr = validateFieldOrError(FIELD_IDS.STUDENT_DOB, form.date_of_birth);
+  if (dobErr) errors.date_of_birth = dobErr;
 
   const batchText = String(form.batch || '').trim();
   if (!batchText) {
@@ -213,13 +218,12 @@ export function validateCollegeStudentForm(form, { isEdit = false, collegeShortC
     errors.graduation_year = 'Graduation year must be on or after admission year.';
   }
 
-  for (const [key, label] of [
-    ['expected_salary_min', 'Expected salary (min)'],
-    ['expected_salary_max', 'Expected salary (max)'],
-  ]) {
-    const r = parseOptionalSalary(form[key], label);
-    if (r.error) errors[key] = r.error;
-  }
+  const salMinErr = validateFieldOrError(FIELD_IDS.STUDENT_SALARY_MIN, form.expected_salary_min);
+  if (salMinErr) errors.expected_salary_min = salMinErr;
+  const salMaxErr = validateFieldOrError(FIELD_IDS.STUDENT_SALARY_MAX, form.expected_salary_max, {
+    salaryMin: form.expected_salary_min,
+  });
+  if (salMaxErr) errors.expected_salary_max = salMaxErr;
 
   for (const [key, label] of [
     ['photo_url', 'Photo URL'],

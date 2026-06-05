@@ -61,9 +61,12 @@ export async function POST(request) {
                       al.user_id, al.ip_address, al.old_values, al.new_values
                FROM audit_logs al
                LEFT JOIN tenants t ON t.id = al.tenant_id
-               WHERE al.tenant_id = $1::uuid
-                 AND DATE(al.created_at) >= $2::date
-                 AND DATE(al.created_at) <= $3::date
+               WHERE (al.tenant_id = $1::uuid OR (
+                 al.action = 'DEMO_PURGE'
+                 AND COALESCE(al.new_values->>'contextTenantId', al.new_values->>'entityTenantId') = $1::text
+               ))
+                 AND al.created_at >= $2::date
+                 AND al.created_at < ($3::date + interval '1 day')
                ORDER BY al.created_at DESC`,
               [tenantId, from, to],
             )
@@ -72,8 +75,8 @@ export async function POST(request) {
                       al.user_id, al.ip_address, al.old_values, al.new_values
                FROM audit_logs al
                LEFT JOIN tenants t ON t.id = al.tenant_id
-               WHERE DATE(al.created_at) >= $1::date
-                 AND DATE(al.created_at) <= $2::date
+               WHERE al.created_at >= $1::date
+                 AND al.created_at < ($2::date + interval '1 day')
                ORDER BY al.created_at DESC`,
               [from, to],
             );

@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import {
+
+
+
   canEmployerAccessStudent,
   extractS3Key,
   getEmployerProfileId,
@@ -11,6 +14,9 @@ import {
 import { isAuthoritativeResumeUrl, isPlaceholderResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
 
 function isS3Url(url) {
   try {

@@ -1,6 +1,12 @@
 import { randomInt, randomUUID } from 'crypto';
 import { query, transaction } from '@/lib/db';
 import { ensureIitmTieUpForEmployer, resolveIitmTenant } from '@/lib/employerIitmTieUp';
+import {
+  DEMO_SCREEN_SQL_PARAMS,
+  demoScreenCollegeTenantFilter,
+  demoScreenEmployerEmailFilter,
+  demoScreenStudentEmailFilter,
+} from '@/lib/demoScreenAllowlist';
 import { formatStudentSystemIdForCollege, resolveCollegeShortCode } from '@/lib/studentSystemId';
 import { SANDBOX_DEFAULT_PASSWORD, SANDBOX_PASSWORD_HASH } from '@/lib/sandboxCredentials';
 
@@ -60,12 +66,6 @@ const JOB_TITLES = [
   'Data Engineer',
 ];
 
-const EMPLOYER_TEMPLATES = [
-  { name: 'NovaStack Labs', slug: 'novastack', industry: 'Information Technology', type: 'private' },
-  { name: 'CloudBridge Systems', slug: 'cloudbridge', industry: 'IT Services', type: 'mnc' },
-  { name: 'FinPulse Analytics', slug: 'finpulse', industry: 'FinTech', type: 'startup' },
-];
-
 function pick(arr) {
   return arr[randomInt(arr.length)];
 }
@@ -76,70 +76,64 @@ function randomRollSuffix() {
   return `CS${year}${num}`;
 }
 
-async function pickRandomTenant(client) {
+async function pickDemoScreenTenant(client, tenantId) {
+  const collegeSlugs = DEMO_SCREEN_SQL_PARAMS.collegeSlugs;
+  const collegeAdmins = DEMO_SCREEN_SQL_PARAMS.collegeAdminEmails;
+  const collegeFilter = demoScreenCollegeTenantFilter('t', 'u', 2, 3);
+
+  if (tenantId) {
+    const res = await client.query(
+      `SELECT t.id, t.name, t.short_code
+       FROM tenants t
+       WHERE t.id = $1::uuid
+         AND t.is_active = true
+         AND t.type = 'college'
+         AND NULLIF(TRIM(t.short_code), '') IS NOT NULL
+         AND ${collegeFilter}
+       LIMIT 1`,
+      [tenantId, collegeSlugs, collegeAdmins],
+    );
+    return res.rows[0] || null;
+  }
+
   const res = await client.query(
-    `SELECT id, name, short_code
-     FROM tenants
-     WHERE is_active = true
-       AND NULLIF(TRIM(short_code), '') IS NOT NULL
+    `SELECT t.id, t.name, t.short_code
+     FROM tenants t
+     WHERE t.is_active = true
+       AND t.type = 'college'
+       AND NULLIF(TRIM(t.short_code), '') IS NOT NULL
+       AND ${demoScreenCollegeTenantFilter('t', 'u', 1, 2)}
      ORDER BY RANDOM()
      LIMIT 1`,
+    [collegeSlugs, collegeAdmins],
   );
   return res.rows[0] || null;
 }
 
 async function ensureEmployerForTenant(client, tenantId) {
   const existing = await client.query(
-    `SELECT ea.employer_id, ep.company_name
+    `SELECT ea.employer_id, ep.company_name, u.email
      FROM employer_approvals ea
      JOIN employer_profiles ep ON ep.id = ea.employer_id
-     WHERE ea.tenant_id = $1::uuid AND ea.status = 'approved'
+     JOIN users u ON u.id = ep.user_id
+     WHERE ea.tenant_id = $1::uuid
+       AND ea.status = 'approved'
+       AND ${demoScreenEmployerEmailFilter('u.email', 2)}
      ORDER BY RANDOM()
      LIMIT 1`,
-    [tenantId],
+    [tenantId, DEMO_SCREEN_SQL_PARAMS.employerEmails],
   );
   if (existing.rows.length) {
     const employerId = existing.rows[0].employer_id;
     await ensureIitmTieUpForEmployer(client, employerId);
-    return { employerId, companyName: existing.rows[0].company_name };
+    return { ok: true, employerId, companyName: existing.rows[0].company_name };
   }
 
-  const tpl = pick(EMPLOYER_TEMPLATES);
-  const slug = `${tpl.slug}-${tenantId.slice(0, 8)}-${randomInt(1000, 9999)}`;
-  const email = `hr.${slug}@${DEMO_EMAIL_DOMAIN}`;
-
-  const userRes = await client.query(
-    `INSERT INTO users (tenant_id, email, communication_email, password_hash, role, first_name, last_name, is_verified, is_active, email_verified_at)
-     VALUES ($1::uuid, $2, $2, $3, 'employer', $4, 'HR', true, true, NOW())
-     ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
-     RETURNING id`,
-    [tenantId, email, SANDBOX_PASSWORD_HASH, tpl.name],
-  );
-  const userId = userRes.rows[0].id;
-
-  const empRes = await client.query(
-    `INSERT INTO employer_profiles (user_id, company_name, company_slug, industry, company_type, headquarters, is_verified)
-     VALUES ($1::uuid, $2, $3, $4, $5, 'India', true)
-     RETURNING id, company_name`,
-    [userId, tpl.name, slug, tpl.industry, tpl.type],
-  );
-  const employerId = empRes.rows[0].id;
-
-  const appr = await client.query(
-    `SELECT 1 FROM employer_approvals WHERE tenant_id = $1::uuid AND employer_id = $2::uuid LIMIT 1`,
-    [tenantId, employerId],
-  );
-  if (!appr.rows.length) {
-    await client.query(
-      `INSERT INTO employer_approvals (tenant_id, employer_id, status, approved_at, created_at)
-       VALUES ($1::uuid, $2::uuid, 'approved', NOW(), NOW())`,
-      [tenantId, employerId],
-    );
-  }
-
-  await ensureIitmTieUpForEmployer(client, employerId);
-
-  return { employerId, companyName: empRes.rows[0].company_name };
+  return {
+    ok: false,
+    error:
+      'No demo-screen employer (TechCorp, GlobalSoft, Infosys, Innovent Labs, FinEdge) is approved on this campus. Run “Ensure IIT Madras tie-up” or approve them in the college UI.',
+  };
 }
 
 /**
@@ -154,20 +148,16 @@ export async function createDemoStudents(options = {}) {
     for (let i = 0; i < count; i += 1) {
       let tenant = null;
       if (options.tenantId) {
-        const t = await client.query(
-          `SELECT id, name, short_code FROM tenants WHERE id = $1::uuid AND is_active = true LIMIT 1`,
-          [options.tenantId],
-        );
-        tenant = t.rows[0];
+        tenant = await pickDemoScreenTenant(client, options.tenantId);
       } else {
-        tenant = await pickRandomTenant(client);
+        tenant = await pickDemoScreenTenant(client);
       }
       if (!tenant) {
         results.push({
           ok: false,
           error: options.tenantId
-            ? 'College not found or inactive'
-            : 'No active college with a short_code found (required for system IDs like IITM-CS2021001)',
+            ? 'Demo college not found (IIT Madras, NIT Trichy, or BITS Pilani only)'
+            : 'No demo college available (IIT Madras, NIT Trichy, or BITS Pilani)',
         });
         continue;
       }
@@ -272,28 +262,29 @@ export async function createDemoJobs(options = {}) {
   await transaction(async (client) => {
     let tenants = [];
     if (options.tenantId) {
-      tenants = (
-        await client.query(`SELECT id, name FROM tenants WHERE id = $1::uuid AND is_active = true`, [
-          options.tenantId,
-        ])
-      ).rows;
+      const row = await pickDemoScreenTenant(client, options.tenantId);
+      if (row) tenants = [{ id: row.id, name: row.name }];
     } else {
       const iitm = await resolveIitmTenant(client);
       if (iitm) tenants = [iitm];
       else {
-        tenants = (
-          await client.query(`SELECT id, name FROM tenants WHERE is_active = true ORDER BY name LIMIT 1`)
-        ).rows;
+        const row = await pickDemoScreenTenant(client);
+        if (row) tenants = [{ id: row.id, name: row.name }];
       }
     }
     if (!tenants.length) {
-      results.push({ ok: false, error: 'No active colleges' });
+      results.push({ ok: false, error: 'No demo college available (IIT Madras, NIT Trichy, or BITS Pilani)' });
       return;
     }
 
     for (let i = 0; i < count; i += 1) {
-      const tenant = tenants[0] || pick(tenants);
-      const { employerId, companyName } = await ensureEmployerForTenant(client, tenant.id);
+      const tenant = tenants[0];
+      const employer = await ensureEmployerForTenant(client, tenant.id);
+      if (!employer.ok) {
+        results.push({ ok: false, error: employer.error });
+        continue;
+      }
+      const { employerId, companyName } = employer;
       const title = pick(JOB_TITLES);
       const salaryMin =
         jobType === 'internship'
@@ -380,7 +371,7 @@ export async function applyDemoStudentToJob(options = {}) {
          AND COALESCE(sp.is_deleted, false) = false
          AND COALESCE(sp.placement_status, 'unplaced') = 'unplaced'
          AND sp.is_verified = true
-         AND u.email LIKE '%@${DEMO_EMAIL_DOMAIN}'
+         AND ${demoScreenStudentEmailFilter('u.email', options.tenantId ? 2 : 1)}
          AND (
            sp.resume_url IS NOT NULL AND TRIM(sp.resume_url) <> ''
            OR EXISTS (
@@ -395,7 +386,9 @@ export async function applyDemoStudentToJob(options = {}) {
          ${options.tenantId ? 'AND sp.tenant_id = $1::uuid' : ''}
        ORDER BY RANDOM()
        LIMIT 1`,
-      options.tenantId ? [options.tenantId] : [],
+      options.tenantId
+        ? [options.tenantId, DEMO_SCREEN_SQL_PARAMS.studentEmails]
+        : [DEMO_SCREEN_SQL_PARAMS.studentEmails],
     );
 
     if (!studentRes.rows.length) {
@@ -403,7 +396,7 @@ export async function applyDemoStudentToJob(options = {}) {
         action: actionId,
         ok: false,
         error:
-          'No eligible demo student found (unplaced, @placementhub.test email, with CV). Create a student first.',
+          'No eligible demo-screen student found (Arjun, Sneha Rao, or Rohan — unplaced, with CV).',
         results: [],
       };
     }
@@ -498,24 +491,25 @@ export async function createDemoPlacementDrive(options = {}) {
   return transaction(async (client) => {
     let tenant;
     if (options.tenantId) {
-      tenant = (
-        await client.query(`SELECT id, name FROM tenants WHERE id = $1::uuid AND is_active = true LIMIT 1`, [
-          options.tenantId,
-        ])
-      ).rows[0];
+      tenant = await pickDemoScreenTenant(client, options.tenantId);
     } else {
       tenant = await resolveIitmTenant(client);
-      if (!tenant) {
-        tenant = (
-          await client.query(`SELECT id, name FROM tenants WHERE is_active = true ORDER BY name LIMIT 1`)
-        ).rows[0];
-      }
+      if (!tenant) tenant = await pickDemoScreenTenant(client);
     }
     if (!tenant) {
-      return { action: 'request-drive', ok: false, error: 'No active college', results: [] };
+      return {
+        action: 'request-drive',
+        ok: false,
+        error: 'No demo college available (IIT Madras, NIT Trichy, or BITS Pilani)',
+        results: [],
+      };
     }
 
-    const { employerId, companyName } = await ensureEmployerForTenant(client, tenant.id);
+    const employer = await ensureEmployerForTenant(client, tenant.id);
+    if (!employer.ok) {
+      return { action: 'request-drive', ok: false, error: employer.error, results: [] };
+    }
+    const { employerId, companyName } = employer;
     const title = `${companyName} — ${pick(JOB_TITLES)} drive`;
     const driveType = pick(DRIVE_TYPES);
     const driveDate = new Date();
@@ -621,20 +615,22 @@ export async function applyDemoStudentToDrive(options = {}) {
        WHERE sp.archived_at IS NULL
          AND COALESCE(sp.is_deleted, false) = false
          AND COALESCE(sp.placement_status, 'unplaced') = 'unplaced'
-         AND u.email LIKE '%@${DEMO_EMAIL_DOMAIN}'
+         AND ${demoScreenStudentEmailFilter('u.email', options.tenantId ? 2 : 1)}
          AND (
            sp.resume_url IS NOT NULL AND TRIM(sp.resume_url) <> ''
            OR EXISTS (SELECT 1 FROM student_documents sd WHERE sd.student_id = sp.id AND sd.document_type = 'resume')
          )
          ${options.tenantId ? 'AND sp.tenant_id = $1::uuid' : ''}
        ORDER BY RANDOM() LIMIT 1`,
-      options.tenantId ? [options.tenantId] : [],
+      options.tenantId
+        ? [options.tenantId, DEMO_SCREEN_SQL_PARAMS.studentEmails]
+        : [DEMO_SCREEN_SQL_PARAMS.studentEmails],
     );
     if (!studentRes.rows.length) {
       return {
         action: 'apply-to-drive',
         ok: false,
-        error: 'No eligible demo student with CV. Create student first.',
+        error: 'No eligible demo-screen student with CV (Arjun, Sneha Rao, or Rohan).',
         results: [],
       };
     }
@@ -714,11 +710,13 @@ export async function advanceDemoApplication(options = {}) {
          JOIN users u ON u.id = sp.user_id
          JOIN job_postings jp ON jp.id = pa.job_id
          JOIN employer_profiles ep ON ep.id = jp.employer_id
-         WHERE u.email LIKE '%@${DEMO_EMAIL_DOMAIN}'
+         WHERE ${demoScreenStudentEmailFilter('u.email', options.tenantId ? 2 : 1)}
            ${options.tenantId ? 'AND sp.tenant_id = $1::uuid' : ''}
          ORDER BY pa.applied_at DESC NULLS LAST
          LIMIT 1`,
-        options.tenantId ? [options.tenantId] : [],
+        options.tenantId
+          ? [options.tenantId, DEMO_SCREEN_SQL_PARAMS.studentEmails]
+          : [DEMO_SCREEN_SQL_PARAMS.studentEmails],
       );
       if (prog.rows.length) {
         const row = prog.rows[0];
@@ -754,11 +752,13 @@ export async function advanceDemoApplication(options = {}) {
        JOIN users u ON u.id = sp.user_id
        JOIN placement_drives d ON d.id = a.drive_id
        JOIN employer_profiles ep ON ep.id = d.employer_id
-       WHERE u.email LIKE '%@${DEMO_EMAIL_DOMAIN}'
+       WHERE ${demoScreenStudentEmailFilter('u.email', options.tenantId ? 2 : 1)}
          ${options.tenantId ? 'AND sp.tenant_id = $1::uuid' : ''}
        ORDER BY a.applied_at DESC NULLS LAST
        LIMIT 1`,
-      options.tenantId ? [options.tenantId] : [],
+      options.tenantId
+        ? [options.tenantId, DEMO_SCREEN_SQL_PARAMS.studentEmails]
+        : [DEMO_SCREEN_SQL_PARAMS.studentEmails],
     );
     if (!drv.rows.length) {
       return { action: 'advance-application', ok: false, error: 'No drive application found', results: [] };
@@ -786,34 +786,21 @@ export async function advanceDemoApplication(options = {}) {
   });
 }
 
-/**
- * One row per college display name. When duplicates exist (e.g. seed + registration),
- * prefer the canonical seed tenant, then the campus with the most students.
- */
-const DEDUPED_ACTIVE_COLLEGES_SQL = `
-  SELECT DISTINCT ON (LOWER(TRIM(t.name)))
-    t.id, t.name, t.short_code, t.slug, t.city
-  FROM tenants t
-  LEFT JOIN (
-    SELECT tenant_id, COUNT(*)::bigint AS student_count
-    FROM users
-    WHERE role = 'student'
-    GROUP BY tenant_id
-  ) sc ON sc.tenant_id = t.id
-  WHERE t.is_active = true AND t.type = 'college'
-  ORDER BY
-    LOWER(TRIM(t.name)),
-    (t.id::text LIKE 'a1000000-0000-0000-0000-%') DESC,
-    COALESCE(sc.student_count, 0) DESC,
-    t.created_at ASC NULLS LAST,
-    t.id ASC
-`;
-
-/** List active colleges for optional dropdown in UI. */
+/** List demo-screen colleges for optional dropdown in UI (IITM, NITT, BITS). */
 export async function listDemoColleges() {
   const res = await query(
-    `${DEDUPED_ACTIVE_COLLEGES_SQL}
-     ORDER BY name`,
+    `SELECT id, name, short_code, slug, city
+     FROM tenants
+     WHERE is_active = true
+       AND type = 'college'
+       AND slug = ANY($1::text[])
+     ORDER BY CASE slug
+       WHEN 'iit-madras' THEN 0
+       WHEN 'nit-trichy' THEN 1
+       WHEN 'bits-pilani' THEN 2
+       ELSE 3
+     END`,
+    [DEMO_SCREEN_SQL_PARAMS.collegeSlugs],
   );
   return res.rows;
 }

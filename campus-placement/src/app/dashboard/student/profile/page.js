@@ -11,8 +11,11 @@ import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 import { uploadStudentAvatarViaServer } from '@/lib/clientStudentAvatarUpload';
 import { studentAvatarAcceptAttr, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
-import { validateStudentAcademicScores } from '@/lib/validators';
-import { STUDENT_DOCUMENT_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
+import { validateStudentAcademicPayload, validateEducationDetailsPayload } from '@/lib/apiInputValidation';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedTextInput from '@/components/form/ValidatedTextInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { STUDENT_RESUME_ACCEPT_ATTR, validateStudentResumeFileAsync } from '@/lib/studentDocumentUpload';
 import { uploadStudentDocumentViaServer } from '@/lib/clientStudentDocumentUpload';
 import TagPicker from '@/components/TagPicker';
 import StudentResumeUploadCard from '@/components/student/StudentResumeUploadCard';
@@ -123,60 +126,6 @@ function asList(value) {
   return Array.isArray(value) ? value : [];
 }
 
-/** Expected salary stored as ₹/year (same unit as preferences UI). */
-const MAX_EXPECTED_SALARY = 50_000_000;
-
-function validateExpectedSalary(p) {
-  const min = p.expectedSalaryMin === '' || p.expectedSalaryMin == null ? null : Number(p.expectedSalaryMin);
-  const max = p.expectedSalaryMax === '' || p.expectedSalaryMax == null ? null : Number(p.expectedSalaryMax);
-  if (min != null) {
-    if (!Number.isFinite(min) || min < 0) {
-      return 'Expected salary minimum must be zero or a positive number.';
-    }
-    if (min > MAX_EXPECTED_SALARY) {
-      return 'Expected salary minimum is above the allowed maximum.';
-    }
-  }
-  if (max != null) {
-    if (!Number.isFinite(max) || max < 0) {
-      return 'Expected salary maximum must be zero or a positive number.';
-    }
-    if (max > MAX_EXPECTED_SALARY) {
-      return 'Expected salary maximum is above the allowed maximum.';
-    }
-  }
-  if (min != null && max != null && min > max) {
-    return 'Expected salary minimum cannot be greater than the maximum.';
-  }
-  return null;
-}
-
-function parseSalaryInput(value) {
-  if (value === '' || value == null) return '';
-  const n = typeof value === 'number' ? value : parseFloat(String(value));
-  if (!Number.isFinite(n)) return '';
-  if (n < 0) return 0;
-  if (n > MAX_EXPECTED_SALARY) return MAX_EXPECTED_SALARY;
-  return n;
-}
-
-function clampCgpaInput(value) {
-  if (value === '' || value == null) return '';
-  const n = typeof value === 'number' ? value : parseFloat(String(value));
-  if (!Number.isFinite(n)) return '';
-  if (n > 10) return 10;
-  if (n < 0) return 0;
-  return n;
-}
-
-function clampPercentInput(value) {
-  if (value === '' || value == null) return '';
-  const n = typeof value === 'number' ? value : parseFloat(String(value));
-  if (!Number.isFinite(n)) return '';
-  if (n > 100) return 100;
-  if (n < 0) return 0;
-  return n;
-}
 
 export default function StudentProfilePage() {
   const { data: session, status, update } = useSession();
@@ -185,6 +134,7 @@ export default function StudentProfilePage() {
   const [activeTab, setActiveTab] = useState('academics');
   const [editingTab, setEditingTab] = useState(null);
   const [suggestingSkills, setSuggestingSkills] = useState(false);
+  const [suggestSkillsFeedback, setSuggestSkillsFeedback] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [cvUploading, setCvUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -260,19 +210,25 @@ export default function StudentProfilePage() {
   }, []);
 
   const handleSave = async () => {
-    const academicErr = validateStudentAcademicScores({
+    const validationErr = validateStudentAcademicPayload({
       cgpa: profile.cgpa,
       tenthPercentage: profile.tenthPercentage,
       twelfthPercentage: profile.twelfthPercentage,
       diplomaPercentage: profile.diplomaPercentage,
+      batchYear: profile.batchYear,
+      graduationYear: profile.graduationYear,
+      backlogsActive: profile.backlogsActive,
+      backlogsHistory: profile.backlogsHistory,
+      expectedSalaryMin: profile.expectedSalaryMin,
+      expectedSalaryMax: profile.expectedSalaryMax,
     });
-    if (academicErr) {
-      addToast(academicErr, 'warning');
+    if (validationErr) {
+      addToast(validationErr, 'warning');
       return;
     }
-    const salaryErr = validateExpectedSalary(profile);
-    if (salaryErr) {
-      addToast(salaryErr, 'warning');
+    const educationErr = validateEducationDetailsPayload(profile.educationDetails);
+    if (educationErr) {
+      addToast(educationErr, 'warning');
       return;
     }
     const savedSummary = editingTab === 'header';
@@ -482,8 +438,14 @@ export default function StudentProfilePage() {
 
   const onCvChange = async (e) => {
     const file = e.target.files?.[0];
-    e.target.value = '';
     if (!file) return;
+
+    e.target.value = '';
+    const validated = await validateStudentResumeFileAsync(file);
+    if (!validated.ok) {
+      addToast(validated.error, 'warning');
+      return;
+    }
 
     setCvUploading(true);
     try {
@@ -692,25 +654,14 @@ export default function StudentProfilePage() {
                   </span>
                 </div>
               </div>
-              <div>
-                <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
-                  CGPA
+              <div className="drive-info-item" style={{ margin: 0 }}>
+                <div className="drive-info-label">CGPA</div>
+                <div className="drive-info-value" title="Assigned by your college">
+                  {Number.isFinite(cgpaNum) ? `${cgpaNum} / 10` : '—'}
+                  <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
+                    Set by placement office — not editable here
+                  </span>
                 </div>
-                <input
-                  className="form-input"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="10"
-                  style={{ maxWidth: '10rem' }}
-                  value={profile.cgpa === '' ? '' : profile.cgpa}
-                  onChange={(e) =>
-                    persist({
-                      ...profile,
-                      cgpa: e.target.value === '' ? '' : clampCgpaInput(e.target.value),
-                    })
-                  }
-                />
               </div>
               <div>
                 <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
@@ -965,48 +916,28 @@ export default function StudentProfilePage() {
             </div>
             <div className="drive-info-item">
               <div className="drive-info-label">CGPA</div>
-              {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="10"
-                  value={profile.cgpa === '' ? '' : profile.cgpa}
-                  onChange={(e) =>
-                    persist({
-                      ...profile,
-                      cgpa: e.target.value === '' ? '' : clampCgpaInput(e.target.value),
-                    })
-                  }
-                />
-              ) : (
-                <div
-                  className="drive-info-value"
-                  style={{
-                    color: Number.isFinite(cgpaNum) && cgpaNum >= 8 ? 'var(--success-600)' : 'var(--text-primary)',
-                  }}
-                >
-                  {Number.isFinite(cgpaNum) ? `${cgpaNum} / 10` : '—'}
-                </div>
-              )}
+              <div
+                className="drive-info-value"
+                title="Assigned by your college"
+                style={{
+                  color: Number.isFinite(cgpaNum) && cgpaNum >= 8 ? 'var(--success-600)' : undefined,
+                }}
+              >
+                {Number.isFinite(cgpaNum) ? `${cgpaNum} / 10` : '—'}
+                <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
+                  Set by placement office — not editable
+                </span>
+              </div>
             </div>
             <div className="drive-info-item">
               <div className="drive-info-label">10th %</div>
               {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
+                <ValidatedNumberInput
+                  fieldId={FIELD_IDS.STUDENT_PERCENT}
+                  context={{ label: 'Class X %' }}
                   step="0.01"
-                  min="0"
-                  max="100"
                   value={profile.tenthPercentage === '' ? '' : profile.tenthPercentage}
-                  onChange={(e) =>
-                    persist({
-                      ...profile,
-                      tenthPercentage: e.target.value === '' ? '' : clampPercentInput(e.target.value),
-                    })
-                  }
+                  onChange={(v) => persist({ ...profile, tenthPercentage: v })}
                 />
               ) : (
                 <div className="drive-info-value">
@@ -1017,19 +948,12 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">12th %</div>
               {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
+                <ValidatedNumberInput
+                  fieldId={FIELD_IDS.STUDENT_PERCENT}
+                  context={{ label: 'Class XII %' }}
                   step="0.01"
-                  min="0"
-                  max="100"
                   value={profile.twelfthPercentage === '' ? '' : profile.twelfthPercentage}
-                  onChange={(e) =>
-                    persist({
-                      ...profile,
-                      twelfthPercentage: e.target.value === '' ? '' : clampPercentInput(e.target.value),
-                    })
-                  }
+                  onChange={(v) => persist({ ...profile, twelfthPercentage: v })}
                 />
               ) : (
                 <div className="drive-info-value">
@@ -1040,19 +964,12 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">Diploma %</div>
               {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
+                <ValidatedNumberInput
+                  fieldId={FIELD_IDS.STUDENT_PERCENT}
+                  context={{ label: 'Diploma %' }}
                   step="0.01"
-                  min="0"
-                  max="100"
                   value={profile.diplomaPercentage === '' ? '' : profile.diplomaPercentage}
-                  onChange={(e) =>
-                    persist({
-                      ...profile,
-                      diplomaPercentage: e.target.value === '' ? '' : clampPercentInput(e.target.value),
-                    })
-                  }
+                  onChange={(v) => persist({ ...profile, diplomaPercentage: v })}
                 />
               ) : (
                 <div className="drive-info-value">
@@ -1063,16 +980,11 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">Graduation year</div>
               {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
+                <ValidatedNumberInput
+                  fieldId={FIELD_IDS.STUDENT_GRAD_YEAR}
+                  context={{ batchYear: profile.batchYear }}
                   value={profile.graduationYear === '' ? '' : profile.graduationYear}
-                  onChange={(e) =>
-                    persist({
-                      ...profile,
-                      graduationYear: e.target.value === '' ? '' : parseInt(e.target.value, 10),
-                    })
-                  }
+                  onChange={(v) => persist({ ...profile, graduationYear: v })}
                 />
               ) : (
                 <div className="drive-info-value">
@@ -1087,12 +999,10 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">Active Backlogs</div>
               {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
-                  min="0"
+                <ValidatedNumberInput
+                  fieldId={FIELD_IDS.STUDENT_BACKLOGS_ACTIVE}
                   value={profile.backlogsActive ?? 0}
-                  onChange={(e) => persist({ ...profile, backlogsActive: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })}
+                  onChange={(v) => persist({ ...profile, backlogsActive: v === '' ? 0 : v })}
                 />
               ) : (
                 <div className="drive-info-value">{profile.backlogsActive ?? 0}</div>
@@ -1101,12 +1011,10 @@ export default function StudentProfilePage() {
             <div className="drive-info-item">
               <div className="drive-info-label">Total Backlogs</div>
               {editing ? (
-                <input
-                  className="form-input"
-                  type="number"
-                  min="0"
+                <ValidatedNumberInput
+                  fieldId={FIELD_IDS.STUDENT_BACKLOGS_TOTAL}
                   value={profile.backlogsHistory ?? 0}
-                  onChange={(e) => persist({ ...profile, backlogsHistory: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })}
+                  onChange={(v) => persist({ ...profile, backlogsHistory: v === '' ? 0 : v })}
                 />
               ) : (
                 <div className="drive-info-value">{profile.backlogsHistory ?? 0}</div>
@@ -1135,13 +1043,21 @@ export default function StudentProfilePage() {
             ].map(([key, label]) => {
               const row = (profile.educationDetails || {})[key] || {};
               const hasDetails = row.institution || row.board || row.year || row.notes;
+              const boardLabel =
+                key === 'tenth' ? 'Class X board' : key === 'twelfth' ? 'Class XII board' : 'Diploma board';
               return (
                 <div key={key} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.875rem', background: 'var(--bg-secondary)' }}>
                   <div className="drive-info-label" style={{ marginBottom: '0.6rem' }}>{label} Details</div>
                   {editing ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.6rem' }}>
                       <input className="form-input" placeholder="School / institution" value={row.institution || ''} onChange={(e) => updateEducationDetail(key, { institution: e.target.value })} />
-                      <input className="form-input" placeholder="Board / university" value={row.board || ''} onChange={(e) => updateEducationDetail(key, { board: e.target.value })} />
+                      <ValidatedTextInput
+                        fieldId={FIELD_IDS.EDUCATION_BOARD}
+                        context={{ label: boardLabel }}
+                        placeholder="Board / university"
+                        value={row.board || ''}
+                        onChange={(v) => updateEducationDetail(key, { board: v })}
+                      />
                       <input className="form-input" type="number" placeholder="Passing year" value={row.year || ''} onChange={(e) => updateEducationDetail(key, { year: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                       <textarea className="form-textarea" rows={2} style={{ gridColumn: '1 / -1' }} placeholder="Notes, stream, achievements, or subjects" value={row.notes || ''} onChange={(e) => updateEducationDetail(key, { notes: e.target.value })} />
                     </div>
@@ -1347,6 +1263,7 @@ export default function StudentProfilePage() {
                 disabled={suggestingSkills}
                 onClick={async () => {
                   setSuggestingSkills(true);
+                  setSuggestSkillsFeedback(null);
                   try {
                     const res = await fetch('/api/student/profile/suggest-skills', {
                       method: 'POST',
@@ -1355,12 +1272,34 @@ export default function StudentProfilePage() {
                       body: JSON.stringify({}),
                     });
                     const json = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(json?.error || json?.message || 'Could not suggest skills');
-                    const next = Array.isArray(json.suggestions) ? json.suggestions : [];
-                    if (!next.length) {
-                      addToast(json.message || 'No new skills found from your CV or profile text.', 'info');
+                    if (!res.ok) {
+                      const msg =
+                        json?.failure?.message || json?.error || json?.message || 'Could not suggest skills';
+                      setSuggestSkillsFeedback({ type: 'error', message: msg, meta: json?.meta || null });
+                      addToast(msg, 'error');
                       return;
                     }
+
+                    if (json.failure || json.ok === false) {
+                      const msg = json.failure?.message || 'No skills could be suggested from your CV.';
+                      setSuggestSkillsFeedback({
+                        type: 'error',
+                        message: msg,
+                        warnings: json.warnings,
+                        meta: json.meta || null,
+                      });
+                      addToast(msg, 'warning');
+                      return;
+                    }
+
+                    const next = Array.isArray(json.suggestions) ? json.suggestions : [];
+                    if (!next.length) {
+                      const msg = json.message || 'No new skills found from your CV.';
+                      setSuggestSkillsFeedback({ type: 'error', message: msg, meta: json.meta || null });
+                      addToast(msg, 'info');
+                      return;
+                    }
+
                     setProfile((p) => {
                       const have = new Set((p.skills || []).map((s) => String(s).toLowerCase()));
                       const merged = [...(p.skills || [])];
@@ -1369,9 +1308,19 @@ export default function StudentProfilePage() {
                       }
                       return { ...p, skills: merged };
                     });
-                    addToast(`Added ${next.length} skill tag(s) from your profile/CV.`, 'success');
+
+                    const warnText = Array.isArray(json.warnings) ? json.warnings.filter(Boolean).join(' ') : '';
+                    setSuggestSkillsFeedback({
+                      type: warnText ? 'warning' : 'success',
+                      message: json.message || `Added ${next.length} skill tag(s) from your CV.`,
+                      warnings: json.warnings,
+                      meta: json.meta || null,
+                    });
+                    addToast(json.message || `Added ${next.length} skill tag(s) from your CV.`, warnText ? 'info' : 'success');
                   } catch (err) {
-                    addToast(err.message || 'Suggest skills failed', 'error');
+                    const msg = err.message || 'Suggest skills failed';
+                    setSuggestSkillsFeedback({ type: 'error', message: msg });
+                    addToast(msg, 'error');
                   } finally {
                     setSuggestingSkills(false);
                   }
@@ -1391,6 +1340,69 @@ export default function StudentProfilePage() {
               <p className="text-sm" style={{ marginTop: '0.5rem', color: 'var(--text-tertiary)' }}>
                 Press Enter or comma to add a tag. Use &quot;Suggest from CV&quot; after uploading a résumé to pull likely skills.
               </p>
+              {suggestSkillsFeedback ? (
+                <div
+                  role="alert"
+                  className="text-sm"
+                  style={{
+                    marginTop: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md, 8px)',
+                    border: '1px solid',
+                    borderColor:
+                      suggestSkillsFeedback.type === 'success'
+                        ? 'var(--success-300, #86efac)'
+                        : suggestSkillsFeedback.type === 'warning'
+                          ? 'var(--warning-300, #fcd34d)'
+                          : 'var(--danger-300, #fca5a5)',
+                    background:
+                      suggestSkillsFeedback.type === 'success'
+                        ? 'var(--success-50, #f0fdf4)'
+                        : suggestSkillsFeedback.type === 'warning'
+                          ? 'var(--warning-50, #fffbeb)'
+                          : 'var(--danger-50, #fef2f2)',
+                    color: 'var(--text-primary)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong style={{ display: 'block', marginBottom: '0.25rem' }}>
+                    {suggestSkillsFeedback.type === 'success'
+                      ? 'Skills suggested'
+                      : suggestSkillsFeedback.type === 'warning'
+                        ? 'Skills suggested with warnings'
+                        : 'Could not suggest skills'}
+                  </strong>
+                  <span>{suggestSkillsFeedback.message}</span>
+                  {Array.isArray(suggestSkillsFeedback.warnings) && suggestSkillsFeedback.warnings.length > 0 ? (
+                    <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+                      {suggestSkillsFeedback.warnings.map((w) => (
+                        <li key={w}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {suggestSkillsFeedback.meta ? (
+                    <p className="text-xs text-tertiary" style={{ margin: '0.5rem 0 0' }}>
+                      {suggestSkillsFeedback.meta.textSource
+                        ? `Text source: ${suggestSkillsFeedback.meta.textSource}. `
+                        : null}
+                      {typeof suggestSkillsFeedback.meta.textLength === 'number'
+                        ? `${suggestSkillsFeedback.meta.textLength} characters read. `
+                        : null}
+                      {typeof suggestSkillsFeedback.meta.totalKeysAvailable === 'number'
+                        ? `${suggestSkillsFeedback.meta.nvidiaKeyCount ?? 0} NVIDIA + ${Math.max(0, suggestSkillsFeedback.meta.totalKeysAvailable - (suggestSkillsFeedback.meta.nvidiaKeyCount ?? 0))} fallback key(s) available. `
+                        : null}
+                      {typeof suggestSkillsFeedback.meta.keysTried === 'number'
+                        ? `${suggestSkillsFeedback.meta.keysTried} key(s) used for this request. `
+                        : null}
+                      {suggestSkillsFeedback.meta.aiConfigured
+                        ? suggestSkillsFeedback.meta.aiUsed
+                          ? `AI extraction was used (${suggestSkillsFeedback.meta.aiLabel || suggestSkillsFeedback.meta.aiProvider || 'LLM'}). `
+                          : `AI is configured (${suggestSkillsFeedback.meta.aiLabel || suggestSkillsFeedback.meta.aiProvider || 'LLM'}) but keyword matching was used. `
+                        : 'AI is not configured (set NVIDIA_API_KEY or OPENAI_API_KEY on the server). '}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1603,35 +1615,20 @@ export default function StudentProfilePage() {
               <div className="drive-info-label">Expected salary (₹ / year)</div>
               {editing ? (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input
-                    className="form-input"
-                    type="number"
+                  <ValidatedNumberInput
+                    fieldId={FIELD_IDS.STUDENT_SALARY_MIN}
                     placeholder="Min"
-                    min={0}
                     step={10000}
-                    max={MAX_EXPECTED_SALARY}
                     value={profile.expectedSalaryMin === '' || profile.expectedSalaryMin == null ? '' : profile.expectedSalaryMin}
-                    onChange={(e) =>
-                      persist({
-                        ...profile,
-                        expectedSalaryMin: parseSalaryInput(e.target.value === '' ? '' : e.target.value),
-                      })
-                    }
+                    onChange={(v) => persist({ ...profile, expectedSalaryMin: v })}
                   />
-                  <input
-                    className="form-input"
-                    type="number"
+                  <ValidatedNumberInput
+                    fieldId={FIELD_IDS.STUDENT_SALARY_MAX}
+                    context={{ salaryMin: profile.expectedSalaryMin }}
                     placeholder="Max"
-                    min={0}
                     step={10000}
-                    max={MAX_EXPECTED_SALARY}
                     value={profile.expectedSalaryMax === '' || profile.expectedSalaryMax == null ? '' : profile.expectedSalaryMax}
-                    onChange={(e) =>
-                      persist({
-                        ...profile,
-                        expectedSalaryMax: parseSalaryInput(e.target.value === '' ? '' : e.target.value),
-                      })
-                    }
+                    onChange={(v) => persist({ ...profile, expectedSalaryMax: v })}
                   />
                 </div>
               ) : (
@@ -1796,7 +1793,7 @@ export default function StudentProfilePage() {
                 style={{ cursor: cvUploading ? 'wait' : 'pointer', margin: 0, opacity: cvUploading ? 0.7 : 1 }}
               >
                 {cvUploading ? '⏳ Uploading CV…' : '📄 Upload CV / Resume'}
-                <input type="file" accept={STUDENT_DOCUMENT_ACCEPT_ATTR} hidden disabled={cvUploading} onChange={onCvChange} />
+                <input type="file" accept={STUDENT_RESUME_ACCEPT_ATTR} hidden disabled={cvUploading} onChange={onCvChange} />
               </label>
             </div>
             <textarea className="form-textarea" value={profile.bio} onChange={(e) => persist({ ...profile, bio: e.target.value })} rows={4} />

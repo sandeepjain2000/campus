@@ -5,6 +5,15 @@ import { query, transaction } from '@/lib/db';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
 import { emailPlacementDriveRequested } from '@/lib/placementDriveEmail';
 import { findAcademicYearForDate } from '@/lib/academicYearTenant';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { DRIVE_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
+import { validateEmployerDriveDate } from '@/lib/apiInputValidation';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function getEmployerId(userId) {
   const r = await query(`SELECT id, company_name FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
@@ -20,8 +29,7 @@ async function insertPlacementDriveRequest(client, params) {
   const {
     tenantId,
     employerId,
-    jobId,
-    title,
+      title,
     description,
     driveType,
     driveDate,
@@ -88,13 +96,14 @@ export async function GET(request) {
     const campusId = searchParams.get('campusId');
 
     const baseSelect = `
-      SELECT d.id, t.name AS college, d.title AS role, d.drive_date AS date, d.drive_type AS type,
-             d.status, d.venue, d.registered_count AS registered`;
+      SELECT d.id, d.tenant_id, t.name AS college, d.title AS role, d.drive_date AS date, d.drive_type AS type,
+             d.status, d.venue, ${DRIVE_APPLICANT_COUNT_SUBQUERY} AS registered`;
     const baseFrom = `
       FROM placement_drives d
       JOIN tenants t ON t.id = d.tenant_id
       WHERE d.employer_id = $1::uuid
         AND ($2::uuid IS NULL OR d.tenant_id = $2::uuid)
+        ${AND_DRIVE_NOT_DELETED}
       ORDER BY d.drive_date NULLS LAST, d.created_at DESC`;
     const params = [emp.id, campusId || null];
 
@@ -137,7 +146,6 @@ export async function POST(request) {
       driveType = 'on_campus',
       driveDate = null,
       venue: venueIn,
-      jobId = null,
       ctcBreakup: ctcBreakupIn,
     } = body;
     const venue =
@@ -148,6 +156,11 @@ export async function POST(request) {
 
     if (!tenantId || !title?.trim()) {
       return NextResponse.json({ error: 'tenantId and title are required' }, { status: 400 });
+    }
+
+    const driveDateErr = validateEmployerDriveDate(driveDate);
+    if (driveDateErr) {
+      return NextResponse.json({ error: driveDateErr }, { status: 400 });
     }
 
     const allowedTypes = new Set(['on_campus', 'off_campus', 'virtual', 'hybrid']);
@@ -167,18 +180,6 @@ export async function POST(request) {
         throw e;
       }
 
-      if (jobId) {
-        const j = await client.query(
-          `SELECT 1 FROM job_postings WHERE id = $1::uuid AND employer_id = $2::uuid`,
-          [jobId, emp.id],
-        );
-        if (!j.rowCount) {
-          const e = new Error('jobId must belong to your company');
-          e.statusCode = 400;
-          throw e;
-        }
-      }
-
       let academicYearId = null;
       if (driveDate) {
         const yearsRes = await client.query(
@@ -192,7 +193,7 @@ export async function POST(request) {
       const { row, ctcBreakupStored } = await insertPlacementDriveRequest(client, {
         tenantId,
         employerId: emp.id,
-        jobId,
+        jobId: null,
         title: title.trim(),
         description,
         driveType,
@@ -256,6 +257,93 @@ export async function POST(request) {
     console.error('POST /api/employer/drives', e);
     const code = e.statusCode || 500;
     const safeMsg = code >= 500 ? 'Failed to create drive' : (e.message || 'Failed to create drive');
+    return NextResponse.json({ error: safeMsg }, { status: code });
+  }
+}
+
+const EMPLOYER_CANCELLABLE_STATUSES = new Set(['requested', 'approved', 'scheduled', 'in_progress']);
+
+export async function PATCH(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'employer') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const emp = await getEmployerId(session.user.id);
+    if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
+
+    const body = await request.json().catch(() => ({}));
+    const { driveId, action } = body;
+
+    if (action !== 'cancel') {
+      return NextResponse.json({ error: 'driveId and action=cancel are required' }, { status: 400 });
+    }
+    if (!driveId) {
+      return NextResponse.json({ error: 'driveId is required' }, { status: 400 });
+    }
+
+    const result = await transaction(async (client) => {
+      const meta = await client.query(
+        `SELECT d.id, d.title, d.status, d.tenant_id, d.registered_count, t.name AS college_name
+         FROM placement_drives d
+         JOIN tenants t ON t.id = d.tenant_id
+         WHERE d.id = $1::uuid AND d.employer_id = $2::uuid ${AND_DRIVE_NOT_DELETED}`,
+        [driveId, emp.id],
+      );
+      if (!meta.rows.length) {
+        const e = new Error('Drive not found');
+        e.statusCode = 404;
+        throw e;
+      }
+
+      const row = meta.rows[0];
+      if (row.status === 'cancelled') {
+        const e = new Error('This drive is already cancelled.');
+        e.statusCode = 409;
+        throw e;
+      }
+      if (!EMPLOYER_CANCELLABLE_STATUSES.has(row.status)) {
+        const e = new Error(`Cannot cancel a drive that is ${String(row.status).replace(/_/g, ' ')}.`);
+        e.statusCode = 409;
+        throw e;
+      }
+
+      const updated = await client.query(
+        `UPDATE placement_drives
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE id = $1::uuid AND employer_id = $2::uuid
+         RETURNING id, title AS role, drive_date AS date, drive_type AS type, status, venue, registered_count AS registered`,
+        [driveId, emp.id],
+      );
+
+      const adminIds = await fetchCollegeAdminUserIds(row.tenant_id, client);
+      const regNote = row.registered_count > 0 ? ` (${row.registered_count} student(s) had registered)` : '';
+      await notifyUsersOneAtATime(
+        adminIds,
+        {
+          title: `${emp.company_name} cancelled a drive`,
+          message: `${emp.company_name} cancelled the placement drive "${row.title}"${regNote}.`,
+          type: 'drive',
+          link: '/dashboard/college/drives',
+        },
+        client,
+      );
+
+      return {
+        ok: true,
+        drive: {
+          ...updated.rows[0],
+          college: row.college_name,
+        },
+      };
+    });
+
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error('PATCH /api/employer/drives', e);
+    const code = e.statusCode || 500;
+    const safeMsg = code >= 500 ? 'Failed to cancel drive' : (e.message || 'Failed to cancel drive');
     return NextResponse.json({ error: safeMsg }, { status: code });
   }
 }

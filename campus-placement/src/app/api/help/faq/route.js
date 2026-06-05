@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { rankFaqIdsWithOpenAI } from '@/lib/helpFaqOpenai';
+import { isLlmChatConfigured } from '@/lib/llmChatConfig';
 import { jsonPublicErrorLogged } from '@/lib/publicApiError';
 
 const GLOBAL_TAG = 'GLOBAL';
@@ -86,7 +87,7 @@ export async function GET(request) {
       return NextResponse.json({ screenTag, query: q, matches: anyRows.rows, scope: 'any' });
     }
 
-    const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY);
+    const hasOpenAiKey = isLlmChatConfigured();
 
     if (hasOpenAiKey) {
       const pool = await query(

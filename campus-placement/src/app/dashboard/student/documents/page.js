@@ -11,7 +11,7 @@ import { useToast } from '@/components/ToastProvider';
 import PageError from '@/components/PageError';
 import PageLoading from '@/components/PageLoading';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { STUDENT_DOCUMENT_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
+import { STUDENT_DOCUMENT_ACCEPT_ATTR, STUDENT_RESUME_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
 import { uploadStudentDocumentViaServer } from '@/lib/clientStudentDocumentUpload';
 
 const fetcher = (url) => fetch(url).then((res) => {
@@ -261,7 +261,7 @@ export default function StudentDocumentsPage() {
               <input
                 type="file"
                 hidden
-                accept={STUDENT_DOCUMENT_ACCEPT_ATTR}
+                accept={STUDENT_RESUME_ACCEPT_ATTR}
                 disabled={cvUploading}
                 onChange={onAdditionalCvSelected}
               />
@@ -306,7 +306,7 @@ export default function StudentDocumentsPage() {
                 <input
                   type="file"
                   hidden
-                  accept={STUDENT_DOCUMENT_ACCEPT_ATTR}
+                  accept={docType === 'resume' ? STUDENT_RESUME_ACCEPT_ATTR : STUDENT_DOCUMENT_ACCEPT_ATTR}
                   disabled={uploading}
                   onChange={onFileSelected}
                 />

@@ -288,7 +288,7 @@ export default function StudentPlacementCalendarPage() {
                           fontSize: '0.75rem', fontWeight: isCurDay ? 700 : 500,
                           borderRadius: '50%',
                           background: isCurDay ? 'var(--primary-500)' : hasEvent ? 'var(--primary-100)' : 'transparent',
-                          color: isCurDay ? 'white' : hasEvent ? 'var(--primary-800)' : 'var(--text-secondary)',
+                          color: isCurDay ? 'white' : hasEvent ? 'var(--primary-700)' : 'var(--text-secondary)',
                           cursor: hasEvent ? 'pointer' : 'default',
                         }} title={hasEvent ? `${getEventsForDate(curDateObj).length} event(s)` : ''}>
                           {day}

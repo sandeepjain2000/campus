@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { validatePlacementDate } from '@/lib/dateOnly';
+import { AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET() {
   try {
@@ -13,16 +20,40 @@ export async function GET() {
     const tenantId = session.user.tenantId || session.user.tenant_id;
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
-    const result = await query(
-      `SELECT id, title, event_type, start_date, end_date, is_blocking, description
-       FROM college_calendar
-       WHERE tenant_id = $1::uuid
-       ORDER BY start_date DESC, created_at DESC
-       LIMIT 500`,
-      [tenantId],
-    );
+    const [calendarRes, drivesRes] = await Promise.all([
+      query(
+        `SELECT id, title, event_type, start_date, end_date, is_blocking, description
+         FROM college_calendar
+         WHERE tenant_id = $1::uuid
+         ORDER BY start_date DESC, created_at DESC
+         LIMIT 500`,
+        [tenantId],
+      ),
+      query(
+        `SELECT d.id, d.title, d.drive_date, d.status, ep.company_name
+         FROM placement_drives d
+         LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
+         WHERE d.tenant_id = $1::uuid
+           AND d.status IN ('approved', 'scheduled', 'in_progress')
+           ${AND_DRIVE_NOT_DELETED}
+         ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC
+         LIMIT 200`,
+        [tenantId],
+      ),
+    ]);
 
-    return NextResponse.json({ events: result.rows });
+    const driveEvents = drivesRes.rows.map((d) => ({
+      id: `drive-${d.id}`,
+      title: d.company_name ? `${d.company_name} — ${d.title}` : d.title,
+      event_type: 'placement_drive',
+      start_date: d.drive_date,
+      end_date: d.drive_date,
+      is_blocking: false,
+      description: `Placement drive · ${d.status || 'scheduled'}`,
+      source: 'placement_drive',
+    }));
+
+    return NextResponse.json({ events: [...calendarRes.rows, ...driveEvents] });
   } catch (error) {
     console.error('GET /api/college/events', error);
     return NextResponse.json({ error: 'Failed to load events' }, { status: 500 });

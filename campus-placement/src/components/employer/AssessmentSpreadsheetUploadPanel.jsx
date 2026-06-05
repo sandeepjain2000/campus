@@ -1,55 +1,65 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import useSWR from 'swr';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
-import { formatDate } from '@/lib/utils';
-import { swrFetcher } from '@/lib/fetchJson';
 import { MAX_CSV_UPLOAD_BYTES, PLATFORM_SETTINGS_DEFAULTS } from '@/lib/platformSettingsDefaults';
 
 const MAX_CSV_BYTES = MAX_CSV_UPLOAD_BYTES;
 const CSV_MIME_TYPES = new Set(['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain']);
 
 /**
- * CSV upload form for Assessment uploads (used inside a modal on the main page).
+ * CSV upload for Assessment uploads — includes campus + target context.
+ * @param {{
+ *   kind: 'internship' | 'jobs' | 'drive' | 'projects',
+ *   tenantId?: string,
+ *   driveId?: string,
+ *   jobId?: string,
+ *   targetId?: string,
+ *   disabled?: boolean,
+ *   onUploaded?: (json: object) => void,
+ *   onNeedsReview?: () => void
+ * }} props
  */
-export function AssessmentCsvUploadForm({ onUploaded }) {
+export function AssessmentCsvUploadForm({
+  kind,
+  tenantId,
+  driveId = '',
+  jobId = '',
+  targetId = '',
+  disabled = false,
+  onUploaded,
+  onNeedsReview,
+}) {
   const { addToast } = useToast();
-  const [targetType, setTargetType] = useState('drive');
-  const [driveId, setDriveId] = useState('');
-  const [jobId, setJobId] = useState('');
-  const [tenantId, setTenantId] = useState('');
+  const router = useRouter();
   const [file, setFile] = useState(null);
-  const [rounds, setRounds] = useState(['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5']);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: drivesData } = useSWR('/api/employer/drives', swrFetcher);
-  const { data: jobsData } = useSWR('/api/employer/jobs', swrFetcher);
-
-  const drives = Array.isArray(drivesData?.drives) ? drivesData.drives : [];
-  const jobs = Array.isArray(jobsData?.jobs) ? jobsData.jobs : [];
-  const selectedDrive = useMemo(() => drives.find((d) => d.id === driveId), [drives, driveId]);
-
-  const setRoundAt = (index, value) => {
-    setRounds((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  };
-
-  const downloadTemplate = () => {
-    window.location.href = '/api/employer/assessments/template';
-  };
+  const resolvedDriveId = (kind === 'drive' ? driveId || targetId : driveId || '').trim();
+  const resolvedJobId = (kind !== 'drive' ? jobId || targetId : jobId || '').trim();
 
   const onUpload = async () => {
+    if (!tenantId) {
+      addToast('Select a campus before uploading.', 'warning');
+      return;
+    }
+    if (!resolvedDriveId && !resolvedJobId) {
+      addToast(
+        kind === 'drive'
+          ? 'Open the Drive tab, select your placement drive, then upload (or use a CSV with placement_drive_id filled).'
+          : 'Select a job posting above before uploading.',
+        'warning',
+      );
+      return;
+    }
     if (!file) {
-      addToast('Please select a CSV file first.', 'warning');
+      addToast('Select a CSV file first.', 'warning');
       return;
     }
     const lowerName = String(file.name || '').toLowerCase();
     if (!lowerName.endsWith('.csv')) {
-      addToast('Please upload a .csv file.', 'warning');
+      addToast('Upload a .csv file.', 'warning');
       return;
     }
     if (file.size > MAX_CSV_BYTES) {
@@ -57,19 +67,7 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
       return;
     }
     if (file.type && !CSV_MIME_TYPES.has(file.type)) {
-      addToast('Please upload a valid CSV file.', 'warning');
-      return;
-    }
-    if (targetType === 'job' && !jobId) {
-      addToast('Select a job.', 'warning');
-      return;
-    }
-    if (targetType === 'job' && !tenantId.trim()) {
-      addToast('Tenant ID is required for job-level upload.', 'warning');
-      return;
-    }
-    if (rounds.some((r) => !String(r || '').trim())) {
-      addToast('Please provide names for all 5 rounds.', 'warning');
+      addToast('Upload a valid CSV file.', 'warning');
       return;
     }
 
@@ -77,12 +75,10 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
     try {
       const form = new FormData();
       form.append('file', file);
-      if (targetType === 'drive' && driveId) form.append('driveId', driveId);
-      if (targetType === 'job') {
-        form.append('jobId', jobId);
-        form.append('tenantId', tenantId.trim());
-      }
-      rounds.forEach((r, i) => form.append(`round_${i + 1}_name`, r || `Round ${i + 1}`));
+      form.append('kind', kind);
+      form.append('tenantId', tenantId);
+      if (resolvedDriveId) form.append('driveId', resolvedDriveId);
+      if (resolvedJobId) form.append('jobId', resolvedJobId);
 
       const res = await fetch('/api/employer/assessments/upload', {
         method: 'POST',
@@ -90,8 +86,17 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
         body: form,
       });
       const json = await res.json().catch(() => ({}));
+
+      if (res.status === 422 && json.needsReview && json.sessionId) {
+        addToast('Fix validation errors before importing.', 'warning');
+        if (typeof onNeedsReview === 'function') await onNeedsReview();
+        router.push(`/dashboard/employer/assessment-uploads/import/${json.sessionId}`);
+        return;
+      }
+
       if (!res.ok) throw new Error(json.error || 'Upload failed');
       addToast('Assessment CSV uploaded.', 'success');
+      setFile(null);
       if (typeof onUploaded === 'function') onUploaded(json);
     } catch (e) {
       addToast(e.message || 'Upload failed', 'error');
@@ -101,125 +106,31 @@ export function AssessmentCsvUploadForm({ onUploaded }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <p className="text-sm text-secondary" style={{ margin: 0 }}>
-        <button type="button" className="btn btn-ghost btn-sm" style={{ padding: 0, height: 'auto', verticalAlign: 'baseline' }} onClick={downloadTemplate}>
-          Download the template
-        </button>{' '}
-        if you are unsure about columns.
-      </p>
-
-      <div className="grid grid-3">
-        <div className="form-group">
-          <label className="form-label">Target</label>
-          <select className="form-select" value={targetType} onChange={(e) => setTargetType(e.target.value)}>
-            <option value="drive">Placement Drive</option>
-            <option value="job">Job</option>
-          </select>
-          <p className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-            Only placement drives/jobs are supported. Internships/projects are blocked.
-          </p>
-        </div>
-
-        {targetType === 'drive' ? (
-          <div className="form-group">
-            <label className="form-label">Drive</label>
-            <select className="form-select" value={driveId} onChange={(e) => { setDriveId(e.target.value); setTenantId(''); }}>
-              <option value="">Select drive</option>
-              {drives.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {(d.role || d.title || d.college || 'Drive') + (d.date ? ` (${formatDate(d.date)})` : '')}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div className="form-group">
-            <label className="form-label">Job</label>
-            <select className="form-select" value={jobId} onChange={(e) => setJobId(e.target.value)}>
-              <option value="">Select job</option>
-              {jobs.map((j) => (
-                <option key={j.id} value={j.id}>{j.title}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="form-group">
-          <label className="form-label">CSV file</label>
-          <input className="form-input" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          <p className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-            Key must be <strong>college_roll_no</strong>. Template includes <strong>placement_drive_id</strong> (optional
-            if you choose the drive above; required on every row if you leave the dropdown empty). Use the same UUID for
-            all rows. Column <strong>remarks</strong> (last column) is optional — panel notes, up to 4000 characters. Students
-            outside the college master list are rejected.
-          </p>
-        </div>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+      <div className="form-group" style={{ marginBottom: 0, flex: '1 1 16rem', minWidth: '14rem' }}>
+        <label className="form-label" htmlFor={`assessment-csv-${kind}`}>
+          CSV file
+        </label>
+        <input
+          id={`assessment-csv-${kind}`}
+          className="form-input"
+          type="file"
+          accept=".csv,text/csv"
+          disabled={disabled || submitting}
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+        />
       </div>
-
-      <div
-        style={{
-          border: '1px solid var(--border-subtle, #e5e7eb)',
-          borderRadius: '8px',
-          padding: '0.75rem 1rem',
-          background: 'var(--surface-subtle, #f9fafb)',
-        }}
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={disabled || submitting}
+        title={
+          disabled && !resolvedDriveId && !resolvedJobId ? 'Select a drive or job above first' : undefined
+        }
+        onClick={onUpload}
       >
-        <p className="text-sm font-semibold" style={{ margin: '0 0 0.75rem' }}>
-          Round display names ↔ CSV columns
-        </p>
-        <div className="table-container" style={{ border: 'none' }}>
-          <table className="data-table" style={{ margin: 0 }}>
-            <thead>
-              <tr>
-                <th style={{ width: '42%' }}>Your label (shown in View / edit)</th>
-                <th style={{ width: '58%' }}>Column in spreadsheet</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <tr key={i}>
-                  <td>
-                    <label className="form-label" style={{ marginBottom: '0.25rem' }}>{`Round ${i + 1} name`}</label>
-                    <input
-                      className="form-input"
-                      value={rounds[i]}
-                      onChange={(e) => setRoundAt(i, e.target.value)}
-                    />
-                  </td>
-                  <td style={{ verticalAlign: 'bottom', paddingBottom: '0.5rem' }}>
-                    <div className="font-mono text-sm" style={{ fontWeight: 600 }}>{`round_${i + 1}`}</div>
-                    <div className="text-xs text-tertiary">{`Round ${i + 1}`}</div>
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td>
-                  <span className="form-label">{targetType === 'job' ? 'Tenant ID (required for job)' : 'Tenant context'}</span>
-                </td>
-                <td style={{ verticalAlign: 'middle' }}>
-                  {targetType === 'job' ? (
-                    <input className="form-input" value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="College tenant UUID" />
-                  ) : (
-                    <input className="form-input" disabled value={selectedDrive?.tenant_id || 'Auto from selected drive'} />
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-        System columns are <code>round_1</code>…<code>round_5</code> plus optional <code>remarks</code>. Round names above are display labels only. After upload, open{' '}
-        <strong>View / edit</strong> on the full Assessment uploads page — the grid’s rightmost column is <strong>Remarks</strong> (same field).
-      </p>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button className="btn btn-primary" disabled={submitting} onClick={onUpload}>
-          {submitting ? 'Uploading...' : 'Upload CSV'}
-        </button>
-      </div>
+        {submitting ? 'Uploading…' : 'CSV upload'}
+      </button>
     </div>
   );
 }

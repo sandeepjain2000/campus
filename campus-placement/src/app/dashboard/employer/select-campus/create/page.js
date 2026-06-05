@@ -7,11 +7,11 @@ import { ArrowLeft, Search, Building2, CheckCircle2, Clock, Info } from 'lucide-
 import EntityLogo from '@/components/EntityLogo';
 
 const fetcher = async (url) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load');
+  const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Failed to load (${res.status})`);
   if (!data.colleges || !Array.isArray(data.colleges)) {
-    throw new Error(data.error || 'Invalid response');
+    throw new Error(data.error || 'Invalid response from server');
   }
   return data;
 };
@@ -180,12 +180,12 @@ export default function CreateTieupPage() {
             </div>
           </div>
 
-          <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--primary-200)', background: 'linear-gradient(135deg, white, var(--primary-50))' }}>
+          <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--primary-200)', background: 'linear-gradient(135deg, var(--bg-primary), var(--primary-50))' }}>
             <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'var(--primary-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--primary-600)' }}>
               <Building2 size={24} strokeWidth={2.5} />
             </div>
             <div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-800)', lineHeight: 1 }}>{availableCount}</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{availableCount}</div>
               <div style={{ fontSize: '0.9rem', color: 'var(--primary-700)', marginTop: '0.2rem', fontWeight: 600 }}>Available Colleges</div>
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function CreateTieupPage() {
           
           {error && (
             <div style={{ padding: '1.5rem', background: 'var(--danger-50)', border: '1px solid var(--danger-200)', borderRadius: 'var(--radius-md)', color: 'var(--danger-700)', fontSize: '0.95rem', fontWeight: 500 }}>
-              Failed to load colleges. Please refresh and try again.
+              {error.message || 'Failed to load colleges. Please refresh and try again.'}
             </div>
           )}
 

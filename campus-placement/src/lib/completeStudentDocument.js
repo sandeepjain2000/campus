@@ -1,4 +1,5 @@
 import { transaction } from '@/lib/db';
+import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 
 const DOC_TYPES = new Set(['resume', 'id_proof', 'academic', 'certificate', 'other']);
 
@@ -6,7 +7,7 @@ const DOC_TYPES = new Set(['resume', 'id_proof', 'academic', 'certificate', 'oth
  * Link uploaded résumé to student_profiles (employers read resume_url).
  * cvFileName in aux_profile is best-effort; failure there must not block upload.
  */
-async function syncPrimaryResumeOnProfile(client, studentId, fileUrl, documentName) {
+export async function syncPrimaryResumeOnProfile(client, studentId, fileUrl, documentName) {
   try {
     await client.query(
       `UPDATE student_profiles
@@ -67,6 +68,90 @@ async function syncPrimaryResumeOnProfile(client, studentId, fileUrl, documentNa
       }
       console.warn('[completeStudentDocument] aux_profile.cvFileName not updated', inner?.message || inner);
     }
+  }
+}
+
+/** Clear profile CV pointer when the primary résumé document row is removed. */
+export async function clearPrimaryResumeOnProfile(client, studentId) {
+  try {
+    await client.query(
+      `UPDATE student_profiles
+       SET resume_url = NULL, updated_at = NOW()
+       WHERE id = $1::uuid`,
+      [studentId],
+    );
+  } catch (e) {
+    if (e?.code === '42703') {
+      await client.query(`UPDATE student_profiles SET resume_url = NULL WHERE id = $1::uuid`, [studentId]);
+    } else {
+      throw e;
+    }
+  }
+
+  try {
+    await client.query(
+      `UPDATE student_profiles
+       SET aux_profile = COALESCE(aux_profile, '{}'::jsonb) - 'cvFileName',
+           updated_at = NOW()
+       WHERE id = $1::uuid`,
+      [studentId],
+    );
+  } catch (e) {
+    if (e?.code === '42703') {
+      return;
+    }
+    try {
+      const sel = await client.query(`SELECT aux_profile FROM student_profiles WHERE id = $1::uuid`, [studentId]);
+      let base = sel.rows[0]?.aux_profile;
+      if (base == null) base = {};
+      else if (typeof base === 'string') {
+        try {
+          base = JSON.parse(base);
+        } catch {
+          base = {};
+        }
+      }
+      if (typeof base === 'object' && base !== null && 'cvFileName' in base) {
+        const { cvFileName: _removed, ...rest } = base;
+        await client.query(`UPDATE student_profiles SET aux_profile = $1::jsonb WHERE id = $2::uuid`, [
+          JSON.stringify(rest),
+          studentId,
+        ]);
+      }
+    } catch (inner) {
+      if (inner?.code !== '42703') {
+        console.warn('[completeStudentDocument] aux_profile.cvFileName not cleared', inner?.message || inner);
+      }
+    }
+  }
+}
+
+/**
+ * After DELETE from student_documents, keep student_profiles.resume_url in sync.
+ */
+export async function syncProfileResumeAfterDocumentDelete(client, studentId, { documentType, fileUrl } = {}) {
+  if (String(documentType || '').toLowerCase() !== 'resume') return;
+
+  const profileRes = await client.query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]);
+  const profileUrl = String(profileRes.rows[0]?.resume_url || '').trim();
+  const deletedUrl = String(fileUrl || '').trim();
+
+  if (!isAuthoritativeResumeUrl(profileUrl) || profileUrl !== deletedUrl) return;
+
+  const nextRes = await client.query(
+    `SELECT file_url, document_name
+     FROM student_documents
+     WHERE student_id = $1::uuid AND LOWER(document_type) = 'resume'
+     ORDER BY uploaded_at DESC
+     LIMIT 1`,
+    [studentId],
+  );
+
+  const next = nextRes.rows[0];
+  if (next?.file_url) {
+    await syncPrimaryResumeOnProfile(client, studentId, next.file_url, next.document_name);
+  } else {
+    await clearPrimaryResumeOnProfile(client, studentId);
   }
 }
 

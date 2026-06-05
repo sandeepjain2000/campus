@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import {
@@ -45,6 +46,8 @@ function DetailRow({ label, children }) {
 
 export default function AdminEmployersPage() {
   const { addToast } = useToast();
+  const searchParams = useSearchParams();
+  const openedFromQuery = useRef(false);
   const [employers, setEmployers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState('');
@@ -119,6 +122,14 @@ export default function AdminEmployersPage() {
       setPanelLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (openedFromQuery.current || isLoading) return;
+    const viewId = String(searchParams.get('view') || '').trim();
+    if (!viewId) return;
+    openedFromQuery.current = true;
+    void openPanel(viewId, 'view');
+  }, [isLoading, searchParams]);
 
   const saveEmployer = async () => {
     if (!selectedId) return;
@@ -227,9 +238,38 @@ export default function AdminEmployersPage() {
               </tr>
             ) : null}
             {displayEmployers.map((e) => (
-              <tr key={e.id}>
-                <td className="font-semibold">
-                  <CompanyNameLink name={e.name} website={e.website} />
+              <tr
+                key={e.id}
+                className="admin-row-clickable"
+                tabIndex={0}
+                role="button"
+                aria-label={`View ${e.name} profile`}
+                onClick={() => openPanel(e.id, 'view')}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    openPanel(e.id, 'view');
+                  }
+                }}
+              >
+                <td className="font-semibold" onClick={(ev) => ev.stopPropagation()}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+                    <button
+                      type="button"
+                      className="admin-entity-name-btn"
+                      onClick={() => openPanel(e.id, 'view')}
+                    >
+                      {e.name}
+                    </button>
+                    {e.website ? (
+                      <CompanyNameLink
+                        name="Website"
+                        website={e.website}
+                        className="text-xs"
+                        style={{ fontWeight: 500 }}
+                      />
+                    ) : null}
+                  </div>
                 </td>
                 <td>{e.industry}</td>
                 <td>{e.hires}</td>
@@ -242,7 +282,7 @@ export default function AdminEmployersPage() {
                     <span className="badge badge-amber">Pending</span>
                   )}
                 </td>
-                <td>
+                <td onClick={(ev) => ev.stopPropagation()}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     <StandardTableIconAction action="view" onClick={() => openPanel(e.id, 'view')} />
                     <StandardTableIconAction action="edit" onClick={() => openPanel(e.id, 'edit')} />

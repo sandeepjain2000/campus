@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/sessionPolicy';
+import { isPlacementApiPath } from '@/lib/placementReadRoute';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -41,14 +42,24 @@ const SHARED_DASHBOARD_ROUTES = [
   '/dashboard/help',
 ];
 
+function withNoStore(response) {
+  response.headers.set('Cache-Control', 'no-store, max-age=0');
+  return response;
+}
+
 /**
  * Middleware enforces:
- *  1. /data-entry — open (demo hub); individual /api/data-entry/* routes enforce auth as needed
- *  2. /login — authenticated users are redirected to their home
- *  3. /dashboard/* — each role can only reach its own prefix (or shared routes)
+ *  1. Placement APIs — no-store so purge/list screens refresh immediately
+ *  2. /data-entry — open (demo hub); individual /api/data-entry/* routes enforce auth as needed
+ *  3. /login — authenticated users are redirected to their home
+ *  4. /dashboard/* — each role can only reach its own prefix (or shared routes)
  */
 export default async function proxy(request) {
   const { pathname } = request.nextUrl;
+
+  if (isPlacementApiPath(pathname)) {
+    return appendLegacyCookieClearance(withNoStore(NextResponse.next()));
+  }
 
   // ── /data-entry — public demo tools from landing; APIs still gate writes ───
   if (pathname.startsWith('/data-entry')) {
@@ -106,5 +117,18 @@ export default async function proxy(request) {
 }
 
 export const config = {
-  matcher: ['/login', '/data-entry', '/data-entry/:path*', '/dashboard/:path*'],
+  matcher: [
+    '/api/student/:path*',
+    '/api/employer/:path*',
+    '/api/college/:path*',
+    '/api/admin/:path*',
+    '/api/demo/:path*',
+    '/api/notifications/:path*',
+    '/api/user/data-export/:path*',
+    '/api/hiring-assessment/:path*',
+    '/login',
+    '/data-entry',
+    '/data-entry/:path*',
+    '/dashboard/:path*',
+  ],
 };

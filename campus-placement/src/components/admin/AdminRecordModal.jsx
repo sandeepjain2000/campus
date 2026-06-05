@@ -37,6 +37,7 @@ export default function AdminRecordModal({ title, mode, loading, saving, error, 
         className="animate-fadeIn card"
         style={{
           position: 'relative',
+          zIndex: 1,
           width: 'min(520px, 100vw)',
           height: '100%',
           margin: 0,

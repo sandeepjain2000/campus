@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import {
+
+
+  assertCollegeNameAvailable,
+  formatCollegeNameInUseMessage,
+  normalizeOrganizationName,
+} from '@/lib/organizationNames';
+import {
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
@@ -90,17 +107,18 @@ export async function GET() {
         `WITH years AS (
            SELECT DISTINCT EXTRACT(YEAR FROM d.drive_date)::int AS y
            FROM placement_drives d
-           WHERE d.tenant_id = $1::uuid AND d.drive_date IS NOT NULL
+           WHERE d.tenant_id = $1::uuid AND d.drive_date IS NOT NULL ${AND_DRIVE_NOT_DELETED}
            UNION
            SELECT DISTINCT jp.batch_year::int AS y
            FROM job_postings jp
            JOIN job_posting_visibility jpv ON jpv.job_id = jp.id
-           WHERE jpv.tenant_id = $1::uuid AND jp.batch_year IS NOT NULL
+           WHERE jpv.tenant_id = $1::uuid AND jp.batch_year IS NOT NULL ${AND_JP_NOT_DELETED}
            UNION
            SELECT DISTINCT EXTRACT(YEAR FROM a.applied_at)::int AS y
            FROM applications a
            JOIN student_profiles sp ON sp.id = a.student_id
-           WHERE sp.tenant_id = $1::uuid AND a.applied_at IS NOT NULL
+           WHERE sp.tenant_id = $1::uuid AND a.applied_at IS NOT NULL AND ${SP_ACTIVE_CLAUSE}
+             ${AND_APP_NOT_DELETED}
          )
          SELECT y FROM years WHERE y IS NOT NULL ORDER BY y DESC`,
         [tenantId],
@@ -215,6 +233,21 @@ export async function POST(request) {
 
     const comm = String(institution.communicationEmail ?? '').trim().toLowerCase();
     const primaryEmail = String(institution.email ?? '').trim().toLowerCase();
+    const collegeName = normalizeOrganizationName(institution.collegeName ?? '');
+
+    if (collegeName) {
+      try {
+        await assertCollegeNameAvailable(query, collegeName, { excludeTenantId: tenantId });
+      } catch (e) {
+        if (e.message === 'COLLEGE_NAME_EXISTS') {
+          return NextResponse.json(
+            { error: formatCollegeNameInUseMessage(e.existing, { name: collegeName }) },
+            { status: 409 },
+          );
+        }
+        throw e;
+      }
+    }
 
     await query(
       `UPDATE tenants
@@ -236,7 +269,7 @@ export async function POST(request) {
          updated_at = NOW()
        WHERE id = $15::uuid`,
       [
-        institution.collegeName || '',
+        collegeName,
         website || '',
         logoUrl || '',
         primaryEmail || '',

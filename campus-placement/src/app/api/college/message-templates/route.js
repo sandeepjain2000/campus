@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getSessionTenantId } from '@/lib/tenantContext';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 function normalizeVariables(raw) {
   if (Array.isArray(raw)) {
     return raw.map((v) => String(v || '').trim()).filter(Boolean);

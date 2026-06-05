@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { formatDate, formatStatus } from '@/lib/utils';
 import { CalendarDays, MapPin, Building2, Users, X, ArrowLeft } from 'lucide-react';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateDataEntryDrivePayload } from '@/lib/apiInputValidation';
 
 export default function DataEntryPlacementDrivesPage() {
   const [employers, setEmployers] = useState([]);
@@ -95,6 +99,14 @@ export default function DataEntryPlacementDrivesPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const driveErr = validateDataEntryDrivePayload({
+      driveDate: form.driveDate,
+      maxStudents: form.maxStudents,
+    });
+    if (driveErr) {
+      setError(driveErr);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     setSuccess('');
@@ -303,7 +315,7 @@ export default function DataEntryPlacementDrivesPage() {
 
                   <div className="form-group">
                     <label className="form-label">Drive Date</label>
-                    <input className="form-input" type="date" value={form.driveDate} onChange={onChange('driveDate')} />
+                    <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_DRIVE_DATE} value={form.driveDate} onChange={(v) => setForm((p) => ({ ...p, driveDate: v }))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Venue / Platform</label>
@@ -311,7 +323,7 @@ export default function DataEntryPlacementDrivesPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Max Students</label>
-                    <input className="form-input" type="number" min="1" value={form.maxStudents} onChange={onChange('maxStudents')} placeholder="e.g. 500" />
+                    <ValidatedNumberInput fieldId={FIELD_IDS.DRIVE_MAX_STUDENTS} value={form.maxStudents} onChange={(v) => setForm((p) => ({ ...p, maxStudents: v }))} placeholder="e.g. 500" />
                   </div>
                 </div>
               </div>

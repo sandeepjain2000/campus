@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export async function GET(request) {
   try {
@@ -34,15 +36,15 @@ export async function GET(request) {
                 u.email, u.first_name, u.last_name
          FROM student_profiles sp
          LEFT JOIN users u ON u.id = sp.user_id
-         WHERE sp.tenant_id = $1
+         WHERE sp.tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
          ORDER BY sp.created_at DESC
          LIMIT 200`,
         [tenantId]
       ),
       query(
         `SELECT id, title, status, drive_date
-         FROM placement_drives
-         WHERE tenant_id = $1
+         FROM placement_drives d
+         WHERE d.tenant_id = $1 ${AND_DRIVE_NOT_DELETED}
          ORDER BY created_at DESC
          LIMIT 200`,
         [tenantId]

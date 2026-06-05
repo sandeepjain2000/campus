@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { sendMail } from '@/lib/mailer';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 const SUBJECT_MAX = 500;
 const BODY_MAX = 50_000;
 

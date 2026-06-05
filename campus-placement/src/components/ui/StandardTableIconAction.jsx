@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Pencil, Trash2, Archive, Plus } from 'lucide-react';
+import { Eye, Pencil, Trash2, Archive, Plus, CheckCircle, XCircle } from 'lucide-react';
 
 const META = {
   view: { label: 'View', Icon: Eye },
@@ -8,11 +8,13 @@ const META = {
   delete: { label: 'Delete', Icon: Trash2 },
   archive: { label: 'Archive', Icon: Archive },
   add: { label: 'Add', Icon: Plus },
+  approve: { label: 'Approve for campus', Icon: CheckCircle },
+  reject: { label: 'Reject', Icon: XCircle },
 };
 
 /**
  * @param {object} props
- * @param {'view'|'edit'|'delete'|'archive'|'add'} props.action
+ * @param {'view'|'edit'|'delete'|'archive'|'add'|'approve'|'reject'} props.action
  * @param {() => void} [props.onClick]
  * @param {boolean} [props.disabled]
  * @param {'secondary'|'danger'|'primary'|'ghost'} [props.variant]

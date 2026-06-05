@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { isUuid, requireSuperAdmin } from '@/lib/adminAuth';
+import {
+
+
+  assertEmployerNameAvailable,
+  formatEmployerNameInUseMessage,
+  normalizeOrganizationName,
+} from '@/lib/organizationNames';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 async function loadEmployer(id) {
   const result = await query(
@@ -81,8 +92,20 @@ export async function PATCH(request, { params }) {
     if (!isUuid(id)) return NextResponse.json({ error: 'Invalid employer id' }, { status: 400 });
 
     const body = await request.json();
-    const name = String(body?.name ?? body?.companyName ?? '').trim();
+    const name = normalizeOrganizationName(body?.name ?? body?.companyName ?? '');
     if (!name) return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
+
+    try {
+      await assertEmployerNameAvailable(query, name, { excludeEmployerId: id });
+    } catch (e) {
+      if (e.message === 'EMPLOYER_NAME_EXISTS') {
+        return NextResponse.json(
+          { error: formatEmployerNameInUseMessage(e.existing, { name }) },
+          { status: 409 },
+        );
+      }
+      throw e;
+    }
 
     const industry = String(body?.industry ?? '').trim();
     const website = String(body?.website ?? '').trim();

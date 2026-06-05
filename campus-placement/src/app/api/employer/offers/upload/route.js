@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import {
+
+
   OFFER_STATUSES,
   parseCsvLine,
   normalizeHeader,
@@ -14,6 +16,13 @@ import {
 } from '@/lib/csvImportUtils';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
+import { resolveRollFromCsvIdentifiers } from '@/lib/studentSystemId';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 async function getEmployerId(session) {
   const userId = session?.user?.id;
@@ -61,6 +70,7 @@ export async function POST(request) {
     const headerHasTenantId = headerCells.includes('tenant_id') || headerCells.includes('campus_id') || headerCells.includes('college_tenant_id');
     const errors = [];
     let accepted = 0;
+    const shortCodeByTenant = new Map();
 
     for (let li = 1; li < lines.length; li += 1) {
       const lineNo = li + 1;
@@ -72,10 +82,11 @@ export async function POST(request) {
         if (h) row[h] = cells[i] ?? '';
       });
 
-      const roll = pickCell(row, ['roll_number', 'roll', 'student_roll', 'roll_no']);
+      const systemIdCell = pickCell(row, ['system_id', 'college_system_id', 'student_system_id']);
+      const rollCell = pickCell(row, ['roll_number', 'roll', 'student_roll', 'roll_no']);
       const jobTitle = pickCell(row, ['job_title', 'role', 'title', 'position']);
-      if (!roll || !jobTitle) {
-        errors.push({ line: lineNo, message: 'Missing roll_number or job_title' });
+      if ((!systemIdCell && !rollCell) || !jobTitle) {
+        errors.push({ line: lineNo, message: 'Missing system_id or roll_number, or job_title' });
         continue;
       }
 
@@ -108,10 +119,25 @@ export async function POST(request) {
         continue;
       }
 
+      if (!shortCodeByTenant.has(resolvedTenantId)) {
+        const tRes = await query(`SELECT short_code FROM tenants WHERE id = $1::uuid LIMIT 1`, [resolvedTenantId]);
+        shortCodeByTenant.set(resolvedTenantId, tRes.rows[0]?.short_code || '');
+      }
+      const resolvedRoll = resolveRollFromCsvIdentifiers({
+        systemIdCell,
+        rollCell,
+        shortCode: shortCodeByTenant.get(resolvedTenantId),
+      });
+      if (resolvedRoll.error) {
+        errors.push({ line: lineNo, message: resolvedRoll.error });
+        continue;
+      }
+      const roll = resolvedRoll.rollNumber;
+
       const sr = await query(
         `SELECT sp.id
          FROM student_profiles sp
-         WHERE sp.tenant_id = $1::uuid AND TRIM(sp.roll_number) = $2
+         WHERE sp.tenant_id = $1::uuid AND TRIM(sp.roll_number) = $2 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
          LIMIT 1`,
         [resolvedTenantId, roll],
       );
@@ -128,7 +154,7 @@ export async function POST(request) {
       let driveId = normalizeOptionalUuidCell(driveRaw);
       if (driveId) {
         const dr = await query(
-          `SELECT id FROM placement_drives WHERE id = $1::uuid AND employer_id = $2::uuid LIMIT 1`,
+          `SELECT id FROM placement_drives d WHERE d.id = $1::uuid AND d.employer_id = $2::uuid ${AND_DRIVE_NOT_DELETED} LIMIT 1`,
           [driveId, employerId],
         );
         if (!dr.rows[0]) {

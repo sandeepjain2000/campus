@@ -2,12 +2,14 @@ import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
-  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, FileUp, Rocket,
-  CalendarRange,
+  CalendarDays, PartyPopper, SlidersHorizontal, Handshake, KeyRound, Mic, Download, Map, Rocket,
+  CalendarRange, Table2,
   UserPlus,
   Mail,
   Archive,
   Trophy,
+  Lock,
+  UserX,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -108,6 +110,7 @@ export const menuConfig = {
           { label: 'Browse Drives', href: '/dashboard/student/drives', icon: Target },
           { label: 'Browse Jobs', href: '/dashboard/student/jobs', icon: Briefcase },
           { label: 'Browse Internships', href: '/dashboard/student/internships', icon: GraduationCap },
+          { label: 'Not Processed Internships', href: '/dashboard/student/internships/not-processed', icon: Lock },
           { label: 'Browse Projects', href: '/dashboard/student/projects', icon: FolderDot },
           { label: 'Browse Hackathons', href: '/dashboard/student/hackathons', icon: Trophy },
           { label: 'Placement calendar', href: '/dashboard/student/calendar', icon: CalendarDays },
@@ -174,8 +177,10 @@ export const menuConfig = {
       },
       {
         id: 'employer-programs',
-        title: '🎓 Student Programs',
+        title: '🎓 Student Opportunities',
         items: [
+          { label: 'Job Postings', href: '/dashboard/employer/jobs', icon: Briefcase },
+          { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/employer/internships', icon: GraduationCap },
           { label: 'Projects', href: '/dashboard/employer/projects', icon: FolderDot },
         ],
@@ -184,23 +189,18 @@ export const menuConfig = {
         id: 'employer-recruitment',
         title: '👥 Recruitment & Selection',
         items: [
-          { label: 'Job Postings', href: '/dashboard/employer/jobs', icon: Briefcase },
-          { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
-          { label: 'Hiring Assessment', href: '/dashboard/employer/hiring-assessment', icon: ListChecks },
-          { label: 'Assessment uploads', href: '/dashboard/employer/assessment-uploads', icon: FileText },
-          { label: 'Interview Scheduling', href: '/dashboard/employer/interviews', icon: Calendar },
-          { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
+          { label: 'Hiring Results Dashboard', href: '/dashboard/employer/hiring-assessment', icon: ListChecks },
+          { label: 'Assessment uploads (CSV)', href: '/dashboard/employer/assessment-uploads', icon: FileText },
+          { label: 'Assessment Update Online', href: '/dashboard/employer/assessment-update-online', icon: Table2 },
         ],
       },
       {
         id: 'employer-pipeline',
         title: '📥 Candidate Pipeline',
         items: [
-          { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
-          { label: 'Assessment uploads', href: '/dashboard/employer/assessment-uploads', icon: FileText },
           { label: 'Applications', href: '/dashboard/employer/applications', icon: ClipboardList },
+          { label: 'Unavailable (FCFS)', href: '/dashboard/employer/fcfs-unavailable', icon: UserX },
           { label: 'Offers', href: '/dashboard/employer/offers', icon: Send },
-          { label: 'Upload offers (CSV)', href: '/dashboard/employer/offers-upload', icon: FileUp },
         ],
       },
       {
@@ -211,6 +211,21 @@ export const menuConfig = {
           { label: 'Discussions', href: '/dashboard/employer/discussions', icon: MessageSquare },
           { label: 'Email templates', href: '/dashboard/employer/communication-templates', icon: Mail },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
+        ],
+      },
+      {
+        id: 'employer-operations',
+        title: '⚙️ Operations',
+        items: [
+          { label: 'Interview Scheduling', href: '/dashboard/employer/interviews', icon: Calendar },
+          { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
+        ],
+      },
+      {
+        id: 'employer-settings',
+        title: 'Settings',
+        items: [
+          { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
         ],
       },
     ],
@@ -255,7 +270,6 @@ export const menuConfig = {
           { label: 'Add student', href: '/dashboard/college/students/add', icon: UserPlus },
           { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
           { label: 'Offers', href: '/dashboard/college/offers', icon: Send },
-          { label: 'Upload offers (CSV)', href: '/dashboard/college/offers-upload', icon: FileUp },
         ],
       },
       {
@@ -325,6 +339,7 @@ export const menuConfig = {
         items: [
           { label: 'Colleges', href: '/dashboard/admin/colleges', icon: Building },
           { label: 'Employers', href: '/dashboard/admin/employers', icon: Building2 },
+          { label: 'Placement listings', href: '/dashboard/admin/placement-listings', icon: Briefcase },
           { label: 'Users', href: '/dashboard/admin/users', icon: Users },
           { label: 'Archived students', href: '/dashboard/admin/archived-students', icon: Archive },
         ],

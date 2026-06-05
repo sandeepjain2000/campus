@@ -278,11 +278,12 @@ export default function CollegeInternshipsContent() {
                   {TABLE_COLUMNS.map((col, i) => (
                     <th
                       key={col}
+                      className={col === 'Actions' ? 'college-internships-col-actions' : undefined}
                       style={
                         i === 0
                           ? { paddingLeft: '1.25rem' }
                           : i === TABLE_COLUMNS.length - 1
-                            ? { textAlign: 'right', paddingRight: '1.25rem', width: 1 }
+                            ? { textAlign: 'right', paddingRight: '1.25rem' }
                             : undefined
                       }
                     >
@@ -325,7 +326,7 @@ export default function CollegeInternshipsContent() {
                           {campusMeta.label}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '1.25rem', whiteSpace: 'nowrap' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '1.25rem', whiteSpace: 'nowrap' }} className="college-internships-col-actions">
                         <InternshipListingActions
                           row={row}
                           busy={busy}
@@ -376,14 +377,6 @@ export default function CollegeInternshipsContent() {
                       <span className="text-sm" style={{ color: 'var(--warning-700, #b45309)', fontWeight: 600 }}>
                         Pending your campus approval — students cannot apply yet
                       </span>
-                      <InternshipListingActions
-                        row={row}
-                        busy={busy}
-                        onApprove={(id) => reviewListing(id, 'approve')}
-                        onReject={(id) => reviewListing(id, 'reject')}
-                        onView={setViewRow}
-                        showView={false}
-                      />
                     </div>
                   ) : null}
                   <div

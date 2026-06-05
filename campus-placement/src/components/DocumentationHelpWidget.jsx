@@ -20,8 +20,10 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [query, setQuery] = useState('');
-  const [matches, setMatches] = useState([]);
-  const [scope, setScope] = useState('');
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiSources, setAiSources] = useState([]);
+  const [retrievalMode, setRetrievalMode] = useState('');
+  const [relatedFaqs, setRelatedFaqs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
@@ -98,81 +100,94 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  const runSearch = useCallback(async (q) => {
+  const roleHint = useMemo(() => {
+    const p = pathname || '';
+    if (p.includes('/dashboard/employer')) return 'employer';
+    if (p.includes('/dashboard/college')) return 'college';
+    if (p.includes('/dashboard/student')) return 'student';
+    if (p.includes('/dashboard/admin')) return 'super_admin';
+    return null;
+  }, [pathname]);
+
+  const askHelp = useCallback(async (q) => {
     const text = String(q || '').trim();
     if (!text) {
-      setMatches([]);
-      setScope('');
+      setAiAnswer('');
+      setAiSources([]);
+      setRetrievalMode('');
+      setRelatedFaqs([]);
       return;
     }
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/help/faq?screen=${encodeURIComponent(screenTag)}&q=${encodeURIComponent(text)}`
-      );
+      const res = await fetch('/api/help/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: text,
+          screenTag,
+          roleHint,
+          docBasePath: fullDocHref,
+        }),
+      });
       const data = stripInternalApiFields(await res.json().catch(() => ({})));
       if (res.status === 503) {
-        setMatches([]);
-        setHint('Help search is temporarily unavailable.');
+        setAiAnswer('');
+        setHint(data.error || 'Help AI is not indexed yet. Open full documentation below.');
         appendClientDebugLog({
-          source: 'help_faq',
-          action: 'search',
+          source: 'help_ask',
+          action: 'ask',
           screenTag,
           queryLen: text.length,
           status: res.status,
-          hint: data.hint,
-          error: data.error,
         });
         return;
       }
       if (!res.ok) {
-        setError(clientSafeMessageFromBody(data, 'Search failed'));
-        setMatches([]);
-        appendClientDebugLog({
-          source: 'help_faq',
-          action: 'search',
-          screenTag,
-          queryLen: text.length,
-          status: res.status,
-          error: data.error,
-        });
+        setError(clientSafeMessageFromBody(data, 'Could not answer your question'));
+        setAiAnswer('');
         return;
       }
-      const matchList = Array.isArray(data.matches) ? data.matches : [];
-      setMatches(matchList);
-      setScope(data.scope || '');
+      setAiAnswer(data.answer || '');
+      setAiSources(Array.isArray(data.sources) ? data.sources : []);
+      setRetrievalMode(data.retrievalMode || '');
+      setRelatedFaqs(Array.isArray(data.relatedFaqs) ? data.relatedFaqs : []);
       appendClientDebugLog({
-        source: 'help_faq',
-        action: 'search',
+        source: 'help_ask',
+        action: 'ask',
         screenTag,
         queryLen: text.length,
         status: res.status,
-        scope: data.scope,
-        ai: Boolean(data.ai),
-        matchCount: matchList.length,
+        retrievalMode: data.retrievalMode,
+        sourceCount: (data.sources || []).length,
       });
     } catch (err) {
-      setError('Search failed (network)');
-      setMatches([]);
+      setError('Network error — try again or open full documentation');
+      setAiAnswer('');
       appendClientDebugLog({
-        source: 'help_faq',
-        action: 'search',
+        source: 'help_ask',
+        action: 'ask',
         screenTag,
-        queryLen: text.length,
         networkError: String(err?.message || err),
       });
     } finally {
       setLoading(false);
     }
-  }, [screenTag]);
+  }, [screenTag, roleHint, fullDocHref]);
+
+  const runSearch = useCallback(async (q) => {
+    await askHelp(q);
+  }, [askHelp]);
 
   useEffect(() => {
     if (!open) return undefined;
     const t = query.trim();
     if (!t) {
-      setMatches([]);
-      setScope('');
+      setAiAnswer('');
+      setAiSources([]);
+      setRetrievalMode('');
+      setRelatedFaqs([]);
       return undefined;
     }
     if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
@@ -293,7 +308,7 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
                   PlacementHub help
                 </h2>
                 <p className="text-xs text-tertiary" style={{ margin: '0.35rem 0 0' }}>
-                  Screen <strong>{screenTag}</strong> · keyword search; AI suggests FAQs when nothing matches
+                  Screen <strong>{screenTag}</strong> · full help library + AI (like Cursor on docs/help)
                 </p>
               </div>
               <button
@@ -321,7 +336,7 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
                   <input
                     id="documentation-help-query"
                     className="form-input"
-                    placeholder="e.g. How do I upload my resume?"
+                    placeholder="e.g. How do I upload assessment results CSV?"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     autoComplete="off"
@@ -333,7 +348,8 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
                 </div>
               </form>
               <p className="text-secondary" style={{ margin: '0.65rem 0 0', fontSize: '0.8125rem' }}>
-                Type your question first, or pick a suggested FAQ below.
+                Answers read the entire help library (same content as <code style={{ fontSize: '0.75rem' }}>docs/help/</code>
+                ). Requires <code style={{ fontSize: '0.75rem' }}>OPENAI_API_KEY</code> for best results.
               </p>
               {hint && (
                 <p className="text-xs text-warning-600" style={{ margin: '0.5rem 0 0' }}>
@@ -348,11 +364,52 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
             </div>
 
             <div style={{ padding: '1rem', flex: 1, overflowY: 'auto', minHeight: 0 }}>
-              {loading && !matches.length && suggestions.length === 0 && !query.trim() && (
+              {loading && !aiAnswer && suggestions.length === 0 && !query.trim() && (
                 <p className="text-tertiary text-sm">Loading…</p>
               )}
 
-              {suggestionRows.length > 0 && matches.length === 0 && (
+              {aiAnswer && (
+                <div
+                  className="card"
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.85rem',
+                    background: 'var(--primary-50, #eef2ff)',
+                    border: '1px solid var(--primary-200, #c7d2fe)',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Sparkles size={16} aria-hidden />
+                    Answer
+                  </div>
+                  <div className="text-secondary" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
+                    {aiAnswer}
+                  </div>
+                  {aiSources.length > 0 && (
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <div className="text-xs text-tertiary" style={{ marginBottom: '0.35rem' }}>
+                        Sources{retrievalMode ? ` · ${retrievalMode}` : ''}
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {aiSources.slice(0, 4).map((src) => (
+                          <li key={src.chunkKey} style={{ fontSize: '0.8125rem' }}>
+                            <Link href={src.href} onClick={() => setOpen(false)} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                              {src.title}
+                            </Link>
+                            {src.section ? (
+                              <span className="text-tertiary" style={{ marginLeft: '0.35rem' }}>
+                                ({src.section})
+                              </span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {suggestionRows.length > 0 && !query.trim() && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                   {suggestionRows.map((row) => (
                     <button
@@ -377,19 +434,13 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
                 </div>
               )}
 
-              {matches.length > 0 && (
+              {relatedFaqs.length > 0 && query.trim() && (
                 <div style={{ marginBottom: '1rem' }}>
-                  {scope && (
-                    <p className="text-xs text-tertiary" style={{ margin: '0 0 0.5rem' }}>
-                      {scope === 'screen' && 'Matches on this screen'}
-                      {scope === 'global' && 'No match on this screen — showing global FAQs'}
-                      {scope === 'any' && 'No screen/global match — showing other topics'}
-                      {scope === 'ai' && 'No keyword match — AI chose the closest FAQs from your library'}
-                      {scope === 'none' && 'No matching FAQs yet'}
-                    </p>
-                  )}
+                  <p className="text-xs text-tertiary" style={{ margin: '0 0 0.5rem' }}>
+                    Related FAQ entries
+                  </p>
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {matches.map((row) => (
+                    {relatedFaqs.map((row) => (
                       <li
                         key={row.id}
                         className="card"
@@ -403,15 +454,14 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
                         <div className="text-secondary" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                           {row.answer}
                         </div>
-                        {row.screen_tag && row.screen_tag !== screenTag && (
-                          <div className="text-xs text-tertiary" style={{ marginTop: '0.5rem' }}>
-                            Tag: {row.screen_tag}
-                          </div>
-                        )}
                       </li>
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {loading && query.trim() && !aiAnswer && (
+                <p className="text-tertiary text-sm">Searching help documentation…</p>
               )}
             </div>
 

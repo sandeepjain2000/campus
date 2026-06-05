@@ -9,6 +9,41 @@ import {
   sessionTokenCookieOptions,
 } from './sessionPolicy';
 
+function isTransientDbError(error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    code === 'ECONNREFUSED'
+    || code === 'ETIMEDOUT'
+    || code === 'ECONNRESET'
+    || code === '57P01'
+    || code === '53300'
+    || message.includes('timeout')
+    || message.includes('connection terminated')
+    || message.includes('connection refused')
+    || message.includes('too many clients')
+  );
+}
+
+async function queryWithLoginRetry(text, params, attempts = 3) {
+  let lastError;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await query(text, params);
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1 && isTransientDbError(error)) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 150 * (i + 1));
+        });
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 export const authOptions = {
   cookies: {
     sessionToken: {
@@ -39,7 +74,7 @@ export const authOptions = {
 
         let result;
         try {
-          result = await query(
+          result = await queryWithLoginRetry(
             `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo_url,
                     ep.logo_url AS employer_logo_url,
                     sp.is_verified AS student_placement_verified
@@ -147,6 +182,9 @@ export const authOptions = {
       if (trigger === 'update' && session?.avatar !== undefined) {
         token.avatar = session.avatar;
         token.logoUrl = session.avatar;
+      }
+      if (trigger === 'update' && session?.brandLogoUrl !== undefined) {
+        token.brandLogoUrl = session.brandLogoUrl || null;
       }
       return token;
     },

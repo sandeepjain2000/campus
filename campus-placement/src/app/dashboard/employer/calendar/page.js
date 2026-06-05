@@ -5,6 +5,8 @@ import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { EmployerCalendarGrid } from '@/components/employer/EmployerCalendarGrid';
 import { formatDate, formatStatus } from '@/lib/utils';
 import { Search, Filter, Calendar as CalendarIcon, List as ListIcon, CalendarDays, CalendarRange, MapPin, Clock, Video } from 'lucide-react';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -248,22 +250,20 @@ export default function EmployerCalendarPage() {
             </select>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: 'var(--radius-md)' }}>
-              <input
-                type="date"
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.DATE_RANGE_FROM}
+                context={{ dateTo, maxSpanYears: 2 }}
                 className="form-input form-input-sm"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                style={{ width: '130px', border: 'none', background: 'transparent' }}
-                title="From date"
+                onChange={setDateFrom}
               />
               <span className="text-secondary text-sm">to</span>
-              <input
-                type="date"
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.DATE_RANGE_TO}
+                context={{ dateFrom, maxSpanYears: 2 }}
                 className="form-input form-input-sm"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                style={{ width: '130px', border: 'none', background: 'transparent' }}
-                title="To date"
+                onChange={setDateTo}
               />
             </div>
 

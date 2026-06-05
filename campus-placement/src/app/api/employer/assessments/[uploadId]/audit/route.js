@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isUuid } from '@/lib/tenantContext';
+import { AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function getEmployerProfileId(session) {
   const userId = session?.user?.id;
@@ -26,7 +33,7 @@ export async function GET(_request, { params }) {
     if (!employerId) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
     const own = await query(
-      `SELECT id FROM employer_assessment_uploads WHERE id = $1::uuid AND employer_id = $2::uuid LIMIT 1`,
+      `SELECT id FROM employer_assessment_uploads eau WHERE eau.id = $1::uuid AND eau.employer_id = $2::uuid ${AND_EAU_NOT_DELETED} LIMIT 1`,
       [uploadId, employerId],
     );
     if (!own.rows.length) return NextResponse.json({ error: 'Upload not found' }, { status: 404 });

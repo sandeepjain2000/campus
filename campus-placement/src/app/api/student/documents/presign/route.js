@@ -5,8 +5,14 @@ import { createStudentDocumentPresign, isS3Configured } from '@/lib/s3';
 import {
   normalizeStudentDocumentContentType,
   STUDENT_DOCUMENT_MAX_BYTES,
-  validateStudentDocumentFile,
+  STUDENT_RESUME_MAX_BYTES,
+  validateStudentDocumentFileForType,
+  isResumeDocumentType,
 } from '@/lib/studentDocumentUpload';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 export async function POST(req) {
   try {
@@ -26,11 +32,15 @@ export async function POST(req) {
     }
 
     const body = await req.json();
+    const document_type = String(body.document_type || body.documentType || 'resume').trim();
     const fileName = String(body.fileName || 'document');
     const contentType = normalizeStudentDocumentContentType(body.contentType, fileName);
     const fileSize = Number(body.fileSize || 0);
 
-    const check = validateStudentDocumentFile({ name: fileName, type: contentType, size: fileSize });
+    const check = validateStudentDocumentFileForType(
+      { name: fileName, type: contentType, size: fileSize },
+      document_type,
+    );
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: 400 });
     }
@@ -47,7 +57,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       ...out,
-      maxBytes: STUDENT_DOCUMENT_MAX_BYTES,
+      maxBytes: isResumeDocumentType(document_type) ? STUDENT_RESUME_MAX_BYTES : STUDENT_DOCUMENT_MAX_BYTES,
       preferServerUpload: true,
     });
   } catch (e) {

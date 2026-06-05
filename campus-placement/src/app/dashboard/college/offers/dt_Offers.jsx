@@ -14,6 +14,10 @@ import { useToast } from '@/components/ToastProvider';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { validateCollegeOfferPayload } from '@/lib/apiInputValidation';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -149,6 +153,15 @@ export default function DtCollegeOffers() {
   const submitAdd = async () => {
     if (!form.studentId || !form.reportedCompanyName.trim() || !form.jobTitle.trim()) {
       addToast('Student, company name, and job title are required.', 'warning');
+      return;
+    }
+    const offerErr = validateCollegeOfferPayload({
+      salary: form.salary,
+      deadline: form.deadline,
+      joiningDate: form.joiningDate,
+    });
+    if (offerErr) {
+      addToast(offerErr, 'warning');
       return;
     }
     setSaving(true);
@@ -423,11 +436,10 @@ export default function DtCollegeOffers() {
             </div>
             <div className="form-group">
               <label className="form-label">Salary (INR annual)</label>
-              <input
-                className="form-input"
-                type="number"
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.COLLEGE_OFFER_SALARY}
                 value={form.salary}
-                onChange={(e) => setForm((p) => ({ ...p, salary: e.target.value }))}
+                onChange={(v) => setForm((p) => ({ ...p, salary: v }))}
               />
             </div>
             <div className="form-group">
@@ -440,20 +452,19 @@ export default function DtCollegeOffers() {
             </div>
             <div className="form-group">
               <label className="form-label">Response deadline</label>
-              <input
-                className="form-input"
-                type="date"
-                min={todayYmd}
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.COLLEGE_OFFER_DEADLINE}
                 value={form.deadline}
-                onChange={(e) => setForm((p) => ({ ...p, deadline: e.target.value }))}
+                onChange={(v) => setForm((p) => ({ ...p, deadline: v }))}
               />
-              <label className="form-label">Joining date</label>
-              <input
-                className="form-input"
-                type="date"
-                min={form.deadline || todayYmd}
+              <label className="form-label" style={{ marginTop: '0.75rem' }}>
+                Joining date
+              </label>
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.COLLEGE_OFFER_JOINING}
+                context={{ deadline: form.deadline }}
                 value={form.joiningDate}
-                onChange={(e) => setForm((p) => ({ ...p, joiningDate: e.target.value }))}
+                onChange={(v) => setForm((p) => ({ ...p, joiningDate: v }))}
               />
             </div>
             <div className="form-group">

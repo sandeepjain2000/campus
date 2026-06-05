@@ -8,9 +8,21 @@ import {
   notifyCollegeEnrollmentKey,
   notifyRegistrationResolved,
 } from '@/lib/registrationNotify';
+import {
+  assertCollegeNameAvailable,
+  formatCollegeNameInUseMessage,
+  normalizeOrganizationName,
+} from '@/lib/organizationNames';
 import { assertEmailAvailable, formatEmailInUseMessage } from '@/lib/userEmail';
 import { slugify } from '@/lib/utils';
 import { validateEmail, validatePassword, validatePersonName } from '@/lib/validators';
+import { SP_ACTIVE_ON } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET(request) {
   try {
@@ -36,7 +48,7 @@ export async function GET(request) {
         COUNT(sp.id) AS students,
         SUM(CASE WHEN sp.placement_status = 'placed' THEN 1 ELSE 0 END) AS placed
       FROM tenants t
-      LEFT JOIN student_profiles sp ON sp.tenant_id = t.id
+      LEFT JOIN student_profiles sp ON sp.tenant_id = t.id AND ${SP_ACTIVE_ON}
       WHERE t.type = 'college'
       GROUP BY t.id, t.name, t.slug, t.city, t.naac_grade, t.is_active, t.created_at
       ORDER BY t.created_at DESC
@@ -73,7 +85,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const collegeName = String(body?.collegeName || '').trim();
+    const collegeName = normalizeOrganizationName(body?.collegeName || '');
     const city = String(body?.city || '').trim();
     const state = String(body?.state || '').trim();
     const naacGrade = String(body?.naacGrade || '').trim();
@@ -121,6 +133,17 @@ export async function POST(request) {
         }
         if (e.message === 'EMAIL_DIFFERENT_TENANT') {
           const err = new Error(`Email "${adminEmail}" is already registered under a different institution.`);
+          err.statusCode = 409;
+          throw err;
+        }
+        throw e;
+      }
+
+      try {
+        await assertCollegeNameAvailable(client, collegeName);
+      } catch (e) {
+        if (e.message === 'COLLEGE_NAME_EXISTS') {
+          const err = new Error(formatCollegeNameInUseMessage(e.existing, { name: collegeName }));
           err.statusCode = 409;
           throw err;
         }

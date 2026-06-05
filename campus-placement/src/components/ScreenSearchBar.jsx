@@ -40,7 +40,7 @@ export default function ScreenSearchBar() {
         return;
       }
       if (!data.openaiConfigured) {
-        setAiNote('Add OPENAI_API_KEY on the server for smart matching.');
+        setAiNote('Add NVIDIA_API_KEY or OPENAI_API_KEY on the server for smart matching.');
         return;
       }
       const matches = Array.isArray(data.matches) ? data.matches : [];
@@ -61,6 +61,21 @@ export default function ScreenSearchBar() {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const input = wrapRef.current?.querySelector('input[type="search"]');
+        if (input) {
+          input.focus();
+          setOpen(true);
+        }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   if (status === 'loading' || !role) return null;
 
@@ -83,10 +98,10 @@ export default function ScreenSearchBar() {
         <input
           type="search"
           className="form-input"
-          placeholder="Search screens…"
+          placeholder="Search screens (Ctrl+K)…"
           value={q}
           aria-label="Search dashboard screens"
-          title="Filter screens by name, path, or tag (e.g. S-11)"
+          title="Filter screens by name, path, or tag (e.g. S-11). Shortcut: Ctrl+K or ⌘K"
           onChange={(e) => {
             const v = e.target.value;
             setQ(v);
@@ -191,7 +206,9 @@ export default function ScreenSearchBar() {
             )}
             {localMatches.length === 0 && aiMatches.length === 0 && (
               <p className="text-sm text-secondary" style={{ margin: 0 }}>
-                {q.trim() ? 'No keyword matches — try Smart match if OPENAI_API_KEY is set.' : 'Type to filter your screens.'}
+                {q.trim()
+                  ? 'No keyword matches — try Smart match if NVIDIA or OpenAI API keys are set.'
+                  : 'Type a screen name, menu label, or tag (e.g. S-11) to jump there.'}
               </p>
             )}
           </div>

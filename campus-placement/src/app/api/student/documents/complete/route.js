@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { completeStudentDocumentRecord } from '@/lib/completeStudentDocument';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);

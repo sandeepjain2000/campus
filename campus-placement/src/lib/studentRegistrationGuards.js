@@ -4,6 +4,7 @@ import {
   formatEmailInUseMessage,
   normalizeUserEmail,
 } from '@/lib/userEmail';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 /**
  * Load active student profile row for a tenant + roll number.
@@ -32,7 +33,7 @@ export async function findStudentProfileByRoll(client, tenantId, rollNumber) {
 
   try {
     const res = await client.query(
-      `${baseSql} AND sp.archived_at IS NULL LIMIT 1`,
+      `${baseSql} AND ${SP_ACTIVE_CLAUSE} LIMIT 1`,
       [tenantId, roll],
     );
     return res.rows[0] || null;

@@ -1,28 +1,32 @@
 import { NextResponse } from 'next/server';
-import { rowsToCsv } from '@/lib/csvExport';
+import {
+  ASSESSMENT_UPLOAD_TEMPLATE_FILENAME,
+  buildAssessmentUploadStarterCsv,
+  defaultHiringResultCells,
+} from '@/lib/assessmentUploadStarterCsv';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+/** Sample structure — prefer /api/employer/assessments/export for real data. */
 export async function GET() {
-  const headers = [
-    'college_roll_no',
-    'placement_drive_id',
-    'candidate_name',
-    'round_1',
-    'round_2',
-    'round_3',
-    'round_4',
-    'round_5',
-    'remarks',
-  ];
   const sample = [
-    ['CSE2026-001', '', 'Aarav Singh', 'Passed', 'Pending', '', '', '', 'Strong aptitude score; interview pending'],
-    ['ECE2026-017', '', 'Nisha Iyer', 'Passed', 'Passed', 'On Hold', '', '', 'Needs follow-up after panel review'],
+    {
+      system_id: 'CAMPUS-ROLL-001',
+      college_roll_no: 'ROLL-001',
+      placement_drive_id: '',
+      job_id: '',
+      tenant_id: '',
+      candidate_name: 'Example Student',
+      ...defaultHiringResultCells(null),
+    },
   ];
-  const csv = `\uFEFF${rowsToCsv(headers, sample)}`;
+  const csv = `\uFEFF${buildAssessmentUploadStarterCsv(sample)}`;
   return new NextResponse(csv, {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="assessment_upload_template.csv"',
+      'Content-Disposition': `attachment; filename="${ASSESSMENT_UPLOAD_TEMPLATE_FILENAME}"`,
     },
   });
 }

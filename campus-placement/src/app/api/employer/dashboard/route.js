@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import {
+
+
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_PD_NOT_DELETED,
+  AND_DRIVE_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+  AND_OFFER_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 export async function GET(request) {
   try {
@@ -24,24 +37,27 @@ export async function GET(request) {
 
     const statsQuery = await query(`
       SELECT 
-        (SELECT COUNT(DISTINCT job_id) FROM placement_drives WHERE employer_id = $1 AND tenant_id = $2 AND status IN ('scheduled', 'approved')) as active_jobs,
-        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2) as total_applications,
-        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status IN ('shortlisted', 'selected')) as shortlisted,
-        (SELECT COUNT(*) FROM offers o JOIN placement_drives pd ON o.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2) as offers_extended,
-        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status = 'in_progress') as interview_stage,
-        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status = 'selected') as selected_count
+        (SELECT COUNT(*)::int FROM job_postings jp
+         INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id AND jpv.tenant_id = $2::uuid
+         WHERE jp.employer_id = $1::uuid AND jp.status = 'published'
+           ${AND_JP_NOT_DELETED}) as active_jobs,
+        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 ${AND_APP_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}) as total_applications,
+        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status IN ('shortlisted', 'selected') ${AND_APP_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}) as shortlisted,
+        (SELECT COUNT(*) FROM offers o JOIN placement_drives pd ON o.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 ${AND_OFFER_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}) as offers_extended,
+        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status = 'in_progress' ${AND_APP_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}) as interview_stage,
+        (SELECT COUNT(*) FROM applications a JOIN placement_drives pd ON a.drive_id = pd.id WHERE pd.employer_id = $1 AND pd.tenant_id = $2 AND a.status = 'selected' ${AND_APP_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}) as selected_count
     `, [employerId, campusId]);
 
     const appsQuery = await query(`
-      SELECT a.id, u.first_name || ' ' || COALESCE(u.last_name, '') as name, j.title as role, 
+      SELECT a.id, u.first_name || ' ' || COALESCE(u.last_name, '') as name, pd.title as role, 
              t.name as college, sp.cgpa, a.status, a.applied_at as "appliedAt"
       FROM applications a
       JOIN placement_drives pd ON a.drive_id = pd.id
-      JOIN job_postings j ON pd.job_id = j.id
       JOIN student_profiles sp ON a.student_id = sp.id
       JOIN users u ON sp.user_id = u.id
       JOIN tenants t ON sp.tenant_id = t.id
       WHERE pd.employer_id = $1 AND pd.tenant_id = $2
+        ${AND_APP_NOT_DELETED} ${AND_DRIVE_PD_NOT_DELETED}
       ORDER BY a.applied_at DESC
       LIMIT 5
     `, [employerId, campusId]);
@@ -51,6 +67,7 @@ export async function GET(request) {
       FROM placement_drives d
       JOIN tenants t ON d.tenant_id = t.id
       WHERE d.employer_id = $1 AND d.tenant_id = $2 AND d.status IN ('approved', 'scheduled')
+        ${AND_DRIVE_NOT_DELETED}
       ORDER BY d.drive_date ASC
       LIMIT 2
     `, [employerId, campusId]);

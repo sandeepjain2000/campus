@@ -3,6 +3,16 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
+import {
+  buildEmployerInterviewCalendarDescription,
+  insertEmployerInterviewCalendarSlot,
+} from '@/lib/employerInterviewCalendarSync';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function getTenant(tenantId) {
   const res = await query(`SELECT id, name, settings FROM tenants WHERE id = $1::uuid LIMIT 1`, [tenantId]);
@@ -15,38 +25,6 @@ async function savePlans(tenantId, settings) {
      SET settings = $1::jsonb, updated_at = NOW()
      WHERE id = $2::uuid`,
     [JSON.stringify(settings), tenantId],
-  );
-}
-
-async function syncEmployerInterviewToCollegeCalendar({
-  tenantId,
-  employerUserId,
-  campusName,
-  round,
-  dateYmd,
-  time,
-  mode,
-  panelNames,
-  assigned,
-  planId,
-}) {
-  const title = `${campusName || 'Employer'} • ${round}`;
-  const desc = [
-    `Employer interview slot`,
-    time ? `Time: ${time}` : '',
-    mode ? `Mode: ${mode}` : '',
-    panelNames ? `Panel: ${panelNames}` : '',
-    assigned ? `Assigned: ${assigned}` : '',
-    `Plan: ${planId}`,
-    `Employer user: ${employerUserId}`,
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  await query(
-    `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
-     VALUES ($1::uuid, $2, 'interview_slot', $3::date, $3::date, false, $4)`,
-    [tenantId, title, dateYmd, desc],
   );
 }
 
@@ -146,17 +124,18 @@ export async function POST(request) {
     await savePlans(campusId, settings);
 
     try {
-      await syncEmployerInterviewToCollegeCalendar({
+      await insertEmployerInterviewCalendarSlot({
         tenantId: campusId,
-        employerUserId: session.user.id,
-        campusName: campus || tenant.name,
-        round,
+        title: `${campus || tenant.name} • ${round}`,
         dateYmd: dateCheck.value,
-        time,
-        mode,
-        panelNames,
-        assigned: Number.isFinite(assigned) ? assigned : 0,
-        planId,
+        description: buildEmployerInterviewCalendarDescription({
+          employerUserId: session.user.id,
+          time,
+          mode,
+          panelNames,
+          assigned: Number.isFinite(assigned) ? assigned : 0,
+          planId,
+        }),
       });
     } catch (calErr) {
       console.warn('employer interview college_calendar sync:', calErr?.message || calErr);

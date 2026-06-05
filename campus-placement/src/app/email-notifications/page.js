@@ -112,6 +112,18 @@ export default function EmailNotificationsDemoPage() {
             Daily digest combining non-urgent items (e.g. new discussion replies) can be enabled per tenant — shown here as a product placeholder.
           </p>
         </div>
+
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <h3 className="card-title" style={{ fontSize: '0.95rem' }}>
+            QA note — assessments (2026-05-29)
+          </h3>
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>
+            Employer assessment round updates via <strong>Assessment uploads (CSV)</strong> or{' '}
+            <strong>Assessment Update Online</strong> do not trigger outbound email. Results appear on the employer{' '}
+            <strong>Hiring Results Dashboard</strong> and the college <strong>Hiring Assessment</strong> view (read-only).
+            Configure round display names under employer <strong>Assessment map</strong> before CSV or inline edits.
+          </p>
+        </div>
       </div>
     </div>
   );

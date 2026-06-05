@@ -5,6 +5,12 @@ import { query } from '@/lib/db';
 import { getSessionTenantId } from '@/lib/tenantContext';
 import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 function parseMeta(description, title) {
   if (!description) {
     return {

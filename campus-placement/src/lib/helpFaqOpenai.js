@@ -1,9 +1,9 @@
 /**
- * When keyword search finds nothing, rank FAQs with OpenAI (server-only).
- * Uses OPENAI_API_KEY; optional OPENAI_HELP_MODEL (default gpt-4o-mini).
+ * When keyword search finds nothing, rank FAQs with LLM (server-only).
+ * NVIDIA keys first (rotated), then OpenAI fallback.
  */
 
-const DEFAULT_MODEL = 'gpt-4o-mini';
+import { fetchLlmChatCompletion, isLlmChatConfigured } from '@/lib/llmChatConfig';
 const MAX_FAQS_IN_PROMPT = 36;
 const MAX_ANSWER_CHARS = 500;
 
@@ -53,8 +53,7 @@ function parseIdsFromContent(text) {
  * @returns {Promise<{ ids: string[], openaiHttpStatus: number | null }>}
  */
 export async function rankFaqIdsWithOpenAI(userQuestion, faqRows) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || !faqRows.length) return { ids: [], openaiHttpStatus: null };
+  if (!isLlmChatConfigured() || !faqRows.length) return { ids: [], openaiHttpStatus: null };
 
   const trimmed = faqRows.slice(0, MAX_FAQS_IN_PROMPT).map((r) => ({
     id: r.id,
@@ -62,8 +61,6 @@ export async function rankFaqIdsWithOpenAI(userQuestion, faqRows) {
     question: r.question,
     answer: String(r.answer ?? '').slice(0, MAX_ANSWER_CHARS),
   }));
-
-  const model = process.env.OPENAI_HELP_MODEL || DEFAULT_MODEL;
 
   const system = `You match a user's in-app help question to existing FAQ entries.
 You will receive a JSON array of objects with keys: id, screen_tag, question, answer.
@@ -76,31 +73,21 @@ Do not invent ids. Do not add prose outside the JSON.`;
     faqs: trimmed,
   });
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: userPayload },
-      ],
-      response_format: { type: 'json_object' },
-    }),
+  const result = await fetchLlmChatCompletion({
+    temperature: 0,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: userPayload },
+    ],
   });
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error('OpenAI help FAQ:', res.status, errText.slice(0, 500));
-    return { ids: [], openaiHttpStatus: res.status };
+  if (!result.ok) {
+    console.error('LLM help FAQ:', result.status, result.error);
+    return { ids: [], openaiHttpStatus: result.status ?? null };
   }
 
-  const data = await res.json().catch(() => null);
-  const content = data?.choices?.[0]?.message?.content;
+  const content = result.data?.choices?.[0]?.message?.content;
   const ids = parseIdsFromContent(content);
   const allowed = new Set(
     trimmed.map((r) => normalizeFaqRowId(r.id)).filter(Boolean),

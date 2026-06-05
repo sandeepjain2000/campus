@@ -5,9 +5,16 @@ import { getSessionTenantId } from '@/lib/tenantContext';
 import { query } from '@/lib/db';
 import { fetchAssessmentRowsForView, pickRepresentativeAssessmentRows } from '@/lib/assessmentHiringView';
 import {
+
+
   buildCollegeOffersAllStudentsCsv,
   COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME,
 } from '@/lib/offersAssessmentStarterCsv';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 /** GET — offers-import CSV: every campus master-list student; company prefilled from newest assessment row when any. */
 export async function GET() {
@@ -24,7 +31,7 @@ export async function GET() {
     const master = await query(
       `SELECT sp.id AS student_profile_id, sp.roll_number
        FROM student_profiles sp
-       WHERE sp.tenant_id = $1::uuid
+       WHERE sp.tenant_id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
          AND sp.roll_number IS NOT NULL
          AND TRIM(sp.roll_number) <> ''
        ORDER BY TRIM(sp.roll_number) ASC NULLS LAST`,

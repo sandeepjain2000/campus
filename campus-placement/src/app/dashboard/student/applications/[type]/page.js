@@ -17,6 +17,11 @@ import { use, useMemo } from 'react';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMPANY_SORT_OPTIONS, applicationSearchText } from '@/lib/tableQueryPresets';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import {
+  WITHDRAWAL_CONFIRM_BODY,
+  WITHDRAWAL_CONFIRM_TITLE,
+} from '@/lib/applicationWithdrawal';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -76,9 +81,6 @@ const TYPE_META = {
   },
 };
 
-const WITHDRAW_REAPPLY_NOTICE =
-  'If you withdraw, you can apply again from Browse Drives while the drive stays open. If you wait 2 or more days, your college or the company may have closed applications — re-apply may no longer be possible. Continue with withdrawal?';
-
 export default function StudentApplicationsPage({ params }) {
   const unwrappedParams = use(params);
   const type = unwrappedParams.type;
@@ -90,6 +92,7 @@ export default function StudentApplicationsPage({ params }) {
   const { addToast } = useToast();
   const [statusTab, setStatusTab] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
+  const [withdrawConfirmId, setWithdrawConfirmId] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
   const apiEndpoint = type === 'drives' ? '/api/student/applications' : '/api/student/program-applications';
   const { data, error, isLoading, mutate } = useSWR(apiEndpoint, fetcher);
@@ -163,10 +166,11 @@ export default function StudentApplicationsPage({ params }) {
     rejected: typeApplications.filter((a) => a.status === 'rejected').length,
   };
 
+  const requestWithdraw = (applicationId) => {
+    setWithdrawConfirmId(applicationId);
+  };
+
   const handleWithdraw = async (applicationId) => {
-    if (typeof window !== 'undefined' && !window.confirm(WITHDRAW_REAPPLY_NOTICE)) {
-      return;
-    }
     setWithdrawingId(applicationId);
     try {
       const cancelEndpoint = type === 'drives' ? '/api/student/applications/cancel' : '/api/student/program-applications/cancel';
@@ -177,7 +181,10 @@ export default function StudentApplicationsPage({ params }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to withdraw application');
-      addToast('Application withdrawn successfully.', 'success');
+      addToast(
+        'Application withdrawn permanently. You cannot apply again, and the employer will no longer see you as an applicant.',
+        'success',
+      );
       setSelectedApp(null);
       await mutate();
       if (type === 'drives') {
@@ -187,6 +194,7 @@ export default function StudentApplicationsPage({ params }) {
       addToast(e.message || 'Failed to withdraw application', 'error');
     } finally {
       setWithdrawingId(null);
+      setWithdrawConfirmId(null);
     }
   };
 
@@ -323,7 +331,7 @@ export default function StudentApplicationsPage({ params }) {
                           <button
                             className="btn btn-danger btn-sm"
                             disabled={withdrawingId === app.id}
-                            onClick={() => handleWithdraw(app.id)}
+                            onClick={() => requestWithdraw(app.id)}
                           >
                             {withdrawingId === app.id ? 'Withdrawing...' : 'Withdraw'}
                           </button>
@@ -497,7 +505,7 @@ export default function StudentApplicationsPage({ params }) {
                 className="btn btn-danger"
                 style={{ width: '100%' }}
                 disabled={withdrawingId === selectedApp.id}
-                onClick={() => handleWithdraw(selectedApp.id)}
+                onClick={() => requestWithdraw(selectedApp.id)}
               >
                 {withdrawingId === selectedApp.id ? 'Withdrawing...' : 'Withdraw Application'}
               </button>
@@ -505,6 +513,22 @@ export default function StudentApplicationsPage({ params }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(withdrawConfirmId)}
+        title={WITHDRAWAL_CONFIRM_TITLE}
+        message={WITHDRAWAL_CONFIRM_BODY}
+        confirmLabel="Yes, withdraw permanently"
+        cancelLabel="Keep my application"
+        confirmTone="danger"
+        loading={Boolean(withdrawingId)}
+        onCancel={() => {
+          if (!withdrawingId) setWithdrawConfirmId(null);
+        }}
+        onConfirm={() => {
+          if (withdrawConfirmId) void handleWithdraw(withdrawConfirmId);
+        }}
+      />
     </div>
   );
 }

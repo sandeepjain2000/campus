@@ -6,9 +6,18 @@ import { slugify } from '@/lib/utils';
 import { generateSurfaceToken, normalizeSurfaceTokenInput } from '@/lib/shardBinding';
 import { notifyRegistrationSubmitted } from '@/lib/registrationNotify';
 import { newEmailVerificationToken, sendSignupVerificationEmail } from '@/lib/emailVerification';
+import {
+  assertCollegeNameAvailable,
+  assertEmployerNameAvailable,
+  formatCollegeNameInUseMessage,
+  formatEmployerNameInUseMessage,
+  normalizeOrganizationName,
+} from '@/lib/organizationNames';
 import { assertEmailAvailable, formatEmailDifferentTenantMessage, formatEmailInUseMessage } from '@/lib/userEmail';
 import { getPostRegistrationLoginPath } from '@/lib/postRegistrationRedirect';
 import { verifyLoginCaptcha } from '@/lib/simpleCaptcha';
+import { isDemoDataApiEnabled } from '@/lib/demoDataAccess';
+import { ensureIitmTieUpForEmployer } from '@/lib/employerIitmTieUp';
 
 export async function POST(request) {
   try {
@@ -72,7 +81,10 @@ export async function POST(request) {
       if (role === 'college_admin') {
         await assertEmailAvailable(client, email);
 
-        const collegeName = body.collegeFullName || `${firstName}'s College`;
+        const collegeName = normalizeOrganizationName(
+          body.collegeFullName || `${firstName}'s College`,
+        );
+        await assertCollegeNameAvailable(client, collegeName);
         const slug = slugify(collegeName) + '-' + Date.now().toString(36);
         const tenantResult = await client.query(
           `INSERT INTO tenants (name, slug, city, state, email, communication_email)
@@ -137,24 +149,31 @@ export async function POST(request) {
         );
 
         const user = userResult.rows[0];
-        const companySlug = slugify(body.companyName || firstName) + '-' + Date.now().toString(36);
-        await client.query(
+        const companyName = normalizeOrganizationName(body.companyName || `${firstName}'s Company`);
+        await assertEmployerNameAvailable(client, companyName);
+        const companySlug = slugify(companyName) + '-' + Date.now().toString(36);
+        const employerRes = await client.query(
           `INSERT INTO employer_profiles (user_id, company_name, company_slug, industry, website)
-           VALUES ($1, $2, $3, $4, $5)`,
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id`,
           [
             user.id,
-            body.companyName || `${firstName}'s Company`,
+            companyName,
             companySlug,
             body.industry || '',
             body.companyWebsite || '',
           ]
         );
 
+        if (isDemoDataApiEnabled()) {
+          await ensureIitmTieUpForEmployer(client, employerRes.rows[0].id);
+        }
+
         return {
           user,
           notify: {
             tenantName: null,
-            companyName: body.companyName || `${firstName}'s Company`,
+            companyName,
           },
         };
       }
@@ -216,6 +235,18 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Campus enrollment key was not recognized. Check with your institution.' },
         { status: 400 }
+      );
+    }
+    if (error.message === 'COLLEGE_NAME_EXISTS') {
+      return NextResponse.json(
+        { error: formatCollegeNameInUseMessage(error.existing) },
+        { status: 409 },
+      );
+    }
+    if (error.message === 'EMPLOYER_NAME_EXISTS') {
+      return NextResponse.json(
+        { error: formatEmployerNameInUseMessage(error.existing) },
+        { status: 409 },
       );
     }
     console.error('Registration error:', error);

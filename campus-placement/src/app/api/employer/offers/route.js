@@ -3,8 +3,17 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { validateEmployerOfferPayload } from '@/lib/apiInputValidation';
+import { toDateOnlyString } from '@/lib/dateOnly';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
 import { OfferService } from '@/lib/domain/offers/service';
+import { AND_DRIVE_NOT_DELETED, AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 function isMissingIsLatestError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('is_latest');
@@ -64,6 +73,15 @@ export async function POST(request) {
 
     if (!studentId || !jobTitle) {
       return NextResponse.json({ error: 'studentId and jobTitle are required' }, { status: 400 });
+    }
+
+    const offerErr = validateEmployerOfferPayload({
+      salary,
+      deadline: deadlineAt ? toDateOnlyString(deadlineAt) : '',
+      joiningDate: joiningDate ? toDateOnlyString(joiningDate) : '',
+    });
+    if (offerErr) {
+      return NextResponse.json({ error: offerErr }, { status: 400 });
     }
 
     const insertParams = [
@@ -127,7 +145,7 @@ export async function PATCH(request) {
     }
 
     const meta = await query(
-      `SELECT student_id, status FROM offers WHERE id = $1::uuid AND employer_id = $2::uuid`,
+      `SELECT student_id, status FROM offers o WHERE o.id = $1::uuid AND o.employer_id = $2::uuid ${AND_OFFER_NOT_DELETED}`,
       [id, employerId],
     );
     if (!meta.rows[0]) {
@@ -194,7 +212,7 @@ export async function PATCH(request) {
       } else {
         const driveId = String(raw).trim();
         const dr = await query(
-          `SELECT id FROM placement_drives WHERE id = $1::uuid AND employer_id = $2::uuid LIMIT 1`,
+          `SELECT id FROM placement_drives d WHERE d.id = $1::uuid AND d.employer_id = $2::uuid ${AND_DRIVE_NOT_DELETED} LIMIT 1`,
           [driveId, employerId],
         );
         if (!dr.rows[0]) {
@@ -218,7 +236,7 @@ export async function PATCH(request) {
     params.push(id, employerId);
     await query(
       `UPDATE offers SET ${sets.join(', ')}, updated_at = NOW()
-       WHERE id = $${params.length - 1}::uuid AND employer_id = $${params.length}::uuid`,
+       WHERE id = $${params.length - 1}::uuid AND employer_id = $${params.length}::uuid ${AND_OFFER_NOT_DELETED}`,
       params,
     );
 
@@ -226,7 +244,7 @@ export async function PATCH(request) {
 
     const out = await query(
       `SELECT id, status, job_title, salary, location, deadline AS deadline_at, joining_date
-       FROM offers WHERE id = $1::uuid AND employer_id = $2::uuid`,
+       FROM offers o WHERE o.id = $1::uuid AND o.employer_id = $2::uuid ${AND_OFFER_NOT_DELETED}`,
       [id, employerId],
     );
     return NextResponse.json({ offer: out.rows[0] });

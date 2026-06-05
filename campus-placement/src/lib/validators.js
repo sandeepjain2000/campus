@@ -194,8 +194,8 @@ export function validateStudentPercentage(pct, { label = 'Percentage', required 
   const raw = pct === '' || pct == null ? '' : String(pct).trim();
   if (!raw) return required ? `${label} is required` : '';
   const num = parseFloat(raw);
-  if (!Number.isFinite(num) || num < 0 || num > 100) {
-    return `${label} must be between 0 and 100`;
+  if (!Number.isFinite(num) || num <= 0 || num > 100) {
+    return `${label} must be greater than 0 and at most 100`;
   }
   return '';
 }
@@ -212,6 +212,34 @@ export function parseStudentPercentageOrNull(pct, label, options = {}) {
  * Validate CGPA (≤10) and academic percentages (≤100) for student profiles.
  * Accepts camelCase or snake_case field names.
  */
+/** Board / university name: when set, must contain at least one letter (not digits-only). */
+export function validateEducationBoard(value, { label = 'Board', allowEmpty = true } = {}) {
+  const s = String(value ?? '').trim();
+  if (!s) return allowEmpty ? '' : `${label} is required.`;
+  if (!/\p{L}/u.test(s)) {
+    return `${label} must include at least one letter (e.g. CBSE, ICSE, State Board).`;
+  }
+  return '';
+}
+
+const EDUCATION_LEVEL_LABELS = {
+  tenth: 'Class X board',
+  twelfth: 'Class XII board',
+  diploma: 'Diploma board',
+};
+
+/** Validate board names under educationDetails (tenth / twelfth / diploma). */
+export function validateEducationDetails(details = {}) {
+  if (!details || typeof details !== 'object') return null;
+  for (const [key, label] of Object.entries(EDUCATION_LEVEL_LABELS)) {
+    const row = details[key];
+    if (!row || typeof row !== 'object') continue;
+    const err = validateEducationBoard(row.board, { label, allowEmpty: true });
+    if (err) return err;
+  }
+  return null;
+}
+
 export function validateStudentAcademicScores(fields = {}) {
   const cgpa = fields.cgpa;
   const tenth = fields.tenthPercentage ?? fields.tenth_percentage;

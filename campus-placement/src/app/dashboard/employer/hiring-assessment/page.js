@@ -2,22 +2,29 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { Briefcase, FolderDot, GraduationCap, Target } from 'lucide-react';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { HiringAssessmentRoundBreakdown } from '@/components/assessment/HiringAssessmentRoundBreakdown';
+import { HiringResultBreakdown } from '@/components/assessment/HiringResultBreakdown';
 import { useToast } from '@/components/ToastProvider';
-import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
-import { pickRepresentativeAssessmentRows } from '@/lib/assessmentRowsDedupe';
-import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
+import { pickRepresentativeAssessmentRows, buildAssessmentSummary } from '@/lib/assessmentHiringViewShared';
 import { toCsvIsoDate } from '@/lib/csvExport';
+
+const KIND_TABS = [
+  { id: 'internship', label: 'Internship', icon: GraduationCap },
+  { id: 'jobs', label: 'Jobs', icon: Briefcase },
+  { id: 'drive', label: 'Drive', icon: Target },
+  { id: 'projects', label: 'Projects', icon: FolderDot },
+];
 
 export default function EmployerHiringAssessmentPage() {
   const { addToast } = useToast();
   const [campusesLoading, setCampusesLoading] = useState(true);
   const [approvedCampuses, setApprovedCampuses] = useState([]);
   const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [kindTab, setKindTab] = useState('jobs');
   const [loading, setLoading] = useState(false);
   const [payload, setPayload] = useState(null);
 
@@ -77,8 +84,26 @@ export default function EmployerHiringAssessmentPage() {
     };
   }, [selectedTenantId, addToast]);
 
-  const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-  const baseDisplayRows = useMemo(() => pickRepresentativeAssessmentRows(rows), [rows]);
+  const allRows = Array.isArray(payload?.rows) ? payload.rows : [];
+
+  const kindCounts = useMemo(() => {
+    const counts = { internship: 0, jobs: 0, drive: 0, projects: 0 };
+    for (const r of pickRepresentativeAssessmentRows(allRows)) {
+      const k = r.opportunity_kind;
+      if (k && counts[k] !== undefined) counts[k] += 1;
+    }
+    return counts;
+  }, [allRows]);
+
+  const scopedRows = useMemo(
+    () => allRows.filter((r) => r.opportunity_kind === kindTab),
+    [allRows, kindTab],
+  );
+
+  const baseDisplayRows = useMemo(() => pickRepresentativeAssessmentRows(scopedRows), [scopedRows]);
+
+  const summary = useMemo(() => buildAssessmentSummary(scopedRows), [scopedRows]);
+
   const {
     search,
     setSearch,
@@ -91,29 +116,10 @@ export default function EmployerHiringAssessmentPage() {
     clearFilters,
   } = useDataTableQuery(baseDisplayRows, {
     getSearchText: (r) =>
-      [r.roll_number, r.candidate_name, r.original_file_name, r.remarks].filter(Boolean).join(' '),
+      [r.system_id, r.roll_number, r.candidate_name, r.original_file_name, r.remarks].filter(Boolean).join(' '),
     sortOptions: COMMON_SORT_OPTIONS,
     defaultSort: 'name_asc',
   });
-  const roundLabels = useMemo(() => {
-    const rl = payload?.roundLabels;
-    if (!Array.isArray(rl) || rl.length === 0) {
-      return [1, 2, 3, 4, 5].map((n) => `Round ${n}`);
-    }
-    return [1, 2, 3, 4, 5].map((n) => {
-      const hit = rl.find((x) => Number(x.round_no) === n);
-      return hit?.round_label || `Round ${n}`;
-    });
-  }, [payload]);
-
-  const summary = payload?.summary || {
-    uniqueStudentCount: 0,
-    totalResultRows: 0,
-    uploadsCount: 0,
-    perRoundFilled: [0, 0, 0, 0, 0],
-    perRoundByStatus: [[], [], [], [], []],
-    perRoundUnspecified: [0, 0, 0, 0, 0],
-  };
 
   const getCsv = useCallback(
     (_scope) => ({
@@ -121,70 +127,39 @@ export default function EmployerHiringAssessmentPage() {
         'upload_file',
         'upload_at',
         'campus',
+        'system_id',
         'roll_number',
         'candidate_name',
         'employer_company',
-        'round_1',
-        'round_2',
-        'round_3',
-        'round_4',
-        'round_5',
+        'hiring_result',
+        'submission_status',
         'remarks',
       ],
       rows: displayRows.map((r) => [
         r.original_file_name ?? '',
         toCsvIsoDate(r.upload_created_at),
         r.tenant_name ?? '',
+        r.system_id ?? '',
         r.roll_number ?? '',
         r.candidate_name ?? '',
         r.employer_company ?? '',
-        r.round_1_result ?? '',
-        r.round_2_result ?? '',
-        r.round_3_result ?? '',
-        r.round_4_result ?? '',
-        r.round_5_result ?? '',
+        r.hiring_result ?? '',
+        r.submission_status ?? 'draft',
         r.remarks ?? '',
       ]),
     }),
     [displayRows],
   );
 
-  const downloadOffersImportStarter = async () => {
-    if (!selectedTenantId) {
-      addToast('Choose a campus first.', 'warning');
-      return;
-    }
-    try {
-      const url = `/api/employer/offers/assessment-starter?tenantId=${encodeURIComponent(selectedTenantId)}`;
-      await downloadCsvFromApi(url, EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME);
-      addToast('CSV lists every master-list student on this campus (tenant_id + roll; drive prefilled when available).', 'success');
-    } catch (e) {
-      addToast(e.message || 'Download failed', 'error');
-    }
-  };
-
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
-          <h1>📋 Hiring Assessment</h1>
-          <p className="text-secondary text-sm" style={{ maxWidth: 720 }}>
-            <strong>Read-only.</strong> This screen summarizes outcomes from your{' '}
-            <Link href="/dashboard/employer/assessment-uploads" style={{ fontWeight: 600 }}>
-              Assessment uploads
-            </Link>{' '}
-            (CSV). To add or change data, use that page only — nothing here can be edited.
-          </p>
+          <h1>Hiring Results Dashboard</h1>
         </div>
-        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <Link href="/dashboard/employer/assessment-uploads?upload=1" className="btn btn-primary">
-            Open upload &amp; mapping
-          </Link>
-          <button type="button" className="btn btn-secondary" onClick={downloadOffersImportStarter}>
-            Download Template (All students)
-          </button>
+        <div className="page-header-actions">
           <ExportCsvSplitButton
-            filenameBase="hiring_assessment_from_uploads"
+            filenameBase={`hiring_results_${kindTab}`}
             currentCount={displayRows.length}
             fullCount={displayRows.length}
             getRows={getCsv}
@@ -192,22 +167,18 @@ export default function EmployerHiringAssessmentPage() {
         </div>
       </div>
 
-      <div className="directive-panel" role="region" aria-label="Scope">
-        <p className="directive-panel__title">Scope</p>
-        <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-          Choose a campus to see assessment rows from uploads tied to that tenant. <strong>Total students</strong> and <strong>round-wise status</strong> use one
-          line per student (newest upload wins for display; older batches stay in the database). The detail table matches that rule.
-        </p>
-      </div>
-
       <div className="card" style={{ marginBottom: '1rem' }}>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">Campus</label>
+        <div className="form-group" style={{ marginBottom: 0, maxWidth: '70ch' }}>
+          <label className="form-label" htmlFor="hiring-results-campus">
+            Campus
+          </label>
           <select
+            id="hiring-results-campus"
             className="form-select"
             value={selectedTenantId}
             disabled={campusesLoading || approvedCampuses.length === 0}
             onChange={(e) => setSelectedTenantId(e.target.value)}
+            style={{ maxWidth: '70ch' }}
           >
             {approvedCampuses.length === 0 ? (
               <option value="">{campusesLoading ? 'Loading…' : 'No approved campuses'}</option>
@@ -223,6 +194,58 @@ export default function EmployerHiringAssessmentPage() {
         </div>
       </div>
 
+      <div
+        role="tablist"
+        aria-label="Opportunity type"
+        style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}
+      >
+        {KIND_TABS.map((t) => {
+          const Icon = t.icon;
+          const active = kindTab === t.id;
+          const n = kindCounts[t.id] ?? 0;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setKindTab(t.id)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.6rem 1.25rem',
+                borderRadius: '999px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                transition: 'background 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out',
+                border: 'none',
+                cursor: 'pointer',
+                background: active ? 'var(--primary-600)' : 'var(--bg-secondary)',
+                color: active ? 'white' : 'var(--text-secondary)',
+                boxShadow: active ? '0 4px 10px rgba(79, 70, 229, 0.25)' : 'none',
+              }}
+            >
+              <Icon size={16} strokeWidth={active ? 2.5 : 1.75} aria-hidden />
+              {t.label}
+              <span
+                style={{
+                  opacity: 0.85,
+                  fontSize: '0.75rem',
+                  background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)',
+                  borderRadius: '999px',
+                  padding: '0.1rem 0.45rem',
+                  fontWeight: 700,
+                  color: active ? 'white' : 'var(--text-tertiary)',
+                }}
+              >
+                {n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div className="skeleton skeleton-card" style={{ height: 200 }} />
       ) : (
@@ -232,7 +255,7 @@ export default function EmployerHiringAssessmentPage() {
               <div className="stats-card-value">{summary.uniqueStudentCount ?? 0}</div>
               <div className="stats-card-label">Total students</div>
               <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-                Distinct students (this campus)
+                Distinct students (this campus · {KIND_TABS.find((t) => t.id === kindTab)?.label})
                 {summary.totalResultRows > 0 ? (
                   <>
                     <br />
@@ -249,29 +272,20 @@ export default function EmployerHiringAssessmentPage() {
               </div>
             </div>
             <div className="stats-card">
-              <div className="stats-card-value">{summary.perRoundFilled.filter((n) => n > 0).length}</div>
-              <div className="stats-card-label">Rounds with data</div>
+              <div className="stats-card-value">{summary.withHiringResult ?? 0}</div>
+              <div className="stats-card-label">With hiring result</div>
               <div className="text-xs text-tertiary" style={{ marginTop: '0.25rem' }}>
-                Of five round columns
+                {summary.withoutHiringResult ?? 0} with no decision yet
               </div>
             </div>
           </div>
 
-          <HiringAssessmentRoundBreakdown
-            roundLabels={roundLabels}
-            perRoundByStatus={summary.perRoundByStatus}
-            perRoundUnspecified={summary.perRoundUnspecified}
-          />
+          <HiringResultBreakdown summary={summary} />
 
           <div className="card">
-            <h3 className="card-title" style={{ marginBottom: '0.35rem' }}>
-              Detail (read-only)
+            <h3 className="card-title" style={{ marginBottom: '0.75rem' }}>
+              Detail
             </h3>
-            <p className="text-xs text-secondary" style={{ marginBottom: '0.75rem', lineHeight: 1.5 }}>
-              One row per student on this campus; if the same roll appears in several uploads, the <strong>most recent file</strong> controls what you see here.{' '}
-              <strong>Candidate</strong> is the name from the campus master list for that roll (then email, then roll). CSV placeholders like &quot;Student_1&quot; are not
-              shown here.
-            </p>
             {totalCount > 0 ? (
               <DataTableToolbar
                 search={search}
@@ -292,18 +306,18 @@ export default function EmployerHiringAssessmentPage() {
                 <thead>
                   <tr>
                     <th>File</th>
+                    <th>System ID</th>
                     <th>Roll</th>
                     <th>Candidate</th>
-                    {roundLabels.map((label) => (
-                      <th key={label}>{label}</th>
-                    ))}
+                    <th>Hiring result</th>
+                    <th>Status</th>
                     <th>Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayRows.length === 0 && totalCount > 0 ? (
                     <tr>
-                      <td colSpan={3 + roundLabels.length + 1} className="text-center text-secondary">
+                      <td colSpan={7} className="text-center text-secondary">
                         No rows match your search.
                       </td>
                     </tr>
@@ -311,13 +325,15 @@ export default function EmployerHiringAssessmentPage() {
                   {displayRows.map((r) => (
                     <tr key={r.id}>
                       <td className="text-xs">{r.original_file_name || '—'}</td>
-                      <td className="font-mono text-sm">{r.roll_number}</td>
+                      <td className="font-mono text-sm">{r.system_id || '—'}</td>
+                      <td className="font-mono text-sm">{r.roll_number || '—'}</td>
                       <td className="text-sm">{r.candidate_name || '—'}</td>
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <td key={n} className="text-sm">
-                          {r[`round_${n}_result`] || '—'}
-                        </td>
-                      ))}
+                      <td className="text-sm">{r.hiring_result || '—'}</td>
+                      <td className="text-sm">
+                        <span className="badge badge-secondary" style={{ textTransform: 'capitalize' }}>
+                          {r.submission_status || 'draft'}
+                        </span>
+                      </td>
                       <td className="text-sm" style={{ maxWidth: 220 }}>
                         {r.remarks || '—'}
                       </td>
@@ -325,8 +341,8 @@ export default function EmployerHiringAssessmentPage() {
                   ))}
                   {totalCount === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center text-secondary">
-                        No assessment rows for this campus yet. Upload a CSV under{' '}
+                      <td colSpan={7} className="text-center text-secondary">
+                        No assessment rows for this campus and type yet. Upload a CSV under{' '}
                         <Link href="/dashboard/employer/assessment-uploads">Assessment uploads</Link>.
                       </td>
                     </tr>

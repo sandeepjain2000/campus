@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function POST(req) {
   try {
@@ -23,6 +31,7 @@ export async function POST(req) {
       FROM program_applications pa
       JOIN student_profiles sp ON pa.student_id = sp.id
       WHERE pa.id = $1::uuid AND sp.user_id = $2::uuid
+        AND ${SP_ACTIVE_CLAUSE} ${AND_PA_NOT_DELETED}
     `, [application_id, userId]);
 
     if (appQuery.rowCount === 0) {
@@ -36,9 +45,10 @@ export async function POST(req) {
       WHERE id = $2::uuid
     `, [withdrawal_reason || 'Student cancelled', application_id]);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Application withdrawn successfully'
+    return NextResponse.json({
+      success: true,
+      message:
+        'Application withdrawn permanently. You cannot apply again to this opening, and employers will no longer see you as an applicant.',
     });
 
   } catch (error) {

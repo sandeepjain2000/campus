@@ -4,6 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { queryCollegeOffersForTenant } from '@/lib/collegeOffersListQuery';
 import { fetchAssessmentRowsForView, pickRepresentativeAssessmentRows } from '@/lib/assessmentHiringView';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 function getTenantId(session) {
   return session?.user?.tenantId || session?.user?.tenant_id || null;
@@ -29,7 +36,7 @@ export async function GET() {
          WHERE sp.tenant_id = $1::uuid
            AND sp.roll_number IS NOT NULL
            AND TRIM(sp.roll_number) <> ''
-           AND sp.archived_at IS NULL`,
+           AND ${SP_ACTIVE_CLAUSE}`,
         [tenantId],
       );
       studentsWithRoll = Number(sr.rows[0]?.n) || 0;
@@ -59,10 +66,11 @@ export async function GET() {
       const masterIds = new Set(
         (
           await query(
-            `SELECT id FROM student_profiles
-             WHERE tenant_id = $1::uuid
-               AND roll_number IS NOT NULL
-               AND TRIM(roll_number) <> ''`,
+            `SELECT id FROM student_profiles sp
+             WHERE sp.tenant_id = $1::uuid
+               AND sp.roll_number IS NOT NULL
+               AND TRIM(sp.roll_number) <> ''
+               AND ${SP_ACTIVE_CLAUSE}`,
             [tenantId],
           )
         ).rows.map((r) => r.id),

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 import { parseStudentCgpaOrNull } from '@/lib/validators';
+import { validateDataEntryStudentPayload } from '@/lib/apiInputValidation';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 const ALLOWED_STATUS = new Set(['unplaced', 'placed', 'opted_out', 'higher_studies']);
 
@@ -25,7 +27,7 @@ export async function GET(request) {
               u.email, u.first_name, u.last_name
        FROM student_profiles sp
        LEFT JOIN users u ON u.id = sp.user_id
-       WHERE sp.tenant_id = $1
+       WHERE sp.tenant_id = $1 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
        ORDER BY sp.created_at DESC
        LIMIT 300`,
       [tenantId]
@@ -58,6 +60,10 @@ export async function POST(request) {
     }
     if (!userId || !department) {
       return NextResponse.json({ error: 'userId and department are required' }, { status: 400 });
+    }
+    const inputErr = validateDataEntryStudentPayload(body);
+    if (inputErr) {
+      return NextResponse.json({ error: inputErr }, { status: 400 });
     }
     if (cgpaParsed.error) {
       return NextResponse.json({ error: cgpaParsed.error }, { status: 400 });
@@ -116,6 +122,10 @@ export async function PUT(request) {
     const isVerified = Boolean(body?.isVerified);
     if (!id || !department || !ALLOWED_STATUS.has(placementStatus)) {
       return NextResponse.json({ error: 'id, department and valid placementStatus are required' }, { status: 400 });
+    }
+    const inputErr = validateDataEntryStudentPayload(body);
+    if (inputErr) {
+      return NextResponse.json({ error: inputErr }, { status: 400 });
     }
     if (cgpaParsed.error) {
       return NextResponse.json({ error: cgpaParsed.error }, { status: 400 });

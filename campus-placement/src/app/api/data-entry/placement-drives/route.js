@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
+import { validateDataEntryDrivePayload } from '@/lib/apiInputValidation';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
 
 const ALLOWED_STATUS = new Set(['requested', 'approved', 'scheduled', 'in_progress', 'completed', 'cancelled']);
 
@@ -21,8 +23,8 @@ export async function GET(request) {
 
     const result = await query(
       `SELECT id, title, description, status, drive_date, venue, max_students, employer_id, tenant_id
-       FROM placement_drives
-       WHERE tenant_id = $1
+       FROM placement_drives d
+       WHERE d.tenant_id = $1 ${AND_DRIVE_NOT_DELETED}
        ORDER BY created_at DESC
        LIMIT 300`,
       [tenantId]
@@ -55,6 +57,10 @@ export async function POST(request) {
     }
     if (!title) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+    const driveErr = validateDataEntryDrivePayload({ driveDate, maxStudents });
+    if (driveErr) {
+      return NextResponse.json({ error: driveErr }, { status: 400 });
     }
     if (!ALLOWED_STATUS.has(status)) {
       return NextResponse.json({ error: 'Invalid drive status' }, { status: 400 });

@@ -115,7 +115,7 @@ export default function CollegeInternshipResultsPage() {
           <button type="button" className="btn" onClick={exportCsv} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Download size={16} /> Export CSV
           </button>
-          <Link href="/dashboard/college/internships" className="btn" style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+          <Link href="/dashboard/college/internships" className="btn banner-cta-solid" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Plus size={16} /> Add Internship
           </Link>
         </div>

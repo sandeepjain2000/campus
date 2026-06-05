@@ -4,9 +4,12 @@ import { X, Home, Users, Briefcase, Calendar, Settings, LogOut, CheckSquare } fr
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { getRoleDisplayName } from '@/lib/utils';
+import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 import EntityLogo from '@/components/EntityLogo';
+import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
 
 export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
+  const brandLogoUrl = useResolvedBrandLogoUrl();
   if (!isOpen) return null;
 
   const role = session?.user?.role;
@@ -67,7 +70,17 @@ export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
 
         <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div className="avatar avatar-md" style={{ width: 44, height: 44 }}><EntityLogo name={name} size="md" /></div>
+            <div style={{ width: 44, height: 44, flexShrink: 0 }}>
+              <EntityLogo
+                name={session?.user?.tenantName || name}
+                logoUrl={brandLogoUrl}
+                placeholderUrl={
+                  role === 'employer' || role === 'college_admin' ? DEFAULT_ENTITY_LOGO_URL : null
+                }
+                size="md"
+                shape="rounded"
+              />
+            </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: '1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getRoleDisplayName(role)}</div>

@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getApplyBlockReason, postingEligibilityFromJobRow } from '@/lib/getApplyBlockReason';
 import { assertStudentMayApplyToPlacement } from '@/lib/studentApplyEligibility';
+import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
+import { WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE, isWithdrawnApplicationStatus } from '@/lib/applicationWithdrawal';
+import { assertStudentMayApplyToInternship } from '@/lib/internshipPlacementRules';
+import { assertActiveEmployerTieUp } from '@/lib/employerTieUp';
 import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
@@ -108,7 +113,10 @@ export async function POST(req) {
 
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 2);
     const job = await query(
-      `SELECT jp.id, jp.job_type, jp.status, jp.min_cgpa, sp.cgpa AS student_cgpa
+      `SELECT jp.id, jp.job_type, jp.status, jp.min_cgpa, jp.max_backlogs, jp.eligible_branches,
+              jp.batch_year, jp.application_deadline,
+              sp.cgpa AS student_cgpa, sp.branch AS student_branch, sp.department AS student_department,
+              sp.batch_year AS student_batch_year, sp.backlogs_active AS student_backlogs_active
        FROM job_postings jp
        CROSS JOIN student_profiles sp
        INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
@@ -126,6 +134,22 @@ export async function POST(req) {
     }
 
     const row = job.rows[0];
+    const employerIdRes = await query(
+      `SELECT jp.employer_id, jpv.tenant_id
+       FROM job_postings jp
+       INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id
+       WHERE jp.id = $1::uuid
+       LIMIT 1`,
+      [jobId],
+    );
+    const empRow = employerIdRes.rows[0];
+    if (empRow?.employer_id && empRow?.tenant_id) {
+      const tieUp = await assertActiveEmployerTieUp(empRow.tenant_id, empRow.employer_id);
+      if (!tieUp.ok) {
+        return NextResponse.json({ error: tieUp.error }, { status: 403 });
+      }
+    }
+
     if (row.status !== 'published') {
       return NextResponse.json({ error: 'This opening is not accepting applications' }, { status: 409 });
     }
@@ -133,38 +157,61 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Invalid program type' }, { status: 400 });
     }
 
-    if (row.min_cgpa != null) {
-      const reqCgpa = Number(row.min_cgpa);
-      const myCgpa = Number(row.student_cgpa);
-
-      if (isNaN(myCgpa)) {
-        return NextResponse.json({ error: 'Please update your CGPA in your profile to apply.' }, { status: 400 });
+    if (row.job_type === 'internship') {
+      const internGate = await assertStudentMayApplyToInternship(studentId, jobId);
+      if (!internGate.ok) {
+        return NextResponse.json({ error: internGate.error }, { status: 403 });
       }
+    }
 
-      let isEligible = false;
-      if (reqCgpa > 10 && myCgpa <= 10) {
-        isEligible = (myCgpa * 9.5) >= reqCgpa;
-      } else if (reqCgpa <= 10 && myCgpa > 10) {
-        isEligible = myCgpa >= (reqCgpa * 9.5);
-      } else {
-        isEligible = myCgpa >= reqCgpa;
-      }
+    const applyProfile = await loadStudentApplyProfile(studentId, tenantIds[0] || sessionTenant);
+    const { opportunity, student: profileFields } = postingEligibilityFromJobRow(row);
+    const blockReason = getApplyBlockReason(opportunity, {
+      ...profileFields,
+      hasResume: applyProfile.hasResume,
+      isPlacementLocked: applyProfile.isPlacementLocked,
+    });
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 400 });
+    }
 
-      if (!isEligible) {
-        return NextResponse.json({ 
-          error: `Cannot apply: Need minimum ${reqCgpa} CGPA, your current is ${myCgpa}. Scale mismatch resolved.`
-        }, { status: 400 });
-      }
+    const existing = await query(
+      `SELECT status FROM program_applications
+       WHERE student_id = $1::uuid AND job_id = $2::uuid
+         AND COALESCE(is_deleted, false) = false
+       LIMIT 1`,
+      [studentId, jobId],
+    );
+    if (existing.rows.length && isWithdrawnApplicationStatus(existing.rows[0].status)) {
+      return NextResponse.json({ error: WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE }, { status: 409 });
     }
 
     const ins = await query(
       `INSERT INTO program_applications (student_id, job_id, status, notes)
        VALUES ($1::uuid, $2::uuid, 'applied', $3)
        ON CONFLICT (student_id, job_id)
-       DO UPDATE SET status = 'applied', notes = COALESCE(EXCLUDED.notes, program_applications.notes), updated_at = NOW()
+       DO UPDATE SET
+         status = 'applied',
+         notes = COALESCE(EXCLUDED.notes, program_applications.notes),
+         updated_at = NOW()
+       WHERE program_applications.status <> 'withdrawn'
        RETURNING id, status`,
       [studentId, jobId, notes || null],
     );
+
+    if (!ins.rowCount) {
+      const withdrawn = await query(
+        `SELECT 1 FROM program_applications
+         WHERE student_id = $1::uuid AND job_id = $2::uuid AND status = 'withdrawn'
+           AND COALESCE(is_deleted, false) = false
+         LIMIT 1`,
+        [studentId, jobId],
+      );
+      if (withdrawn.rowCount) {
+        return NextResponse.json({ error: WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE }, { status: 409 });
+      }
+      return NextResponse.json({ error: 'Could not submit application' }, { status: 500 });
+    }
 
     try {
       await query(

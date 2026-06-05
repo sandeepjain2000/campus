@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { buildScreenRegistry } from '@/config/screenRegistry';
+import { isLlmChatConfigured } from '@/lib/llmChatConfig';
 import { matchScreensWithOpenAI } from '@/lib/screenSearchOpenai';
 
 export async function POST(request) {
@@ -29,7 +30,8 @@ export async function POST(request) {
     return NextResponse.json({
       query: q,
       matches,
-      openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
+      openaiConfigured: isLlmChatConfigured(),
+      llmConfigured: isLlmChatConfigured(),
       openaiHttpStatus,
     });
   } catch (e) {

@@ -4,9 +4,10 @@ import MobileHeader from '@/components/mobile/MobileHeader';
 import { useToast } from '@/components/ToastProvider';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { pickRepresentativeAssessmentRows } from '@/lib/assessmentRowsDedupe';
+import { buildAssessmentSummary } from '@/lib/assessmentHiringViewShared';
 import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
 import { ClipboardList, Users, Upload, Download, Search, Building2 } from 'lucide-react';
-import { HiringAssessmentRoundBreakdown } from '@/components/assessment/HiringAssessmentRoundBreakdown';
+import { HiringResultBreakdown } from '@/components/assessment/HiringResultBreakdown';
 
 export default function mb_HiringAssessment() {
   const { addToast } = useToast();
@@ -40,34 +41,18 @@ export default function mb_HiringAssessment() {
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   const displayRows = useMemo(() => pickRepresentativeAssessmentRows(rows), [rows]);
-  
+
   const filteredRows = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return displayRows.slice(0, 50); // initial load limit for mobile
-    return displayRows.filter(r => 
+    if (!q) return displayRows.slice(0, 50);
+    return displayRows.filter(r =>
       (r.candidate_name && r.candidate_name.toLowerCase().includes(q)) ||
       (r.roll_number && r.roll_number.toLowerCase().includes(q)) ||
       (r.employer_company && r.employer_company.toLowerCase().includes(q))
     ).slice(0, 50);
   }, [displayRows, searchQuery]);
 
-  const roundLabels = useMemo(() => {
-    const rl = payload?.roundLabels;
-    if (!Array.isArray(rl) || rl.length === 0) return [1, 2, 3, 4, 5].map((n) => `Round ${n}`);
-    return [1, 2, 3, 4, 5].map((n) => {
-      const hit = rl.find((x) => Number(x.round_no) === n);
-      return hit?.round_label || `Round ${n}`;
-    });
-  }, [payload]);
-
-  const summary = payload?.summary || {
-    uniqueStudentCount: 0,
-    totalResultRows: 0,
-    uploadsCount: 0,
-    perRoundFilled: [0, 0, 0, 0, 0],
-    perRoundByStatus: [[], [], [], [], []],
-    perRoundUnspecified: [0, 0, 0, 0, 0],
-  };
+  const summary = payload?.summary || buildAssessmentSummary(rows);
 
   const downloadOffersImportStarter = async () => {
     try {
@@ -80,14 +65,14 @@ export default function mb_HiringAssessment() {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'rounds', label: 'Rounds' },
+    { id: 'results', label: 'Results' },
     { id: 'students', label: 'Students' }
   ];
 
   return (
     <>
-      <MobileHeader 
-        title="Hiring Assessment" 
+      <MobileHeader
+        title="Hiring Assessment"
         action={
           <button className="btn btn-ghost btn-sm" onClick={downloadOffersImportStarter} style={{ padding: '0.4rem', color: 'var(--primary-600)' }}>
             <Download size={18} />
@@ -95,13 +80,13 @@ export default function mb_HiringAssessment() {
         }
       />
       <div className="animate-fadeIn" style={{ padding: '1rem 1rem 5rem 1rem' }}>
-        
+
         <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.25rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '12px', border: '1px solid var(--border-default)' }}>
           {tabs.map(({ id, label }) => (
-            <button 
-              key={id} 
-              type="button" 
-              onClick={() => setActiveTab(id)} 
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
               style={{ flex: 1, padding: '0.65rem 0', borderRadius: '8px', border: 'none', background: activeTab === id ? 'var(--primary-600)' : 'transparent', color: activeTab === id ? 'white' : 'var(--text-secondary)', fontWeight: activeTab === id ? 700 : 500, cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s' }}
             >
               {label}
@@ -149,20 +134,16 @@ export default function mb_HiringAssessment() {
                     <ClipboardList size={24} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{summary.perRoundFilled.filter(n => n > 0).length}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: 600 }}>Rounds with Data</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{summary.withHiringResult ?? 0}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: 600 }}>With hiring result</div>
                   </div>
                 </div>
               </div>
             )}
 
-            {activeTab === 'rounds' && (
+            {activeTab === 'results' && (
               <div style={{ overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                <HiringAssessmentRoundBreakdown
-                  roundLabels={roundLabels}
-                  perRoundByStatus={summary.perRoundByStatus}
-                  perRoundUnspecified={summary.perRoundUnspecified}
-                />
+                <HiringResultBreakdown summary={summary} />
               </div>
             )}
 
@@ -170,23 +151,21 @@ export default function mb_HiringAssessment() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ position: 'relative' }}>
                   <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                  <input 
-                    className="form-input" 
-                    placeholder="Search name, roll, or company..." 
-                    value={searchQuery} 
-                    onChange={e => setSearchQuery(e.target.value)} 
-                    style={{ paddingLeft: '2.5rem', borderRadius: '999px', background: 'var(--surface)' }} 
+                  <input
+                    className="form-input"
+                    placeholder="Search name, roll, or company..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    style={{ paddingLeft: '2.5rem', borderRadius: '999px', background: 'var(--surface)' }}
                   />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {filteredRows.map((r) => {
-                    const roundsFilled = [1, 2, 3, 4, 5].filter(n => r[`round_${n}_result`]);
-                    const lastRound = roundsFilled.length > 0 ? roundsFilled[roundsFilled.length - 1] : null;
-                    const lastResult = lastRound ? r[`round_${lastRound}_result`] : 'No Status';
-                    
-                    const isSuccess = lastResult.toLowerCase().includes('select') || lastResult.toLowerCase().includes('pass') || lastResult.toLowerCase().includes('hire');
-                    const isFail = lastResult.toLowerCase().includes('reject') || lastResult.toLowerCase().includes('fail');
+                    const result = String(r.hiring_result || '').trim() || 'No decision';
+                    const lk = result.toLowerCase();
+                    const isSuccess = lk.includes('select') || lk.includes('shortlist');
+                    const isFail = lk.includes('reject') || lk.includes('decline') || lk.includes('withdraw');
                     const badgeClass = isSuccess ? 'badge-success' : isFail ? 'badge-danger' : 'badge-primary';
 
                     return (
@@ -197,10 +176,10 @@ export default function mb_HiringAssessment() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{r.roll_number}</div>
                           </div>
                           <span className={`badge ${badgeClass}`} style={{ fontSize: '0.65rem' }}>
-                            {lastRound ? `R${lastRound}: ` : ''}{lastResult}
+                            {result}
                           </span>
                         </div>
-                        
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                           <Building2 size={12} style={{ opacity: 0.7 }} />
                           <span style={{ fontWeight: 500 }}>{r.employer_company || '—'}</span>
@@ -211,7 +190,7 @@ export default function mb_HiringAssessment() {
                             <span style={{ fontWeight: 600 }}>Remarks:</span> {r.remarks}
                           </div>
                         )}
-                        
+
                         <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-default)', fontSize: '0.7rem', color: 'var(--text-tertiary)', textAlign: 'right' }}>
                           From: {r.original_file_name || '—'}
                         </div>

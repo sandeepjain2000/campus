@@ -18,6 +18,9 @@ import {
 } from '@/lib/collegeStudentAdminFields';
 import AdmissionBatchYearPicker from '@/components/college/AdmissionBatchYearPicker';
 import { getMaxAdmissionBatchYear } from '@/lib/admissionBatchYear';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 export { ADD_STUDENT_DEPARTMENTS };
 
@@ -293,65 +296,58 @@ export default function AddStudentForm({
               />
             </Field>
             <Field label="CGPA" error={errors.cgpa}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_CGPA}
                 className={`form-input${errors.cgpa ? ' input-error' : ''}`}
-                type="number"
                 step="0.01"
-                min="0.01"
-                max="10"
                 value={form.cgpa}
-                onChange={(e) => set('cgpa', e.target.value)}
+                onChange={(v) => set('cgpa', v)}
               />
             </Field>
             <Field label="Class X %" error={errors.tenth_percentage}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_PERCENT}
+                context={{ label: 'Class X %' }}
                 className={`form-input${errors.tenth_percentage ? ' input-error' : ''}`}
-                type="number"
                 step="0.01"
-                min="0"
-                max="100"
                 value={form.tenth_percentage}
-                onChange={(e) => set('tenth_percentage', e.target.value)}
+                onChange={(v) => set('tenth_percentage', v)}
               />
             </Field>
             <Field label="Class XII %" error={errors.twelfth_percentage}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_PERCENT}
+                context={{ label: 'Class XII %' }}
                 className={`form-input${errors.twelfth_percentage ? ' input-error' : ''}`}
-                type="number"
                 step="0.01"
-                min="0"
-                max="100"
                 value={form.twelfth_percentage}
-                onChange={(e) => set('twelfth_percentage', e.target.value)}
+                onChange={(v) => set('twelfth_percentage', v)}
               />
             </Field>
             <Field label="Diploma %" error={errors.diploma_percentage}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_PERCENT}
+                context={{ label: 'Diploma %' }}
                 className={`form-input${errors.diploma_percentage ? ' input-error' : ''}`}
-                type="number"
                 step="0.01"
-                min="0"
-                max="100"
                 value={form.diploma_percentage}
-                onChange={(e) => set('diploma_percentage', e.target.value)}
+                onChange={(v) => set('diploma_percentage', v)}
               />
             </Field>
             <Field label="Active Backlogs" error={errors.backlogs_active}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_BACKLOGS_ACTIVE}
                 className={`form-input${errors.backlogs_active ? ' input-error' : ''}`}
-                type="number"
-                min="0"
                 value={form.backlogs_active}
-                onChange={(e) => set('backlogs_active', e.target.value)}
+                onChange={(v) => set('backlogs_active', v)}
               />
             </Field>
             <Field label="Total Backlogs (history)" error={errors.backlogs_history}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_BACKLOGS_TOTAL}
                 className={`form-input${errors.backlogs_history ? ' input-error' : ''}`}
-                type="number"
-                min="0"
                 value={form.backlogs_history}
-                onChange={(e) => set('backlogs_history', e.target.value)}
+                onChange={(v) => set('backlogs_history', v)}
               />
             </Field>
           </div>
@@ -413,12 +409,12 @@ export default function AddStudentForm({
                 ))}
               </select>
             </Field>
-            <Field label="Date of Birth">
-              <input
-                className="form-input"
-                type="date"
+            <Field label="Date of Birth" error={errors.date_of_birth}>
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.STUDENT_DOB}
+                className={`form-input${errors.date_of_birth ? ' input-error' : ''}`}
                 value={form.date_of_birth}
-                onChange={(e) => set('date_of_birth', e.target.value)}
+                onChange={(v) => set('date_of_birth', v)}
               />
             </Field>
           </div>
@@ -518,21 +514,20 @@ export default function AddStudentForm({
           <SectionLegend>Preferences</SectionLegend>
           <div className="add-student-grid">
             <Field label="Expected Salary Min (₹/year)" error={errors.expected_salary_min}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_SALARY_MIN}
                 className={`form-input${errors.expected_salary_min ? ' input-error' : ''}`}
-                type="number"
-                min="0"
                 value={form.expected_salary_min}
-                onChange={(e) => set('expected_salary_min', e.target.value)}
+                onChange={(v) => set('expected_salary_min', v)}
               />
             </Field>
             <Field label="Expected Salary Max (₹/year)" error={errors.expected_salary_max}>
-              <input
+              <ValidatedNumberInput
+                fieldId={FIELD_IDS.STUDENT_SALARY_MAX}
+                context={{ salaryMin: form.expected_salary_min }}
                 className={`form-input${errors.expected_salary_max ? ' input-error' : ''}`}
-                type="number"
-                min="0"
                 value={form.expected_salary_max}
-                onChange={(e) => set('expected_salary_max', e.target.value)}
+                onChange={(v) => set('expected_salary_max', v)}
               />
             </Field>
             <Field label="Preferred Locations" fullWidth>

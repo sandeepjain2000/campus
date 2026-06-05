@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 import { useToast } from '@/components/ToastProvider';
 import { Save, Building2, MapPin, Award, UserCircle, Globe, Image as ImageIcon, Shield } from 'lucide-react';
 import EntityLogo from '@/components/EntityLogo';
@@ -223,7 +225,7 @@ export default function mb_Settings() {
                   </div>
                   <div className="form-group mb-0">
                     <label className="text-xs text-secondary mb-1 block">NIRF Rank</label>
-                    <input className="form-input" type="number" value={form.accreditation.nirfRank} onChange={(e) => setNested('accreditation', 'nirfRank', e.target.value)} />
+                    <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_NIRF_RANK} value={form.accreditation.nirfRank} onChange={(v) => setNested('accreditation', 'nirfRank', v)} />
                   </div>
                 </div>
                 <hr style={{ margin: '0.5rem 0', borderColor: 'var(--border-default)' }} />
@@ -235,11 +237,11 @@ export default function mb_Settings() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div className="form-group mb-0">
                     <label className="text-xs text-secondary mb-1 block">Patents</label>
-                    <input className="form-input" type="number" value={form.institutionShowcase.patentCount} onChange={(e) => setNested('institutionShowcase', 'patentCount', e.target.value)} />
+                    <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_PATENT_COUNT} context={{ label: 'Patent count' }} value={form.institutionShowcase.patentCount} onChange={(v) => setNested('institutionShowcase', 'patentCount', v)} />
                   </div>
                   <div className="form-group mb-0">
                     <label className="text-xs text-secondary mb-1 block">Startups</label>
-                    <input className="form-input" type="number" value={form.institutionShowcase.startupCount} onChange={(e) => setNested('institutionShowcase', 'startupCount', e.target.value)} />
+                    <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_STARTUP_COUNT} context={{ label: 'Startup count' }} value={form.institutionShowcase.startupCount} onChange={(v) => setNested('institutionShowcase', 'startupCount', v)} />
                   </div>
                 </div>
               </div>

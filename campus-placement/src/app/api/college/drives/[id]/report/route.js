@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import {
+
+
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_PD_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 export async function GET(req, { params }) {
   try {
@@ -19,11 +31,10 @@ export async function GET(req, { params }) {
     // Fetch Drive Info
     const driveQuery = await query(`
       SELECT pd.title, pd.drive_date, pd.drive_type, pd.status,
-             ep.company_name, jp.job_type, jp.salary_max
+             ep.company_name, pd.ctc_breakup
       FROM placement_drives pd
       LEFT JOIN employer_profiles ep ON pd.employer_id = ep.id
-      LEFT JOIN job_postings jp ON pd.job_id = jp.id
-      WHERE pd.id = $1 AND pd.tenant_id = $2
+      WHERE pd.id = $1 AND pd.tenant_id = $2 ${AND_DRIVE_PD_NOT_DELETED}
     `, [driveId, tenantId]);
 
     if (driveQuery.rowCount === 0) {
@@ -35,8 +46,8 @@ export async function GET(req, { params }) {
     // Fetch Statistics
     const statsQuery = await query(`
       SELECT status, COUNT(*) as count
-      FROM applications
-      WHERE drive_id = $1
+      FROM applications a
+      WHERE a.drive_id = $1 ${AND_APP_NOT_DELETED}
       GROUP BY status
     `, [driveId]);
 
@@ -62,7 +73,7 @@ export async function GET(req, { params }) {
       FROM applications a
       JOIN student_profiles sp ON a.student_id = sp.id
       JOIN users u ON sp.user_id = u.id
-      WHERE a.drive_id = $1 AND a.status = 'selected' AND sp.archived_at IS NULL
+      WHERE a.drive_id = $1 AND a.status = 'selected' AND ${SP_ACTIVE_CLAUSE} ${AND_APP_NOT_DELETED}
     `, [driveId]);
 
     const report = {

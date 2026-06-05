@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 const HIRING_ROLES = ['employer', 'college_admin', 'super_admin'];
 
 function normalizeRows(rows) {

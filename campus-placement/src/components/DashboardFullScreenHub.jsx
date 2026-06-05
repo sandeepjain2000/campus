@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import { Search, Bell } from 'lucide-react';
+import { Search } from 'lucide-react';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
+import DevScreenTag from '@/components/DevScreenTag';
 import EntityLogo from '@/components/EntityLogo';
+import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
 import { menuConfig, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
 import { getDevScreenId } from '@/config/devScreenIds';
-import { getNotificationIconTitle } from '@/lib/appVersion';
 import { getRoleDisplayName } from '@/lib/utils';
-import DevScreenTag from '@/components/DevScreenTag';
+import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
+import { readStoredActiveCampus, resolveEmployerActiveCampus } from '@/lib/employerActiveCampus';
 // import OnboardingChecklist from '@/components/OnboardingChecklist';
 
 function getHubPageTitle(session, role, menu) {
@@ -88,28 +91,53 @@ function syncNavSection(sectionId) {
 export default function DashboardFullScreenHub({ role, session }) {
   const menu = menuConfig[role] || menuConfig.student;
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
-  const [employerHasCampus, setEmployerHasCampus] = useState(() => {
-    if (typeof window === 'undefined' || role !== 'employer') return true;
-    return Boolean(sessionStorage.getItem('activeCampus'));
-  });
+  const brandLogoUrl = useResolvedBrandLogoUrl();
+  const [employerCampus, setEmployerCampus] = useState(null);
+  const [employerCampusLoading, setEmployerCampusLoading] = useState(role === 'employer');
+  const [employerApprovedCount, setEmployerApprovedCount] = useState(0);
   const [hubSearch, setHubSearch] = useState('');
 
   useEffect(() => {
     if (role !== 'employer') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEmployerHasCampus(true);
+      setEmployerCampusLoading(false);
       return;
     }
-    const check = () => setEmployerHasCampus(Boolean(sessionStorage.getItem('activeCampus')));
-    check();
-    const onCampusPicked = () => check();
+    let mounted = true;
+
+    const syncFromStorage = () => {
+      const stored = readStoredActiveCampus();
+      if (stored?.id) setEmployerCampus(stored);
+    };
+
+    const resolve = async () => {
+      setEmployerCampusLoading(true);
+      syncFromStorage();
+      try {
+        const { active, approvedCount } = await resolveEmployerActiveCampus();
+        if (!mounted) return;
+        setEmployerCampus(active);
+        setEmployerApprovedCount(approvedCount);
+      } finally {
+        if (mounted) setEmployerCampusLoading(false);
+      }
+    };
+
+    resolve();
+    const onCampusPicked = () => {
+      syncFromStorage();
+      setEmployerApprovedCount((n) => Math.max(n, 1));
+    };
     window.addEventListener('placementhub-active-campus', onCampusPicked);
-    window.addEventListener('focus', check);
+    window.addEventListener('focus', syncFromStorage);
     return () => {
+      mounted = false;
       window.removeEventListener('placementhub-active-campus', onCampusPicked);
-      window.removeEventListener('focus', check);
+      window.removeEventListener('focus', syncFromStorage);
     };
   }, [role]);
+
+  const employerHasCampus = Boolean(employerCampus?.id);
+  const employerNeedsPartnership = !employerCampusLoading && !employerHasCampus && employerApprovedCount === 0;
 
   const quickActions = getQuickActions(role, employerHasCampus);
   const hubFilter = useMemo(() => {
@@ -148,8 +176,6 @@ export default function DashboardFullScreenHub({ role, session }) {
 
   const logoName =
     role === 'super_admin' ? 'PlacementHub' : session?.user?.tenantName || session?.user?.name || 'PlacementHub';
-  const notificationTitle = getNotificationIconTitle();
-
   return (
     <div className="dashboard-nav-hub">
       <header className="dashboard-nav-hub-topbar">
@@ -190,8 +216,16 @@ export default function DashboardFullScreenHub({ role, session }) {
               style={{ paddingLeft: '2.25rem' }}
             />
           </div>
-          <div className="avatar avatar-sm" style={{ width: 32, height: 32, overflow: 'hidden' }}>
-            <EntityLogo name={logoName} size="sm" shape="rounded" />
+          <div style={{ flexShrink: 0 }}>
+            <EntityLogo
+              name={logoName}
+              logoUrl={brandLogoUrl}
+              placeholderUrl={
+                role === 'employer' || role === 'college_admin' ? DEFAULT_ENTITY_LOGO_URL : null
+              }
+              size="sm"
+              shape="rounded"
+            />
           </div>
           <div style={{ fontSize: '0.8125rem', textAlign: 'right', minWidth: 0, maxWidth: '9rem' }}>
             <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -199,15 +233,7 @@ export default function DashboardFullScreenHub({ role, session }) {
             </div>
             <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>{getRoleDisplayName(role)}</div>
           </div>
-          <Link
-            href="/dashboard/alerts"
-            className="btn btn-ghost btn-icon notification-bell"
-            title={notificationTitle}
-            aria-label={notificationTitle}
-          >
-            <Bell size={18} aria-hidden="true" />
-            <span className="notification-dot" aria-hidden />
-          </Link>
+          <NotificationDropdown />
           <ThemeToggleButton />
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut({ callbackUrl: '/login' })}>
             Sign out
@@ -217,7 +243,7 @@ export default function DashboardFullScreenHub({ role, session }) {
 
       <div className="dashboard-nav-hub-body">
         {/* OnboardingChecklist moved to dedicated menu item */}
-        {role === 'employer' && !employerHasCampus && (
+        {role === 'employer' && employerNeedsPartnership && (
           <div
             className="wireframe-banner"
             style={{
@@ -229,14 +255,37 @@ export default function DashboardFullScreenHub({ role, session }) {
             }}
             role="status"
           >
-            <strong>No active campus</strong>
+            <strong>No campus partnership yet</strong>
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-              Choose an <strong>approved</strong> campus to unlock recruiting data and posting. You can open any link
-              below; pages that need a campus will prompt you.
+              Request an <strong>approved</strong> campus tie-up to unlock campus-scoped recruiting views. You can still
+              open internships and job postings below once a college approves your partnership.
             </p>
             <Link href="/dashboard/employer/select-campus" className="btn btn-primary btn-sm" style={{ marginTop: '0.75rem', display: 'inline-flex' }}>
               Campus Partnerships →
             </Link>
+          </div>
+        )}
+        {role === 'employer' && employerHasCampus && (
+          <div
+            className="wireframe-banner"
+            style={{
+              marginBottom: '1rem',
+              display: 'block',
+              background: 'var(--bg-secondary)',
+              borderStyle: 'solid',
+              borderColor: 'var(--border-default)',
+            }}
+            role="status"
+          >
+            <strong>Active campus: {employerCampus.name}</strong>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              Recruiting data and drives use this partnership.
+              {employerApprovedCount > 1 ? ` ${employerApprovedCount} approved campuses — ` : ' '}
+              <Link href="/dashboard/employer/select-campus" style={{ fontWeight: 600 }}>
+                {employerApprovedCount > 1 ? 'switch campus' : 'change campus'}
+              </Link>
+              .
+            </p>
           </div>
         )}
 

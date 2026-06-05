@@ -1,4 +1,5 @@
 import { transaction } from '@/lib/db';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 const ARCHIVE_COLUMN_HINT =
   'Apply migration db/migrations/052_student_profiles_archived.sql, then retry.';
@@ -17,7 +18,7 @@ export async function archiveCollegeStudentProfile({ profileId, tenantId, adminU
       const row = await client.query(
         `SELECT sp.id, sp.user_id
          FROM student_profiles sp
-         WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND sp.archived_at IS NULL
+         WHERE sp.id = $1::uuid AND sp.tenant_id = $2::uuid AND ${SP_ACTIVE_CLAUSE}
          LIMIT 1`,
         [profileId, tenantId],
       );

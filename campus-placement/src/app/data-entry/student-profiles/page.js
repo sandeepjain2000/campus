@@ -6,6 +6,9 @@ import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateDataEntryStudentPayload } from '@/lib/apiInputValidation';
 
 export default function DataEntryStudentProfilesPage() {
   const [studentUsers, setStudentUsers] = useState([]);
@@ -112,6 +115,11 @@ export default function DataEntryStudentProfilesPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const validationErr = validateDataEntryStudentPayload(form);
+    if (validationErr) {
+      setError(validationErr);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     setSuccess('');
@@ -203,7 +211,7 @@ export default function DataEntryStudentProfilesPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">CGPA</label>
-                <input className="form-input" type="number" step="0.01" min="0" max="10" value={form.cgpa} onChange={onChange('cgpa')} />
+                <ValidatedNumberInput fieldId={FIELD_IDS.STUDENT_CGPA} step="0.01" value={form.cgpa} onChange={(v) => setForm((p) => ({ ...p, cgpa: v }))} />
               </div>
               <div className="form-group">
                 <label className="form-label">Placement status</label>
@@ -216,11 +224,11 @@ export default function DataEntryStudentProfilesPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Batch year</label>
-                <input className="form-input" type="number" value={form.batchYear} onChange={onChange('batchYear')} />
+                <ValidatedNumberInput fieldId={FIELD_IDS.STUDENT_BATCH_YEAR} value={form.batchYear} onChange={(v) => setForm((p) => ({ ...p, batchYear: v }))} />
               </div>
               <div className="form-group">
                 <label className="form-label">Graduation year</label>
-                <input className="form-input" type="number" value={form.graduationYear} onChange={onChange('graduationYear')} />
+                <ValidatedNumberInput fieldId={FIELD_IDS.STUDENT_GRAD_YEAR} context={{ batchYear: form.batchYear }} value={form.graduationYear} onChange={(v) => setForm((p) => ({ ...p, graduationYear: v }))} />
               </div>
               <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.8rem' }}>
                 <input id="profile-verified" type="checkbox" checked={form.isVerified} onChange={onChange('isVerified')} />

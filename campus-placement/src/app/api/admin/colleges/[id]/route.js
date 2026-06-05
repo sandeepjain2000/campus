@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { isUuid, requireSuperAdmin } from '@/lib/adminAuth';
+import {
+  assertCollegeNameAvailable,
+  formatCollegeNameInUseMessage,
+  normalizeOrganizationName,
+} from '@/lib/organizationNames';
+import { SP_ACTIVE_ON } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 async function loadCollege(id) {
   const result = await query(
@@ -32,7 +44,7 @@ async function loadCollege(id) {
           LIMIT 1
         ) AS primary_admin
       FROM tenants t
-      LEFT JOIN student_profiles sp ON sp.tenant_id = t.id
+      LEFT JOIN student_profiles sp ON sp.tenant_id = t.id AND ${SP_ACTIVE_ON}
       WHERE t.id = $1::uuid AND t.type = 'college'
       GROUP BY t.id`,
     [id],
@@ -90,8 +102,20 @@ export async function PATCH(request, { params }) {
     if (!isUuid(id)) return NextResponse.json({ error: 'Invalid college id' }, { status: 400 });
 
     const body = await request.json();
-    const name = String(body?.name ?? '').trim();
+    const name = normalizeOrganizationName(body?.name ?? '');
     if (!name) return NextResponse.json({ error: 'College name is required' }, { status: 400 });
+
+    try {
+      await assertCollegeNameAvailable(query, name, { excludeTenantId: id });
+    } catch (e) {
+      if (e.message === 'COLLEGE_NAME_EXISTS') {
+        return NextResponse.json(
+          { error: formatCollegeNameInUseMessage(e.existing, { name }) },
+          { status: 409 },
+        );
+      }
+      throw e;
+    }
 
     const city = String(body?.city ?? '').trim();
     const state = String(body?.state ?? '').trim();

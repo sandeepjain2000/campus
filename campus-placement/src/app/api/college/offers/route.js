@@ -6,6 +6,15 @@ import { queryCollegeOffersForTenant } from '@/lib/collegeOffersListQuery';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 import { toDateOnlyString, validateOfferDates } from '@/lib/dateOnly';
+import { validateCollegeOfferPayload } from '@/lib/apiInputValidation';
+import { AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 const OFFER_STATUSES = new Set(['pending', 'accepted', 'rejected', 'expired', 'revoked']);
 const REOPEN_FROM_STATUSES = new Set(['accepted', 'rejected', 'revoked', 'expired']);
@@ -18,7 +27,7 @@ async function assertOfferInTenant(offerId, tenantId) {
   const r = await query(
     `SELECT o.id FROM offers o
      JOIN student_profiles sp ON sp.id = o.student_id
-     WHERE o.id = $1::uuid AND sp.tenant_id = $2::uuid
+     WHERE o.id = $1::uuid AND sp.tenant_id = $2::uuid ${AND_OFFER_NOT_DELETED}
      LIMIT 1`,
     [offerId, tenantId],
   );
@@ -88,6 +97,14 @@ export async function POST(request) {
       body?.joiningDate || body?.joining_date
         ? toDateOnlyString(String(body.joiningDate || body.joining_date).trim())
         : '';
+    const offerInputErr = validateCollegeOfferPayload({
+      salary: body?.salary,
+      deadline: deadlineYmd,
+      joiningDate: joiningDateYmd,
+    });
+    if (offerInputErr) {
+      return NextResponse.json({ error: offerInputErr }, { status: 400 });
+    }
     const offerDatesCheck = validateOfferDates(deadlineYmd || null, joiningDateYmd || null);
     if (!offerDatesCheck.ok) {
       return NextResponse.json({ error: offerDatesCheck.error }, { status: 400 });
@@ -109,7 +126,7 @@ export async function POST(request) {
     if (!studentId && rollNumber) {
       const sr = await query(
         `SELECT id FROM student_profiles
-         WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2 AND archived_at IS NULL
+         WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
          LIMIT 1`,
         [tenantId, rollNumber],
       );
@@ -123,7 +140,7 @@ export async function POST(request) {
     }
 
     const own = await query(
-      `SELECT id FROM student_profiles WHERE id = $1::uuid AND tenant_id = $2::uuid AND archived_at IS NULL`,
+      `SELECT id FROM student_profiles WHERE id = $1::uuid AND tenant_id = $2::uuid AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}`,
       [studentId, tenantId],
     );
     if (!own.rows[0]) {
@@ -187,7 +204,10 @@ export async function PATCH(request) {
     const ok = await assertOfferInTenant(id, tenantId);
     if (!ok) return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
 
-    const metaRow = await query(`SELECT employer_id, student_id, status FROM offers WHERE id = $1::uuid`, [id]);
+    const metaRow = await query(
+      `SELECT employer_id, student_id, status FROM offers o WHERE o.id = $1::uuid ${AND_OFFER_NOT_DELETED}`,
+      [id],
+    );
     const hasEmployer = metaRow.rows[0]?.employer_id != null;
 
     const sets = [];
@@ -217,7 +237,7 @@ export async function PATCH(request) {
       body.joining_date !== undefined
     ) {
       const curDates = await query(
-        `SELECT deadline, joining_date FROM offers WHERE id = $1::uuid`,
+        `SELECT deadline, joining_date FROM offers o WHERE o.id = $1::uuid ${AND_OFFER_NOT_DELETED}`,
         [id],
       );
       const cur = curDates.rows[0] || {};

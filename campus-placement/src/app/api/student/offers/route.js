@@ -6,7 +6,15 @@ import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { isOfferDeadlinePassed } from '@/lib/offerDeadline';
 import { isPendingOfferStatus, normalizeOfferStatus, OFFER_PENDING_STATUS_SQL } from '@/lib/offerStatusNormalize';
 import { resolveStudentProfileByUserId } from '@/lib/studentProfileResolve';
+import { markStudentPlacedAfterOfferAccept } from '@/lib/studentApplyEligibility';
 import { assertStudentMayAcceptOffer } from '@/lib/offerPlacementRules';
+import { AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 function isMissingReportedColumnError(e) {
   const msg = String(e?.message || '');
@@ -40,7 +48,7 @@ function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField
            ${latestSel}
     FROM offers o
     LEFT JOIN employer_profiles ep ON o.employer_id = ep.id
-    WHERE o.student_id = $1 ${latestClause}
+    WHERE o.student_id = $1 ${latestClause} ${AND_OFFER_NOT_DELETED}
     ORDER BY o.created_at DESC`;
 }
 
@@ -188,7 +196,7 @@ export async function PATCH(request) {
     }
 
     const existing = await query(
-      `SELECT id, status, deadline FROM offers WHERE id = $1::uuid AND student_id = $2::uuid`,
+      `SELECT id, status, deadline FROM offers o WHERE o.id = $1::uuid AND o.student_id = $2::uuid ${AND_OFFER_NOT_DELETED}`,
       [id, studentId],
     );
     const offer = existing.rows[0];
@@ -244,6 +252,14 @@ export async function PATCH(request) {
       await refreshOfferLatestFlagsForStudent(studentId);
     } catch (refreshErr) {
       console.warn('refreshOfferLatestFlagsForStudent after student decision:', refreshErr?.message || refreshErr);
+    }
+
+    if (action === 'accept') {
+      try {
+        await markStudentPlacedAfterOfferAccept(studentId);
+      } catch (placedErr) {
+        console.warn('markStudentPlacedAfterOfferAccept:', placedErr?.message || placedErr);
+      }
     }
 
     const row = result.rows[0];

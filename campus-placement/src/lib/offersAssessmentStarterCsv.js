@@ -39,12 +39,13 @@ export function buildCollegeOffersAllStudentsCsv(masterRows, assessmentByProfile
  * @param {Array<{ roll_number: string, tenant_id: string, upload_drive_id?: string | null }>} flatRows
  */
 export function buildEmployerOffersAllStudentsCsv(flatRows) {
-  const header = 'roll_number,tenant_id,job_title,salary,location,joining_date,deadline,drive_id,status';
+  const header = 'system_id,roll_number,tenant_id,job_title,salary,location,joining_date,deadline,drive_id,status';
   const lines = [header];
   for (const r of flatRows) {
     const driveId = r.upload_drive_id ? String(r.upload_drive_id) : '';
     lines.push(
       [
+        csvEscapeCell(r.system_id ?? ''),
         csvEscapeCell(r.roll_number ?? ''),
         csvEscapeCell(r.tenant_id ?? ''),
         '',

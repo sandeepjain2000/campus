@@ -3,11 +3,17 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import {
+
+
   findAcademicYearForDate,
   mapYearRowFromDb,
   validateAcademicYearsPayload,
   parseAcademicYearLabel,
 } from '@/lib/academicYearTenant';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 function getTenantId(session) {
   return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;

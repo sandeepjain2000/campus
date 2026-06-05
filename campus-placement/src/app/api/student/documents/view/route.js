@@ -5,6 +5,12 @@ import { query } from '@/lib/db';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { createDownloadUrlForKey } from '@/lib/s3';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 function extractS3Key(fileUrl) {
   try {
     const u = new URL(String(fileUrl || ''));

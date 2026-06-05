@@ -52,10 +52,17 @@ function sortResumeDocumentsNewestFirst(documents) {
  */
 export function resolveStudentResumeUrl({ resumeUrl, documents } = {}) {
   const profileUrl = String(resumeUrl || '').trim();
-  if (isAuthoritativeResumeUrl(profileUrl)) return profileUrl;
-
   const docs = Array.isArray(documents) ? documents : [];
-  for (const doc of sortResumeDocumentsNewestFirst(docs)) {
+  const authoritativeResumes = sortResumeDocumentsNewestFirst(docs).filter((doc) =>
+    isAuthoritativeResumeUrl(resumeDocumentUrl(doc)),
+  );
+
+  if (isAuthoritativeResumeUrl(profileUrl)) {
+    if (authoritativeResumes.length === 0) return '';
+    if (authoritativeResumes.some((doc) => resumeDocumentUrl(doc) === profileUrl)) return profileUrl;
+  }
+
+  for (const doc of authoritativeResumes.length ? authoritativeResumes : sortResumeDocumentsNewestFirst(docs)) {
     const url = resumeDocumentUrl(doc);
     if (isAuthoritativeResumeUrl(url)) return url;
   }

@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { query, transaction } from '@/lib/db';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
+import { syncProfileResumeAfterDocumentDelete } from '@/lib/completeStudentDocument';
 import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET() {
   try {
@@ -38,9 +45,13 @@ export async function GET() {
         String(row.file_url || '').trim() === primaryResumeUrl,
     }));
 
+    const hasPrimaryResumeRow = documents.some((doc) => doc.is_primary_resume);
+    const exposedPrimaryUrl =
+      isAuthoritativeResumeUrl(primaryResumeUrl) && hasPrimaryResumeRow ? primaryResumeUrl : '';
+
     return NextResponse.json({
       documents,
-      primaryResumeUrl: isAuthoritativeResumeUrl(primaryResumeUrl) ? primaryResumeUrl : '',
+      primaryResumeUrl: exposedPrimaryUrl,
     });
   } catch (e) {
     console.error('GET /api/student/documents', e);
@@ -65,12 +76,25 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'No student profile' }, { status: 404 });
     }
 
-    const res = await query(
-      `DELETE FROM student_documents WHERE id = $1 AND student_id = $2 RETURNING id`,
-      [docId, studentId],
-    );
+    const deleted = await transaction(async (client) => {
+      const res = await client.query(
+        `DELETE FROM student_documents
+         WHERE id = $1 AND student_id = $2
+         RETURNING id, document_type, file_url`,
+        [docId, studentId],
+      );
 
-    if (res.rowCount === 0) {
+      if (res.rowCount === 0) return null;
+
+      const row = res.rows[0];
+      await syncProfileResumeAfterDocumentDelete(client, studentId, {
+        documentType: row.document_type,
+        fileUrl: row.file_url,
+      });
+      return row;
+    });
+
+    if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 

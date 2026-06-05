@@ -9,6 +9,7 @@ const ROUTES_SORTED = [
   '/dashboard/admin/colleges',
   '/dashboard/admin/colleges/add',
   '/dashboard/admin/employers',
+  '/dashboard/admin/placement-listings',
   '/dashboard/admin/pending-registrations',
   '/dashboard/admin/feedback',
   '/dashboard/admin/overview',
@@ -74,6 +75,7 @@ const ROUTES_SORTED = [
   '/dashboard/student/documents',
   '/dashboard/student/drives',
   '/dashboard/student/internships',
+  '/dashboard/student/internships/not-processed',
   '/dashboard/student/projects',
   '/dashboard/student/hackathons',
   '/dashboard/student/interviews',
@@ -87,6 +89,9 @@ const ROUTES_SORTED = [
   '/data-entry/placement-drives',
   '/data-entry/offers',
   '/dashboard/employer/assessment-uploads',
+  '/dashboard/employer/assessment-uploads/review',
+  '/dashboard/employer/assessment-uploads/import/[sessionId]',
+  '/dashboard/employer/assessment-update-online',
   '/dashboard/employer/assessment-summary',
   '/dashboard/college/audit-reports',
   '/dashboard/admin/audit-reports',
@@ -94,6 +99,8 @@ const ROUTES_SORTED = [
   '/dashboard/my-exports',
   '/dashboard/admin/archived-students',
   '/dashboard/student/jobs',
+  '/dashboard/employer/drives/request',
+  '/dashboard/employer/drives/edit',
 ];
 
 /** @type {Record<string, string>} */
@@ -109,6 +116,7 @@ export function getDevScreenId(pathname) {
   if (!pathname) return null;
   let p = pathname.split('?')[0];
   if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+  if (p === '' || p === '/') return 'LANDING';
   if (DEV_SCREEN_BY_PATH[p]) return DEV_SCREEN_BY_PATH[p];
   const keys = Object.keys(DEV_SCREEN_BY_PATH).sort((a, b) => b.length - a.length);
   for (const key of keys) {

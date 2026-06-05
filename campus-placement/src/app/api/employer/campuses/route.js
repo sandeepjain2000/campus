@@ -1,78 +1,151 @@
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { NextResponse } from 'next/server';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
+import { AND_DRIVE_PD_NOT_DELETED } from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function serializeCollegeRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    city: row.city,
+    state: row.state,
+    email: row.email,
+    phone: row.phone,
+    logo_url: row.logo_url,
+    naac_grade: row.naac_grade,
+    nirf_rank: row.nirf_rank,
+    accreditation: row.accreditation,
+    website: row.website,
+    total_students: Number(row.total_students) || 0,
+    placed_students: Number(row.placed_students) || 0,
+    avg_cgpa: row.avg_cgpa != null ? Number(row.avg_cgpa) : null,
+    approval_status: row.approval_status != null ? String(row.approval_status).trim() : null,
+    requested_at: row.requested_at ?? null,
+    approved_at: row.approved_at ?? null,
+    active_drives: Number(row.active_drives) || 0,
+  };
+}
+
+async function resolveEmployer(session) {
+  const userId = session.user.id || session.user.sub;
+  const email = String(session.user.email || '').trim().toLowerCase();
+  if (!userId && !email) return null;
+
+  const empResult = await query(
+    `SELECT ep.id, ep.company_name
+     FROM employer_profiles ep
+     JOIN users u ON u.id = ep.user_id
+     WHERE ($1::text IS NOT NULL AND u.id::text = $1::text)
+        OR ($2::text <> '' AND LOWER(u.email) = $2)
+     LIMIT 1`,
+    [userId || null, email],
+  );
+  return empResult.rows[0] || null;
+}
+
+async function fetchCollegesDetailed(employerId) {
+  const result = await query(
+    `SELECT
+        t.id,
+        t.name,
+        t.slug,
+        t.city,
+        t.state,
+        t.email,
+        t.phone,
+        t.logo_url,
+        t.naac_grade,
+        t.nirf_rank,
+        t.accreditation,
+        t.website,
+        COUNT(DISTINCT sp.id) AS total_students,
+        COUNT(DISTINCT sp.id) FILTER (WHERE sp.placement_status = 'placed') AS placed_students,
+        ROUND(AVG(sp.cgpa), 2) AS avg_cgpa,
+        ea.status AS approval_status,
+        ea.created_at AS requested_at,
+        ea.approved_at,
+        COUNT(DISTINCT pd.id) FILTER (WHERE pd.status IN ('scheduled','approved','in_progress')) AS active_drives
+     FROM tenants t
+     LEFT JOIN student_profiles sp ON sp.tenant_id = t.id AND ${SP_ACTIVE_CLAUSE}
+     LEFT JOIN employer_approvals ea ON ea.tenant_id = t.id AND ea.employer_id = $1
+     LEFT JOIN placement_drives pd ON pd.tenant_id = t.id AND pd.employer_id = $1 ${AND_DRIVE_PD_NOT_DELETED}
+     WHERE t.is_active = true AND t.type = 'college'
+     GROUP BY t.id, t.name, t.slug, t.city, t.state, t.email, t.phone, t.logo_url,
+              t.naac_grade, t.nirf_rank, t.accreditation, t.website,
+              ea.status, ea.created_at, ea.approved_at
+     ORDER BY t.name`,
+    [employerId],
+  );
+  return result.rows.map(serializeCollegeRow);
+}
+
+async function fetchCollegesSimple(employerId) {
+  const result = await query(
+    `SELECT
+        t.id,
+        t.name,
+        t.slug,
+        t.city,
+        t.state,
+        t.email,
+        t.phone,
+        t.logo_url,
+        t.naac_grade,
+        t.nirf_rank,
+        t.accreditation,
+        t.website,
+        ea.status AS approval_status,
+        ea.created_at AS requested_at,
+        ea.approved_at
+     FROM tenants t
+     LEFT JOIN employer_approvals ea ON ea.tenant_id = t.id AND ea.employer_id = $1
+     WHERE t.is_active = true AND t.type = 'college'
+     ORDER BY t.name`,
+    [employerId],
+  );
+  return result.rows.map((row) =>
+    serializeCollegeRow({
+      ...row,
+      total_students: 0,
+      placed_students: 0,
+      avg_cgpa: null,
+      active_drives: 0,
+    }),
+  );
+}
 
 // GET /api/employer/campuses
-// Returns all colleges with this employer's approval status for each
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized — sign in as an employer' }, { status: 401 });
     }
 
-    const userId = session.user.id || session.user.sub;
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    const employer = await resolveEmployer(session);
+    if (!employer) {
+      return NextResponse.json(
+        {
+          error: 'Employer profile not found for this account. Complete employer registration or contact support.',
+        },
+        { status: 404 },
+      );
     }
 
-    // Get employer profile
-    const empResult = await query(
-      `SELECT ep.id, ep.company_name FROM employer_profiles ep
-       JOIN users u ON u.id = ep.user_id
-       WHERE u.id = $1`,
-      [userId]
-    );
-    if (!empResult.rows.length) {
-      return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
+    let colleges;
+    try {
+      colleges = await fetchCollegesDetailed(employer.id);
+    } catch (detailErr) {
+      console.warn('Campuses detailed query failed, using simple list:', detailErr.message);
+      colleges = await fetchCollegesSimple(employer.id);
     }
-    const employer = empResult.rows[0];
-
-    // Get all active colleges with stats and this employer's approval status
-    const result = await query(
-      `SELECT
-          t.id,
-          t.name,
-          t.slug,
-          t.city,
-          t.state,
-          t.email,
-          t.phone,
-          t.logo_url,
-          t.naac_grade,
-          t.nirf_rank,
-          t.accreditation,
-          t.website,
-          -- Student stats per college
-          COUNT(DISTINCT sp.id) AS total_students,
-          COUNT(DISTINCT sp.id) FILTER (WHERE sp.placement_status = 'placed') AS placed_students,
-          ROUND(AVG(sp.cgpa), 2) AS avg_cgpa,
-          -- Employer approval status
-          ea.status AS approval_status,
-          ea.created_at AS requested_at,
-          ea.approved_at,
-          -- Active drives count
-          COUNT(DISTINCT pd.id) FILTER (WHERE pd.status IN ('scheduled','approved','in_progress')) AS active_drives
-       FROM tenants t
-       LEFT JOIN student_profiles sp ON sp.tenant_id = t.id
-       LEFT JOIN employer_approvals ea ON ea.tenant_id = t.id AND ea.employer_id = $1
-       LEFT JOIN placement_drives pd ON pd.tenant_id = t.id AND pd.employer_id = $1
-       WHERE t.is_active = true AND t.type = 'college'
-       GROUP BY t.id, t.name, t.slug, t.city, t.state, t.email, t.phone, t.logo_url,
-                t.naac_grade, t.nirf_rank, t.accreditation, t.website,
-                ea.status, ea.created_at, ea.approved_at
-       ORDER BY t.name`,
-      [employer.id]
-    );
-
-    const colleges = result.rows.map((row) => ({
-      ...row,
-      approval_status: row.approval_status != null ? String(row.approval_status).trim() : null,
-    }));
 
     return NextResponse.json({
       employerId: employer.id,
@@ -81,12 +154,14 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Campuses API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch campuses' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch campuses' },
+      { status: 500 },
+    );
   }
 }
 
 // POST /api/employer/campuses
-// Request access to a college
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
@@ -99,24 +174,15 @@ export async function POST(req) {
       return NextResponse.json({ error: 'collegeId is required' }, { status: 400 });
     }
 
-    const userId = session.user.id || session.user.sub;
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
-    }
-
-    const empResult = await query(
-      `SELECT ep.id FROM employer_profiles ep JOIN users u ON u.id = ep.user_id WHERE u.id = $1`,
-      [userId]
-    );
-    if (!empResult.rows.length) {
+    const employer = await resolveEmployer(session);
+    if (!employer) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
     }
-    const employerId = empResult.rows[0].id;
+    const employerId = employer.id;
 
     const empName = await query(`SELECT company_name FROM employer_profiles WHERE id = $1::uuid`, [employerId]);
     const companyName = empName.rows[0]?.company_name || 'An employer';
 
-    // New row, or re-open a rejected / blacklisted tie-up as pending again.
     const ins = await query(
       `INSERT INTO employer_approvals (tenant_id, employer_id, status)
        VALUES ($1::uuid, $2::uuid, 'pending')
@@ -125,7 +191,7 @@ export async function POST(req) {
          rejection_reason = NULL,
          approved_by = NULL,
          approved_at = NULL
-       WHERE employer_approvals.status IN ('rejected', 'blacklisted')
+       WHERE employer_approvals.status IN ('rejected', 'blacklisted', 'revoked')
        RETURNING id`,
       [collegeId, employerId],
     );

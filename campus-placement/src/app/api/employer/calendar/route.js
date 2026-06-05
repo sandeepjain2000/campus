@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
 
 export async function GET() {
   try {
@@ -20,7 +27,7 @@ export async function GET() {
       `SELECT d.id, d.title, d.drive_date, d.drive_type, d.status, t.name AS college
        FROM placement_drives d
        LEFT JOIN tenants t ON t.id = d.tenant_id
-       WHERE d.employer_id = $1::uuid
+       WHERE d.employer_id = $1::uuid ${AND_DRIVE_NOT_DELETED}
        ORDER BY d.drive_date DESC, d.created_at DESC
        LIMIT 500`,
       [employerId],

@@ -3,30 +3,19 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
+import { buildCollegeInterviewDescription, mapCollegeInterviewRow } from '@/lib/collegeInterviewSlot';
+import {
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function getTenantId(session) {
   return session?.user?.tenantId || session?.user?.tenant_id || null;
-}
-
-function parseMeta(description) {
-  if (!description) {
-    return { company: '', round: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: [], createdBy: 'TPO' };
-  }
-  try {
-    const parsed = JSON.parse(description);
-    return {
-      company: parsed.company || '',
-      round: parsed.round || '',
-      startTime: parsed.startTime || '',
-      endTime: parsed.endTime || '',
-      interviewer: parsed.interviewer || '',
-      panelNames: parsed.panelNames || '',
-      students: Array.isArray(parsed.students) ? parsed.students : [],
-      createdBy: parsed.createdBy || 'TPO',
-    };
-  } catch {
-    return { company: '', round: '', startTime: '', endTime: '', interviewer: '', panelNames: '', students: [], createdBy: 'TPO' };
-  }
 }
 
 export async function GET() {
@@ -46,21 +35,7 @@ export async function GET() {
       [tenantId],
     );
 
-    const slots = result.rows.map((r) => {
-      const meta = parseMeta(r.description);
-      return {
-        id: r.id,
-        company: meta.company || r.title || '',
-        round: meta.round || '',
-        date: toDateOnlyString(r.start_date),
-        startTime: meta.startTime,
-        endTime: meta.endTime,
-        interviewer: meta.interviewer,
-        panelNames: meta.panelNames,
-        students: meta.students,
-        createdBy: meta.createdBy,
-      };
-    });
+    const slots = result.rows.map((r) => mapCollegeInterviewRow(r));
 
     let resultsRes;
     try {
@@ -69,7 +44,7 @@ export async function GET() {
                 COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student,
                 ep.company_name AS company,
                 ep.website AS website,
-                COALESCE(jp.title, d.title, 'Interview Round') AS round,
+                COALESCE(d.title, 'Interview Round') AS round,
                 a.status AS outcome,
                 COALESCE(d.drive_date, a.applied_at::date) AS date
          FROM applications a
@@ -77,9 +52,9 @@ export async function GET() {
          LEFT JOIN users u ON u.id = sp.user_id
          LEFT JOIN placement_drives d ON d.id = a.drive_id
          LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-         LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
-         WHERE sp.archived_at IS NULL
+         WHERE ${SP_ACTIVE_CLAUSE}
            AND a.status IN ('shortlisted', 'selected', 'rejected', 'in_progress')
+           ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
          ORDER BY a.updated_at DESC NULLS LAST, a.applied_at DESC
          LIMIT 500`,
         [tenantId],
@@ -91,7 +66,7 @@ export async function GET() {
                 COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email, 'Unknown Student') AS student,
                 ep.company_name AS company,
                 ep.website AS website,
-                COALESCE(jp.title, d.title, 'Interview Round') AS round,
+                COALESCE(d.title, 'Interview Round') AS round,
                 a.status AS outcome,
                 COALESCE(d.drive_date, a.applied_at::date) AS date
          FROM applications a
@@ -99,8 +74,8 @@ export async function GET() {
          LEFT JOIN users u ON u.id = sp.user_id
          LEFT JOIN placement_drives d ON d.id = a.drive_id
          LEFT JOIN employer_profiles ep ON ep.id = d.employer_id
-         LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
          WHERE a.status IN ('shortlisted', 'selected', 'rejected', 'in_progress')
+           ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
          ORDER BY a.updated_at DESC NULLS LAST, a.applied_at DESC
          LIMIT 500`,
         [tenantId],
@@ -160,7 +135,16 @@ export async function POST(request) {
     }
 
     const title = `${company} • ${round}`;
-    const desc = JSON.stringify({ company, round, startTime, endTime, interviewer, panelNames, students, createdBy });
+    const desc = buildCollegeInterviewDescription({
+      company,
+      round,
+      startTime,
+      endTime,
+      interviewer,
+      panelNames,
+      students,
+      createdBy,
+    });
 
     const inserted = await query(
       `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
@@ -170,20 +154,7 @@ export async function POST(request) {
     );
 
     const row = inserted.rows[0];
-    return NextResponse.json({
-      slot: {
-        id: row.id,
-        company,
-        round,
-        date: toDateOnlyString(row.start_date),
-        startTime,
-        endTime,
-        interviewer,
-        panelNames,
-        students,
-        createdBy,
-      },
-    }, { status: 201 });
+    return NextResponse.json({ slot: mapCollegeInterviewRow(row) }, { status: 201 });
   } catch (error) {
     console.error('POST /api/college/interviews failed:', error);
     return NextResponse.json({ error: 'Failed to create interview slot' }, { status: 500 });

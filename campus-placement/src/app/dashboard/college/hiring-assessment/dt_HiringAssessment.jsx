@@ -6,7 +6,8 @@ import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { HiringAssessmentRoundBreakdown } from '@/components/assessment/HiringAssessmentRoundBreakdown';
+import { HiringResultBreakdown } from '@/components/assessment/HiringResultBreakdown';
+import { buildAssessmentSummary } from '@/lib/assessmentHiringViewShared';
 import { useToast } from '@/components/ToastProvider';
 import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { pickRepresentativeAssessmentRows } from '@/lib/assessmentRowsDedupe';
@@ -61,25 +62,7 @@ export default function CollegeHiringAssessmentPage() {
     sortOptions: COMMON_SORT_OPTIONS,
     defaultSort: 'name_asc',
   });
-  const roundLabels = useMemo(() => {
-    const rl = payload?.roundLabels;
-    if (!Array.isArray(rl) || rl.length === 0) {
-      return [1, 2, 3, 4, 5].map((n) => `Round ${n}`);
-    }
-    return [1, 2, 3, 4, 5].map((n) => {
-      const hit = rl.find((x) => Number(x.round_no) === n);
-      return hit?.round_label || `Round ${n}`;
-    });
-  }, [payload]);
-
-  const summary = payload?.summary || {
-    uniqueStudentCount: 0,
-    totalResultRows: 0,
-    uploadsCount: 0,
-    perRoundFilled: [0, 0, 0, 0, 0],
-    perRoundByStatus: [[], [], [], [], []],
-    perRoundUnspecified: [0, 0, 0, 0, 0],
-  };
+  const summary = payload?.summary || buildAssessmentSummary(rows);
 
   const getCsv = useCallback(
     (_scope) => ({
@@ -89,11 +72,7 @@ export default function CollegeHiringAssessmentPage() {
         'upload_at',
         'roll_number',
         'candidate_name',
-        'round_1',
-        'round_2',
-        'round_3',
-        'round_4',
-        'round_5',
+        'hiring_result',
         'remarks',
       ],
       rows: displayRows.map((r) => [
@@ -102,18 +81,14 @@ export default function CollegeHiringAssessmentPage() {
         r.upload_created_at ? new Date(r.upload_created_at).toISOString() : '',
         r.roll_number ?? '',
         r.candidate_name ?? '',
-        r.round_1_result ?? '',
-        r.round_2_result ?? '',
-        r.round_3_result ?? '',
-        r.round_4_result ?? '',
-        r.round_5_result ?? '',
+        r.hiring_result ?? '',
         r.remarks ?? '',
       ]),
     }),
     [displayRows],
   );
 
-  const colCount = 4 + roundLabels.length + 1;
+  const colCount = 6;
 
   const downloadOffersImportStarter = async () => {
     try {
@@ -163,7 +138,7 @@ export default function CollegeHiringAssessmentPage() {
             {[
               { label: 'Total Students', value: summary.uniqueStudentCount ?? 0, sub: summary.totalResultRows > 0 ? `${summary.totalResultRows} upload row(s)` : null, icon: Users, color: 'var(--primary-600)', bg: 'var(--primary-50)' },
               { label: 'Upload Batches', value: summary.uploadsCount, sub: null, icon: Upload, color: 'var(--info-600)', bg: 'rgba(2,132,199,0.08)' },
-              { label: 'Rounds with Data', value: summary.perRoundFilled.filter(n => n > 0).length, sub: null, icon: ClipboardList, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
+              { label: 'With hiring result', value: summary.withHiringResult ?? 0, sub: summary.withoutHiringResult ? `${summary.withoutHiringResult} pending` : null, icon: ClipboardList, color: 'var(--warning-600)', bg: 'rgba(217,119,6,0.08)' },
             ].map(({ label, value, sub, icon: Icon, color, bg }) => (
               <div key={label} className="card" style={{ padding: '1.5rem', border: '1px solid var(--border-default)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -176,11 +151,7 @@ export default function CollegeHiringAssessmentPage() {
             ))}
           </div>
 
-          <HiringAssessmentRoundBreakdown
-            roundLabels={roundLabels}
-            perRoundByStatus={summary.perRoundByStatus}
-            perRoundUnspecified={summary.perRoundUnspecified}
-          />
+          <HiringResultBreakdown summary={summary} />
 
           <div className="card">
             <p className="text-xs text-secondary" style={{ marginBottom: '0.75rem', lineHeight: 1.5 }}>
@@ -211,9 +182,7 @@ export default function CollegeHiringAssessmentPage() {
                     <th>File</th>
                     <th>Roll</th>
                     <th>Candidate</th>
-                    {roundLabels.map((label) => (
-                      <th key={label}>{label}</th>
-                    ))}
+                    <th>Hiring result</th>
                     <th>Remarks</th>
                   </tr>
                 </thead>
@@ -231,11 +200,7 @@ export default function CollegeHiringAssessmentPage() {
                       <td className="text-xs">{r.original_file_name || '—'}</td>
                       <td className="text-sm font-mono">{r.roll_number}</td>
                       <td className="text-sm">{r.candidate_name || '—'}</td>
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <td key={n} className="text-sm">
-                          {r[`round_${n}_result`] || '—'}
-                        </td>
-                      ))}
+                      <td className="text-sm">{r.hiring_result || '—'}</td>
                       <td className="text-sm" style={{ maxWidth: 220 }}>
                         {r.remarks || '—'}
                       </td>

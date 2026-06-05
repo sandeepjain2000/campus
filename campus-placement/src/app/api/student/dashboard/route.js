@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import {
+
+
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 function calculateProfileCompletion(profile) {
   if (!profile) return 0;
@@ -56,7 +68,7 @@ export async function GET(request) {
         COALESCE(SUM(CASE WHEN status = 'selected' THEN 1 ELSE 0 END), 0) AS "offersReceived"
       FROM applications a
       JOIN student_profiles sp ON sp.id = a.student_id
-      WHERE sp.user_id = $1
+      WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE} ${AND_APP_NOT_DELETED}
     `, [userId]);
 
     // Fetch upcoming drives available for student's college
@@ -65,16 +77,13 @@ export async function GET(request) {
         d.id,
         ep.company_name AS company,
         ep.website AS website,
-        COALESCE(j.title, d.title) AS role,
+        d.title AS role,
         d.drive_date AS date,
         d.drive_type AS type,
-        d.status,
-        j.salary_min,
-        j.salary_max
+        d.status
       FROM placement_drives d
       JOIN employer_profiles ep ON d.employer_id = ep.id
-      LEFT JOIN job_postings j ON j.id = d.job_id
-      WHERE d.tenant_id = $1 AND d.status IN ('approved', 'scheduled')
+      WHERE d.tenant_id = $1 AND d.status IN ('approved', 'scheduled') ${AND_DRIVE_NOT_DELETED}
       ORDER BY d.drive_date ASC
       LIMIT 3
     `, [session.user.tenantId]);
@@ -86,16 +95,16 @@ export async function GET(request) {
         a.drive_id AS "driveId",
         ep.company_name AS company,
         ep.website AS website,
-        COALESCE(j.title, d.title) AS role,
+        d.title AS role,
         a.status,
         a.current_round AS "currentRound",
         a.applied_at AS "appliedAt"
       FROM applications a
       JOIN placement_drives d ON a.drive_id = d.id
       JOIN employer_profiles ep ON d.employer_id = ep.id
-      LEFT JOIN job_postings j ON a.job_id = j.id
       JOIN student_profiles sp ON a.student_id = sp.id
-      WHERE sp.user_id = $1
+      WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE}
+        ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED} ${AND_JP_NOT_DELETED}
       ORDER BY a.applied_at DESC
       LIMIT 3
     `, [userId]);
@@ -115,7 +124,7 @@ export async function GET(request) {
         sp.resume_url
       FROM student_profiles sp
       INNER JOIN users u ON u.id = sp.user_id
-      WHERE sp.user_id = $1::uuid
+      WHERE sp.user_id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
       LIMIT 1
       `,
       [userId]
@@ -130,9 +139,9 @@ export async function GET(request) {
         upcomingDrives: drivesQuery.rows.length,
         profileCompletion,
       },
-      recentDrives: drivesQuery.rows.map(d => ({
+      recentDrives: drivesQuery.rows.map((d) => ({
         ...d,
-        salary: d.salary_min ? "₹" + (d.salary_min/100000).toFixed(1) + "L - ₹" + (d.salary_max/100000).toFixed(1) + "L PA" : 'Not disclosed'
+        salary: 'See drive details',
       })),
       applications: appsQuery.rows.map((a) => ({
         ...a,
@@ -141,6 +150,10 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('GET /api/student/dashboard', error);
-    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+    const msg = String(error?.message || '').trim();
+    return NextResponse.json(
+      { error: msg || 'Database unavailable' },
+      { status: 503 },
+    );
   }
 }

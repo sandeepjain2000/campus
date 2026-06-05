@@ -1,4 +1,4 @@
-import { validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
+import { validateStudentAvatarFileAsync } from '@/lib/studentAvatarUpload';
 
 /**
  * Upload profile photo through the app server (avoids browser→S3 CORS issues).
@@ -6,7 +6,7 @@ import { validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
  * @returns {Promise<{ ok: true, avatar_url: string } | { ok: false, error: string, hint?: string }>}
  */
 export async function uploadStudentAvatarViaServer(file) {
-  const validated = validateStudentAvatarFile(file);
+  const validated = await validateStudentAvatarFileAsync(file);
   if (!validated.ok) {
     return { ok: false, error: validated.error };
   }

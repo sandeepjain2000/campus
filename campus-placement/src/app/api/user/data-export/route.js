@@ -6,6 +6,12 @@ import { sendMail } from '@/lib/mailer';
 import { buildUserDataExportPayload, summarizeExportSections } from '@/lib/userDataExport/buildPayload';
 import { buildExportFile, EXPORT_FORMAT } from '@/lib/userDataExport/toCsv';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);

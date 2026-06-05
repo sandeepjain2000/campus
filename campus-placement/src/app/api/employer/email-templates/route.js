@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
 import {
+
+
   EMPLOYER_EMAIL_TEMPLATE_KEY_SET,
   EMPLOYER_EMAIL_TEMPLATE_KEYS,
   deleteEmailTemplateOverride,
@@ -11,6 +13,10 @@ import {
   upsertEmailTemplateOverride,
 } from '@/lib/emailTemplateResolve';
 import { SYSTEM_EMAIL_TEMPLATE_META } from '@/lib/systemEmailTemplates';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 async function requireEmployerScope(session) {
   const employerId = await getEmployerProfileId(session.user.id);

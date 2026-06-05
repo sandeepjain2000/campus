@@ -41,7 +41,7 @@ export default function SessionLifetimeGuard({ children }) {
         /* ignore */
       }
       void signOut({ redirect: false });
-    }, 200);
+    }, 750);
 
     return () => window.clearTimeout(timer);
   }, [status]);

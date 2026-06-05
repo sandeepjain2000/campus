@@ -7,6 +7,10 @@ import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/
 import { useToast } from '@/components/ToastProvider';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import CompanyNameLink from '@/components/CompanyNameLink';
+import { validateCollegeOfferPayload } from '@/lib/apiInputValidation';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -60,6 +64,15 @@ export default function MbCollegeOffers() {
   const submitAdd = async () => {
     if (!form.studentId || !form.reportedCompanyName.trim() || !form.jobTitle.trim()) {
       addToast('Student, company name, and job title are required.', 'warning');
+      return;
+    }
+    const offerErr = validateCollegeOfferPayload({
+      salary: form.salary,
+      deadline: form.deadline,
+      joiningDate: form.joiningDate,
+    });
+    if (offerErr) {
+      addToast(offerErr, 'warning');
       return;
     }
     setSaving(true);
@@ -139,10 +152,10 @@ export default function MbCollegeOffers() {
               </select>
               <input className="form-input" placeholder="Company Name" value={form.reportedCompanyName} onChange={(e) => setForm((p) => ({ ...p, reportedCompanyName: e.target.value }))} />
               <input className="form-input" placeholder="Role / Job Title" value={form.jobTitle} onChange={(e) => setForm((p) => ({ ...p, jobTitle: e.target.value }))} />
-              <input className="form-input" type="number" placeholder="Salary (INR annual)" value={form.salary} onChange={(e) => setForm((p) => ({ ...p, salary: e.target.value }))} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_OFFER_SALARY} placeholder="Salary (INR annual)" value={form.salary} onChange={(v) => setForm((p) => ({ ...p, salary: v }))} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <input className="form-input" placeholder="Location" value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
-                <input className="form-input" type="date" value={form.deadline} onChange={(e) => setForm((p) => ({ ...p, deadline: e.target.value }))} title="Deadline" />
+                <ValidatedDateInput fieldId={FIELD_IDS.COLLEGE_OFFER_DEADLINE} value={form.deadline} onChange={(v) => setForm((p) => ({ ...p, deadline: v }))} />
               </div>
               <select className="form-select" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
                 {STATUS_OPTIONS.map((s) => (

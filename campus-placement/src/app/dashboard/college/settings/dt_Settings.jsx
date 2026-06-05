@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import EntityLogo from '@/components/EntityLogo';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
-import { inferImageContentType } from '@/lib/inferImageContentType';
+import { validateImageFileContent } from '@/lib/inferImageContentType';
 import {
   IconTwitter,
   IconFacebook,
   IconInstagram,
   IconLinkedIn,
 } from '@/components/SocialIcons';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 function LabelWithIcon({ Icon, children }) {
   return (
@@ -160,9 +162,9 @@ export default function CollegeSettingsPage() {
       setMessage('No file selected.');
       return;
     }
-    const contentType = inferImageContentType(file);
-    if (!contentType) {
-      setMessage('Please choose a JPEG, PNG, WebP, or GIF image (your browser did not report a usable type).');
+    const imageCheck = await validateImageFileContent(file);
+    if (!imageCheck.ok) {
+      setMessage(imageCheck.error);
       appendClientDebugLog({
         source: 'college_settings_logo',
         action: 'reject_type',
@@ -171,6 +173,7 @@ export default function CollegeSettingsPage() {
       });
       return;
     }
+    const contentType = imageCheck.contentType;
     if (file.size > 2 * 1024 * 1024) {
       setMessage('Logo image too large (max 2MB).');
       return;
@@ -276,7 +279,7 @@ export default function CollegeSettingsPage() {
           <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>🔧 College Settings</h1>
           <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Manage your institution&apos;s profile, branding, and preferences.</p>
         </div>
-        <button type="button" className="btn" onClick={onSave} disabled={saving || loading} style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}>
+        <button type="button" className="btn banner-cta-solid" onClick={onSave} disabled={saving || loading} style={{ position: 'relative', zIndex: 1 }}>
           {saving ? 'Saving…' : '💾 Save'}
         </button>
       </div>
@@ -436,7 +439,7 @@ export default function CollegeSettingsPage() {
           </div>
           <div className="form-group college-settings-inline">
             <label className="form-label">NIRF Rank</label>
-            <input className="form-input" type="number" value={form.accreditation.nirfRank} onChange={(e) => setNested('accreditation', 'nirfRank', e.target.value)} />
+            <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_NIRF_RANK} value={form.accreditation.nirfRank} onChange={(v) => setNested('accreditation', 'nirfRank', v)} />
           </div>
         </div>
 
@@ -477,20 +480,20 @@ export default function CollegeSettingsPage() {
           </div>
           <div className="form-group college-settings-inline">
             <label className="form-label">Total Patents (latest)</label>
-            <input
-              className="form-input"
-              type="number"
+            <ValidatedNumberInput
+              fieldId={FIELD_IDS.COLLEGE_PATENT_COUNT}
+              context={{ label: 'Patent count' }}
               value={form.institutionShowcase.patentCount}
-              onChange={(e) => setNested('institutionShowcase', 'patentCount', e.target.value)}
+              onChange={(v) => setNested('institutionShowcase', 'patentCount', v)}
             />
           </div>
           <div className="form-group college-settings-inline">
             <label className="form-label">Startups Incubated</label>
-            <input
-              className="form-input"
-              type="number"
+            <ValidatedNumberInput
+              fieldId={FIELD_IDS.COLLEGE_STARTUP_COUNT}
+              context={{ label: 'Startup count' }}
               value={form.institutionShowcase.startupCount}
-              onChange={(e) => setNested('institutionShowcase', 'startupCount', e.target.value)}
+              onChange={(v) => setNested('institutionShowcase', 'startupCount', v)}
             />
           </div>
           <div className="form-group college-settings-inline">

@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { profileFromDb } from '@/lib/studentProfileDbMap';
 import {
+
+
+
   canEmployerAccessStudent,
   getEmployerProfileId,
 } from '@/lib/employerApplicationAccess';
@@ -13,8 +16,12 @@ import {
   resolveStudentResumeFileName,
   resolveStudentResumeUrl,
 } from '@/lib/studentResumeUrl';
+import { formatStudentSystemId } from '@/lib/studentSystemId';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
 
 export async function GET(request) {
   try {
@@ -48,7 +55,8 @@ export async function GET(request) {
          u.communication_email,
          u.phone AS user_phone,
          u.avatar_url,
-         t.name AS college_name
+         t.name AS college_name,
+         t.short_code
        FROM student_profiles sp
        INNER JOIN users u ON u.id = sp.user_id
        LEFT JOIN tenants t ON t.id = sp.tenant_id
@@ -144,6 +152,7 @@ export async function GET(request) {
         email: sp.account_email || '',
         collegeName: sp.college_name || '',
         rollNumber: sp.roll_number || '',
+        systemId: formatStudentSystemId(sp.short_code, sp.roll_number),
         enrollmentNumber: sp.enrollment_number || '',
         profile: {
           ...profile,

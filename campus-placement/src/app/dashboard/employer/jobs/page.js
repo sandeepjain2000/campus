@@ -5,6 +5,12 @@ import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import { Briefcase, Plus, DollarSign, Users, FileText, GraduationCap, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List } from 'lucide-react';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
+import { formatEmployerMinCgpa, normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
+import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
+import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -26,9 +32,10 @@ function buildAutoSections({ title, keywords, type, salaryMin, salaryMax, cgpa, 
       ? `We are hiring a ${title} (${typeLabel}) to own delivery across discovery, implementation, code review, testing, and production support. You will collaborate with product, design, and platform teams to ship reliable user-facing experiences.`
       : 'Enter a job title to generate a role summary.';
 
+  const cgpaMin = normalizeEmployerMinCgpa(cgpa);
   const qualifications =
-    cgpa != null && String(cgpa).length
-      ? `B.Tech / M.Tech / dual degree (or equivalent) in relevant disciplines; minimum CGPA ${cgpa} on a 10-point scale unless waived by campus policy. Strong problem-solving, communication, and teamwork.`
+    cgpaMin != null
+      ? `B.Tech / M.Tech / dual degree (or equivalent) in relevant disciplines; minimum CGPA ${cgpaMin} on a 10-point scale unless waived by campus policy. Strong problem-solving, communication, and teamwork.`
       : 'B.Tech / M.Tech / dual degree (or equivalent) in relevant disciplines; strong academic record and campus placement eligibility.';
 
   const skills =
@@ -82,7 +89,6 @@ const emptyForm = {
   salaryMax: '',
   cgpa: '',
   vacancies: '',
-  placementDriveId: '',
   description: '',
 };
 
@@ -90,7 +96,6 @@ export default function EmployerJobsPage() {
   const { addToast } = useToast();
   const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs', fetcher, { revalidateOnFocus: true });
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
-  const { data: drivesData } = useSWR('/api/employer/drives', fetcher, { revalidateOnFocus: true });
   const { data: profileData } = useSWR('/api/employer/profile', fetcher, { revalidateOnFocus: true });
 
   const [showModal, setShowModal] = useState(false);
@@ -103,24 +108,6 @@ export default function EmployerJobsPage() {
   const [viewMode, setViewMode] = useState('card');
 
   const jobsList = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
-  const placementDrives = useMemo(() => {
-    const live = Array.isArray(drivesData?.drives)
-      ? drivesData.drives.map((d) => ({
-          id: d.id,
-          name: `${d.college || 'Campus'} · ${d.role || 'Drive'}${d.date ? ` (${formatDate(d.date)})` : ''}`,
-        }))
-      : [];
-    return [{ id: '', name: '— Not linked —' }, ...live];
-  }, [drivesData]);
-
-  const driveLabel = useCallback(
-    (id) => {
-      const d = placementDrives.find((x) => x.id === id);
-      return d?.name || '';
-    },
-    [placementDrives],
-  );
-
   const approvedCampuses = useMemo(
     () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
     [campusData],
@@ -156,11 +143,7 @@ export default function EmployerJobsPage() {
   const openCreate = () => {
     setEditingJob(null);
     setForm({ ...emptyForm, type: 'full_time' });
-    const sel = {};
-    approvedCampuses.forEach((c) => {
-      sel[c.id] = true;
-    });
-    setSelectedTenantIds(sel);
+    setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses));
     setShowModal(true);
     document.body.style.overflow = 'hidden';
   };
@@ -173,21 +156,17 @@ export default function EmployerJobsPage() {
       type: job.type,
       salaryMin: job.salaryMin ?? '',
       salaryMax: job.salaryMax ?? '',
-      cgpa: job.cgpa ?? '',
+      cgpa: normalizeEmployerMinCgpa(job.minCgpa ?? job.cgpa) ?? '',
       vacancies: job.vacancies ?? '',
-      placementDriveId: job.placementDriveId ?? '',
-      description: '',
+      description: job.description || '',
     });
+    setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses, job.tenantIds));
     setShowModal(true);
     document.body.style.overflow = 'hidden';
   };
 
   const resetTenantSelection = useCallback(() => {
-    const sel = {};
-    approvedCampuses.forEach((c) => {
-      sel[c.id] = true;
-    });
-    setSelectedTenantIds(sel);
+    setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses));
   }, [approvedCampuses]);
 
   const closeModal = () => {
@@ -214,6 +193,17 @@ export default function EmployerJobsPage() {
       addToast('Select at least one approved campus so notifications are created for that college.', 'warning');
       return;
     }
+    const validated = validateAndResolveEmployerJobSubmit({
+      salaryMin: form.salaryMin,
+      salaryMax: form.salaryMax,
+      minCgpa: form.cgpa,
+      vacancies: form.vacancies,
+      jobType: form.type,
+    });
+    if (validated.error) {
+      addToast(validated.error, 'warning');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -228,7 +218,7 @@ export default function EmployerJobsPage() {
           status: asDraft ? 'draft' : 'published',
           salaryMin: form.salaryMin,
           salaryMax: form.salaryMax,
-          minCgpa: form.cgpa,
+          minCgpa: validated.minCgpa,
           vacancies: form.vacancies,
           keywords: form.keywords,
           tenantIds: asDraft ? [] : tenantIds,
@@ -318,7 +308,7 @@ export default function EmployerJobsPage() {
         </div>
         
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <button className="btn" type="button" onClick={openCreate} style={{ background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontSize: '1.05rem', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button className="btn banner-cta-solid" type="button" onClick={openCreate} style={{ fontSize: '1.05rem', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Plus size={18} /> Create Job
           </button>
         </div>
@@ -396,12 +386,6 @@ export default function EmployerJobsPage() {
                   <Briefcase size={20} className="text-primary-600" />
                 </div>
               </div>
-              {job.placementDriveId ? (
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', background: 'var(--indigo-50)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
-                  <Building2 size={16} className="text-indigo-600" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--indigo-800)', lineHeight: 1.4 }}>Drive: {driveLabel(job.placementDriveId).replace(/^— Not linked —$/, '—')}</span>
-                </div>
-              ) : null}
               {job.keywords ? (
                 <p className="text-xs" style={{ margin: '0 0 1rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                   <span className="font-semibold text-tertiary">Keywords:</span> {job.keywords}
@@ -421,7 +405,7 @@ export default function EmployerJobsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <GraduationCap size={14} style={{ color: 'var(--text-tertiary)' }} />
-                    CGPA: {job.cgpa ?? '—'}
+                    Min CGPA: {formatEmployerMinCgpa(job.minCgpa ?? job.cgpa)}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--primary-700)', fontWeight: 600, background: 'var(--primary-50)', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-sm)', width: 'fit-content' }}>
                     <FileText size={14} />
@@ -432,7 +416,7 @@ export default function EmployerJobsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <button className="btn btn-secondary" style={{ flex: 1, padding: '0.6rem' }} onClick={(e) => { e.stopPropagation(); handleEdit(job); }}>Edit Job</button>
-                  <a className="btn btn-primary" href={`/dashboard/employer/applications?jobId=${job.id}`} style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}>View Pipeline</a>
+                  <a className="btn btn-primary" href={`/dashboard/employer/applications?tab=jobs&jobId=${job.id}`} style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}>View Pipeline</a>
                 </div>
                 {job.status === 'published' && (
                   <button type="button" className="btn btn-ghost" style={{ width: '100%', padding: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--text-secondary)' }} disabled={closingJobId === job.id} onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}>
@@ -491,12 +475,6 @@ export default function EmployerJobsPage() {
                 {job.keywords && (
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.keywords}</div>
                 )}
-                {job.placementDriveId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--primary-600)', marginTop: '0.2rem' }}>
-                    <Building2 size={11} />
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{driveLabel(job.placementDriveId).replace(/^— Not linked —$/, '')}</span>
-                  </div>
-                )}
               </div>
 
               {/* Type */}
@@ -516,7 +494,9 @@ export default function EmployerJobsPage() {
               </span>
 
               {/* CGPA */}
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{job.cgpa ?? '—'}</span>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                {formatEmployerMinCgpa(job.minCgpa ?? job.cgpa)}
+              </span>
 
               {/* Apps */}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-700)', background: 'var(--primary-50)', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-sm)', whiteSpace: 'nowrap' }}>
@@ -534,7 +514,7 @@ export default function EmployerJobsPage() {
                 </button>
                 <a
                   className="btn btn-primary"
-                  href={`/dashboard/employer/applications?jobId=${job.id}`}
+                  href={`/dashboard/employer/applications?tab=jobs&jobId=${job.id}`}
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
                 >
                   Pipeline <ArrowRight size={13} />
@@ -584,29 +564,20 @@ export default function EmployerJobsPage() {
                 <div className="grid grid-2" style={{ gap: '1.5rem' }}>
                   
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
-                      <Building2 size={16} className="text-primary-600" /> Target Campuses <span className="required">*</span>
-                    </label>
-                    <p className="text-xs text-secondary" style={{ marginBottom: '0.75rem' }}>
-                      Campuses will receive notifications when this job is published.
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', background: 'var(--bg-inset)', padding: '1rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)' }}>
-                      {approvedCampuses.length === 0 ? (
-                        <span className="text-sm text-secondary">No approved campuses yet. Request access from the campus directory first.</span>
-                      ) : (
-                        approvedCampuses.map((c) => (
-                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}>
-                            <input
-                              type="checkbox"
-                              checked={!!selectedTenantIds[c.id]}
-                              onChange={() => setSelectedTenantIds((p) => ({ ...p, [c.id]: !p[c.id] }))}
-                              style={{ width: '1rem', height: '1rem', accentColor: 'var(--primary-600)' }}
-                            />
-                            {c.name}
-                          </label>
-                        ))
+                    <EmployerCampusTargetPicker
+                      campuses={approvedCampuses}
+                      selection={selectedTenantIds}
+                      onSelectionChange={setSelectedTenantIds}
+                      label={(
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                          <Building2 size={16} className="text-primary-600" aria-hidden />
+                          Target campuses
+                        </span>
                       )}
-                    </div>
+                      required
+                      hint="Campuses will receive notifications when this job is published."
+                      emptyMessage="No approved campuses yet. Request access from the campus directory first."
+                    />
                   </div>
 
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -631,19 +602,10 @@ export default function EmployerJobsPage() {
                   </div>
                   
                   <div className="form-group">
-                    <label className="form-label font-bold">Placement Drive (Optional)</label>
-                    <select className="form-select" value={form.placementDriveId} onChange={(e) => setField('placementDriveId', e.target.value)}>
-                      {placementDrives.map((d) => (
-                        <option key={d.id || 'none'} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
                     <label className="form-label font-bold">Min Salary (Annual)</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>₹</span>
-                      <input className="form-input" type="number" placeholder="800,000" value={form.salaryMin} onChange={(e) => setField('salaryMin', e.target.value)} style={{ paddingLeft: '2rem' }} />
+                      <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_SALARY_MIN} placeholder="800,000" value={form.salaryMin} onChange={(v) => setField('salaryMin', v)} className="form-input" />
                     </div>
                   </div>
 
@@ -651,18 +613,18 @@ export default function EmployerJobsPage() {
                     <label className="form-label font-bold">Max Salary (Annual)</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>₹</span>
-                      <input className="form-input" type="number" placeholder="1,500,000" value={form.salaryMax} onChange={(e) => setField('salaryMax', e.target.value)} style={{ paddingLeft: '2rem' }} />
+                      <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_SALARY_MAX} context={{ salaryMin: form.salaryMin }} placeholder="1,500,000" value={form.salaryMax} onChange={(v) => setField('salaryMax', v)} className="form-input" />
                     </div>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label font-bold">Min CGPA</label>
-                    <input className="form-input" type="number" step="0.1" min="0" max="10" placeholder="6.0" value={form.cgpa} onChange={(e) => setField('cgpa', e.target.value)} />
+                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" placeholder="6.0" value={form.cgpa} onChange={(v) => setField('cgpa', v)} />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label font-bold">Vacancies</label>
-                    <input className="form-input" type="number" placeholder="10" value={form.vacancies} onChange={(e) => setField('vacancies', e.target.value)} />
+                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="10" value={form.vacancies} onChange={(v) => setField('vacancies', v)} />
                   </div>
                 </div>
               </div>

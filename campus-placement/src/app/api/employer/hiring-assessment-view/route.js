@@ -6,8 +6,11 @@ import { isUuid } from '@/lib/tenantContext';
 import {
   buildAssessmentSummary,
   fetchAssessmentRowsForView,
-  fetchLatestRoundLabels,
 } from '@/lib/assessmentHiringView';
+import { listAssessmentContextStatuses } from '@/lib/assessmentContext';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
   const userId = session?.user?.id;
@@ -29,7 +32,13 @@ async function employerHasApprovedTenant(userId, tenantId) {
   return r.rows.length > 0;
 }
 
-/** GET — read-only hiring assessment view from assessment CSV uploads only. */
+function contextKey(row) {
+  if (row.upload_drive_id) return `drive:${row.upload_drive_id}`;
+  if (row.upload_job_id) return `job:${row.upload_job_id}:${row.tenant_id}`;
+  return '';
+}
+
+/** GET — hiring results dashboard (draft + submitted). */
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -51,14 +60,28 @@ export async function GET(request) {
       employerId,
       tenantId: tenantId || undefined,
     });
-    const roundLabels = await fetchLatestRoundLabels(employerId, tenantId || undefined);
-    const summary = buildAssessmentSummary(rows);
+
+    const contexts = await listAssessmentContextStatuses(employerId, {
+      tenantId: tenantId || undefined,
+    });
+    const statusByKey = new Map();
+    for (const c of contexts) {
+      const key = c.drive_id ? `drive:${c.drive_id}` : `job:${c.job_id}:${c.tenant_id}`;
+      statusByKey.set(key, c.submission_status);
+    }
+
+    const enrichedRows = rows.map((r) => ({
+      ...r,
+      submission_status: statusByKey.get(contextKey(r)) || 'draft',
+    }));
+
+    const summary = buildAssessmentSummary(enrichedRows);
 
     return NextResponse.json({
-      rows,
-      roundLabels,
+      rows: enrichedRows,
       summary,
       tenantFilter: tenantId,
+      contexts,
     });
   } catch (e) {
     console.error('GET /api/employer/hiring-assessment-view', e);

@@ -29,6 +29,8 @@ All `*.json` files in the keys folder are loaded (sorted by name) and rotated: t
 
 Single-key mode: `NVIDIA_API_KEY`, or `NVIDIA_KEY_FILE` / `--nvidia-key-file`.
 
+The **Next.js app** uses the same NVIDIA env vars for chat features (CV skill suggest, help, screen smart-match): all keys in `NVIDIA_KEYS_DIR` are tried in order; on failure the next key is used, then `OPENAI_API_KEY` as final fallback. Optional: `NVIDIA_API_BASE_URL`, `NVIDIA_CHAT_MODEL` (default `meta/llama-3.1-8b-instruct`). Help **embeddings** still require `OPENAI_API_KEY`.
+
 ## Execution logs
 
 | Output | Location |

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -10,7 +10,14 @@ import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2,
 import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
 import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import LoginSupportContact from '@/components/auth/LoginSupportContact';
+import DevScreenTag from '@/components/DevScreenTag';
 import { showSandboxLoginBanner } from '@/lib/sandboxBanner';
+import {
+  consumeLoginPrefillEmail,
+  readLoginFormValues,
+  waitForAuthSession,
+  writeLoginFormValues,
+} from '@/lib/loginClient';
 import { markBrowserSessionActive } from '@/lib/sessionPolicy';
 
 /** Match `/demo-accounts` three-column grouping: Students | Employers | (Super + College admins). */
@@ -73,8 +80,10 @@ function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forceLogin = searchParams.get('force') === '1';
+  const guidedAutoLogin = searchParams.get('guided') === '1';
+  const guidedEmail = searchParams.get('email')?.trim() || '';
+  const guidedLoginAttempted = useRef(false);
   const { status, data: session } = useSession();
-  const [formData, setFormData] = useState({ email: '', password: '' });
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [error, setError] = useState('');
@@ -84,7 +93,12 @@ function LoginPageInner() {
   const [registeredBanner, setRegisteredBanner] = useState('');
   const [showCredentials, setShowCredentials] = useState(false);
   const signingOut = useRef(false);
+  const loginFormRef = useRef(null);
+  /** After the user types or picks a saved login, do not overwrite with ?email= from the URL. */
+  const userChoseCredentials = useRef(false);
+  const urlPrefillApplied = useRef(false);
   const toast = useToast();
+
   const uniqueDemoLogins = useMemo(() => {
     const seen = new Set();
     const merged = [...DEMO_LOGINS, ...SEEDED_EMPLOYER_CREDENTIALS];
@@ -104,17 +118,42 @@ function LoginPageInner() {
     return buckets;
   }, [uniqueDemoLogins]);
 
+  /**
+   * Demo prefill (sessionStorage from /demo-accounts, or legacy ?email=).
+   * Strip ?email= from the URL so refresh does not keep resetting to admin@iitm.edu.
+   */
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const email = new URLSearchParams(window.location.search).get('email');
-    if (email) {
-      setFormData((prev) => ({
-        ...prev,
-        email: email,
-        password: DEMO_SEED_PASSWORD,
-      }));
+    if (userChoseCredentials.current || urlPrefillApplied.current) return;
+
+    const emailFromUrl = searchParams.get('email')?.trim() || '';
+    const emailFromStorage = consumeLoginPrefillEmail();
+    const email = emailFromStorage || emailFromUrl;
+    if (!email) return;
+
+    urlPrefillApplied.current = true;
+
+    if (emailFromUrl) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('email');
+      const next = params.toString() ? `/login?${params}` : '/login';
+      router.replace(next, { scroll: false });
     }
-  }, []);
+
+    const frame = window.requestAnimationFrame(() => {
+      if (userChoseCredentials.current) return;
+      const form = loginFormRef.current;
+      if (!form) return;
+      const current = readLoginFormValues(form).email;
+      if (current && current.toLowerCase() !== email.toLowerCase()) {
+        userChoseCredentials.current = true;
+        return;
+      }
+      if (!current) {
+        writeLoginFormValues(form, { email, password: DEMO_SEED_PASSWORD });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -130,6 +169,10 @@ function LoginPageInner() {
     }
     if (verify === 'invalid' || verify === 'error') {
       setRegisteredBanner('That verification link is invalid or was already used.');
+      return;
+    }
+    if (params.get('error') === 'session') {
+      setError('Sign-in could not be completed. Please try again.');
       return;
     }
     const q = params.get('registered');
@@ -160,7 +203,101 @@ function LoginPageInner() {
     router.replace(getDashboardPath(session.user.role));
   }, [status, session, router, forceLogin]);
 
-  if (!forceLogin && (status === 'loading' || status === 'authenticated')) {
+  const submitCredentials = useCallback(
+    async ({ email, password, token, answer }) => {
+      if (!email || !password) {
+        setError('Email and password are required.');
+        return false;
+      }
+      if (!token) {
+        setError('Verification is still loading. Wait a moment, then try again.');
+        return false;
+      }
+      if (answer === '' || answer == null) {
+        setError('Enter the verification answer before signing in.');
+        return false;
+      }
+      setError('');
+      setLoading(true);
+      setCaptchaAnswer(String(answer));
+      try {
+        const result = await signIn('credentials', {
+          email,
+          password,
+          captchaToken: token,
+          captchaAnswer: String(answer),
+          redirect: false,
+        });
+        if (result?.error || result?.ok === false) {
+          setError(result.error || 'Sign in failed. Please try again.');
+          if (String(result?.error || '').toLowerCase().includes('verification')) {
+            setCaptchaAnswer('');
+            setCaptchaKey((k) => k + 1);
+          }
+          return false;
+        }
+
+        const sessionReady = await waitForAuthSession();
+        if (!sessionReady) {
+          setError('Sign-in succeeded but the session was slow to start. Click Sign In once more.');
+          return false;
+        }
+
+        markBrowserSessionActive();
+        // Server reads the session cookie immediately — avoids client SessionProvider lag.
+        if (typeof window !== 'undefined') {
+          window.location.replace(`${window.location.origin}/auth/continue`);
+        } else {
+          router.replace('/auth/continue');
+        }
+        return true;
+      } catch {
+        setError('Something went wrong. Please try again.');
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router],
+  );
+
+  /** Guided playbook — dev only: sign in via server API (no captcha UI race). */
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!guidedAutoLogin || !guidedEmail) return;
+    if (guidedLoginAttempted.current) return;
+    if (forceLogin && status === 'loading') return;
+
+    guidedLoginAttempted.current = true;
+    void (async () => {
+      setError('');
+      setLoading(true);
+      try {
+        const res = await fetch('/api/guided-runner/sign-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email: guidedEmail, password: DEMO_SEED_PASSWORD }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok || !data.redirectTo) {
+          guidedLoginAttempted.current = false;
+          setError(data.error || 'Guided sign-in failed. Start the playbook in a second terminal.');
+          return;
+        }
+        markBrowserSessionActive();
+        window.location.replace(`${window.location.origin}${data.redirectTo}`);
+      } catch {
+        guidedLoginAttempted.current = false;
+        setError('Guided sign-in failed. Check that npm run test:guided:playbook is running.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [guidedAutoLogin, guidedEmail, forceLogin, status]);
+
+  /** Only hide the form when already signed in (redirecting). Keep form mounted while session is "loading". */
+  if (!forceLogin && status === 'authenticated') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="skeleton" style={{ width: 220, height: 28 }} />
@@ -173,39 +310,23 @@ function LoginPageInner() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        captchaToken,
-        captchaAnswer,
-        redirect: false,
-      });
-      if (result?.error) {
-        setError(result.error);
-        if (result.error.toLowerCase().includes('verification')) {
-          setCaptchaAnswer('');
-          setCaptchaKey((k) => k + 1);
-        }
-      } else {
-        markBrowserSessionActive();
-        const res = await fetch('/api/auth/session');
-        const sess = await res.json();
-        const role = sess?.user?.role;
-        const path = getDashboardPath(role);
-        if (typeof window !== 'undefined') {
-          window.location.replace(`${window.location.origin}${path}`);
-        } else {
-          router.replace(path);
-        }
-      }
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
+    userChoseCredentials.current = true;
+    const { email, password } = readLoginFormValues(e.currentTarget);
+
+    if (!captchaToken) {
+      setError('Verification is still loading. Wait a moment, then try again.');
+      return;
     }
+    if (captchaAnswer.trim() === '') {
+      setError('Enter the verification answer before signing in.');
+      return;
+    }
+    await submitCredentials({
+      email,
+      password,
+      token: captchaToken,
+      answer: captchaAnswer,
+    });
   };
 
   const fillCredential = (demo) => {
@@ -214,7 +335,8 @@ function LoginPageInner() {
       return;
     }
     setError('');
-    setFormData({ email: demo.email, password: DEMO_SEED_PASSWORD });
+    userChoseCredentials.current = true;
+    writeLoginFormValues(loginFormRef.current, { email: demo.email, password: DEMO_SEED_PASSWORD });
     setShowCredentials(false);
     toast.info('Credentials auto-filled — click Sign In.');
   };
@@ -326,7 +448,10 @@ function LoginPageInner() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div style={{ position: 'fixed', top: '0.65rem', right: '0.75rem', zIndex: 100000 }}>
+        <DevScreenTag />
+      </div>
       {showSandboxBanner ? (
         <div
           role="status"
@@ -497,16 +622,37 @@ function LoginPageInner() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          {guidedAutoLogin && process.env.NODE_ENV !== 'production' ? (
+            <div
+              className="card"
+              style={{
+                marginBottom: '1rem',
+                padding: '0.75rem 1rem',
+                border: '1px solid var(--primary-200)',
+                background: 'var(--primary-50)',
+                fontSize: '0.875rem',
+                color: 'var(--primary-900)',
+              }}
+            >
+              Guided test — signing in automatically as <strong>{guidedEmail || 'demo user'}</strong>.
+              {loading ? ' Please wait…' : null}
+            </div>
+          ) : null}
+
+          <form id="login-form" ref={loginFormRef} onSubmit={handleSubmit} autoComplete="on">
             <div className="form-group" style={{ marginBottom: '1.25rem' }}>
               <label className="form-label" htmlFor="login-email">Email address</label>
               <input
                 id="login-email"
+                name="email"
                 type="email"
+                autoComplete="username"
                 className="form-input"
                 placeholder="you@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                defaultValue=""
+                onInput={() => {
+                  userChoseCredentials.current = true;
+                }}
                 required
               />
             </div>
@@ -521,12 +667,26 @@ function LoginPageInner() {
               <div style={{ position: 'relative' }}>
               <input
                 id="login-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 className="form-input"
                 placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                defaultValue=""
+                onInput={() => {
+                  userChoseCredentials.current = true;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  if (captchaToken && captchaAnswer.trim() !== '') return;
+                  e.preventDefault();
+                  userChoseCredentials.current = true;
+                  setError(
+                    captchaToken
+                      ? 'Enter the verification answer before signing in.'
+                      : 'Verification is still loading. Wait a moment, then try again.',
+                  );
+                }}
                 style={{ paddingRight: '2.4rem' }}
                 required
               />
@@ -570,8 +730,21 @@ function LoginPageInner() {
               className="btn btn-primary"
               disabled={loading || !captchaToken || captchaAnswer.trim() === ''}
               style={{ width: '100%', padding: '0.625rem', fontSize: '1rem', justifyContent: 'center' }}
+              title={
+                !captchaToken
+                  ? 'Wait for the verification question to load'
+                  : captchaAnswer.trim() === ''
+                    ? 'Enter the verification answer'
+                    : undefined
+              }
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading
+                ? 'Signing in…'
+                : !captchaToken
+                  ? 'Loading verification…'
+                  : captchaAnswer.trim() === ''
+                    ? 'Enter verification answer'
+                    : 'Sign In'}
             </button>
           </form>
 

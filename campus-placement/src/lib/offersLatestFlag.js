@@ -1,5 +1,8 @@
 import { query } from '@/lib/db';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
+import { AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
+
+const OFFER_NOT_DELETED_WHERE = AND_OFFER_NOT_DELETED;
 
 const RANK_UNIFIED_SQL = `WITH ranked AS (
          SELECT o.id,
@@ -17,7 +20,7 @@ const RANK_UNIFIED_SQL = `WITH ranked AS (
            ) AS rn
          FROM offers o
          LEFT JOIN employer_profiles ep ON ep.id = o.employer_id
-         WHERE o.student_id = $1::uuid
+         WHERE o.student_id = $1::uuid ${OFFER_NOT_DELETED_WHERE}
        )
        UPDATE offers o
        SET is_latest = CASE WHEN r.rn = 1 THEN 1 ELSE 0 END,
@@ -34,7 +37,7 @@ const RANK_LEGACY_NO_REPORTED_SQL = `WITH ranked AS (
              ORDER BY created_at DESC, id DESC
            ) AS rn
          FROM offers
-         WHERE student_id = $1::uuid
+         WHERE student_id = $1::uuid AND COALESCE(is_deleted, false) = false
        )
        UPDATE offers o
        SET is_latest = CASE WHEN r.rn = 1 THEN 1 ELSE 0 END,

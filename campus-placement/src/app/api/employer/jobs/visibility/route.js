@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
+import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { invalidateStudentOpportunityListCache } from '@/lib/jobPostingPublishState';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
+
+
+
 
 /**
  * POST — add campus visibility rows for an already-published job (repair / backfill).
@@ -36,7 +44,7 @@ export async function POST(request) {
     const employerId = emp.rows[0].id;
 
     const jobRes = await query(
-      `SELECT id, status FROM job_postings WHERE id = $1::uuid AND employer_id = $2::uuid`,
+      `SELECT id, status FROM job_postings jp WHERE jp.id = $1::uuid AND jp.employer_id = $2::uuid ${AND_JP_NOT_DELETED}`,
       [jobId, employerId],
     );
     if (!jobRes.rowCount) {
@@ -70,6 +78,7 @@ export async function POST(request) {
       return { inserted, skippedNotApproved };
     });
 
+    invalidateStudentOpportunityListCache();
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     console.error('POST /api/employer/jobs/visibility', e);

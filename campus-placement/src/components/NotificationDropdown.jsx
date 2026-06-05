@@ -121,7 +121,11 @@ export default function NotificationDropdown() {
         aria-label={title}
       >
         <Bell size={18} aria-hidden="true" />
-        {unreadCount > 0 ? <span className="notification-dot" aria-label={`${unreadCount} unread`} /> : null}
+        {unreadCount > 0 ? (
+          <span className="notification-badge" aria-label={`${unreadCount} unread`}>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        ) : null}
       </button>
 
       {open && (

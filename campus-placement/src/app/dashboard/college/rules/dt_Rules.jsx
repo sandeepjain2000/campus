@@ -2,6 +2,10 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useToast } from '@/components/ToastProvider';
+import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import { validateCollegeRulesPayload } from '@/lib/apiInputValidation';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -13,6 +17,7 @@ const fetcher = async (url) => {
 
 const DEFAULT_RULES = {
   maxOffers: 1,
+  maxInternshipsPerStudent: 1,
   acceptanceWindow: 7,
   minCGPA: 6,
   allowBacklogs: false,
@@ -36,6 +41,11 @@ export default function CollegeRulesPage() {
   }, [data]);
 
   const handleSave = async () => {
+    const rulesErr = validateCollegeRulesPayload(rules);
+    if (rulesErr) {
+      addToast(rulesErr, 'warning');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/college/rules', {
@@ -43,10 +53,11 @@ export default function CollegeRulesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rules),
       });
+      const json = await res.json().catch(() => ({}));
       if (res.ok) {
         addToast('Rules saved successfully.', 'success');
       } else {
-        addToast('Failed to save rules.', 'error');
+        addToast(json?.error || 'Failed to save rules.', 'error');
       }
     } catch {
       addToast('Network error while saving rules.', 'error');
@@ -84,7 +95,7 @@ export default function CollegeRulesPage() {
           <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>⚙️ Placement Rules</h1>
           <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Configure placement policies, eligibility criteria and season settings.</p>
         </div>
-        <button className="btn" onClick={handleSave} disabled={saving} style={{ position: 'relative', zIndex: 1, background: 'white', color: 'var(--primary-800)', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontWeight: 700 }}>
+        <button className="btn banner-cta-solid" onClick={handleSave} disabled={saving} style={{ position: 'relative', zIndex: 1 }}>
           {saving ? 'Saving…' : '💾 Save Changes'}
         </button>
       </div>
@@ -94,12 +105,12 @@ export default function CollegeRulesPage() {
           <div className="card-header"><h3 className="card-title">📋 Offer Rules</h3></div>
           <div className="form-group">
             <label className="form-label">Max Offers Per Student</label>
-            <input type="number" className="form-input" value={rules.maxOffers} onChange={(e) => setRules({...rules, maxOffers: e.target.value})} />
+            <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_RULE_MAX_OFFERS} value={rules.maxOffers} onChange={(v) => setRules({ ...rules, maxOffers: v })} />
             <span className="form-hint">Maximum number of offers a student can hold simultaneously</span>
           </div>
           <div className="form-group">
             <label className="form-label">Offer Acceptance Window (days)</label>
-            <input type="number" className="form-input" value={rules.acceptanceWindow} onChange={(e) => setRules({...rules, acceptanceWindow: e.target.value})} />
+            <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_RULE_ACCEPT_WINDOW} value={rules.acceptanceWindow} onChange={(v) => setRules({ ...rules, acceptanceWindow: v })} />
             <span className="form-hint">Days students have to accept/reject an offer</span>
           </div>
           <div className="form-group">
@@ -112,10 +123,29 @@ export default function CollegeRulesPage() {
         </div>
 
         <div className="card">
+          <div className="card-header"><h3 className="card-title">🎓 Internship Rules</h3></div>
+          <div className="form-group">
+            <label className="form-label">Max Internships Per Student</label>
+            <input
+              className="form-input"
+              type="number"
+              value={rules.maxInternshipsPerStudent ?? 1}
+              readOnly
+              disabled
+              aria-readonly="true"
+            />
+            <span className="form-hint">
+              Fixed at 1 for all campuses (not editable). When a student is selected by one company (FCFS), other
+              internships are hidden and they cannot apply elsewhere.
+            </span>
+          </div>
+        </div>
+
+        <div className="card">
           <div className="card-header"><h3 className="card-title">🎓 Eligibility Rules</h3></div>
           <div className="form-group">
             <label className="form-label">Minimum CGPA Threshold</label>
-            <input type="number" step="0.1" className="form-input" value={rules.minCGPA} onChange={(e) => setRules({...rules, minCGPA: e.target.value})} />
+            <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_RULE_MIN_CGPA} step="0.1" value={rules.minCGPA} onChange={(v) => setRules({ ...rules, minCGPA: v })} />
           </div>
           <div className="form-group">
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -126,7 +156,7 @@ export default function CollegeRulesPage() {
           {rules.allowBacklogs && (
             <div className="form-group">
               <label className="form-label">Max Backlogs Allowed</label>
-              <input type="number" className="form-input" value={rules.maxBacklogs} onChange={(e) => setRules({...rules, maxBacklogs: e.target.value})} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS} value={rules.maxBacklogs} onChange={(v) => setRules({ ...rules, maxBacklogs: v })} />
             </div>
           )}
           <div className="form-group">
@@ -149,7 +179,7 @@ export default function CollegeRulesPage() {
           {rules.enableDreamCompany && (
             <div className="form-group">
               <label className="form-label">Dream Company CTC Multiplier</label>
-              <input type="number" step="0.1" className="form-input" value={rules.dreamCompanyMultiplier} onChange={(e) => setRules({...rules, dreamCompanyMultiplier: parseFloat(e.target.value)})} />
+              <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_RULE_DREAM_MULT} step="0.1" value={rules.dreamCompanyMultiplier} onChange={(v) => setRules({ ...rules, dreamCompanyMultiplier: v })} />
               <span className="form-hint">E.g., 2.0 means the new offer must be at least 2x their current offer to apply</span>
             </div>
           )}
@@ -159,15 +189,20 @@ export default function CollegeRulesPage() {
           <div className="card-header"><h3 className="card-title">📅 Season Settings</h3></div>
           <div className="form-group">
             <label className="form-label">Placement Season Start</label>
-            <input type="date" className="form-input" value={rules.seasonStart} onChange={(e) => setRules({...rules, seasonStart: e.target.value})} />
+            <ValidatedDateInput fieldId={FIELD_IDS.COLLEGE_RULE_SEASON_START} value={rules.seasonStart || ''} onChange={(v) => setRules({ ...rules, seasonStart: v })} />
           </div>
           <div className="form-group">
             <label className="form-label">Placement Season End</label>
-            <input type="date" className="form-input" value={rules.seasonEnd} onChange={(e) => setRules({...rules, seasonEnd: e.target.value})} />
+            <ValidatedDateInput
+              fieldId={FIELD_IDS.COLLEGE_RULE_SEASON_END}
+              context={{ dateFrom: rules.seasonStart }}
+              value={rules.seasonEnd || ''}
+              onChange={(v) => setRules({ ...rules, seasonEnd: v })}
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Buffer Days Between Drives</label>
-            <input type="number" className="form-input" value={rules.bufferDays} onChange={(e) => setRules({...rules, bufferDays: e.target.value})} />
+            <ValidatedNumberInput fieldId={FIELD_IDS.COLLEGE_RULE_BUFFER_DAYS} value={rules.bufferDays} onChange={(v) => setRules({ ...rules, bufferDays: v })} />
           </div>
         </div>
 

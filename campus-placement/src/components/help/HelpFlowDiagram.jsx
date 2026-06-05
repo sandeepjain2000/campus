@@ -44,7 +44,7 @@ export default function HelpFlowDiagram({ steps = [], caption }) {
                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               }}
             >
-              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--primary-800)' }}>{step.label}</div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)' }}>{step.label}</div>
               {step.detail ? (
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.2rem', lineHeight: 1.35 }}>
                   {step.detail}

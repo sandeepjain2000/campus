@@ -5,9 +5,17 @@ import { query } from '@/lib/db';
 import { isUuid } from '@/lib/tenantContext';
 import { fetchAssessmentRowsForView, pickRepresentativeAssessmentRows } from '@/lib/assessmentHiringView';
 import {
+
+
   buildEmployerOffersAllStudentsCsv,
   EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME,
 } from '@/lib/offersAssessmentStarterCsv';
+import { formatStudentSystemId } from '@/lib/studentSystemId';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 async function getEmployerProfileId(session) {
   const userId = session?.user?.id;
@@ -64,10 +72,12 @@ export async function GET(request) {
 
     const flat = [];
     for (const { tenant_id: tid } of campusList) {
+      const tenantRes = await query(`SELECT short_code FROM tenants WHERE id = $1::uuid LIMIT 1`, [tid]);
+      const shortCode = tenantRes.rows[0]?.short_code || '';
       const students = await query(
         `SELECT sp.id AS student_profile_id, sp.roll_number
          FROM student_profiles sp
-         WHERE sp.tenant_id = $1::uuid
+         WHERE sp.tenant_id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
            AND sp.roll_number IS NOT NULL
            AND TRIM(sp.roll_number) <> ''
          ORDER BY TRIM(sp.roll_number) ASC NULLS LAST`,
@@ -79,6 +89,7 @@ export async function GET(request) {
       for (const s of students.rows) {
         const a = byP.get(s.student_profile_id);
         flat.push({
+          system_id: formatStudentSystemId(shortCode, s.roll_number),
           roll_number: s.roll_number,
           tenant_id: tid,
           upload_drive_id: a?.upload_drive_id ?? null,

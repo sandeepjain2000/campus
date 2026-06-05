@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import { getJobTypeMeta, getCollegeStatusMeta, stipendLabel } from './internshipRowUtils';
+import PostingEligibilitySection from '@/components/student/PostingEligibilitySection';
 
 function DetailField({ label, children }) {
   return (
@@ -115,6 +116,14 @@ export default function InternshipDetailModal({ row, onClose, busy, onApprove, o
               <DetailField label="Rejection note">{row.rejection_reason}</DetailField>
             ) : null}
           </div>
+
+          <PostingEligibilitySection
+            opportunity={{
+              minCgpa: row.min_cgpa != null ? Number(row.min_cgpa) : null,
+              status: 'published',
+            }}
+            audience="college"
+          />
 
           <DetailField label="Description">
             {row.description?.trim() ? row.description : '—'}

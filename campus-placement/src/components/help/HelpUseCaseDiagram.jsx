@@ -65,7 +65,7 @@ export default function HelpUseCaseDiagram({ hub = 'PlacementHub', actors = [], 
             border: '1px solid var(--primary-200)',
             borderRadius: 'var(--radius-md)',
             fontWeight: 700,
-            color: 'var(--primary-800)',
+            color: 'var(--text-primary)',
             fontSize: '0.95rem',
           }}
         >

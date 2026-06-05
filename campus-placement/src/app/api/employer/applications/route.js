@@ -4,8 +4,32 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
 import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
+import { formatStudentSystemId } from '@/lib/studentSystemId';
+import {
+
+
+
+  AND_APP_NOT_DELETED,
+  AND_DRIVE_NOT_DELETED,
+  AND_JP_NOT_DELETED,
+  AND_PA_NOT_DELETED,
+} from '@/lib/softDeleteSql';
+import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { sqlEmployerTieUpIsActive } from '@/lib/employerTieUp';
+import {
+  assertEmployerMayConfirmStudent,
+  fcfsTrackFromApplicationsTab,
+  getCampusFcfsClaim,
+} from '@/lib/campusFcfsSelection';
+const JOB_POSTING_TYPES_SQL = `AND jp.job_type NOT IN ('internship', 'short_project', 'hackathon')`;
+
+const ACTIVE_CAMPUS_TIE_UP = (employerCol) =>
+  `INNER JOIN employer_approvals ea_campus ON ea_campus.tenant_id = sp.tenant_id AND ea_campus.employer_id = ${employerCol} AND ${sqlEmployerTieUpIsActive('ea_campus')}`;
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+
 
 /** @param {import('pg').QueryResultRow} row */
 function mapRow(row) {
@@ -21,6 +45,8 @@ function mapRow(row) {
     studentProfileId: row.student_id,
     studentName: `${first} ${last}`.trim() || row.email || 'Student',
     email: row.email,
+    rollNumber: row.roll_number || '',
+    systemId: formatStudentSystemId(row.short_code, row.roll_number),
     collegeName: row.college_name || '—',
     branch: row.branch || row.department || '—',
     cgpa: row.cgpa != null ? Number(row.cgpa) : null,
@@ -32,12 +58,32 @@ function mapRow(row) {
     jobType: row.job_type || null,
     driveId: row.drive_id,
     notes: row.notes || null,
+    tenantId: row.tenant_id || null,
   };
 }
 
+async function filterItemsByFcfs(items, tab, employerId) {
+  const track = fcfsTrackFromApplicationsTab(tab);
+  if (!track || !employerId) return items;
+
+  const out = [];
+  for (const item of items) {
+    if (!item.tenantId || !item.studentProfileId) {
+      out.push(item);
+      continue;
+    }
+    const claim = await getCampusFcfsClaim(item.tenantId, item.studentProfileId, track);
+    if (claim && String(claim.employerId) !== String(employerId)) {
+      continue;
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 /**
- * GET ?tab=jobs|internships|projects
- * Jobs = drive applications (applications table). Internships / projects = program_applications.
+ * GET ?tab=drives|jobs|internships|projects
+ * Drives = placement drive applications. Jobs / internships / projects = program_applications.
  */
 export async function GET(request) {
   try {
@@ -57,27 +103,79 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const tabParam = (searchParams.get('tab') || 'jobs').toLowerCase();
-    const tab = tabParam === 'internships' || tabParam === 'projects' ? tabParam : 'jobs';
+    const tabParam = (searchParams.get('tab') || 'drives').toLowerCase();
+    const tab =
+      tabParam === 'jobs' || tabParam === 'internships' || tabParam === 'projects' ? tabParam : 'drives';
     const driveIdFilter = String(searchParams.get('driveId') || '').trim();
+    const jobIdFilter = String(searchParams.get('jobId') || '').trim();
+
+    const countsParams = [employerId];
+    let drivesDriveIdx = null;
+    let jobsJobIdx = null;
+    let internshipsJobIdx = null;
+    let projectsJobIdx = null;
+
+    if (driveIdFilter) {
+      countsParams.push(driveIdFilter);
+      drivesDriveIdx = countsParams.length;
+    }
+    if (jobIdFilter) {
+      countsParams.push(jobIdFilter);
+      jobsJobIdx = countsParams.length;
+      internshipsJobIdx = countsParams.length;
+      projectsJobIdx = countsParams.length;
+    }
 
     const countsSql = `
       SELECT
         (SELECT COUNT(*)::int FROM applications a
          INNER JOIN placement_drives d ON d.id = a.drive_id
-         WHERE d.employer_id = $1::uuid) AS jobs,
+         INNER JOIN student_profiles sp ON sp.id = a.student_id AND ${SP_ACTIVE_CLAUSE}
+         ${ACTIVE_CAMPUS_TIE_UP('d.employer_id')}
+         WHERE d.employer_id = $1::uuid
+           AND a.status <> 'withdrawn'
+           ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
+           ${drivesDriveIdx ? `AND d.id = $${drivesDriveIdx}::uuid` : ''}) AS drives,
         (SELECT COUNT(*)::int FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
-         WHERE jp.employer_id = $1::uuid AND jp.job_type = 'internship') AS internships,
+         INNER JOIN student_profiles sp ON sp.id = pa.student_id AND ${SP_ACTIVE_CLAUSE}
+         ${ACTIVE_CAMPUS_TIE_UP('jp.employer_id')}
+         WHERE jp.employer_id = $1::uuid
+           ${JOB_POSTING_TYPES_SQL}
+           AND pa.status <> 'withdrawn'
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+           ${jobsJobIdx ? `AND jp.id = $${jobsJobIdx}::uuid` : ''}) AS jobs,
         (SELECT COUNT(*)::int FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
-         WHERE jp.employer_id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')) AS projects
+         INNER JOIN student_profiles sp ON sp.id = pa.student_id AND ${SP_ACTIVE_CLAUSE}
+         ${ACTIVE_CAMPUS_TIE_UP('jp.employer_id')}
+         WHERE jp.employer_id = $1::uuid AND jp.job_type = 'internship'
+           AND pa.status <> 'withdrawn'
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+           ${internshipsJobIdx ? `AND jp.id = $${internshipsJobIdx}::uuid` : ''}) AS internships,
+        (SELECT COUNT(*)::int FROM program_applications pa
+         INNER JOIN job_postings jp ON jp.id = pa.job_id
+         INNER JOIN student_profiles sp ON sp.id = pa.student_id AND ${SP_ACTIVE_CLAUSE}
+         ${ACTIVE_CAMPUS_TIE_UP('jp.employer_id')}
+         WHERE jp.employer_id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')
+           AND pa.status <> 'withdrawn'
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+           ${projectsJobIdx ? `AND jp.id = $${projectsJobIdx}::uuid` : ''}) AS projects
     `;
-    const countsRes = await query(countsSql, [employerId]);
-    const counts = countsRes.rows[0] || { jobs: 0, internships: 0, projects: 0 };
+    const countsRes = await query(countsSql, countsParams);
+    const counts = countsRes.rows[0] || { drives: 0, jobs: 0, internships: 0, projects: 0 };
+
+    const resumeLateral = `LEFT JOIN LATERAL (
+           SELECT sd.id, sd.document_name, sd.file_url
+           FROM student_documents sd
+           WHERE sd.student_id = sp.id
+             AND sd.document_type = 'resume'
+           ORDER BY sd.uploaded_at DESC
+           LIMIT 1
+         ) resume_doc ON TRUE`;
 
     let itemsRes;
-    if (tab === 'jobs') {
+    if (tab === 'drives') {
       itemsRes = await query(
         `SELECT
            a.id,
@@ -86,10 +184,13 @@ export async function GET(request) {
            a.applied_at,
            a.current_round,
            sp.id AS student_id,
+           sp.tenant_id,
            u.first_name,
            u.last_name,
            u.email,
            t.name AS college_name,
+           t.short_code,
+           sp.roll_number,
            sp.branch,
            sp.department,
            sp.cgpa,
@@ -98,30 +199,73 @@ export async function GET(request) {
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
            (SELECT COUNT(*)::int FROM student_documents sd_all WHERE sd_all.student_id = sp.id) AS document_count,
-           COALESCE(jp.title, d.title) AS opening_title,
-           COALESCE(jp.job_type::text, 'placement_drive') AS job_type,
+           d.title AS opening_title,
+           'placement_drive'::text AS job_type,
            d.id AS drive_id,
            NULL::text AS notes
          FROM applications a
          INNER JOIN placement_drives d ON d.id = a.drive_id
          INNER JOIN employer_profiles ep ON ep.id = d.employer_id
          INNER JOIN student_profiles sp ON sp.id = a.student_id
+         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
-         LEFT JOIN job_postings jp ON jp.id = COALESCE(a.job_id, d.job_id)
-         LEFT JOIN LATERAL (
-           SELECT sd.id, sd.document_name, sd.file_url
-           FROM student_documents sd
-           WHERE sd.student_id = sp.id
-             AND sd.document_type = 'resume'
-           ORDER BY sd.uploaded_at DESC
-           LIMIT 1
-         ) resume_doc ON TRUE
+         ${resumeLateral}
          WHERE ep.id = $1::uuid
-           AND sp.archived_at IS NULL
+           AND a.status <> 'withdrawn'
+           AND ${SP_ACTIVE_CLAUSE}
+           ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
            ${driveIdFilter ? 'AND d.id = $2::uuid' : ''}
          ORDER BY a.applied_at DESC`,
         driveIdFilter ? [employerId, driveIdFilter] : [employerId],
+      );
+    } else if (tab === 'jobs') {
+      const jobParams = [employerId];
+      if (jobIdFilter) jobParams.push(jobIdFilter);
+      const jobBind = jobIdFilter ? `$${jobParams.length}` : '';
+      itemsRes = await query(
+        `SELECT
+           pa.id,
+           'program' AS source_kind,
+           pa.status,
+           pa.applied_at,
+           NULL::int AS current_round,
+           sp.id AS student_id,
+           sp.tenant_id,
+           u.first_name,
+           u.last_name,
+           u.email,
+           t.name AS college_name,
+           t.short_code,
+           sp.roll_number,
+           sp.branch,
+           sp.department,
+           sp.cgpa,
+           sp.resume_url,
+           resume_doc.id AS resume_document_id,
+           resume_doc.document_name AS resume_document_name,
+           resume_doc.file_url AS resume_document_url,
+           (SELECT COUNT(*)::int FROM student_documents sd_all WHERE sd_all.student_id = sp.id) AS document_count,
+           jp.title AS opening_title,
+           jp.job_type::text AS job_type,
+           NULL::uuid AS drive_id,
+           pa.notes
+         FROM program_applications pa
+         INNER JOIN job_postings jp ON jp.id = pa.job_id
+         INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
+         INNER JOIN student_profiles sp ON sp.id = pa.student_id
+         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
+         INNER JOIN users u ON u.id = sp.user_id
+         LEFT JOIN tenants t ON t.id = sp.tenant_id
+         ${resumeLateral}
+         WHERE ep.id = $1::uuid
+           ${JOB_POSTING_TYPES_SQL}
+           AND pa.status <> 'withdrawn'
+           AND ${SP_ACTIVE_CLAUSE}
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+           ${jobBind ? `AND jp.id = ${jobBind}::uuid` : ''}
+         ORDER BY pa.applied_at DESC`,
+        jobParams,
       );
     } else if (tab === 'internships') {
       itemsRes = await query(
@@ -132,10 +276,13 @@ export async function GET(request) {
            pa.applied_at,
            NULL::int AS current_round,
            sp.id AS student_id,
+           sp.tenant_id,
            u.first_name,
            u.last_name,
            u.email,
            t.name AS college_name,
+           t.short_code,
+           sp.roll_number,
            sp.branch,
            sp.department,
            sp.cgpa,
@@ -152,6 +299,7 @@ export async function GET(request) {
          INNER JOIN job_postings jp ON jp.id = pa.job_id
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
+         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN LATERAL (
@@ -162,9 +310,13 @@ export async function GET(request) {
            ORDER BY sd.uploaded_at DESC
            LIMIT 1
          ) resume_doc ON TRUE
-         WHERE ep.id = $1::uuid AND jp.job_type = 'internship' AND sp.archived_at IS NULL
+         WHERE ep.id = $1::uuid AND jp.job_type = 'internship'
+           AND pa.status <> 'withdrawn'
+           AND ${SP_ACTIVE_CLAUSE}
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+           ${jobIdFilter ? 'AND jp.id = $2::uuid' : ''}
          ORDER BY pa.applied_at DESC`,
-        [employerId],
+        jobIdFilter ? [employerId, jobIdFilter] : [employerId],
       );
     } else {
       itemsRes = await query(
@@ -175,10 +327,13 @@ export async function GET(request) {
            pa.applied_at,
            NULL::int AS current_round,
            sp.id AS student_id,
+           sp.tenant_id,
            u.first_name,
            u.last_name,
            u.email,
            t.name AS college_name,
+           t.short_code,
+           sp.roll_number,
            sp.branch,
            sp.department,
            sp.cgpa,
@@ -195,6 +350,7 @@ export async function GET(request) {
          INNER JOIN job_postings jp ON jp.id = pa.job_id
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
+         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN LATERAL (
@@ -205,20 +361,30 @@ export async function GET(request) {
            ORDER BY sd.uploaded_at DESC
            LIMIT 1
          ) resume_doc ON TRUE
-         WHERE ep.id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon') AND sp.archived_at IS NULL
+         WHERE ep.id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')
+           AND pa.status <> 'withdrawn'
+           AND ${SP_ACTIVE_CLAUSE}
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+           ${jobIdFilter ? 'AND jp.id = $2::uuid' : ''}
          ORDER BY pa.applied_at DESC`,
-        [employerId],
+        jobIdFilter ? [employerId, jobIdFilter] : [employerId],
       );
     }
 
+    let items = itemsRes.rows.map(mapRow);
+    items = await filterItemsByFcfs(items, tab, employerId);
+
     return NextResponse.json({
       tab,
+      driveId: driveIdFilter || null,
+      jobId: jobIdFilter || null,
       counts: {
+        drives: Number(counts.drives) || 0,
         jobs: Number(counts.jobs) || 0,
         internships: Number(counts.internships) || 0,
         projects: Number(counts.projects) || 0,
       },
-      items: itemsRes.rows.map(mapRow),
+      items,
     });
   } catch (e) {
     console.error('GET /api/employer/applications', e);
@@ -252,6 +418,53 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'applicationId, sourceKind and valid status are required' }, { status: 400 });
     }
 
+    if (nextStatus === 'selected') {
+      let track = 'placement';
+      let tenantId = null;
+      let studentProfileId = null;
+
+      if (sourceKind === 'drive') {
+        const meta = await query(
+          `SELECT sp.tenant_id, sp.id AS student_id
+           FROM applications a
+           INNER JOIN student_profiles sp ON sp.id = a.student_id
+           INNER JOIN placement_drives d ON d.id = a.drive_id
+           WHERE a.id = $1::uuid AND d.employer_id = $2::uuid
+           LIMIT 1`,
+          [applicationId, employerId],
+        );
+        tenantId = meta.rows[0]?.tenant_id;
+        studentProfileId = meta.rows[0]?.student_id;
+        track = 'placement';
+      } else {
+        const meta = await query(
+          `SELECT sp.tenant_id, sp.id AS student_id, jp.job_type
+           FROM program_applications pa
+           INNER JOIN student_profiles sp ON sp.id = pa.student_id
+           INNER JOIN job_postings jp ON jp.id = pa.job_id
+           WHERE pa.id = $1::uuid AND jp.employer_id = $2::uuid
+           LIMIT 1`,
+          [applicationId, employerId],
+        );
+        tenantId = meta.rows[0]?.tenant_id;
+        studentProfileId = meta.rows[0]?.student_id;
+        const jt = String(meta.rows[0]?.job_type || '').toLowerCase();
+        track = jt === 'internship' ? 'internship' : 'jobs';
+      }
+
+      if (tenantId && studentProfileId) {
+        const fcfs = await assertEmployerMayConfirmStudent({
+          tenantId,
+          studentProfileId,
+          track,
+          employerId,
+        });
+        if (!fcfs.ok) {
+          return NextResponse.json({ error: fcfs.error }, { status: 409 });
+        }
+      }
+    }
+
     if (sourceKind === 'drive') {
       const updated = await query(
         `UPDATE applications a
@@ -260,6 +473,7 @@ export async function PATCH(request) {
          WHERE a.id = $2::uuid
            AND d.id = a.drive_id
            AND d.employer_id = $3::uuid
+           ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
          RETURNING a.id, a.status`,
         [nextStatus, applicationId, employerId],
       );
@@ -276,6 +490,7 @@ export async function PATCH(request) {
        WHERE pa.id = $2::uuid
          AND jp.id = pa.job_id
          AND jp.employer_id = $3::uuid
+         ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
        RETURNING pa.id, pa.status`,
       [nextStatus, applicationId, employerId],
     );
