@@ -476,6 +476,57 @@ h6 { font-size: 1rem; }
   color: var(--text-tertiary);
 }
 
+.currency-amount-input__row {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all var(--transition-fast);
+}
+
+.currency-amount-input__row:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.currency-amount-input__prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 0.35rem 0 0.875rem;
+  color: var(--text-tertiary);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.currency-amount-input__control {
+  flex: 1;
+  min-width: 0;
+}
+
+.currency-amount-input__control .form-input {
+  border: none;
+  box-shadow: none;
+  padding-left: 0.25rem;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.currency-amount-input__control .form-input:focus,
+.currency-amount-input__control .form-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.currency-amount-input__words {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .form-input.error {
   border-color: var(--danger-500);
 }

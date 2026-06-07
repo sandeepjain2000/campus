@@ -7,12 +7,14 @@ import { getRoleDisplayName } from '@/lib/utils';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 import EntityLogo from '@/components/EntityLogo';
 import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
+import { ALUMNI_BROWSE_JOBS_PATH, ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 
 export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
   const brandLogoUrl = useResolvedBrandLogoUrl();
   if (!isOpen) return null;
 
   const role = session?.user?.role;
+  const isAlumni = Boolean(session?.user?.isAlumni);
   const name = session?.user?.name || 'User';
 
   return (
@@ -59,8 +61,17 @@ export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
 
               {role === 'student' && (
                 <>
-                  <Link href="/dashboard/student/drives" onClick={onClose} className="mobile-nav-link"><Calendar size={20} strokeWidth={2} /> Browse Drives</Link>
-                  <Link href="/dashboard/student/applications/jobs" onClick={onClose} className="mobile-nav-link"><Briefcase size={20} strokeWidth={2} /> My Applications</Link>
+                  {isAlumni ? (
+                    <>
+                      <Link href={ALUMNI_BROWSE_JOBS_PATH} onClick={onClose} className="mobile-nav-link"><Briefcase size={20} strokeWidth={2} /> Browse Alumni Jobs</Link>
+                      <Link href={ALUMNI_MY_JOBS_PATH} onClick={onClose} className="mobile-nav-link"><Briefcase size={20} strokeWidth={2} /> My Alumni Jobs</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/dashboard/student/drives" onClick={onClose} className="mobile-nav-link"><Calendar size={20} strokeWidth={2} /> Browse Drives</Link>
+                      <Link href="/dashboard/student/applications/drives" onClick={onClose} className="mobile-nav-link"><Briefcase size={20} strokeWidth={2} /> My Applications</Link>
+                    </>
+                  )}
                   <Link href="/dashboard/student/profile" onClick={onClose} className="mobile-nav-link"><Users size={20} strokeWidth={2} /> My Profile</Link>
                 </>
               )}

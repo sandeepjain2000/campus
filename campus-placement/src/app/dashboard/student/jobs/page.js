@@ -30,7 +30,10 @@ import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/stude
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const detail = data.hint ? ` ${data.hint}` : '';
+    throw new Error((data.error || `Request failed (${res.status})`) + detail);
+  }
   return data;
 }
 
@@ -49,7 +52,7 @@ export default function StudentJobsPage() {
   const currentStudent = buildStudentApplyContext(data);
   const canApply = data?.canApply !== false;
   const globalBlockedReason = globalApplyBlockedReason(canApply, applyBlockedReason);
-  const canBrowseListings = data?.canBrowseListings !== false;
+  const canBrowseListings = data?.canBrowseListings === true && !error;
   const browseGateProps = {
     canBrowseListings,
     browseGateTitle: data?.browseGateTitle,
@@ -132,6 +135,14 @@ export default function StudentJobsPage() {
         <div className="card" style={{ borderColor: 'var(--danger-500)' }}>
           <p className="text-sm" style={{ margin: 0 }}>
             {error.message}
+            {error.message === 'Failed to load opportunities' ? (
+              <>
+                {' '}
+                Try refreshing the page. If this persists, your campus database may need migrations{' '}
+                <code className="text-xs">066</code>, <code className="text-xs">067</code>, and{' '}
+                <code className="text-xs">074</code>.
+              </>
+            ) : null}
             {/job_posting_visibility|program_applications|member_tenant_id|does not exist/i.test(error.message) ? (
               <>
                 {' '}

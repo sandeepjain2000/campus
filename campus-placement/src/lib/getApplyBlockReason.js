@@ -56,7 +56,7 @@ export function getApplyBlockReason(opportunity, student, options = {}) {
     return STUDENT_RESUME_REQUIRED_APPLY_MESSAGE;
   }
 
-  if (student?.isPlacementLocked) {
+  if (student?.isPlacementLocked && !skipCampus) {
     return STUDENT_PLACEMENT_LOCKED_APPLY_MESSAGE;
   }
 

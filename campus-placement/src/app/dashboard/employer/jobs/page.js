@@ -6,6 +6,7 @@ import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/
 import { useToast } from '@/components/ToastProvider';
 import { Briefcase, Plus, DollarSign, Users, FileText, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List } from 'lucide-react';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
 import {
@@ -18,7 +19,12 @@ import {
 } from '@/lib/alumniJobPosting';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 
-const fetcher = (url) => fetch(url).then((r) => r.json());
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to load alumni jobs');
+  return json;
+};
 
 const emptyForm = {
   title: '',
@@ -40,11 +46,13 @@ const emptyForm = {
 
 export default function EmployerJobsPage() {
   const { addToast } = useToast();
-  const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs?scope=alumni', fetcher, { revalidateOnFocus: true });
+  const { data: jobData, error: jobsError, mutate: mutateJobs } = useSWR('/api/employer/jobs?scope=alumni', fetcher, { revalidateOnFocus: true });
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
   const { data: profileData } = useSWR('/api/employer/profile', fetcher, { revalidateOnFocus: true });
 
   const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
+  const [savedDraftId, setSavedDraftId] = useState(null);
   const [editingJob, setEditingJob] = useState(null);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -102,6 +110,8 @@ export default function EmployerJobsPage() {
   ]);
 
   const openCreate = () => {
+    setModalMode('create');
+    setSavedDraftId(null);
     setEditingJob(null);
     setForm({ ...emptyForm, type: 'full_time' });
     setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses));
@@ -110,6 +120,8 @@ export default function EmployerJobsPage() {
   };
 
   const handleEdit = (job) => {
+    setModalMode('edit');
+    setSavedDraftId(null);
     setEditingJob(job);
     setForm({
       title: job.title,
@@ -139,6 +151,8 @@ export default function EmployerJobsPage() {
 
   const closeModal = () => {
     setShowModal(false);
+    setModalMode('create');
+    setSavedDraftId(null);
     setEditingJob(null);
     setForm({ ...emptyForm });
     resetTenantSelection();
@@ -176,11 +190,12 @@ export default function EmployerJobsPage() {
 
     setSubmitting(true);
     try {
+      const jobId = modalMode === 'edit' ? editingJob?.id : savedDraftId;
       const res = await fetch('/api/employer/jobs', {
-        method: editingJob ? 'PATCH' : 'POST',
+        method: jobId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editingJob?.id,
+          id: jobId,
           title: form.title.trim(),
           description: form.description,
           jobType: form.type,
@@ -202,11 +217,18 @@ export default function EmployerJobsPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        addToast(json.error || 'Save failed', 'error');
+        addToast(json.error || (jobId ? 'Update failed' : 'Save failed'), 'error');
+        return;
+      }
+      const savedId = json.job?.id || jobId;
+      if (asDraft && modalMode === 'create' && savedId) {
+        setSavedDraftId(savedId);
+        addToast('Draft saved. Select campuses and click Publish when ready.', 'success');
+        mutateJobs();
         return;
       }
       addToast(
-        editingJob
+        modalMode === 'edit'
           ? 'Job updated successfully.'
           : asDraft
             ? 'Draft saved to the database (no alerts sent).'
@@ -289,6 +311,23 @@ export default function EmployerJobsPage() {
           </button>
         </div>
       </div>
+
+      {jobsError && (
+        <div
+          role="alert"
+          style={{
+            marginBottom: '1.5rem',
+            padding: '1rem 1.25rem',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-danger-border, #fecaca)',
+            background: 'var(--color-danger-bg, #fef2f2)',
+            color: 'var(--color-danger-text, #991b1b)',
+          }}
+        >
+          Could not load alumni jobs: {jobsError.message}. If this persists on production, run database migration{' '}
+          <code>npm run db:migrate:075</code> and refresh.
+        </div>
+      )}
 
       {/* Filter Tabs + View Toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -526,8 +565,13 @@ export default function EmployerJobsPage() {
                   <Briefcase size={20} />
                 </div>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-                  {editingJob ? 'Edit Job Posting' : 'Create New Job Posting'}
+                  {modalMode === 'edit' ? 'Edit Job Posting' : 'Create New Job Posting'}
                 </h2>
+                {modalMode === 'create' && savedDraftId ? (
+                  <span className="badge badge-warning badge-dot" style={{ marginLeft: '0.25rem' }}>
+                    Draft saved
+                  </span>
+                ) : null}
               </div>
               <button onClick={closeModal} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%' }}>
                 <X size={24} className="text-secondary" />
@@ -630,18 +674,23 @@ export default function EmployerJobsPage() {
                   
                   <div className="form-group">
                     <label className="form-label font-bold">Min salary (annual CTC)</label>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>₹</span>
-                      <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_SALARY_MIN} placeholder="800,000" value={form.salaryMin} onChange={(v) => setField('salaryMin', v)} className="form-input" />
-                    </div>
+                    <CurrencyAmountInput
+                      fieldId={FIELD_IDS.EMPLOYER_SALARY_MIN}
+                      placeholder="800000"
+                      value={form.salaryMin}
+                      onChange={(v) => setField('salaryMin', v)}
+                    />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label font-bold">Max salary (annual CTC)</label>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>₹</span>
-                      <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_SALARY_MAX} context={{ salaryMin: form.salaryMin }} placeholder="1,500,000" value={form.salaryMax} onChange={(v) => setField('salaryMax', v)} className="form-input" />
-                    </div>
+                    <CurrencyAmountInput
+                      fieldId={FIELD_IDS.EMPLOYER_SALARY_MAX}
+                      context={{ salaryMin: form.salaryMin }}
+                      placeholder="1500000"
+                      value={form.salaryMax}
+                      onChange={(v) => setField('salaryMax', v)}
+                    />
                   </div>
 
                   <div className="form-group">
@@ -683,7 +732,11 @@ export default function EmployerJobsPage() {
               </button>
               <button className="btn btn-primary" type="button" disabled={submitting} onClick={() => submitJob(false)} style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <CheckCircle2 size={16} />
-                {editingJob ? 'Update Published Job' : submitting ? 'Publishing…' : 'Publish Job'}
+                {modalMode === 'edit' && editingJob?.status === 'published'
+                  ? 'Update Published Job'
+                  : submitting
+                    ? 'Publishing…'
+                    : 'Publish Job'}
               </button>
             </div>
           </div>

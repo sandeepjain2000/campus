@@ -9,6 +9,11 @@ function buildPoolConfig() {
   const rawUrl = process.env.DATABASE_URL;
   if (!rawUrl) throw new Error('DATABASE_URL environment variable is not set.');
 
+  /** Serverless (Vercel): one connection per instance — Supabase session pooler caps at ~15. */
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const poolMax = isServerless ? 1 : 20;
+  const idleTimeoutMillis = isServerless ? 5000 : 30000;
+
   try {
     const url = new URL(rawUrl);
     return {
@@ -17,9 +22,10 @@ function buildPoolConfig() {
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
       database: url.pathname.replace(/^\//, ''),
-      max: 20,
-      idleTimeoutMillis: 30000,
+      max: poolMax,
+      idleTimeoutMillis,
       connectionTimeoutMillis: 10000,
+      allowExitOnIdle: isServerless,
       ssl: getPgSslOption(url.hostname),
     };
   } catch {
@@ -28,9 +34,10 @@ function buildPoolConfig() {
     // Fallback to connectionString if URL parsing fails
     return {
       connectionString: rawUrl,
-      max: 20,
-      idleTimeoutMillis: 30000,
+      max: poolMax,
+      idleTimeoutMillis,
       connectionTimeoutMillis: 10000,
+      allowExitOnIdle: isServerless,
       ssl: getPgSslOption(hostHint),
     };
   }

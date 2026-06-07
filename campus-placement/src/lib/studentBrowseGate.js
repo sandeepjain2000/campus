@@ -52,15 +52,29 @@ export async function getStudentBrowseGate(studentId, tenantId = null) {
 
   let profileEval = { profileComplete: false, missingLabels: ['Profile'] };
   if (studentId) {
-    const profileRes = await query(
-      `SELECT sp.roll_number, sp.branch, sp.department, sp.cgpa,
-              u.phone AS user_phone
-       FROM student_profiles sp
-       INNER JOIN users u ON u.id = sp.user_id
-       WHERE sp.id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
-       LIMIT 1`,
-      [studentId],
-    );
+    let profileRes;
+    try {
+      profileRes = await query(
+        `SELECT sp.roll_number, sp.branch, sp.department, sp.cgpa,
+                u.phone AS user_phone
+         FROM student_profiles sp
+         INNER JOIN users u ON u.id = sp.user_id
+         WHERE sp.id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
+         LIMIT 1`,
+        [studentId],
+      );
+    } catch (e) {
+      if (e?.code !== '42703') throw e;
+      profileRes = await query(
+        `SELECT sp.roll_number, sp.branch, sp.department, sp.cgpa,
+                u.phone AS user_phone
+         FROM student_profiles sp
+         INNER JOIN users u ON u.id = sp.user_id
+         WHERE sp.id = $1::uuid
+         LIMIT 1`,
+        [studentId],
+      );
+    }
     profileEval = evaluateStudentProfileForBrowse(profileRes.rows[0]);
   }
 

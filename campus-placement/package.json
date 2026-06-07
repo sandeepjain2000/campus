@@ -41,6 +41,7 @@
     "db:migrate:075": "node scripts/db_exec_sql_file.js db/migrations/075_alumni_job_lateral_fields.sql",
     "db:migrate:076": "node scripts/db_exec_sql_file.js db/migrations/076_alumni_job_visibility_auto_approve.sql",
     "db:migrate:077": "node scripts/db_exec_sql_file.js db/migrations/077_alumni_jobs_require_college_approval.sql",
+    "db:migrate:078": "node scripts/db_exec_sql_file.js db/migrations/078_restore_repurged_alumni_jobs.sql",
     "db:clear-placement": "node scripts/clear_all_placement_data.js",
     "db:upsert-college-showcase": "node scripts/upsert_college_showcase_data.js",
     "seed:all-scenarios": "node scripts/db_exec_sql_file.js db/seeds/99_all_scenarios_extension.sql",

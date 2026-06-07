@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { validateEmployerJobPayload } from '@/lib/apiInputValidation';
 import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { jobPostingNotDeletedSql } from '@/lib/migrationReady';
 import {
   PROGRAM_JOB_TYPES,
   resolvePublishTenantIds,
@@ -51,6 +52,247 @@ function parseKeywords(keywords) {
 
 const JOB_TYPES = new Set(['full_time', 'internship', 'contract', 'ppo', 'hackathon', 'short_project', 'mentorship', 'guest_faculty']);
 
+const ALUMNI_LATERAL_SELECT = `
+              jp.min_experience_years, jp.max_experience_years, jp.work_mode,
+              jp.notice_period_days, jp.seniority_level, jp.education_level,`;
+
+function mapEmployerJobRows(rows) {
+  return rows.map((j) => ({
+    id: j.id,
+    title: j.title,
+    description: j.description || '',
+    keywords: (j.skills_required || []).join(', '),
+    type: j.job_type,
+    salaryMin: j.salary_min != null ? Number(j.salary_min) : null,
+    salaryMax: j.salary_max != null ? Number(j.salary_max) : null,
+    status: j.status,
+    vacancies: j.vacancies,
+    applications: Number(j.application_count) || 0,
+    branches: j.eligible_branches?.length ? j.eligible_branches : [],
+    cgpa: normalizeEmployerMinCgpa(j.min_cgpa),
+    minCgpa: normalizeEmployerMinCgpa(j.min_cgpa),
+    createdAt: j.created_at ? new Date(j.created_at).toISOString().slice(0, 10) : '',
+    tenantIds: Array.isArray(j.tenant_ids) ? j.tenant_ids.filter(Boolean) : [],
+    ...mapAlumniJobApiRow(j),
+  }));
+}
+
+async function queryEmployerJobs(empId, listTypes) {
+  const params = [empId];
+  let typeClause = '';
+  if (listTypes?.length) {
+    params.push(listTypes);
+    typeClause = ` AND jp.job_type = ANY($${params.length}::text[])`;
+  }
+  const notDeletedSql = await jobPostingNotDeletedSql('jp');
+  const baseFrom = `
+       FROM job_postings jp
+       WHERE jp.employer_id = $1::uuid${typeClause} ${notDeletedSql}
+       ORDER BY jp.created_at DESC`;
+
+  try {
+    const jobs = await query(
+      `SELECT jp.id, jp.title, jp.description, jp.job_type, jp.status, jp.salary_min, jp.salary_max,
+              jp.min_cgpa, jp.vacancies, jp.skills_required, jp.eligible_branches, jp.created_at,
+              jp.category, jp.locations,
+              ${ALUMNI_LATERAL_SELECT}
+              ${JOB_APPLICANT_COUNT_SUBQUERY} AS application_count,
+              COALESCE(
+                (SELECT array_agg(jpv.tenant_id::text)
+                 FROM job_posting_visibility jpv
+                 WHERE jpv.job_id = jp.id),
+                ARRAY[]::text[]
+              ) AS tenant_ids
+       ${baseFrom}`,
+      params,
+    );
+    return jobs.rows;
+  } catch (err) {
+    if (err?.code !== '42703') throw err;
+    const jobs = await query(
+      `SELECT jp.id, jp.title, jp.description, jp.job_type, jp.status, jp.salary_min, jp.salary_max,
+              jp.min_cgpa, jp.vacancies, jp.skills_required, jp.eligible_branches, jp.created_at,
+              jp.category, jp.locations,
+              ${JOB_APPLICANT_COUNT_SUBQUERY} AS application_count,
+              COALESCE(
+                (SELECT array_agg(jpv.tenant_id::text)
+                 FROM job_posting_visibility jpv
+                 WHERE jpv.job_id = jp.id),
+                ARRAY[]::text[]
+              ) AS tenant_ids
+       ${baseFrom}`,
+      params,
+    );
+    return jobs.rows;
+  }
+}
+
+async function insertAlumniJobPosting(client, values) {
+  const [
+    empId,
+    title,
+    description,
+    jobType,
+    categoryText,
+    locationsArr,
+    salaryMin,
+    salaryMax,
+    skillsRequired,
+    vacancies,
+    status,
+    minExperience,
+    maxExperience,
+    workMode,
+    noticePeriodDays,
+    seniorityLevel,
+    educationLevel,
+  ] = values;
+
+  try {
+    return await client.query(
+      `INSERT INTO job_postings (
+         employer_id, title, description, job_type, category, locations,
+         salary_min, salary_max, skills_required, vacancies, status,
+         min_experience_years, max_experience_years, work_mode,
+         notice_period_days, seniority_level, education_level,
+         min_cgpa, max_backlogs, batch_year, eligible_branches
+       ) VALUES (
+         $1::uuid, $2, $3, $4, $5, $6::text[],
+         $7, $8, $9::text[], $10, $11,
+         $12, $13, $14, $15, $16, $17,
+         NULL, 0, NULL, NULL
+       )
+       RETURNING id, title, job_type, status, salary_min, salary_max, min_cgpa, vacancies, skills_required, created_at`,
+      values,
+    );
+  } catch (err) {
+    if (err?.code !== '42703') throw err;
+    return client.query(
+      `INSERT INTO job_postings (
+         employer_id, title, description, job_type, category, locations,
+         salary_min, salary_max, skills_required, vacancies, status,
+         min_cgpa, max_backlogs, batch_year, eligible_branches
+       ) VALUES (
+         $1::uuid, $2, $3, $4, $5, $6::text[],
+         $7, $8, $9::text[], $10, $11,
+         NULL, 0, NULL, NULL
+       )
+       RETURNING id, title, job_type, status, salary_min, salary_max, min_cgpa, vacancies, skills_required, created_at`,
+      [
+        empId,
+        title,
+        description,
+        jobType,
+        categoryText,
+        locationsArr,
+        salaryMin,
+        salaryMax,
+        skillsRequired,
+        vacancies,
+        status,
+      ],
+    );
+  }
+}
+
+async function updateAlumniJobPosting(client, params) {
+  const {
+    title,
+    description,
+    jobType,
+    status,
+    salaryMin,
+    salaryMax,
+    vacancies,
+    skillsRequired,
+    categoryText,
+    locationsArr,
+    minExperience,
+    maxExperience,
+    workMode,
+    noticePeriodDays,
+    seniorityLevel,
+    educationLevel,
+    jobId,
+    empId,
+  } = params;
+
+  const baseValues = [
+    title.trim(),
+    description || '',
+    jobType,
+    status,
+    salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+    salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+    Math.max(1, parseInt(String(vacancies), 10) || 1),
+    skillsRequired,
+    categoryText,
+    locationsArr,
+    jobId,
+    empId,
+  ];
+
+  try {
+    return await client.query(
+      `UPDATE job_postings
+       SET title = $1,
+           description = $2,
+           job_type = $3,
+           status = $4,
+           salary_min = $5,
+           salary_max = $6,
+           vacancies = $7,
+           skills_required = $8::text[],
+           category = $9,
+           locations = $10::text[],
+           min_experience_years = $11,
+           max_experience_years = $12,
+           work_mode = $13,
+           notice_period_days = $14,
+           seniority_level = $15,
+           education_level = $16,
+           min_cgpa = NULL,
+           batch_year = NULL,
+           eligible_branches = NULL,
+           updated_at = NOW()
+       WHERE id = $17::uuid AND employer_id = $18::uuid
+       RETURNING id, title, job_type, status`,
+      [
+        ...baseValues.slice(0, 10),
+        minExperience != null && minExperience !== '' ? Number(minExperience) : null,
+        maxExperience != null && maxExperience !== '' ? Number(maxExperience) : null,
+        workMode || null,
+        noticePeriodDays != null && noticePeriodDays !== '' ? Number(noticePeriodDays) : null,
+        seniorityLevel || null,
+        educationLevel || 'any',
+        ...baseValues.slice(10),
+      ],
+    );
+  } catch (err) {
+    if (err?.code !== '42703') throw err;
+    return client.query(
+      `UPDATE job_postings
+       SET title = $1,
+           description = $2,
+           job_type = $3,
+           status = $4,
+           salary_min = $5,
+           salary_max = $6,
+           vacancies = $7,
+           skills_required = $8::text[],
+           category = $9,
+           locations = $10::text[],
+           min_cgpa = NULL,
+           batch_year = NULL,
+           eligible_branches = NULL,
+           updated_at = NOW()
+       WHERE id = $11::uuid AND employer_id = $12::uuid
+       RETURNING id, title, job_type, status`,
+      baseValues,
+    );
+  }
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -68,50 +310,9 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const { types: listTypes } = resolveEmployerJobsListFilter(searchParams);
-    const params = [emp.id];
-    let typeClause = '';
-    if (listTypes?.length) {
-      params.push(listTypes);
-      typeClause = ` AND jp.job_type = ANY($${params.length}::text[])`;
-    }
 
-    const jobs = await query(
-      `SELECT jp.id, jp.title, jp.description, jp.job_type, jp.status, jp.salary_min, jp.salary_max,
-              jp.min_cgpa, jp.vacancies, jp.skills_required, jp.eligible_branches, jp.created_at,
-              jp.category, jp.locations,
-              jp.min_experience_years, jp.max_experience_years, jp.work_mode,
-              jp.notice_period_days, jp.seniority_level, jp.education_level,
-              ${JOB_APPLICANT_COUNT_SUBQUERY} AS application_count,
-              COALESCE(
-                (SELECT array_agg(jpv.tenant_id::text)
-                 FROM job_posting_visibility jpv
-                 WHERE jpv.job_id = jp.id),
-                ARRAY[]::text[]
-              ) AS tenant_ids
-       FROM job_postings jp
-       WHERE jp.employer_id = $1::uuid${typeClause} ${AND_JP_NOT_DELETED}
-       ORDER BY jp.created_at DESC`,
-      params,
-    );
-
-    const rows = jobs.rows.map((j) => ({
-      id: j.id,
-      title: j.title,
-      description: j.description || '',
-      keywords: (j.skills_required || []).join(', '),
-      type: j.job_type,
-      salaryMin: j.salary_min != null ? Number(j.salary_min) : null,
-      salaryMax: j.salary_max != null ? Number(j.salary_max) : null,
-      status: j.status,
-      vacancies: j.vacancies,
-      applications: Number(j.application_count) || 0,
-      branches: j.eligible_branches?.length ? j.eligible_branches : [],
-      cgpa: normalizeEmployerMinCgpa(j.min_cgpa),
-      minCgpa: normalizeEmployerMinCgpa(j.min_cgpa),
-      createdAt: j.created_at ? new Date(j.created_at).toISOString().slice(0, 10) : '',
-      tenantIds: Array.isArray(j.tenant_ids) ? j.tenant_ids.filter(Boolean) : [],
-      ...mapAlumniJobApiRow(j),
-    }));
+    const jobs = await queryEmployerJobs(emp.id, listTypes);
+    const rows = mapEmployerJobRows(jobs);
 
     return NextResponse.json({ jobs: rows, companyName: emp.company_name });
   } catch (e) {
@@ -222,41 +423,28 @@ export async function POST(request) {
         String(industry || '').trim() ||
         (alumniJob ? 'Experienced hire' : jobType === 'internship' ? 'Internship' : 'Engineering');
 
+      const alumniInsertValues = [
+        emp.id,
+        title.trim(),
+        description || '',
+        jobType,
+        categoryText,
+        locationsArr,
+        salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+        salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+        skillsRequired,
+        Math.max(1, parseInt(String(vacancies), 10) || 1),
+        status,
+        minExperience != null && minExperience !== '' ? Number(minExperience) : null,
+        maxExperience != null && maxExperience !== '' ? Number(maxExperience) : null,
+        workMode || null,
+        noticePeriodDays != null && noticePeriodDays !== '' ? Number(noticePeriodDays) : null,
+        seniorityLevel || null,
+        educationLevel || 'any',
+      ];
+
       const ins = alumniJob
-        ? await client.query(
-            `INSERT INTO job_postings (
-               employer_id, title, description, job_type, category, locations,
-               salary_min, salary_max, skills_required, vacancies, status,
-               min_experience_years, max_experience_years, work_mode,
-               notice_period_days, seniority_level, education_level,
-               min_cgpa, max_backlogs, batch_year, eligible_branches
-             ) VALUES (
-               $1::uuid, $2, $3, $4, $5, $6::text[],
-               $7, $8, $9::text[], $10, $11,
-               $12, $13, $14, $15, $16, $17,
-               NULL, 0, NULL, NULL
-             )
-             RETURNING id, title, job_type, status, salary_min, salary_max, min_cgpa, vacancies, skills_required, created_at`,
-            [
-              emp.id,
-              title.trim(),
-              description || '',
-              jobType,
-              categoryText,
-              locationsArr,
-              salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
-              salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
-              skillsRequired,
-              Math.max(1, parseInt(String(vacancies), 10) || 1),
-              status,
-              minExperience != null && minExperience !== '' ? Number(minExperience) : null,
-              maxExperience != null && maxExperience !== '' ? Number(maxExperience) : null,
-              workMode || null,
-              noticePeriodDays != null && noticePeriodDays !== '' ? Number(noticePeriodDays) : null,
-              seniorityLevel || null,
-              educationLevel || 'any',
-            ],
-          )
+        ? await insertAlumniJobPosting(client, alumniInsertValues)
         : await client.query(
             `INSERT INTO job_postings (
                employer_id, title, description, job_type, category, locations,
@@ -463,51 +651,26 @@ export async function PATCH(request) {
         const locationText = String(location || '').trim();
         const locationsArr = locationText ? [locationText] : [];
         const categoryText = String(industry || '').trim() || 'Experienced hire';
-        updated = await client.query(
-          `UPDATE job_postings
-           SET title = $1,
-               description = $2,
-               job_type = $3,
-               status = $4,
-               salary_min = $5,
-               salary_max = $6,
-               vacancies = $7,
-               skills_required = $8::text[],
-               category = $9,
-               locations = $10::text[],
-               min_experience_years = $11,
-               max_experience_years = $12,
-               work_mode = $13,
-               notice_period_days = $14,
-               seniority_level = $15,
-               education_level = $16,
-               min_cgpa = NULL,
-               batch_year = NULL,
-               eligible_branches = NULL,
-               updated_at = NOW()
-           WHERE id = $17::uuid AND employer_id = $18::uuid
-           RETURNING id, title, job_type, status`,
-          [
-            title.trim(),
-            description || '',
-            jobType,
-            status,
-            salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
-            salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
-            Math.max(1, parseInt(String(vacancies), 10) || 1),
-            skillsRequired,
-            categoryText,
-            locationsArr,
-            minExperience != null && minExperience !== '' ? Number(minExperience) : null,
-            maxExperience != null && maxExperience !== '' ? Number(maxExperience) : null,
-            workMode || null,
-            noticePeriodDays != null && noticePeriodDays !== '' ? Number(noticePeriodDays) : null,
-            seniorityLevel || null,
-            educationLevel || 'any',
-            jobId,
-            emp.id,
-          ],
-        );
+        updated = await updateAlumniJobPosting(client, {
+          title,
+          description,
+          jobType,
+          status,
+          salaryMin,
+          salaryMax,
+          vacancies,
+          skillsRequired,
+          categoryText,
+          locationsArr,
+          minExperience,
+          maxExperience,
+          workMode,
+          noticePeriodDays,
+          seniorityLevel,
+          educationLevel,
+          jobId,
+          empId: emp.id,
+        });
       } else {
         updated = await client.query(
           `UPDATE job_postings

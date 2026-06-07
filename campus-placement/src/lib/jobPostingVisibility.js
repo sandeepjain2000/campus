@@ -98,13 +98,25 @@ export async function syncJobPostingVisibility(
 
   const added = [];
   for (const tenantId of ids) {
-    const ins = await client.query(
-      `INSERT INTO job_posting_visibility (job_id, tenant_id, college_status)
-       VALUES ($1::uuid, $2::uuid, 'pending')
-       ON CONFLICT (job_id, tenant_id) DO NOTHING
-       RETURNING tenant_id::text AS id`,
-      [jobId, tenantId],
-    );
+    let ins;
+    try {
+      ins = await client.query(
+        `INSERT INTO job_posting_visibility (job_id, tenant_id, college_status)
+         VALUES ($1::uuid, $2::uuid, 'pending')
+         ON CONFLICT (job_id, tenant_id) DO NOTHING
+         RETURNING tenant_id::text AS id`,
+        [jobId, tenantId],
+      );
+    } catch (err) {
+      if (err?.code !== '42703') throw err;
+      ins = await client.query(
+        `INSERT INTO job_posting_visibility (job_id, tenant_id)
+         VALUES ($1::uuid, $2::uuid)
+         ON CONFLICT (job_id, tenant_id) DO NOTHING
+         RETURNING tenant_id::text AS id`,
+        [jobId, tenantId],
+      );
+    }
     if (ins.rowCount || !before.has(tenantId)) {
       if (!before.has(tenantId)) added.push(tenantId);
     }

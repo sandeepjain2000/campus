@@ -7,10 +7,12 @@ import useSWR from 'swr';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
 import { validateEmployerDriveDate } from '@/lib/apiInputValidation';
+import { buildDriveCtcBreakup } from '@/lib/amountInWords';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import PageLoading from '@/components/PageLoading';
-import { formatStatus } from '@/lib/utils';
+import { formatCurrency, formatStatus } from '@/lib/utils';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -33,6 +35,7 @@ export default function EmployerEditDrivePage() {
     driveDate: '',
     venue: '',
     description: '',
+    packageCtc: '',
     ctcBreakup: '',
   });
 
@@ -52,6 +55,7 @@ export default function EmployerEditDrivePage() {
       driveDate: toDateInputValue(drive.date),
       venue: drive.venue || '',
       description: drive.description || '',
+      packageCtc: '',
       ctcBreakup: drive.ctc_breakup || '',
     });
   }, [drive]);
@@ -78,7 +82,7 @@ export default function EmployerEditDrivePage() {
           driveType: form.driveType,
           driveDate: form.driveDate || null,
           venue: form.venue,
-          ctcBreakup: form.ctcBreakup,
+          ctcBreakup: buildDriveCtcBreakup(form.packageCtc, form.ctcBreakup, formatCurrency),
         }),
       });
       const json = await res.json();
@@ -213,7 +217,16 @@ export default function EmployerEditDrivePage() {
             />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">CTC breakup (optional)</label>
+            <label className="form-label">Offered CTC (annual INR, optional)</label>
+            <CurrencyAmountInput
+              fieldId={FIELD_IDS.EMPLOYER_SALARY_MIN}
+              value={form.packageCtc}
+              onChange={(v) => setForm((p) => ({ ...p, packageCtc: v }))}
+              placeholder="1200000"
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">CTC breakup details (optional)</label>
             <textarea
               className="form-textarea"
               rows={3}

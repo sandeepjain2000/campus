@@ -1,4 +1,8 @@
 import {
+  ALUMNI_BROWSE_JOBS_PATH,
+  ALUMNI_MY_JOBS_PATH,
+} from '@/lib/alumniRoutes';
+import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
   Building, Calendar, Settings, TrendingUp, Users, HelpCircle, ListChecks, Inbox,
@@ -256,10 +260,16 @@ export const menuConfig = {
         id: 'college-programs',
         title: '🎓 Programs & Drives',
         items: [
-          { label: 'Alumni Jobs', href: '/dashboard/college/jobs', icon: Briefcase },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
+        ],
+      },
+      {
+        id: 'college-alumni',
+        title: '🎓 Alumni',
+        items: [
+          { label: 'Alumni Jobs', href: '/dashboard/college/jobs', icon: Briefcase },
         ],
       },
       {
@@ -379,16 +389,18 @@ const STUDENT_CAMPUS_ONLY_HREFS = new Set([
 ]);
 
 const STUDENT_ALUMNI_ONLY_HREFS = new Set([
+  ALUMNI_BROWSE_JOBS_PATH,
+  ALUMNI_MY_JOBS_PATH,
   '/dashboard/student/jobs',
   '/dashboard/student/applications/jobs',
 ]);
 
 function mapStudentNavItem(item, isAlumni) {
   if (isAlumni && item.href === '/dashboard/student/jobs') {
-    return { ...item, label: 'Browse Alumni Jobs' };
+    return { ...item, href: ALUMNI_BROWSE_JOBS_PATH, label: 'Browse Alumni Jobs' };
   }
   if (isAlumni && item.href === '/dashboard/student/applications/jobs') {
-    return { ...item, label: 'My Alumni Jobs' };
+    return { ...item, href: ALUMNI_MY_JOBS_PATH, label: 'My Alumni Jobs' };
   }
   return item;
 }

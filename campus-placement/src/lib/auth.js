@@ -61,11 +61,14 @@ export const authOptions = {
         captchaAnswer: { label: 'Captcha answer', type: 'text' },
       },
       async authorize(credentials) {
+        console.log(`[NextAuth Authorize] Initiated credential verification for email: ${credentials?.email}`);
         if (!credentials?.email || !credentials?.password) {
+          console.warn('[NextAuth Authorize] Validation failed: Missing email or password');
           throw new Error('Email and password are required');
         }
 
         if (!verifyLoginCaptcha(credentials.captchaToken, credentials.captchaAnswer)) {
+          console.warn(`[NextAuth Authorize] Captcha verification failed for email: ${credentials.email}`);
           throw new Error('Incorrect verification answer. Click refresh beside the question and try again.');
         }
 
@@ -74,6 +77,7 @@ export const authOptions = {
 
         let result;
         try {
+          console.log(`[NextAuth Authorize] Querying database for user: ${email}`);
           result = await queryWithLoginRetry(
             `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo_url,
                     ep.logo_url AS employer_logo_url,
@@ -87,34 +91,41 @@ export const authOptions = {
             [email],
           );
         } catch (error) {
-          console.error('Authentication error:', error);
+          console.error('[NextAuth Authorize] Database query error during authorize:', error);
           throw new Error('Unable to sign in right now. Please try again in a moment.');
         }
 
         const user = result.rows[0];
         if (!user) {
+          console.warn(`[NextAuth Authorize] Account not found in database for email: ${email}`);
           throw new Error('Account not found. Please check your email or register.');
         }
 
+        console.log(`[NextAuth Authorize] User found (ID: ${user.id}, Role: ${user.role}). Comparing password hashes...`);
         const isValid = await bcrypt.compare(password, user.password_hash);
         if (!isValid) {
+          console.warn(`[NextAuth Authorize] Password mismatch for email: ${email}`);
           throw new Error(
             'Incorrect password. If your college just created your account, please check your email for the temporary password or use Forgot Password.',
           );
         }
 
+        console.log(`[NextAuth Authorize] Password verified. Checking activation status and email verification...`);
         if (!user.email_verified_at) {
+          console.warn(`[NextAuth Authorize] Email address is not verified for email: ${email}`);
           throw new Error(
             'Please verify your email address before signing in. Check your inbox for the verification link from PlacementHub.',
           );
         }
 
         if (!user.is_active) {
+          console.warn(`[NextAuth Authorize] User account is inactive. role=${user.role}, email=${email}`);
           if (['college_admin', 'employer'].includes(user.role)) {
             if (user.registration_rejected_at) {
               const hint = user.registration_rejection_note
                 ? ` ${user.registration_rejection_note}`
                 : '';
+              console.warn(`[NextAuth Authorize] Registration rejected. Rejection note: ${hint}`);
               throw new Error(`Your registration was not approved.${hint}`);
             }
             throw new Error(
@@ -125,9 +136,10 @@ export const authOptions = {
         }
 
         try {
+          console.log(`[NextAuth Authorize] Updating last_login time for user ID: ${user.id}`);
           await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
         } catch (error) {
-          console.error('Authentication last_login update failed:', error);
+          console.error('[NextAuth Authorize] Authentication last_login update failed:', error);
         }
 
         let fallbackTenantName = user.tenant_name;

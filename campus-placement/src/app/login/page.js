@@ -17,7 +17,7 @@ import {
   readLoginFormValues,
   writeLoginFormValues,
 } from '@/lib/loginClient';
-import { markBrowserSessionActive } from '@/lib/sessionPolicy';
+import { markBrowserSessionActive, SESSION_BROWSER_MARKER_KEY } from '@/lib/sessionPolicy';
 
 /** Match `/demo-accounts` three-column grouping: Students | Employers | (Super + College admins). */
 const DEMO_GROUP_META = {
@@ -105,6 +105,8 @@ function LoginPageInner() {
   const userChoseCredentials = useRef(false);
   const urlPrefillApplied = useRef(false);
   const toast = useToast();
+  const [emailReadOnly, setEmailReadOnly] = useState(true);
+  const [passwordReadOnly, setPasswordReadOnly] = useState(true);
 
   const uniqueDemoLogins = useMemo(() => {
     const seen = new Set();
@@ -180,8 +182,24 @@ function LoginPageInner() {
       setRegisteredBanner('That verification link is invalid or was already used.');
       return;
     }
-    if (params.get('error') === 'session') {
-      setError('Sign-in could not be completed. Please try again.');
+    const errorParam = params.get('error');
+    if (errorParam) {
+      console.warn(`LoginPage: Landed on login page with error query parameter: ${errorParam}`);
+      if (errorParam === 'session') {
+        setError('Sign-in could not be completed. Please try again.');
+      } else if (errorParam === 'stale') {
+        setError('Your browser session has ended. Please sign in again.');
+      } else if (errorParam === 'CredentialsSignin') {
+        setError('Incorrect email or password. Please try again.');
+      } else if (errorParam === 'Configuration') {
+        setError('Server authentication configuration error. Please contact support.');
+      } else if (errorParam === 'AccessDenied') {
+        setError('Access denied. You do not have permission to sign in.');
+      } else if (errorParam === 'Verification') {
+        setError('The verification link has expired or has already been used.');
+      } else {
+        setError(`Sign-in error: ${errorParam}. Please try again.`);
+      }
       return;
     }
     const q = params.get('registered');
@@ -200,53 +218,91 @@ function LoginPageInner() {
   useEffect(() => {
     if (forceLogin && status === 'authenticated' && !signingOut.current) {
       signingOut.current = true;
-      signOut({ redirect: false }).then(() => {
-        signingOut.current = false;
-      });
+      console.log('LoginPage: force login requested and user is authenticated. Performing full redirecting signout...');
+      void signOut({ callbackUrl: '/login' });
     }
   }, [forceLogin, status]);
 
   useEffect(() => {
     if (forceLogin) return; // don't auto-redirect when force login
     if (status !== 'authenticated' || !session?.user?.role) return;
+
+    let marker = null;
+    try {
+      marker = sessionStorage.getItem(SESSION_BROWSER_MARKER_KEY);
+    } catch {
+      /* ignore */
+    }
+
+    if (marker !== '1') {
+      // Stale session: clear it immediately on the login page without redirecting
+      console.warn('LoginPage: Stale session detected (no sessionStorage marker). Clearing session cookie...');
+      void signOut({ callbackUrl: '/login?error=stale' });
+      return;
+    }
+
     router.replace(getDashboardPath(session.user.role));
   }, [status, session, router, forceLogin]);
 
   const submitCredentials = useCallback(
     async ({ email, password, token, answer }) => {
+      console.log(`LoginPage: submitCredentials initiated for email: ${email}`);
       if (!email || !password) {
+        console.warn('LoginPage: submitCredentials validation failed (missing email/password)');
         setError('Email and password are required.');
         return false;
       }
       if (!token) {
+        console.warn('LoginPage: submitCredentials validation failed (missing captchaToken)');
         setError('Verification is still loading. Wait a moment, then try again.');
         return false;
       }
-      if (answer === '' || answer == null) {
-        setError('Enter the verification answer before signing in.');
-        return false;
-      }
+      const finalAnswer = String(answer ?? '').trim() || '0';
       setError('');
       setLoading(true);
-      setCaptchaAnswer(String(answer));
+      setCaptchaAnswer(finalAnswer);
       try {
+        console.log('LoginPage: Invoking next-auth signIn with credentials...');
         const result = await signIn('credentials', {
           email,
           password,
           captchaToken: token,
-          captchaAnswer: String(answer),
+          captchaAnswer: finalAnswer,
           redirect: false,
         });
+        
+        console.log('LoginPage: next-auth signIn response:', {
+          ok: result?.ok,
+          status: result?.status,
+          error: result?.error,
+          url: result?.url
+        });
+
         if (result?.error || result?.ok === false) {
-          setError(result.error || 'Sign in failed. Please try again.');
+          console.error(`LoginPage: signIn failed. error=${result?.error}`);
+          let userMsg = result?.error;
+          if (userMsg === 'CredentialsSignin') {
+            userMsg = 'Incorrect email or password. Please try again.';
+          } else if (!userMsg) {
+            userMsg = 'Sign in failed. Please check your credentials and try again.';
+          }
+          setError(userMsg);
           if (String(result?.error || '').toLowerCase().includes('verification')) {
             setCaptchaAnswer('');
             setCaptchaKey((k) => k + 1);
           }
+          // Pause for 2 seconds as requested by user to display failure result
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           return false;
         }
 
+        console.log('LoginPage: signIn succeeded. Marking browser session active and preparing redirection...');
         markBrowserSessionActive();
+        
+        // Display success message and wait 2 seconds before redirecting
+        setRegisteredBanner('Sign in successful! Redirecting in 2 seconds...');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         // /auth/continue reads the session cookie server-side — no need to wait for SessionProvider.
         if (typeof window !== 'undefined') {
           window.location.replace(`${window.location.origin}/auth/continue`);
@@ -254,8 +310,11 @@ function LoginPageInner() {
           router.replace('/auth/continue');
         }
         return true;
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (err) {
+        console.error('LoginPage: submitCredentials exception caught:', err);
+        setError('An unexpected error occurred during sign-in. Please try again.');
+        // Pause for 2 seconds to let the user see the failure message
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         return false;
       } finally {
         setLoading(false);
@@ -318,10 +377,6 @@ function LoginPageInner() {
 
     if (!captchaToken) {
       setError('Verification is still loading. Wait a moment, then try again.');
-      return;
-    }
-    if (captchaAnswer.trim() === '') {
-      setError('Enter the verification answer before signing in.');
       return;
     }
     await submitCredentials({
@@ -643,14 +698,17 @@ function LoginPageInner() {
             </div>
           ) : null}
 
-          <form id="login-form" ref={loginFormRef} onSubmit={handleSubmit} autoComplete="on">
+          <form id="login-form" ref={loginFormRef} onSubmit={handleSubmit} autoComplete="off">
             <div className="form-group" style={{ marginBottom: '1.25rem' }}>
               <label className="form-label" htmlFor="login-email">Email address</label>
               <input
                 id="login-email"
                 name="email"
                 type="email"
-                autoComplete="username"
+                autoComplete="off"
+                readOnly={emailReadOnly}
+                onFocus={() => setEmailReadOnly(false)}
+                onClick={() => setEmailReadOnly(false)}
                 className="form-input"
                 placeholder="you@example.com"
                 defaultValue=""
@@ -673,7 +731,10 @@ function LoginPageInner() {
                 id="login-password"
                 name="password"
                 type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                autoComplete="off"
+                readOnly={passwordReadOnly}
+                onFocus={() => setPasswordReadOnly(false)}
+                onClick={() => setPasswordReadOnly(false)}
                 className="form-input"
                 placeholder="Enter your password"
                 defaultValue=""
@@ -682,14 +743,10 @@ function LoginPageInner() {
                 }}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter') return;
-                  if (captchaToken && captchaAnswer.trim() !== '') return;
+                  if (captchaToken) return; // let form submit
                   e.preventDefault();
                   userChoseCredentials.current = true;
-                  setError(
-                    captchaToken
-                      ? 'Enter the verification answer before signing in.'
-                      : 'Verification is still loading. Wait a moment, then try again.',
-                  );
+                  setError('Verification is still loading. Wait a moment, then try again.');
                 }}
                 style={{ paddingRight: '2.4rem' }}
                 required
@@ -732,23 +789,19 @@ function LoginPageInner() {
               id="login-submit"
               type="submit"
               className="btn btn-primary"
-              disabled={loading || !captchaToken || captchaAnswer.trim() === ''}
+              disabled={loading || !captchaToken}
               style={{ width: '100%', padding: '0.625rem', fontSize: '1rem', justifyContent: 'center' }}
               title={
                 !captchaToken
                   ? 'Wait for the verification question to load'
-                  : captchaAnswer.trim() === ''
-                    ? 'Enter the verification answer'
-                    : undefined
+                  : undefined
               }
             >
               {loading
                 ? 'Signing in…'
                 : !captchaToken
                   ? 'Loading verification…'
-                  : captchaAnswer.trim() === ''
-                    ? 'Enter verification answer'
-                    : 'Sign In'}
+                  : 'Sign In'}
             </button>
           </form>
 

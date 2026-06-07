@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { ALUMNI_BROWSE_JOBS_PATH } from '@/lib/alumniRoutes';
 
 export async function GET() {
   try {
@@ -46,7 +47,7 @@ export async function GET() {
       progress.steps = [
         { id: 'academic', title: 'Complete Academic Profile', completed: !!hasCgpa, href: '/dashboard/student/profile' },
         { id: 'resume', title: 'Upload Resume', completed: !!hasResume, href: '/dashboard/student/documents' },
-        { id: 'apply', title: 'Apply to First Job', completed: !!hasApplications, href: '/dashboard/student/jobs' },
+        { id: 'apply', title: 'Apply to First Job', completed: !!hasApplications, href: session.user.isAlumni ? ALUMNI_BROWSE_JOBS_PATH : '/dashboard/student/drives' },
       ];
       
       progress.isComplete = progress.steps.every(s => s.completed);

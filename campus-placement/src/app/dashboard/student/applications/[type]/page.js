@@ -22,6 +22,7 @@ import {
   WITHDRAWAL_CONFIRM_BODY,
   WITHDRAWAL_CONFIRM_TITLE,
 } from '@/lib/applicationWithdrawal';
+import { ALUMNI_BROWSE_JOBS_PATH } from '@/lib/alumniRoutes';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -51,7 +52,7 @@ const TYPE_META = {
   },
   jobs: {
     title: 'Alumni Job',
-    browseHref: '/dashboard/student/jobs',
+    browseHref: ALUMNI_BROWSE_JOBS_PATH,
     browseText: 'Browse Alumni Jobs',
     emptyMessage: "You haven't applied to any alumni jobs yet. Browse published alumni jobs for your campus network and apply.",
   },
@@ -166,6 +167,11 @@ export default function StudentApplicationsPage({ params }) {
     rejected: typeApplications.filter((a) => a.status === 'rejected').length,
   };
 
+  const pendingOfferForSelected = useMemo(() => {
+    if (!selectedApp || selectedApp.status !== 'selected') return null;
+    return findPendingOfferForApplication(offers, selectedApp, { type });
+  }, [offers, selectedApp, type]);
+
   const requestWithdraw = (applicationId) => {
     setWithdrawConfirmId(applicationId);
   };
@@ -219,11 +225,6 @@ export default function StudentApplicationsPage({ params }) {
   if (error) return <PageError error={error} />;
 
   const meta = TYPE_META[type] || TYPE_META.drives;
-
-  const pendingOfferForSelected = useMemo(() => {
-    if (!selectedApp || selectedApp.status !== 'selected') return null;
-    return findPendingOfferForApplication(offers, selectedApp, { type });
-  }, [offers, selectedApp, type]);
   const pageTitle = meta.title;
   const browseHref = meta.browseHref;
   const browseText = meta.browseText;

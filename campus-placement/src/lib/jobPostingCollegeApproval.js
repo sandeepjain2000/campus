@@ -1,5 +1,6 @@
 import { notifyAlumniStudentsOfTenant, notifyStudentsOfTenant } from '@/lib/notificationService';
 import { isAlumniJobType } from '@/lib/studentAlumni';
+import { ALUMNI_BROWSE_JOBS_PATH } from '@/lib/alumniRoutes';
 
 /** SQL fragment — visibility row approved by college for this campus. */
 export const JPV_COLLEGE_APPROVED = "jpv.college_status = 'approved'";
@@ -45,7 +46,7 @@ export async function notifyStudentsListingApproved(client, { tenantId, title, j
         title: `New alumni job: ${title}`,
         message: `${companyName} posted an alumni role. Open Alumni Jobs to view and apply.`,
         type: 'info',
-        link: '/dashboard/student/jobs',
+        link: ALUMNI_BROWSE_JOBS_PATH,
       },
       client,
     );
@@ -58,7 +59,7 @@ export async function notifyStudentsListingApproved(client, { tenantId, title, j
         title: `New job: ${title}`,
         message: `${companyName} posted a job opening. Open Jobs under Placements to apply.`,
         type: 'info',
-        link: '/dashboard/student/jobs',
+        link: ALUMNI_BROWSE_JOBS_PATH,
       },
       client,
     );
@@ -73,7 +74,7 @@ export async function notifyAlumniStudentsJobPublished(client, { tenantId, title
       title: `New alumni job: ${title}`,
       message: `${companyName} posted an alumni role. Open Alumni Jobs to view and apply.`,
       type: 'info',
-      link: '/dashboard/student/jobs',
+      link: ALUMNI_BROWSE_JOBS_PATH,
     },
     client,
   );

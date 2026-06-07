@@ -23,10 +23,140 @@ import {
   getStudentOpportunityListCache,
   setStudentOpportunityListCache,
 } from '@/lib/jobPostingPublishState';
-import { ALUMNI_JOB_TYPES, guardStudentOpportunityKind } from '@/lib/studentAlumni';
+import {
+  ALUMNI_JOB_TYPES,
+  alumniJobsForbiddenResponse,
+  campusProgramsForbiddenForAlumniResponse,
+} from '@/lib/studentAlumni';
+import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+async function queryStudentProgramOpportunities({
+  tenantInParams,
+  tenantInSql,
+  userIdx,
+  typesIdx,
+  userId,
+  types,
+  listedSql,
+  jpNotDeletedSql,
+  paNotDeletedSql,
+  collegeApprovedSql,
+}) {
+  const sql = `SELECT
+         jp.id,
+         jp.title,
+         jp.description,
+         jp.job_type,
+         jp.salary_min,
+         jp.salary_max,
+         jp.min_cgpa,
+         jp.max_backlogs,
+         jp.eligible_branches,
+         jp.batch_year,
+         jp.vacancies,
+         jp.skills_required,
+         jp.application_deadline,
+         jp.status,
+         jp.created_at,
+         ep.id AS employer_id,
+         ep.company_name,
+         ep.website,
+         pa.id AS application_id,
+         pa.status AS application_status
+       FROM job_postings jp
+       INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
+       LEFT JOIN student_profiles sp ON sp.user_id = $${userIdx}::uuid
+       LEFT JOIN program_applications pa ON pa.job_id = jp.id AND pa.student_id = sp.id
+         ${paNotDeletedSql}
+       WHERE jp.job_type = ANY($${typesIdx}::text[])
+         ${jpNotDeletedSql}
+         AND (
+           (
+             ${listedSql}
+             AND EXISTS (
+               SELECT 1
+               FROM job_posting_visibility jpv
+               INNER JOIN employer_approvals ea
+                 ON ea.employer_id = jp.employer_id
+                AND ea.tenant_id = jpv.tenant_id
+                AND ea.status = 'approved'
+               WHERE jpv.job_id = jp.id
+                 AND jpv.tenant_id IN (${tenantInSql})
+                 ${collegeApprovedSql}
+             )
+           )
+           OR pa.id IS NOT NULL
+         )
+       ORDER BY COALESCE(pa.applied_at, jp.created_at) DESC`;
+
+  try {
+    return await query(sql, [...tenantInParams, userId, types]);
+  } catch (e) {
+    const msg = String(e?.message || '');
+    if (e?.code !== '42703' && e?.code !== '42P01') throw e;
+
+    const fallbackSql = `SELECT
+         jp.id,
+         jp.title,
+         jp.description,
+         jp.job_type,
+         jp.salary_min,
+         jp.salary_max,
+         jp.min_cgpa,
+         jp.max_backlogs,
+         jp.eligible_branches,
+         jp.batch_year,
+         jp.vacancies,
+         jp.skills_required,
+         jp.application_deadline,
+         jp.status,
+         jp.created_at,
+         ep.id AS employer_id,
+         ep.company_name,
+         ep.website,
+         NULL::uuid AS application_id,
+         NULL::varchar AS application_status
+       FROM job_postings jp
+       INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
+       WHERE jp.job_type = ANY($${typesIdx}::text[])
+         ${jpNotDeletedSql}
+         AND ${listedSql}
+         AND EXISTS (
+           SELECT 1
+           FROM job_posting_visibility jpv
+           INNER JOIN employer_approvals ea
+             ON ea.employer_id = jp.employer_id
+            AND ea.tenant_id = jpv.tenant_id
+            AND ea.status = 'approved'
+           WHERE jpv.job_id = jp.id
+             AND jpv.tenant_id IN (${tenantInSql})
+             ${collegeApprovedSql}
+         )
+       ORDER BY jp.created_at DESC`;
+
+    if (/program_applications|applied_at/i.test(msg)) {
+      return query(fallbackSql, [...tenantInParams, userId, types]);
+    }
+    throw e;
+  }
+}
+
+function opportunityErrorHint(error) {
+  const msg = String(error?.message || '');
+  if (error?.code === '42703' || /college_status|is_deleted|does not exist/i.test(msg)) {
+    return 'Run npm run db:migrate:066 and npm run db:migrate:067, then reload.';
+  }
+  if (error?.code === '42P01' || /program_applications|job_posting_visibility/i.test(msg)) {
+    return 'Run npm run db:migrate:006 (program_applications + visibility), then reload.';
+  }
+  if (/too many clients|max clients/i.test(msg)) {
+    return 'Database connection limit reached. Wait a moment and refresh.';
+  }
+  return undefined;
+}
 
 
 
@@ -62,8 +192,10 @@ export async function GET(request) {
             ? 'hackathon'
             : 'internship';
 
-    const kindGuard = guardStudentOpportunityKind(kind, session.user);
-    if (kindGuard) return kindGuard;
+    const isAlumni = await resolveAlumniStudentFlag(userId, session.user);
+    if (kind === 'job' && !isAlumni) return alumniJobsForbiddenResponse();
+    if (kind !== 'job' && isAlumni) return campusProgramsForbiddenForAlumniResponse();
+
     const types =
       kind === 'project'
         ? ['short_project']
@@ -112,55 +244,18 @@ export async function GET(request) {
 
     const result = cachedItems
       ? null
-      : await query(
-      `SELECT
-         jp.id,
-         jp.title,
-         jp.description,
-         jp.job_type,
-         jp.salary_min,
-         jp.salary_max,
-         jp.min_cgpa,
-         jp.max_backlogs,
-         jp.eligible_branches,
-         jp.batch_year,
-         jp.vacancies,
-         jp.skills_required,
-         jp.application_deadline,
-         jp.status,
-         jp.created_at,
-         ep.id AS employer_id,
-         ep.company_name,
-         ep.website,
-         pa.id AS application_id,
-         pa.status AS application_status
-       FROM job_postings jp
-       INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
-       LEFT JOIN student_profiles sp ON sp.user_id = $${userIdx}::uuid
-       LEFT JOIN program_applications pa ON pa.job_id = jp.id AND pa.student_id = sp.id
-         ${paNotDeletedSql}
-       WHERE jp.job_type = ANY($${typesIdx}::text[])
-         ${jpNotDeletedSql}
-         AND (
-           (
-             ${listedSql}
-             AND EXISTS (
-               SELECT 1
-               FROM job_posting_visibility jpv
-               INNER JOIN employer_approvals ea
-                 ON ea.employer_id = jp.employer_id
-                AND ea.tenant_id = jpv.tenant_id
-                AND ea.status = 'approved'
-               WHERE jpv.job_id = jp.id
-                 AND jpv.tenant_id IN (${tenantInSql})
-                 ${collegeApprovedSql}
-             )
-           )
-           OR pa.id IS NOT NULL
-         )
-       ORDER BY COALESCE(pa.applied_at, jp.created_at) DESC`,
-      [...tenantInParams, userId, types],
-      );
+      : await queryStudentProgramOpportunities({
+          tenantInParams,
+          tenantInSql,
+          userIdx,
+          typesIdx,
+          userId,
+          types,
+          listedSql,
+          jpNotDeletedSql,
+          paNotDeletedSql,
+          collegeApprovedSql,
+        });
 
     const allItems = cachedItems ?? result.rows.map(mapProgramOpportunityRow);
 
@@ -246,11 +341,7 @@ export async function GET(request) {
     return NextResponse.json(responsePayload);
   } catch (e) {
     console.error('GET /api/student/program-opportunities', e);
-    const msg = String(e?.message || '');
-    const hint =
-      e?.code === '42703' || /college_status|is_deleted|does not exist/i.test(msg)
-        ? 'Run npm run db:migrate:066 and npm run db:migrate:067, then reload.'
-        : undefined;
+    const hint = opportunityErrorHint(e);
     return NextResponse.json(
       { error: 'Failed to load opportunities', ...(hint ? { hint } : {}) },
       { status: 500 },

@@ -12,6 +12,7 @@ import {
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
+import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
@@ -460,11 +461,24 @@ export default function EmployerInternshipsPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Stipend / month (min, INR)</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MIN} placeholder="40000" value={stipend} onChange={setStipend} />
+              <CurrencyAmountInput
+                fieldId={FIELD_IDS.EMPLOYER_STIPEND_MIN}
+                placeholder="40000"
+                value={stipend}
+                onChange={setStipend}
+                wordsSuffix="Rupees per month"
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Stipend / month (max, optional)</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MAX} context={{ salaryMin: stipend }} placeholder="Same as min if empty" value={stipendMax} onChange={setStipendMax} />
+              <CurrencyAmountInput
+                fieldId={FIELD_IDS.EMPLOYER_STIPEND_MAX}
+                context={{ salaryMin: stipend }}
+                placeholder="Same as min if empty"
+                value={stipendMax}
+                onChange={setStipendMax}
+                wordsSuffix="Rupees per month"
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Openings</label>

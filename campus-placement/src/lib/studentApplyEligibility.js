@@ -16,6 +16,25 @@ const PLACEMENT_STATUS_MESSAGES = {
   higher_studies: 'Your profile is marked for higher studies, so new placement applications are disabled.',
 };
 
+async function queryStudentProfileRow(studentId) {
+  try {
+    return await query(
+      `SELECT placement_status, tenant_id, COALESCE(is_alumni, false) AS is_alumni
+       FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+      [studentId],
+    );
+  } catch (e) {
+    if (e?.code === '42703' && String(e?.message || '').includes('is_alumni')) {
+      return query(
+        `SELECT placement_status, tenant_id, false AS is_alumni
+         FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+        [studentId],
+      );
+    }
+    throw e;
+  }
+}
+
 /**
  * Whether the student has a real resume (profile primary or authoritative resume document).
  */
@@ -61,11 +80,7 @@ export async function assertStudentResumeForApply(studentId) {
 export async function getStudentPlacementApplyLock(studentId, tenantId = null) {
   if (!studentId) return { locked: false };
 
-  const profileRes = await query(
-    `SELECT placement_status, tenant_id, COALESCE(is_alumni, false) AS is_alumni
-     FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
-    [studentId],
-  );
+  const profileRes = await queryStudentProfileRow(studentId);
   const row = profileRes.rows[0];
   if (!row) return { locked: false };
   if (row.is_alumni) return { locked: false };
@@ -77,12 +92,22 @@ export async function getStudentPlacementApplyLock(studentId, tenantId = null) {
 
   const effectiveTenantId = tenantId || row.tenant_id;
   const { maxOffers } = await getCollegeOfferRules(effectiveTenantId);
-  const acceptedRes = await query(
-    `SELECT COUNT(*)::int AS n FROM offers
-     WHERE student_id = $1::uuid AND LOWER(TRIM(status)) = 'accepted'
-       AND COALESCE(is_deleted, false) = false`,
-    [studentId],
-  );
+  let acceptedRes;
+  try {
+    acceptedRes = await query(
+      `SELECT COUNT(*)::int AS n FROM offers
+       WHERE student_id = $1::uuid AND LOWER(TRIM(status)) = 'accepted'
+         AND COALESCE(is_deleted, false) = false`,
+      [studentId],
+    );
+  } catch (e) {
+    if (e?.code !== '42703' || !String(e?.message || '').includes('is_deleted')) throw e;
+    acceptedRes = await query(
+      `SELECT COUNT(*)::int AS n FROM offers
+       WHERE student_id = $1::uuid AND LOWER(TRIM(status)) = 'accepted'`,
+      [studentId],
+    );
+  }
   const acceptedCount = acceptedRes.rows[0]?.n ?? 0;
   if (Number.isFinite(maxOffers) && maxOffers > 0 && acceptedCount >= maxOffers) {
     return { locked: true, reason: STUDENT_PLACEMENT_LOCKED_APPLY_MESSAGE };

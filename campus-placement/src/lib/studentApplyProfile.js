@@ -5,6 +5,23 @@ import {
   getStudentResumeApplyState,
 } from '@/lib/studentApplyEligibility';
 
+async function queryStudentProfileRow(studentId) {
+  try {
+    return await query(
+      `SELECT cgpa, branch, department, batch_year, backlogs_active, placement_status, tenant_id
+       FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+      [studentId],
+    );
+  } catch (e) {
+    if (e?.code !== '42703') throw e;
+    return query(
+      `SELECT cgpa, branch, department, batch_year, placement_status, tenant_id
+       FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+      [studentId],
+    );
+  }
+}
+
 /**
  * Load student fields needed for posting eligibility checks.
  * @param {string} studentId
@@ -24,11 +41,7 @@ export async function loadStudentApplyProfile(studentId, tenantId = null) {
   }
 
   const [profileRes, resumeState, placementLock] = await Promise.all([
-    query(
-      `SELECT cgpa, branch, department, batch_year, backlogs_active, placement_status, tenant_id
-       FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
-      [studentId],
-    ),
+    queryStudentProfileRow(studentId),
     getStudentResumeApplyState(studentId),
     getStudentPlacementApplyLock(studentId, tenantId),
   ]);

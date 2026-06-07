@@ -13,9 +13,12 @@ async function selectActiveStudentProfileId(userId) {
     );
     return r.rows[0]?.id || null;
   } catch (e) {
-    if (e?.code === '42703' && String(e?.message || '').includes('archived_at')) {
-      const r = await query(`SELECT id FROM student_profiles WHERE user_id = $1::uuid LIMIT 1`, [userId]);
-      return r.rows[0]?.id || null;
+    if (e?.code === '42703') {
+      const msg = String(e?.message || '');
+      if (msg.includes('archived_at') || msg.includes('is_deleted')) {
+        const r = await query(`SELECT id FROM student_profiles WHERE user_id = $1::uuid LIMIT 1`, [userId]);
+        return r.rows[0]?.id || null;
+      }
     }
     throw e;
   }

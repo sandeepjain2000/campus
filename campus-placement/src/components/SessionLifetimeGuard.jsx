@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { markBrowserSessionActive, SESSION_BROWSER_MARKER_KEY } from '@/lib/sessionPolicy';
+import { usePathname } from 'next/navigation';
 
 /**
  * Stale persistent cookies: sessionStorage is empty but NextAuth still has a session → sign out.
@@ -10,8 +11,10 @@ import { markBrowserSessionActive, SESSION_BROWSER_MARKER_KEY } from '@/lib/sess
  */
 export default function SessionLifetimeGuard({ children }) {
   const { status } = useSession();
+  const pathname = usePathname();
 
   useEffect(() => {
+    if (pathname === '/login') return;
     if (status === 'loading') return;
 
     if (status === 'unauthenticated') {
@@ -40,17 +43,19 @@ export default function SessionLifetimeGuard({ children }) {
       } catch {
         /* ignore */
       }
-      void signOut({ redirect: false });
+      console.warn('SessionLifetimeGuard: sessionStorage marker missing. Stale session detected. Signing out...');
+      void signOut({ callbackUrl: '/login?error=stale' });
     }, 750);
 
     return () => window.clearTimeout(timer);
-  }, [status]);
+  }, [status, pathname]);
 
   useEffect(() => {
+    if (pathname === '/login') return;
     if (status === 'authenticated') {
       markBrowserSessionActive();
     }
-  }, [status]);
+  }, [status, pathname]);
 
   return children;
 }

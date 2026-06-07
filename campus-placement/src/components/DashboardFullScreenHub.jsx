@@ -11,6 +11,7 @@ import EntityLogo from '@/components/EntityLogo';
 import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
 import { getDashboardMenu, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
 import { isAlumniStudent } from '@/lib/studentAlumni';
+import { ALUMNI_BROWSE_JOBS_PATH, ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 import { getDevScreenId } from '@/config/devScreenIds';
 import { getRoleDisplayName } from '@/lib/utils';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
@@ -46,8 +47,8 @@ function getQuickActions(role, employerHasCampus, isAlumni) {
   if (role === 'student') {
     if (isAlumni) {
       return [
-        { label: 'Browse alumni jobs', href: '/dashboard/student/jobs' },
-        { label: 'My alumni jobs', href: '/dashboard/student/applications/jobs' },
+        { label: 'Browse alumni jobs', href: ALUMNI_BROWSE_JOBS_PATH },
+        { label: 'My alumni jobs', href: ALUMNI_MY_JOBS_PATH },
         { label: 'Alerts', href: '/dashboard/alerts' },
         { label: 'My profile', href: '/dashboard/student/profile' },
       ];

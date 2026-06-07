@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/sessionPolicy';
 import { isPlacementApiPath } from '@/lib/placementReadRoute';
+import {
+  ALUMNI_BROWSE_JOBS_PATH,
+  ALUMNI_MY_JOBS_PATH,
+  LEGACY_STUDENT_APPLICATIONS_JOBS_PATH,
+  LEGACY_STUDENT_JOBS_PATH,
+} from '@/lib/alumniRoutes';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -85,6 +91,17 @@ export default async function proxy(request) {
 
   // ── /dashboard/* — per-role path enforcement ─────────────────────────────
   if (pathname.startsWith('/dashboard/')) {
+    if (pathname === LEGACY_STUDENT_JOBS_PATH) {
+      return appendLegacyCookieClearance(
+        NextResponse.redirect(new URL(ALUMNI_BROWSE_JOBS_PATH, request.url)),
+      );
+    }
+    if (pathname === LEGACY_STUDENT_APPLICATIONS_JOBS_PATH) {
+      return appendLegacyCookieClearance(
+        NextResponse.redirect(new URL(ALUMNI_MY_JOBS_PATH, request.url)),
+      );
+    }
+
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
@@ -102,6 +119,14 @@ export default async function proxy(request) {
     // Allow shared routes for all authenticated users
     const isShared = SHARED_DASHBOARD_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'));
     if (isShared) return appendLegacyCookieClearance(NextResponse.next());
+
+    // Students (including alumni) use /dashboard/alumni for lateral job flows
+    if (
+      role === 'student' &&
+      (pathname === '/dashboard/alumni' || pathname.startsWith('/dashboard/alumni/'))
+    ) {
+      return appendLegacyCookieClearance(NextResponse.next());
+    }
 
     // Allow the role's own dashboard subtree
     if (ownedPrefix && (pathname === ownedPrefix || pathname.startsWith(ownedPrefix + '/'))) {

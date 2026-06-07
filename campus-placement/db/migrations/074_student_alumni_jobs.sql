@@ -80,34 +80,48 @@ ON CONFLICT (user_id) DO UPDATE SET
   resume_url = EXCLUDED.resume_url,
   updated_at = NOW();
 
--- Soft-delete alumni job postings and dependent rows (keep internships, projects, drives).
-UPDATE program_applications pa
-SET is_deleted = true, updated_at = NOW()
-FROM job_postings jp
-WHERE pa.job_id = jp.id
-  AND jp.job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
-  AND COALESCE(pa.is_deleted, false) = false
-  AND COALESCE(jp.is_deleted, false) = false;
+-- Soft-delete legacy alumni job postings once (safe to re-run after marker exists).
+CREATE TABLE IF NOT EXISTS schema_one_time_actions (
+  action_key TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-UPDATE applications a
-SET is_deleted = true, updated_at = NOW()
-FROM job_postings jp
-WHERE a.job_id = jp.id
-  AND jp.job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
-  AND COALESCE(a.is_deleted, false) = false
-  AND COALESCE(jp.is_deleted, false) = false;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM schema_one_time_actions WHERE action_key = '074_alumni_job_purge') THEN
+    RETURN;
+  END IF;
 
-UPDATE employer_assessment_uploads eau
-SET is_deleted = true
-FROM job_postings jp
-WHERE eau.job_id = jp.id
-  AND jp.job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
-  AND COALESCE(eau.is_deleted, false) = false
-  AND COALESCE(jp.is_deleted, false) = false;
+  UPDATE program_applications pa
+  SET is_deleted = true, updated_at = NOW()
+  FROM job_postings jp
+  WHERE pa.job_id = jp.id
+    AND jp.job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
+    AND COALESCE(pa.is_deleted, false) = false
+    AND COALESCE(jp.is_deleted, false) = false;
 
-UPDATE job_postings
-SET is_deleted = true, updated_at = NOW()
-WHERE job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
-  AND COALESCE(is_deleted, false) = false;
+  UPDATE applications a
+  SET is_deleted = true, updated_at = NOW()
+  FROM job_postings jp
+  WHERE a.job_id = jp.id
+    AND jp.job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
+    AND COALESCE(a.is_deleted, false) = false
+    AND COALESCE(jp.is_deleted, false) = false;
+
+  UPDATE employer_assessment_uploads eau
+  SET is_deleted = true
+  FROM job_postings jp
+  WHERE eau.job_id = jp.id
+    AND jp.job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
+    AND COALESCE(eau.is_deleted, false) = false
+    AND COALESCE(jp.is_deleted, false) = false;
+
+  UPDATE job_postings
+  SET is_deleted = true, updated_at = NOW()
+  WHERE job_type = ANY(ARRAY['full_time', 'contract', 'ppo']::text[])
+    AND COALESCE(is_deleted, false) = false;
+
+  INSERT INTO schema_one_time_actions (action_key) VALUES ('074_alumni_job_purge');
+END $$;
 
 COMMIT;
