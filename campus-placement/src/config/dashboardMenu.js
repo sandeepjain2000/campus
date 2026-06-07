@@ -256,7 +256,7 @@ export const menuConfig = {
         id: 'college-programs',
         title: '🎓 Programs & Drives',
         items: [
-          { label: 'Jobs', href: '/dashboard/college/jobs', icon: Briefcase },
+          { label: 'Alumni Jobs', href: '/dashboard/college/jobs', icon: Briefcase },
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
@@ -364,3 +364,75 @@ export const menuConfig = {
     ],
   },
 };
+
+const STUDENT_CAMPUS_ONLY_HREFS = new Set([
+  '/dashboard/student/drives',
+  '/dashboard/student/internships',
+  '/dashboard/student/internships/not-processed',
+  '/dashboard/student/projects',
+  '/dashboard/student/hackathons',
+  '/dashboard/student/calendar',
+  '/dashboard/student/applications/drives',
+  '/dashboard/student/applications/internships',
+  '/dashboard/student/applications/projects',
+  '/dashboard/student/applications/hackathons',
+]);
+
+const STUDENT_ALUMNI_ONLY_HREFS = new Set([
+  '/dashboard/student/jobs',
+  '/dashboard/student/applications/jobs',
+]);
+
+function mapStudentNavItem(item, isAlumni) {
+  if (isAlumni && item.href === '/dashboard/student/jobs') {
+    return { ...item, label: 'Browse Alumni Jobs' };
+  }
+  if (isAlumni && item.href === '/dashboard/student/applications/jobs') {
+    return { ...item, label: 'My Alumni Jobs' };
+  }
+  return item;
+}
+
+function filterStudentMenu(menu, isAlumni) {
+  const hidden = isAlumni ? STUDENT_CAMPUS_ONLY_HREFS : STUDENT_ALUMNI_ONLY_HREFS;
+  return {
+    ...menu,
+    sections: menu.sections
+      .map((section) => ({
+        ...section,
+        title:
+          isAlumni && section.id === 'student-placements' ? 'Alumni' : section.title,
+        items: section.items
+          .filter((item) => !hidden.has(item.href))
+          .map((item) => mapStudentNavItem(item, isAlumni)),
+      }))
+      .filter((section) => section.items.length > 0),
+  };
+}
+
+function mapEmployerAlumniJobLabels(menu) {
+  return {
+    ...menu,
+    sections: menu.sections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => {
+        if (item.href === '/dashboard/employer/jobs') {
+          return { ...item, label: 'Alumni Job Postings' };
+        }
+        return item;
+      }),
+    })),
+  };
+}
+
+/** Role menu with alumni vs campus student visibility applied. */
+export function getDashboardMenu(role, user) {
+  const base = menuConfig[role] || menuConfig.student;
+  if (role === 'student') {
+    return filterStudentMenu(base, Boolean(user?.isAlumni));
+  }
+  if (role === 'employer') {
+    return mapEmployerAlumniJobLabels(base);
+  }
+  return base;
+}

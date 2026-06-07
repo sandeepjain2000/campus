@@ -21,6 +21,12 @@ import {
   invalidateStudentOpportunityListCache,
   publishedCoreFieldsChanged,
 } from '@/lib/jobPostingPublishState';
+import {
+  isAlumniEmploymentType,
+  mapAlumniJobApiRow,
+  resolveEmployerJobsListFilter,
+  validateAlumniJobPostingPayload,
+} from '@/lib/alumniJobPosting';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -61,14 +67,20 @@ export async function GET(request) {
     if (!emp) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
     const { searchParams } = new URL(request.url);
-    const jobTypeFilter = searchParams.get('jobType');
-    const typeClause =
-      jobTypeFilter && JOB_TYPES.has(jobTypeFilter) ? ` AND job_type = $2` : '';
-    const params = jobTypeFilter && JOB_TYPES.has(jobTypeFilter) ? [emp.id, jobTypeFilter] : [emp.id];
+    const { types: listTypes } = resolveEmployerJobsListFilter(searchParams);
+    const params = [emp.id];
+    let typeClause = '';
+    if (listTypes?.length) {
+      params.push(listTypes);
+      typeClause = ` AND jp.job_type = ANY($${params.length}::text[])`;
+    }
 
     const jobs = await query(
       `SELECT jp.id, jp.title, jp.description, jp.job_type, jp.status, jp.salary_min, jp.salary_max,
               jp.min_cgpa, jp.vacancies, jp.skills_required, jp.eligible_branches, jp.created_at,
+              jp.category, jp.locations,
+              jp.min_experience_years, jp.max_experience_years, jp.work_mode,
+              jp.notice_period_days, jp.seniority_level, jp.education_level,
               ${JOB_APPLICANT_COUNT_SUBQUERY} AS application_count,
               COALESCE(
                 (SELECT array_agg(jpv.tenant_id::text)
@@ -77,7 +89,7 @@ export async function GET(request) {
                 ARRAY[]::text[]
               ) AS tenant_ids
        FROM job_postings jp
-       WHERE jp.employer_id = $1::uuid${typeClause.replace(/job_type/g, 'jp.job_type')} ${AND_JP_NOT_DELETED}
+       WHERE jp.employer_id = $1::uuid${typeClause} ${AND_JP_NOT_DELETED}
        ORDER BY jp.created_at DESC`,
       params,
     );
@@ -98,6 +110,7 @@ export async function GET(request) {
       minCgpa: normalizeEmployerMinCgpa(j.min_cgpa),
       createdAt: j.created_at ? new Date(j.created_at).toISOString().slice(0, 10) : '',
       tenantIds: Array.isArray(j.tenant_ids) ? j.tenant_ids.filter(Boolean) : [],
+      ...mapAlumniJobApiRow(j),
     }));
 
     return NextResponse.json({ jobs: rows, companyName: emp.company_name });
@@ -134,30 +147,54 @@ export async function POST(request) {
       vacancies = 1,
       keywords = '',
       tenantIds = [],
+      minExperience = null,
+      maxExperience = null,
+      workMode = null,
+      noticePeriodDays = null,
+      seniorityLevel = null,
+      educationLevel = 'any',
+      location = '',
+      industry = '',
     } = body;
 
     if (!title?.trim()) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
     }
 
-    const jobInputErr = validateEmployerJobPayload({
-      salaryMin,
-      salaryMax,
-      minCgpa,
-      vacancies,
-      jobType,
-    });
-    if (jobInputErr) {
-      return NextResponse.json({ error: jobInputErr }, { status: 400 });
-    }
-
-    const minCgpaResolved = resolveEmployerMinCgpaForSubmit(minCgpa);
-    if (minCgpaResolved.error) {
-      return NextResponse.json({ error: minCgpaResolved.error }, { status: 400 });
-    }
-
     if (!JOB_TYPES.has(jobType)) {
       return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
+    }
+
+    const alumniJob = isAlumniEmploymentType(jobType);
+    let minCgpaResolved = { value: null };
+
+    if (alumniJob) {
+      const alumniErr = validateAlumniJobPostingPayload({
+        jobType,
+        salaryMin,
+        salaryMax,
+        minExperience,
+        maxExperience,
+        noticePeriodDays,
+      });
+      if (alumniErr.error) {
+        return NextResponse.json({ error: alumniErr.error }, { status: 400 });
+      }
+    } else {
+      const jobInputErr = validateEmployerJobPayload({
+        salaryMin,
+        salaryMax,
+        minCgpa,
+        vacancies,
+        jobType,
+      });
+      if (jobInputErr) {
+        return NextResponse.json({ error: jobInputErr }, { status: 400 });
+      }
+      minCgpaResolved = resolveEmployerMinCgpaForSubmit(minCgpa);
+      if (minCgpaResolved.error) {
+        return NextResponse.json({ error: minCgpaResolved.error }, { status: 400 });
+      }
     }
 
     const allowedStatus = new Set(['draft', 'published', 'closed', 'cancelled']);
@@ -179,35 +216,76 @@ export async function POST(request) {
         throw err;
       }
 
-      const ins = await client.query(
-        `INSERT INTO job_postings (
-           employer_id, title, description, job_type, category, locations,
-           salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year,
-           skills_required, vacancies, status
-         ) VALUES (
-           $1::uuid, $2, $3, $4, $5, ARRAY['India']::text[],
-           $6, $7, ARRAY['Computer Science & Engineering', 'Information Technology']::text[],
-           $8, 0, 2025, $9::text[], $10, $11
-         )
-         RETURNING id, title, job_type, status, salary_min, salary_max, min_cgpa, vacancies, skills_required, created_at`,
-        [
-          emp.id,
-          title.trim(),
-          description || '',
-          jobType,
-          jobType === 'internship'
-            ? 'Internship'
-            : jobType === 'short_project' || jobType === 'hackathon'
-              ? 'Student program'
-              : 'Engineering',
-          salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
-          salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
-          minCgpaResolved.value,
-          skillsRequired,
-          Math.max(1, parseInt(String(vacancies), 10) || 1),
-          status,
-        ],
-      );
+      const locationText = String(location || '').trim();
+      const locationsArr = locationText ? [locationText] : [];
+      const categoryText =
+        String(industry || '').trim() ||
+        (alumniJob ? 'Experienced hire' : jobType === 'internship' ? 'Internship' : 'Engineering');
+
+      const ins = alumniJob
+        ? await client.query(
+            `INSERT INTO job_postings (
+               employer_id, title, description, job_type, category, locations,
+               salary_min, salary_max, skills_required, vacancies, status,
+               min_experience_years, max_experience_years, work_mode,
+               notice_period_days, seniority_level, education_level,
+               min_cgpa, max_backlogs, batch_year, eligible_branches
+             ) VALUES (
+               $1::uuid, $2, $3, $4, $5, $6::text[],
+               $7, $8, $9::text[], $10, $11,
+               $12, $13, $14, $15, $16, $17,
+               NULL, 0, NULL, NULL
+             )
+             RETURNING id, title, job_type, status, salary_min, salary_max, min_cgpa, vacancies, skills_required, created_at`,
+            [
+              emp.id,
+              title.trim(),
+              description || '',
+              jobType,
+              categoryText,
+              locationsArr,
+              salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+              salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+              skillsRequired,
+              Math.max(1, parseInt(String(vacancies), 10) || 1),
+              status,
+              minExperience != null && minExperience !== '' ? Number(minExperience) : null,
+              maxExperience != null && maxExperience !== '' ? Number(maxExperience) : null,
+              workMode || null,
+              noticePeriodDays != null && noticePeriodDays !== '' ? Number(noticePeriodDays) : null,
+              seniorityLevel || null,
+              educationLevel || 'any',
+            ],
+          )
+        : await client.query(
+            `INSERT INTO job_postings (
+               employer_id, title, description, job_type, category, locations,
+               salary_min, salary_max, eligible_branches, min_cgpa, max_backlogs, batch_year,
+               skills_required, vacancies, status
+             ) VALUES (
+               $1::uuid, $2, $3, $4, $5, ARRAY['India']::text[],
+               $6, $7, ARRAY['Computer Science & Engineering', 'Information Technology']::text[],
+               $8, 0, 2025, $9::text[], $10, $11
+             )
+             RETURNING id, title, job_type, status, salary_min, salary_max, min_cgpa, vacancies, skills_required, created_at`,
+            [
+              emp.id,
+              title.trim(),
+              description || '',
+              jobType,
+              jobType === 'internship'
+                ? 'Internship'
+                : jobType === 'short_project' || jobType === 'hackathon'
+                  ? 'Student program'
+                  : 'Engineering',
+              salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+              salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+              minCgpaResolved.value,
+              skillsRequired,
+              Math.max(1, parseInt(String(vacancies), 10) || 1),
+              status,
+            ],
+          );
 
       const job = ins.rows[0];
 
@@ -295,30 +373,55 @@ export async function PATCH(request) {
       keywords = '',
       tenantIds,
       additionalInfo,
+      minExperience = null,
+      maxExperience = null,
+      workMode = null,
+      noticePeriodDays = null,
+      seniorityLevel = null,
+      educationLevel = 'any',
+      location = '',
+      industry = '',
     } = body;
 
     const jobId = String(id || '').trim();
     if (!jobId || !title?.trim()) {
       return NextResponse.json({ error: 'id and title are required' }, { status: 400 });
     }
-    const patchInputErr = validateEmployerJobPayload({
-      salaryMin,
-      salaryMax,
-      minCgpa,
-      vacancies,
-      jobType,
-    });
-    if (patchInputErr) {
-      return NextResponse.json({ error: patchInputErr }, { status: 400 });
-    }
-
-    const minCgpaResolved = resolveEmployerMinCgpaForSubmit(minCgpa);
-    if (minCgpaResolved.error) {
-      return NextResponse.json({ error: minCgpaResolved.error }, { status: 400 });
-    }
 
     if (!JOB_TYPES.has(jobType)) {
       return NextResponse.json({ error: 'Invalid jobType' }, { status: 400 });
+    }
+
+    const alumniJob = isAlumniEmploymentType(jobType);
+    let minCgpaResolved = { value: null };
+
+    if (alumniJob) {
+      const alumniErr = validateAlumniJobPostingPayload({
+        jobType,
+        salaryMin,
+        salaryMax,
+        minExperience,
+        maxExperience,
+        noticePeriodDays,
+      });
+      if (alumniErr.error) {
+        return NextResponse.json({ error: alumniErr.error }, { status: 400 });
+      }
+    } else {
+      const patchInputErr = validateEmployerJobPayload({
+        salaryMin,
+        salaryMax,
+        minCgpa,
+        vacancies,
+        jobType,
+      });
+      if (patchInputErr) {
+        return NextResponse.json({ error: patchInputErr }, { status: 400 });
+      }
+      minCgpaResolved = resolveEmployerMinCgpaForSubmit(minCgpa);
+      if (minCgpaResolved.error) {
+        return NextResponse.json({ error: minCgpaResolved.error }, { status: 400 });
+      }
     }
     const allowedStatus = new Set(['draft', 'published', 'closed', 'cancelled']);
     if (!allowedStatus.has(status)) {
@@ -356,6 +459,55 @@ export async function PATCH(request) {
         }
         const patch = buildPublishedEmployerPatchSql(existing, { additionalInfo, description });
         updated = await client.query(patch.sql, patch.params);
+      } else if (alumniJob) {
+        const locationText = String(location || '').trim();
+        const locationsArr = locationText ? [locationText] : [];
+        const categoryText = String(industry || '').trim() || 'Experienced hire';
+        updated = await client.query(
+          `UPDATE job_postings
+           SET title = $1,
+               description = $2,
+               job_type = $3,
+               status = $4,
+               salary_min = $5,
+               salary_max = $6,
+               vacancies = $7,
+               skills_required = $8::text[],
+               category = $9,
+               locations = $10::text[],
+               min_experience_years = $11,
+               max_experience_years = $12,
+               work_mode = $13,
+               notice_period_days = $14,
+               seniority_level = $15,
+               education_level = $16,
+               min_cgpa = NULL,
+               batch_year = NULL,
+               eligible_branches = NULL,
+               updated_at = NOW()
+           WHERE id = $17::uuid AND employer_id = $18::uuid
+           RETURNING id, title, job_type, status`,
+          [
+            title.trim(),
+            description || '',
+            jobType,
+            status,
+            salaryMin != null && salaryMin !== '' ? Number(salaryMin) : null,
+            salaryMax != null && salaryMax !== '' ? Number(salaryMax) : null,
+            Math.max(1, parseInt(String(vacancies), 10) || 1),
+            skillsRequired,
+            categoryText,
+            locationsArr,
+            minExperience != null && minExperience !== '' ? Number(minExperience) : null,
+            maxExperience != null && maxExperience !== '' ? Number(maxExperience) : null,
+            workMode || null,
+            noticePeriodDays != null && noticePeriodDays !== '' ? Number(noticePeriodDays) : null,
+            seniorityLevel || null,
+            educationLevel || 'any',
+            jobId,
+            emp.id,
+          ],
+        );
       } else {
         updated = await client.query(
           `UPDATE job_postings

@@ -9,7 +9,8 @@ import ThemeToggleButton from '@/components/ThemeToggleButton';
 import DevScreenTag from '@/components/DevScreenTag';
 import EntityLogo from '@/components/EntityLogo';
 import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
-import { menuConfig, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
+import { getDashboardMenu, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
+import { isAlumniStudent } from '@/lib/studentAlumni';
 import { getDevScreenId } from '@/config/devScreenIds';
 import { getRoleDisplayName } from '@/lib/utils';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
@@ -28,14 +29,14 @@ function getHubPageTitle(session, role, menu) {
   return `${menu.title} Dashboard`;
 }
 
-function getQuickActions(role, employerHasCampus) {
+function getQuickActions(role, employerHasCampus, isAlumni) {
   if (role === 'employer') {
     return [
       {
         label: employerHasCampus ? 'Change campus' : 'Campus Partnerships',
         href: '/dashboard/employer/select-campus',
       },
-      { label: 'Job postings', href: '/dashboard/employer/jobs' },
+      { label: 'Alumni job postings', href: '/dashboard/employer/jobs' },
       { label: 'Placement drives', href: '/dashboard/employer/drives' },
       { label: 'Applications', href: '/dashboard/employer/applications' },
       { label: 'Alerts', href: '/dashboard/alerts' },
@@ -43,9 +44,16 @@ function getQuickActions(role, employerHasCampus) {
     ];
   }
   if (role === 'student') {
+    if (isAlumni) {
+      return [
+        { label: 'Browse alumni jobs', href: '/dashboard/student/jobs' },
+        { label: 'My alumni jobs', href: '/dashboard/student/applications/jobs' },
+        { label: 'Alerts', href: '/dashboard/alerts' },
+        { label: 'My profile', href: '/dashboard/student/profile' },
+      ];
+    }
     return [
       { label: 'Browse drives', href: '/dashboard/student/drives' },
-      { label: 'Jobs', href: '/dashboard/student/applications/jobs' },
       { label: 'Internships', href: '/dashboard/student/applications/internships' },
       { label: 'Projects', href: '/dashboard/student/applications/projects' },
       { label: 'Calendar', href: '/dashboard/student/calendar' },
@@ -89,7 +97,8 @@ function syncNavSection(sectionId) {
  * Matches the multi-column hub layout (see globals .dashboard-nav-hub-*).
  */
 export default function DashboardFullScreenHub({ role, session }) {
-  const menu = menuConfig[role] || menuConfig.student;
+  const menu = getDashboardMenu(role, session?.user);
+  const isAlumni = role === 'student' && isAlumniStudent(session?.user);
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;
   const brandLogoUrl = useResolvedBrandLogoUrl();
   const [employerCampus, setEmployerCampus] = useState(null);
@@ -139,7 +148,7 @@ export default function DashboardFullScreenHub({ role, session }) {
   const employerHasCampus = Boolean(employerCampus?.id);
   const employerNeedsPartnership = !employerCampusLoading && !employerHasCampus && employerApprovedCount === 0;
 
-  const quickActions = getQuickActions(role, employerHasCampus);
+  const quickActions = getQuickActions(role, employerHasCampus, isAlumni);
   const hubFilter = useMemo(() => {
     const sections = menu?.sections;
     if (!Array.isArray(sections) || sections.length === 0) return null;

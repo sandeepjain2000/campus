@@ -7,6 +7,7 @@ export const DEMO_LOGINS = [
   { label: 'Student (IITM)', email: 'arjun.verma@iitm.edu',  icon: '🎓', name: 'Arjun Verma · IIT Madras' },
   { label: 'Student (NITT)', email: 'sneha.rao@nitt.edu',    icon: '🎓', name: 'Sneha Rao · NIT Trichy' },
   { label: 'Student (BITS)', email: 'rohan.mehta@bits.edu',  icon: '🎓', name: 'Rohan Mehta · BITS Pilani' },
+  { label: 'Alumni (IITM)', email: 'priya.sharma.alumni@iitm.edu', icon: '🎓', group: 'alumni', name: 'Priya Sharma · IIT Madras Alumni' },
   // Employers
   { label: 'Employer (TechCorp)',    email: 'hr@techcorp.com',          icon: '🏢', name: 'TechCorp Solutions' },
   { label: 'Employer (GlobalSoft)', email: 'hr@globalsoft.com',         icon: '🏢', name: 'GlobalSoft Technologies' },

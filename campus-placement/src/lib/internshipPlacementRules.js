@@ -84,19 +84,28 @@ export async function assertStudentMayApplyToInternship(studentId, jobId = null)
   return { ok: false, error: STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE };
 }
 
+import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
+
 /** Map DB row to student opportunity list item (shared shape). */
 export function mapProgramOpportunityRow(r) {
+  const jobType = r.job_type;
+  const isAlumniJob = ALUMNI_JOB_TYPES.includes(String(jobType || ''));
   return {
     id: r.id,
     title: r.title,
     description: r.description,
-    jobType: r.job_type,
+    jobType,
+    isAlumniJob,
     salaryMin: r.salary_min != null ? Number(r.salary_min) : null,
     salaryMax: r.salary_max != null ? Number(r.salary_max) : null,
-    minCgpa: r.min_cgpa != null ? Number(r.min_cgpa) : null,
-    maxBacklogs: r.max_backlogs != null ? Number(r.max_backlogs) : null,
-    eligibleBranches: Array.isArray(r.eligible_branches) ? r.eligible_branches : null,
-    batchYear: r.batch_year != null ? Number(r.batch_year) : null,
+    minCgpa: isAlumniJob ? null : r.min_cgpa != null ? Number(r.min_cgpa) : null,
+    maxBacklogs: isAlumniJob ? null : r.max_backlogs != null ? Number(r.max_backlogs) : null,
+    eligibleBranches: isAlumniJob
+      ? null
+      : Array.isArray(r.eligible_branches)
+        ? r.eligible_branches
+        : null,
+    batchYear: isAlumniJob ? null : r.batch_year != null ? Number(r.batch_year) : null,
     vacancies: r.vacancies,
     skillsRequired: r.skills_required || [],
     applicationDeadline: r.application_deadline,

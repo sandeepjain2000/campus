@@ -10,7 +10,7 @@ import { resolveEmployerActiveCampus } from '@/lib/employerActiveCampus';
 
 const TABS = [
   { id: 'internship', label: 'Internships', icon: GraduationCap },
-  { id: 'jobs', label: 'Jobs', icon: Briefcase },
+  { id: 'jobs', label: 'Alumni Jobs', icon: Briefcase },
   { id: 'placement', label: 'Placement', icon: Target },
 ];
 

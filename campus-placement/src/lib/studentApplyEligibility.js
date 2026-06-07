@@ -62,11 +62,13 @@ export async function getStudentPlacementApplyLock(studentId, tenantId = null) {
   if (!studentId) return { locked: false };
 
   const profileRes = await query(
-    `SELECT placement_status, tenant_id FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+    `SELECT placement_status, tenant_id, COALESCE(is_alumni, false) AS is_alumni
+     FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
     [studentId],
   );
   const row = profileRes.rows[0];
   if (!row) return { locked: false };
+  if (row.is_alumni) return { locked: false };
 
   const status = String(row.placement_status || '').trim().toLowerCase();
   if (PLACEMENT_STATUS_LOCK.has(status)) {

@@ -23,6 +23,7 @@ import {
   getStudentOpportunityListCache,
   setStudentOpportunityListCache,
 } from '@/lib/jobPostingPublishState';
+import { ALUMNI_JOB_TYPES, guardStudentOpportunityKind } from '@/lib/studentAlumni';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -60,13 +61,16 @@ export async function GET(request) {
           : kindParam === 'hackathon'
             ? 'hackathon'
             : 'internship';
+
+    const kindGuard = guardStudentOpportunityKind(kind, session.user);
+    if (kindGuard) return kindGuard;
     const types =
       kind === 'project'
         ? ['short_project']
         : kind === 'hackathon'
           ? ['hackathon']
           : kind === 'job'
-            ? ['full_time']
+            ? ALUMNI_JOB_TYPES
             : ['internship'];
 
     const studentProfileId = await getOrCreateStudentProfileId(userId);

@@ -1,5 +1,6 @@
 import { resolveIitmTenant } from '@/lib/employerIitmTieUp';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
+import { isAlumniJobType } from '@/lib/studentAlumni';
 
 const PROGRAM_JOB_TYPES = new Set(['internship', 'short_project', 'hackathon']);
 
@@ -35,19 +36,33 @@ async function notifyCollegeAdmins(client, { tenantId, emp, jobType, jobTitle })
   const collegeName = college.rows[0]?.name || 'Campus';
   const adminIds = await fetchCollegeAdminUserIds(tenantId, client);
   const isProgram = PROGRAM_JOB_TYPES.has(jobType);
+  const isAlumniJob = isAlumniJobType(jobType);
+
+  const reviewPath = isAlumniJob
+    ? '/dashboard/college/jobs'
+    : isProgram || jobType === 'internship'
+      ? '/dashboard/college/internships'
+      : '/dashboard/college/jobs';
+
+  const reviewLabel = isAlumniJob
+    ? 'Alumni Jobs'
+    : isProgram || jobType === 'internship'
+      ? 'Internships & Programs'
+      : 'Jobs';
 
   await notifyUsersOneAtATime(
     adminIds,
     {
-      title:
-        jobType === 'internship'
+      title: isAlumniJob
+        ? `${emp.company_name} posted an alumni job`
+        : jobType === 'internship'
           ? `${emp.company_name} posted an internship`
           : isProgram
             ? `${emp.company_name} posted a student program`
             : `${emp.company_name} published a job`,
-      message: `${emp.company_name} published "${jobTitle}" (${String(jobType).replace(/_/g, ' ')}) for ${collegeName}. Review and approve under Internships & Programs before students can apply.`,
+      message: `${emp.company_name} published "${jobTitle}" (${String(jobType).replace(/_/g, ' ')}) for ${collegeName}. Review and approve under ${reviewLabel} before ${isAlumniJob ? 'alumni' : 'students'} can apply.`,
       type: jobType === 'internship' ? 'info' : 'application',
-      link: isProgram || jobType === 'internship' ? '/dashboard/college/internships' : '/dashboard/college/drives',
+      link: reviewPath,
     },
     client,
   );

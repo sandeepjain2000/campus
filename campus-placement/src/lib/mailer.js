@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { getPlatformSettings } from '@/lib/platformSettings';
 import { query } from '@/lib/db';
+import { getSmtpDailyLimitState } from '@/lib/mailDailyLimit';
 
 function createTransport() {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -280,6 +281,31 @@ export async function sendMail(opts) {
       String(normalizeTo(afterCommunication)),
       String(to),
     );
+  }
+
+  const dailyLimit = await getSmtpDailyLimitState();
+  if (dailyLimit.reached) {
+    console.warn(
+      `${logCtx} skip: daily SMTP send limit reached (%s/%s for today)`,
+      dailyLimit.sentToday,
+      dailyLimit.limit,
+    );
+    console.warn(`${logCtx} would-send to=%s subject=%s`, String(originalTo), mailOpts.subject);
+    await persistMailDeliveryLog({
+      context,
+      status: 'skipped',
+      skipReason: 'daily_limit_reached',
+      originalTo,
+      resolvedTo: to,
+      subject: mailOpts.subject,
+      userId,
+    });
+    return {
+      skipped: true,
+      reason: 'daily_limit_reached',
+      sentToday: dailyLimit.sentToday,
+      dailyLimit: dailyLimit.limit,
+    };
   }
 
   try {

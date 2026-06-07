@@ -76,4 +76,14 @@ describe('getApplyBlockReason', () => {
     );
     expect(reason).toMatch(/batch/i);
   });
+
+  it('skips campus CGPA/batch rules for alumni jobs when configured', () => {
+    expect(
+      getApplyBlockReason(
+        { minCgpa: 9.5, batchYear: 2024, maxBacklogs: 0, status: 'published' },
+        { ...eligibleStudent, cgpa: 6, batchYear: 2018, backlogsActive: 2 },
+        { skipCampusPlacementCriteria: true },
+      ),
+    ).toBeNull();
+  });
 });

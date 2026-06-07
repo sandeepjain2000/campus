@@ -11,6 +11,15 @@ import { assertActiveEmployerTieUp } from '@/lib/employerTieUp';
 import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 import { resolveStudentPlacementTenantIds } from '@/lib/sessionTenant';
 import { uuidInClause } from '@/lib/sqlPlaceholders';
+import { hasColumn, jobPostingNotDeletedSql, jobVisibilityCollegeApprovedSql } from '@/lib/migrationReady';
+import {
+  ALUMNI_JOB_TYPES,
+  CAMPUS_PROGRAM_JOB_TYPES,
+  alumniJobsForbiddenResponse,
+  campusProgramsForbiddenForAlumniResponse,
+  isAlumniJobType,
+} from '@/lib/studentAlumni';
+import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,7 +29,10 @@ export const revalidate = 0;
 
 
 
-const PROGRAM_TYPES = new Set(['full_time', 'internship', 'short_project', 'hackathon']);
+const PROGRAM_TYPES = new Set([
+  ...ALUMNI_JOB_TYPES,
+  ...CAMPUS_PROGRAM_JOB_TYPES,
+]);
 
 export async function GET() {
   try {
@@ -33,6 +45,9 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const isAlumni = isAlumniStudent(session.user);
+    const allowedTypes = isAlumni ? ALUMNI_JOB_TYPES : CAMPUS_PROGRAM_JOB_TYPES;
 
     const result = await query(
       `SELECT
@@ -50,10 +65,11 @@ export async function GET() {
        JOIN job_postings jp ON jp.id = pa.job_id
        JOIN employer_profiles ep ON ep.id = jp.employer_id
        WHERE sp.user_id = $1::uuid
+         AND jp.job_type = ANY($2::text[])
          AND COALESCE(pa.is_deleted, false) = false
          AND COALESCE(jp.is_deleted, false) = false
        ORDER BY pa.applied_at DESC`,
-      [userId],
+      [userId, allowedTypes],
     );
 
     return NextResponse.json({
@@ -111,22 +127,25 @@ export async function POST(req) {
       return NextResponse.json({ error: applyGate.error }, { status: 403 });
     }
 
+    const isAlumni = await resolveAlumniStudentFlag(userId, session.user);
+
+    const collegeApprovedSql = await jobVisibilityCollegeApprovedSql();
+    const jpNotDeletedSql = await jobPostingNotDeletedSql('jp');
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 2);
     const job = await query(
       `SELECT jp.id, jp.job_type, jp.status, jp.min_cgpa, jp.max_backlogs, jp.eligible_branches,
-              jp.batch_year, jp.application_deadline,
-              sp.cgpa AS student_cgpa, sp.branch AS student_branch, sp.department AS student_department,
-              sp.batch_year AS student_batch_year, sp.backlogs_active AS student_backlogs_active
+              jp.batch_year, jp.application_deadline
        FROM job_postings jp
-       CROSS JOIN student_profiles sp
-       INNER JOIN job_posting_visibility jpv ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
-         AND jpv.college_status = 'approved'
+       INNER JOIN job_posting_visibility jpv
+         ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
+         ${collegeApprovedSql}
        INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
        INNER JOIN employer_approvals ea
          ON ea.employer_id = ep.id AND ea.tenant_id = jpv.tenant_id AND ea.status = 'approved'
-       WHERE jp.id = $1::uuid AND sp.id = $${tenantInParams.length + 2}::uuid
-         AND COALESCE(jp.is_deleted, false) = false`,
-      [jobId, ...tenantInParams, studentId],
+       WHERE jp.id = $1::uuid
+         ${jpNotDeletedSql}
+       LIMIT 1`,
+      [jobId, ...tenantInParams],
     );
 
     if (!job.rowCount) {
@@ -134,6 +153,13 @@ export async function POST(req) {
     }
 
     const row = job.rows[0];
+    if (isAlumniJobType(row.job_type) && !isAlumni) {
+      return alumniJobsForbiddenResponse();
+    }
+    if (CAMPUS_PROGRAM_JOB_TYPES.includes(row.job_type) && isAlumni) {
+      return campusProgramsForbiddenForAlumniResponse();
+    }
+
     const employerIdRes = await query(
       `SELECT jp.employer_id, jpv.tenant_id
        FROM job_postings jp
@@ -165,12 +191,32 @@ export async function POST(req) {
     }
 
     const applyProfile = await loadStudentApplyProfile(studentId, tenantIds[0] || sessionTenant);
-    const { opportunity, student: profileFields } = postingEligibilityFromJobRow(row);
-    const blockReason = getApplyBlockReason(opportunity, {
-      ...profileFields,
-      hasResume: applyProfile.hasResume,
-      isPlacementLocked: applyProfile.isPlacementLocked,
-    });
+    const alumniJob = isAlumniJobType(row.job_type);
+    const { opportunity } = postingEligibilityFromJobRow(
+      alumniJob
+        ? {
+            ...row,
+            min_cgpa: null,
+            max_backlogs: null,
+            eligible_branches: null,
+            batch_year: null,
+          }
+        : row,
+    );
+    const blockReason = getApplyBlockReason(
+      opportunity,
+      {
+        ...applyProfile,
+        cgpa: applyProfile.cgpa,
+        branch: applyProfile.branch,
+        department: applyProfile.department,
+        batchYear: applyProfile.batchYear,
+        backlogsActive: applyProfile.backlogsActive,
+        hasResume: applyProfile.hasResume,
+        isPlacementLocked: applyProfile.isPlacementLocked,
+      },
+      { skipCampusPlacementCriteria: alumniJob },
+    );
     if (blockReason) {
       return NextResponse.json({ error: blockReason }, { status: 400 });
     }
@@ -186,6 +232,9 @@ export async function POST(req) {
       return NextResponse.json({ error: WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE }, { status: 409 });
     }
 
+    const hasDeletedCol = await hasColumn('program_applications', 'is_deleted');
+    const reviveDeletedSql = hasDeletedCol ? ', is_deleted = false' : '';
+
     const ins = await query(
       `INSERT INTO program_applications (student_id, job_id, status, notes)
        VALUES ($1::uuid, $2::uuid, 'applied', $3)
@@ -193,7 +242,8 @@ export async function POST(req) {
        DO UPDATE SET
          status = 'applied',
          notes = COALESCE(EXCLUDED.notes, program_applications.notes),
-         updated_at = NOW()
+         updated_at = NOW(),
+         applied_at = COALESCE(program_applications.applied_at, NOW())${reviveDeletedSql}
        WHERE program_applications.status <> 'withdrawn'
        RETURNING id, status`,
       [studentId, jobId, notes || null],
@@ -217,7 +267,7 @@ export async function POST(req) {
       await query(
         `INSERT INTO notifications (user_id, title, message, type, link)
          VALUES ($1::uuid, $2, $3, 'success', '/dashboard/student/applications')`,
-        [userId, 'Application Submitted', `You have successfully applied for the ${row.job_type}.`]
+        [userId, 'Application Submitted', `You have successfully applied for ${alumniJob ? 'the alumni job' : `the ${row.job_type}`}.`]
       );
     } catch (err) {
       console.error('Failed to create notification', err);
@@ -230,6 +280,14 @@ export async function POST(req) {
     });
   } catch (e) {
     console.error('POST /api/student/program-applications', e);
-    return NextResponse.json({ error: 'Could not submit application' }, { status: 500 });
+    const detail = String(e?.message || '').trim();
+    const hint =
+      e?.code === '42703' && /backlogs_active|is_alumni|college_status|is_deleted/i.test(detail)
+        ? ' A database migration may be missing on the server.'
+        : '';
+    return NextResponse.json(
+      { error: `Could not submit application.${hint}${process.env.NODE_ENV === 'development' && detail ? ` (${detail})` : ''}` },
+      { status: 500 },
+    );
   }
 }

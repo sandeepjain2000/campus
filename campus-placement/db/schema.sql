@@ -108,6 +108,7 @@ CREATE TABLE student_profiles (
     placement_status VARCHAR(30) DEFAULT 'unplaced' CHECK (placement_status IN ('unplaced', 'placed', 'opted_out', 'higher_studies')),
     offers_count INTEGER DEFAULT 0,
     is_verified BOOLEAN DEFAULT false,
+    is_alumni BOOLEAN NOT NULL DEFAULT false,
     verified_by UUID REFERENCES users(id),
     verified_at TIMESTAMP,
     resume_url TEXT,
@@ -247,6 +248,12 @@ CREATE TABLE job_postings (
     additional_info TEXT,
     application_deadline TIMESTAMP,
     is_anonymous BOOLEAN DEFAULT false,
+    min_experience_years INTEGER,
+    max_experience_years INTEGER,
+    work_mode VARCHAR(20),
+    notice_period_days INTEGER,
+    seniority_level VARCHAR(40),
+    education_level VARCHAR(40),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

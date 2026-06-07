@@ -25,6 +25,17 @@ export function buildStudentApplyContext(data) {
 /** Map a program-opportunities or drive list row to getApplyBlockReason opportunity shape. */
 export function programOpportunityFromRow(row) {
   if (!row) return { status: 'published' };
+  const isAlumniJob = row.isAlumniJob || ['full_time', 'contract'].includes(String(row.jobType || row.job_type || ''));
+  if (isAlumniJob) {
+    return {
+      minCgpa: null,
+      maxBacklogs: null,
+      eligibleBranches: null,
+      batchYear: null,
+      applicationDeadline: row.applicationDeadline ?? row.deadline ?? null,
+      status: row.status || 'published',
+    };
+  }
   const cgpaRaw = row.minCgpa ?? row.cgpa;
   const minCgpa =
     cgpaRaw != null && cgpaRaw !== '' && Number(cgpaRaw) > 0 && !Number.isNaN(Number(cgpaRaw))

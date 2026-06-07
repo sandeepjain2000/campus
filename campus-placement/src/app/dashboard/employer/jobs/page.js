@@ -4,82 +4,21 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
-import { Briefcase, Plus, DollarSign, Users, FileText, GraduationCap, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List } from 'lucide-react';
+import { Briefcase, Plus, DollarSign, Users, FileText, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List } from 'lucide-react';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
-import { formatEmployerMinCgpa, normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
-import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
+import {
+  ALUMNI_EMPLOYMENT_TYPE_LABELS,
+  ALUMNI_EDUCATION_LEVELS,
+  ALUMNI_SENIORITY_LEVELS,
+  ALUMNI_WORK_MODES,
+  buildAlumniJobDescription,
+  validateAlumniJobPostingPayload,
+} from '@/lib/alumniJobPosting';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
-
-const TYPE_LABELS = {
-  full_time: 'Full-time',
-  internship: 'Internship',
-  contract: 'Contract',
-  ppo: 'PPO',
-};
-
-function buildAutoSections({ title, keywords, type, salaryMin, salaryMax, cgpa, vacancies, headquarters }) {
-  const kw = keywords
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  const typeLabel = TYPE_LABELS[type] || type;
-  const role =
-    title.trim().length > 0
-      ? `We are hiring a ${title} (${typeLabel}) to own delivery across discovery, implementation, code review, testing, and production support. You will collaborate with product, design, and platform teams to ship reliable user-facing experiences.`
-      : 'Enter a job title to generate a role summary.';
-
-  const cgpaMin = normalizeEmployerMinCgpa(cgpa);
-  const qualifications =
-    cgpaMin != null
-      ? `B.Tech / M.Tech / dual degree (or equivalent) in relevant disciplines; minimum CGPA ${cgpaMin} on a 10-point scale unless waived by campus policy. Strong problem-solving, communication, and teamwork.`
-      : 'B.Tech / M.Tech / dual degree (or equivalent) in relevant disciplines; strong academic record and campus placement eligibility.';
-
-  const skills =
-    kw.length > 0
-      ? `Core skills we expect: ${kw.join(', ')}. Demonstrable projects, internships, or open-source contributions in these areas are a plus.`
-      : 'Add comma-separated keywords above to auto-fill expected skills (e.g. React, Python, SQL).';
-
-  const sm = salaryMin === '' || salaryMin == null ? null : Number(salaryMin);
-  const sx = salaryMax === '' || salaryMax == null ? null : Number(salaryMax);
-  const compensation =
-    sm != null && !Number.isNaN(sm) && sx != null && !Number.isNaN(sx)
-      ? `Compensation band: ${formatCurrency(sm)} – ${formatCurrency(sx)} CTC per annum (structure and components per company policy and campus norms). ${vacancies ? `Open headcount: ${vacancies}.` : ''}`
-      : 'Set min/max annual compensation (and vacancies) to auto-fill this section.';
-
-  const hq = headquarters != null ? String(headquarters).trim() : '';
-  const location = hq
-    ? `Location: anchored at ${hq}. Hybrid, office, or remote arrangements follow company policy and are confirmed during hiring.`
-    : type === 'internship'
-      ? 'Location: add your company headquarters under Employer Profile to auto-fill this line, or edit manually (internship base / hybrid details).'
-      : 'Location: add your company headquarters under Employer Profile to auto-fill this line, or edit manually to match where this role is based.';
-
-  return { role, qualifications, skills, compensation, location };
-}
-
-function composeJobDescription(sections) {
-  return [
-    '— Job description (auto-generated from title, keywords, and compensation; edit freely) —',
-    '',
-    'ROLE',
-    sections.role,
-    '',
-    'QUALIFICATIONS',
-    sections.qualifications,
-    '',
-    'SKILLS',
-    sections.skills,
-    '',
-    'COMPENSATION',
-    sections.compensation,
-    '',
-    'LOCATION',
-    sections.location,
-  ].join('\n');
-}
 
 const emptyForm = {
   title: '',
@@ -87,14 +26,21 @@ const emptyForm = {
   type: 'full_time',
   salaryMin: '',
   salaryMax: '',
-  cgpa: '',
-  vacancies: '',
+  vacancies: '1',
+  minExperience: '',
+  maxExperience: '',
+  workMode: 'hybrid',
+  noticePeriodDays: '',
+  seniorityLevel: 'mid',
+  educationLevel: 'bachelors',
+  location: '',
+  industry: '',
   description: '',
 };
 
 export default function EmployerJobsPage() {
   const { addToast } = useToast();
-  const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs', fetcher, { revalidateOnFocus: true });
+  const { data: jobData, mutate: mutateJobs } = useSWR('/api/employer/jobs?scope=alumni', fetcher, { revalidateOnFocus: true });
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: true });
   const { data: profileData } = useSWR('/api/employer/profile', fetcher, { revalidateOnFocus: true });
 
@@ -127,18 +73,33 @@ export default function EmployerJobsPage() {
 
   const profileHeadquarters = profileData?.profile?.headquarters;
 
-  const autoSections = useMemo(
-    () => buildAutoSections({ ...form, headquarters: profileHeadquarters }),
-    [form, profileHeadquarters],
-  );
-
   useEffect(() => {
     if (!showModal) return;
-    setForm((prev) => ({
-      ...prev,
-      description: composeJobDescription(buildAutoSections({ ...prev, headquarters: profileHeadquarters })),
-    }));
-  }, [showModal, form.title, form.keywords, form.type, form.salaryMin, form.salaryMax, form.cgpa, form.vacancies, profileHeadquarters]);
+    setForm((prev) => {
+      const location = prev.location?.trim() ? prev.location : (profileHeadquarters || '');
+      return {
+        ...prev,
+        location,
+        description: buildAlumniJobDescription({ ...prev, location }),
+      };
+    });
+  }, [
+    showModal,
+    form.title,
+    form.keywords,
+    form.type,
+    form.salaryMin,
+    form.salaryMax,
+    form.vacancies,
+    form.minExperience,
+    form.maxExperience,
+    form.workMode,
+    form.noticePeriodDays,
+    form.seniorityLevel,
+    form.educationLevel,
+    form.industry,
+    profileHeadquarters,
+  ]);
 
   const openCreate = () => {
     setEditingJob(null);
@@ -153,11 +114,18 @@ export default function EmployerJobsPage() {
     setForm({
       title: job.title,
       keywords: job.keywords || '',
-      type: job.type,
+      type: job.type === 'contract' ? 'contract' : 'full_time',
       salaryMin: job.salaryMin ?? '',
       salaryMax: job.salaryMax ?? '',
-      cgpa: normalizeEmployerMinCgpa(job.minCgpa ?? job.cgpa) ?? '',
-      vacancies: job.vacancies ?? '',
+      vacancies: job.vacancies ?? '1',
+      minExperience: job.minExperience ?? '',
+      maxExperience: job.maxExperience ?? '',
+      workMode: job.workMode || 'hybrid',
+      noticePeriodDays: job.noticePeriodDays ?? '',
+      seniorityLevel: job.seniorityLevel || 'mid',
+      educationLevel: job.educationLevel || 'bachelors',
+      location: job.location || '',
+      industry: job.industry || '',
       description: job.description || '',
     });
     setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses, job.tenantIds));
@@ -193,11 +161,12 @@ export default function EmployerJobsPage() {
       addToast('Select at least one approved campus so notifications are created for that college.', 'warning');
       return;
     }
-    const validated = validateAndResolveEmployerJobSubmit({
+    const validated = validateAlumniJobPostingPayload({
       salaryMin: form.salaryMin,
       salaryMax: form.salaryMax,
-      minCgpa: form.cgpa,
-      vacancies: form.vacancies,
+      minExperience: form.minExperience,
+      maxExperience: form.maxExperience,
+      noticePeriodDays: form.noticePeriodDays,
       jobType: form.type,
     });
     if (validated.error) {
@@ -218,9 +187,16 @@ export default function EmployerJobsPage() {
           status: asDraft ? 'draft' : 'published',
           salaryMin: form.salaryMin,
           salaryMax: form.salaryMax,
-          minCgpa: validated.minCgpa,
           vacancies: form.vacancies,
           keywords: form.keywords,
+          minExperience: form.minExperience,
+          maxExperience: form.maxExperience,
+          workMode: form.workMode,
+          noticePeriodDays: form.noticePeriodDays,
+          seniorityLevel: form.seniorityLevel,
+          educationLevel: form.educationLevel,
+          location: form.location,
+          industry: form.industry,
           tenantIds: asDraft ? [] : tenantIds,
         }),
       });
@@ -234,7 +210,7 @@ export default function EmployerJobsPage() {
           ? 'Job updated successfully.'
           : asDraft
             ? 'Draft saved to the database (no alerts sent).'
-            : 'Job published. College admins were notified one-by-one; internship posts also notify students per campus.',
+            : 'Alumni job published. College admins were notified for each selected campus.',
         'success',
       );
       closeModal();
@@ -295,7 +271,7 @@ export default function EmployerJobsPage() {
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
           <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            Job Postings
+            Alumni Job Postings
             {jobsList.length > 0 && (
               <span style={{ fontSize: '0.875rem', fontWeight: 700, background: 'rgba(255,255,255,0.2)', padding: '0.2rem 0.6rem', borderRadius: '999px', backdropFilter: 'blur(4px)' }}>
                 {jobsList.length} Total
@@ -303,7 +279,7 @@ export default function EmployerJobsPage() {
             )}
           </h1>
           <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>
-            Publish jobs to notify college admins and attract candidates across your campus partnerships.
+            Post lateral roles for alumni — experienced hire openings shared with your campus network.
           </p>
         </div>
         
@@ -318,7 +294,7 @@ export default function EmployerJobsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {[
-            { id: '', label: `All Jobs (${tabCounts.all})` },
+            { id: '', label: `All Alumni Jobs (${tabCounts.all})` },
             { id: 'published', label: `Published (${tabCounts.published})` },
             { id: 'draft', label: `Drafts (${tabCounts.draft})` },
             { id: 'closed', label: `Closed (${tabCounts.closed})` },
@@ -404,8 +380,8 @@ export default function EmployerJobsPage() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    <GraduationCap size={14} style={{ color: 'var(--text-tertiary)' }} />
-                    Min CGPA: {formatEmployerMinCgpa(job.minCgpa ?? job.cgpa)}
+                    <Briefcase size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    Exp: {job.experienceLabel || '—'}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--primary-700)', fontWeight: 600, background: 'var(--primary-50)', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-sm)', width: 'fit-content' }}>
                     <FileText size={14} />
@@ -430,8 +406,8 @@ export default function EmployerJobsPage() {
           {filtered.length === 0 && (
             <div style={{ gridColumn: '1 / -1', padding: '4rem 2rem', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-default)' }}>
               <Briefcase size={48} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Jobs Found</h3>
-              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>There are no job postings matching the current filter.</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No alumni jobs yet</h3>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Create your first lateral role for alumni. Internships and campus programs are managed on their own pages.</p>
             </div>
           )}
         </div>
@@ -442,7 +418,7 @@ export default function EmployerJobsPage() {
         <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
           {/* Table header */}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 0.7fr 0.7fr 1.1fr 0.6fr 0.6fr 0.5fr auto', gap: '0', background: 'var(--bg-secondary)', padding: '0.65rem 1.25rem', borderBottom: '1px solid var(--border-default)' }}>
-            {['Job Title', 'Type', 'Status', 'Salary', 'Vacancies', 'CGPA', 'Apps', 'Actions'].map((h) => (
+            {['Job Title', 'Type', 'Status', 'Salary', 'Experience', 'Location', 'Apps', 'Actions'].map((h) => (
               <span key={h} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>{h}</span>
             ))}
           </div>
@@ -450,7 +426,7 @@ export default function EmployerJobsPage() {
           {filtered.length === 0 && (
             <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
               <Briefcase size={40} style={{ margin: '0 auto 1rem', opacity: 0.3, display: 'block', color: 'var(--text-tertiary)' }} />
-              <p style={{ color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>No jobs match this filter.</p>
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>No alumni jobs match this filter.</p>
             </div>
           )}
 
@@ -488,14 +464,14 @@ export default function EmployerJobsPage() {
                 {job.salaryMin != null && job.salaryMax != null ? `${formatCurrency(job.salaryMin)} – ${formatCurrency(job.salaryMax)}` : '—'}
               </span>
 
-              {/* Vacancies */}
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <Users size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />{job.vacancies ?? '—'}
+              {/* Experience */}
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                {job.experienceLabel || '—'}
               </span>
 
-              {/* CGPA */}
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                {formatEmployerMinCgpa(job.minCgpa ?? job.cgpa)}
+              {/* Location */}
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {job.location || '—'}
               </span>
 
               {/* Apps */}
@@ -586,23 +562,74 @@ export default function EmployerJobsPage() {
                   </div>
 
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label font-bold">Keywords</label>
-                    <input className="form-input" placeholder="e.g. React, TypeScript, AWS, System design" value={form.keywords} onChange={(e) => setField('keywords', e.target.value)} />
-                    <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>Comma-separated keywords drive auto-generation.</p>
+                    <label className="form-label font-bold">Key skills</label>
+                    <input className="form-input" placeholder="e.g. Java, AWS, stakeholder management, system design" value={form.keywords} onChange={(e) => setField('keywords', e.target.value)} />
+                    <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>Comma-separated skills (like Naukri / Monster key skills).</p>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label font-bold">Job Type <span className="required">*</span></label>
+                    <label className="form-label font-bold">Employment type <span className="required">*</span></label>
                     <select className="form-select" value={form.type} onChange={(e) => setField('type', e.target.value)}>
-                      <option value="full_time">Full Time</option>
-                      <option value="internship">Internship</option>
-                      <option value="contract">Contract</option>
-                      <option value="ppo">PPO</option>
+                      {Object.entries(ALUMNI_EMPLOYMENT_TYPE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Seniority band</label>
+                    <select className="form-select" value={form.seniorityLevel} onChange={(e) => setField('seniorityLevel', e.target.value)}>
+                      {ALUMNI_SENIORITY_LEVELS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Min experience (years)</label>
+                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="2" value={form.minExperience} onChange={(v) => setField('minExperience', v)} className="form-input" />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Max experience (years)</label>
+                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="8" value={form.maxExperience} onChange={(v) => setField('maxExperience', v)} className="form-input" />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Work mode</label>
+                    <select className="form-select" value={form.workMode} onChange={(e) => setField('workMode', e.target.value)}>
+                      {ALUMNI_WORK_MODES.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Job location</label>
+                    <input className="form-input" placeholder="e.g. Bengaluru, Chennai" value={form.location} onChange={(e) => setField('location', e.target.value)} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Industry / function</label>
+                    <input className="form-input" placeholder="e.g. IT Services, Product Engineering" value={form.industry} onChange={(e) => setField('industry', e.target.value)} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Education</label>
+                    <select className="form-select" value={form.educationLevel} onChange={(e) => setField('educationLevel', e.target.value)}>
+                      {ALUMNI_EDUCATION_LEVELS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label font-bold">Notice period (days)</label>
+                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="30" value={form.noticePeriodDays} onChange={(v) => setField('noticePeriodDays', v)} className="form-input" />
                   </div>
                   
                   <div className="form-group">
-                    <label className="form-label font-bold">Min Salary (Annual)</label>
+                    <label className="form-label font-bold">Min salary (annual CTC)</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>₹</span>
                       <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_SALARY_MIN} placeholder="800,000" value={form.salaryMin} onChange={(v) => setField('salaryMin', v)} className="form-input" />
@@ -610,7 +637,7 @@ export default function EmployerJobsPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label font-bold">Max Salary (Annual)</label>
+                    <label className="form-label font-bold">Max salary (annual CTC)</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>₹</span>
                       <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_SALARY_MAX} context={{ salaryMin: form.salaryMin }} placeholder="1,500,000" value={form.salaryMax} onChange={(v) => setField('salaryMax', v)} className="form-input" />
@@ -618,12 +645,7 @@ export default function EmployerJobsPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label font-bold">Min CGPA</label>
-                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" placeholder="6.0" value={form.cgpa} onChange={(v) => setField('cgpa', v)} />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label font-bold">Vacancies</label>
+                    <label className="form-label font-bold">Openings</label>
                     <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="10" value={form.vacancies} onChange={(v) => setField('vacancies', v)} />
                   </div>
                 </div>

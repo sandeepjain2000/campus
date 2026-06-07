@@ -112,10 +112,10 @@ export default function StudentJobsPage() {
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Briefcase size={28} className="text-secondary" strokeWidth={1.5} />
-            Browse Jobs
+            Browse Alumni Jobs
           </h1>
           <p className="text-secondary">
-            Published jobs visible to your college. Apply directly from here.
+            Alumni job openings published for your college network. Apply directly from here.
           </p>
         </div>
         <div className="page-header-actions">
@@ -127,7 +127,7 @@ export default function StudentJobsPage() {
         </div>
       </div>
 
-      {isLoading && <PageLoading message="Loading jobs…" inline />}
+      {isLoading && <PageLoading message="Loading alumni jobs…" inline />}
       {error && (
         <div className="card" style={{ borderColor: 'var(--danger-500)' }}>
           <p className="text-sm" style={{ margin: 0 }}>
@@ -159,7 +159,7 @@ export default function StudentJobsPage() {
           </div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>No jobs available</h3>
           <p className="text-secondary" style={{ margin: 0 }}>
-            No published jobs for your campus right now. When an employer publishes one and selects your college, it will appear here.
+            No alumni job postings for your campus right now. When an employer publishes a lateral role and your college approves it, it will appear here.
           </p>
         </div>
       )}

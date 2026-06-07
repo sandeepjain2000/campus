@@ -11,7 +11,7 @@ import EntityLogo from '@/components/EntityLogo';
 import SessionAdBanner from '@/components/SessionAdBanner';
 import PageLoading from '@/components/PageLoading';
 import {
-  menuConfig,
+  getDashboardMenu,
   ROLE_HOME_PATHS,
   NAV_SECTION_STORAGE_KEY,
   findSectionIdByPath,
@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (!session?.user?.role) return;
-    const menu = menuConfig[session.user.role] || menuConfig.student;
+    const menu = getDashboardMenu(session.user.role, session.user);
     const id = findSectionIdByPath(menu, pathname);
     if (id) {
       try {
@@ -194,7 +194,7 @@ export default function DashboardLayout({ children }) {
 
   if (!session) return null;
 
-  const menu = menuConfig[role] || menuConfig.student;
+  const menu = getDashboardMenu(role, session.user);
   const sectionId = findSectionIdByPath(menu, pathname);
   const activeSection = menu.sections.find((s) => s.id === sectionId) || menu.sections[0];
   const homePath = ROLE_HOME_PATHS[role] || ROLE_HOME_PATHS.student;

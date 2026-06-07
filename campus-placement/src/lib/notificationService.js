@@ -35,6 +35,22 @@ export async function notifyStudentsOfTenant(tenantId, { title, message, type = 
   );
 }
 
+/** One row per active alumni student on the tenant (lateral job postings). */
+export async function notifyAlumniStudentsOfTenant(tenantId, { title, message, type = 'info', link = null }, client = null) {
+  const q = client ? client.query.bind(client) : query;
+  await q(
+    `INSERT INTO notifications (user_id, title, message, type, link)
+     SELECT u.id, $2, $3, $4, $5
+     FROM users u
+     INNER JOIN student_profiles sp ON sp.user_id = u.id
+     WHERE u.tenant_id = $1::uuid
+       AND u.role = 'student'
+       AND u.is_active = true
+       AND sp.is_alumni = true`,
+    [tenantId, clipTitle(title), message, type, link],
+  );
+}
+
 /**
  * Optional: insert notifications one user at a time (smaller bursts; same outcome as batch).
  * Used when you want strict sequential DB writes per recipient.

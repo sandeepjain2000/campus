@@ -38,7 +38,7 @@ export default function EmployerProjectsPage() {
     error: jobsError,
     isLoading: jobsLoading,
     mutate: mutateJobs,
-  } = useSWR('/api/employer/jobs', swrFetcher, {
+  } = useSWR('/api/employer/jobs?scope=programs', swrFetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 0,
   });

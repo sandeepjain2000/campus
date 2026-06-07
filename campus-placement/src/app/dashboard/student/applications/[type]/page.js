@@ -50,10 +50,10 @@ const TYPE_META = {
       "You haven't applied to any placement drives yet. Start exploring active drives and apply to kickstart your career!",
   },
   jobs: {
-    title: 'Job',
+    title: 'Alumni Job',
     browseHref: '/dashboard/student/jobs',
-    browseText: 'Browse Jobs',
-    emptyMessage: "You haven't applied to any jobs yet. Browse published jobs for your campus and apply.",
+    browseText: 'Browse Alumni Jobs',
+    emptyMessage: "You haven't applied to any alumni jobs yet. Browse published alumni jobs for your campus network and apply.",
   },
   internships: {
     title: 'Internship',

@@ -2,7 +2,7 @@
 
 export const ASSESSMENT_ROUND_KINDS = [
   { id: 'internship', label: 'Internships' },
-  { id: 'jobs', label: 'Jobs' },
+  { id: 'jobs', label: 'Alumni Jobs' },
   { id: 'drive', label: 'Drives' },
   { id: 'projects', label: 'Projects' },
 ];

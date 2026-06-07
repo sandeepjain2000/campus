@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { resolveCollegeAdminTenantId } from '@/lib/sessionTenant';
 import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
-import { notifyStudentsListingApproved } from '@/lib/jobPostingCollegeApproval';
+import { patchCollegeJobListingApproval } from '@/lib/collegeJobListingApproval';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -93,65 +93,26 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'jobId and a valid action (approve|reject) are required' }, { status: 400 });
     }
 
-    const fromStatuses = action === 'approve' ? ['pending', 'rejected'] : ['pending'];
-    const nextStatus = action === 'approve' ? 'approved' : 'rejected';
+    const result = await patchCollegeJobListingApproval({
+      userId,
+      tenantId,
+      jobId,
+      action,
+      rejectionReason,
+      jobTypes: ['internship', 'short_project', 'hackathon'],
+    });
 
-    const updated = await query(
-      `UPDATE job_posting_visibility jpv
-       SET college_status = $1::varchar,
-           approved_by = CASE WHEN $1::varchar = 'approved' THEN $2::uuid ELSE NULL END,
-           approved_at = CASE WHEN $1::varchar = 'approved' THEN NOW() ELSE NULL END,
-           rejection_reason = CASE WHEN $1::varchar = 'rejected' THEN $3 ELSE NULL END
-       FROM job_postings jp
-       INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
-       WHERE jpv.job_id = jp.id
-         AND jpv.job_id = $4::uuid
-         AND jpv.tenant_id = $5::uuid
-         AND jpv.college_status = ANY($6::varchar[])
-         AND jp.status = 'published'
-         AND jp.job_type IN ('internship', 'short_project', 'hackathon')
-         ${AND_JP_NOT_DELETED}
-       RETURNING jp.id, jp.title, jp.job_type, ep.company_name, jpv.college_status`,
-      [nextStatus, userId, rejectionReason, jobId, tenantId, fromStatuses],
-    );
-
-    if (!updated.rows.length) {
-      const meta = await query(
-        `SELECT jpv.college_status
-         FROM job_posting_visibility jpv
-         JOIN job_postings jp ON jp.id = jpv.job_id
-         WHERE jpv.job_id = $1::uuid AND jpv.tenant_id = $2::uuid ${AND_JP_NOT_DELETED}`,
-        [jobId, tenantId],
-      );
-      if (!meta.rows[0]) {
-        return NextResponse.json({ error: 'Listing not found for your campus' }, { status: 404 });
-      }
+    if (!result.ok) {
       return NextResponse.json(
-        {
-          error:
-            action === 'approve'
-              ? 'This listing is not awaiting approval (already approved or still pending employer publish).'
-              : 'Only pending listings can be rejected.',
-          currentStatus: meta.rows[0].college_status,
-        },
-        { status: 409 },
+        { error: result.error, currentStatus: result.currentStatus },
+        { status: result.status },
       );
-    }
-
-    const row = updated.rows[0];
-    if (row.college_status === 'approved') {
-      await notifyStudentsListingApproved(null, {
-        tenantId,
-        title: row.title,
-        jobType: row.job_type,
-        companyName: row.company_name,
-      });
     }
 
     return NextResponse.json({
       ok: true,
-      jobId: row.id,
-      collegeStatus: row.college_status,
+      jobId: result.jobId,
+      collegeStatus: result.collegeStatus,
     });
   } catch (e) {
     console.error('PATCH /api/college/internships', e);

@@ -1,7 +1,7 @@
 import { query } from '@/lib/db';
 import Link from 'next/link';
 import DemoAccountLoginLink from '@/components/auth/DemoAccountLoginLink';
-import { ArrowLeft, GraduationCap, Building2, School, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Building2, School, ShieldCheck, Award } from 'lucide-react';
 import { DEMO_SEED_PASSWORD } from '@/lib/demoLogins';
 import { demoAccountLine1, demoAccountRowStyles } from '@/lib/demoAccountDisplay';
 
@@ -76,10 +76,12 @@ export default async function DemoAccountsPage() {
     SELECT 
       u.id, u.email, u.role, u.is_active, u.first_name, u.last_name,
       t.name as college_name,
-      ep.company_name
+      ep.company_name,
+      COALESCE(sp.is_alumni, false) AS is_alumni
     FROM users u
     LEFT JOIN tenants t ON u.tenant_id = t.id
     LEFT JOIN employer_profiles ep ON u.id = ep.user_id
+    LEFT JOIN student_profiles sp ON sp.user_id = u.id
     ORDER BY u.is_active DESC, u.role, u.email
   `);
 
@@ -89,12 +91,14 @@ export default async function DemoAccountsPage() {
 
   const groups = [
     { key: 'student', label: 'Students', icon: GraduationCap, bg: 'var(--primary-50)', color: 'var(--primary-700)', border: 'var(--primary-200)' },
+    { key: 'alumni', label: 'Alumni', icon: Award, bg: 'var(--accent-50, #f5f3ff)', color: 'var(--accent-700, #6d28d9)', border: 'var(--accent-200, #ddd6fe)' },
     { key: 'employer', label: 'Employers', icon: Building2, bg: 'var(--success-50)', color: 'var(--success-700)', border: 'var(--success-200)' },
     { key: 'college_admin', label: 'College Admins', icon: School, bg: 'var(--warning-50)', color: 'var(--warning-700)', border: 'var(--warning-200)' },
     { key: 'super_admin', label: 'Super Admins', icon: ShieldCheck, bg: 'var(--danger-50)', color: 'var(--danger-700)', border: 'var(--danger-200)' },
   ];
 
-  const students = users.filter((u) => u.role === 'student');
+  const students = users.filter((u) => u.role === 'student' && !u.is_alumni);
+  const alumni = users.filter((u) => u.role === 'student' && u.is_alumni);
   const employers = users.filter((u) => u.role === 'employer');
   const collegeAdmins = users.filter((u) => u.role === 'college_admin');
   const superAdmins = users.filter((u) => u.role === 'super_admin');
@@ -156,10 +160,11 @@ export default async function DemoAccountsPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
           <DemoAccountGroup group={groups[0]} users={students} />
-          <DemoAccountGroup group={groups[1]} users={employers} />
+          <DemoAccountGroup group={groups[1]} users={alumni} />
+          <DemoAccountGroup group={groups[2]} users={employers} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <DemoAccountGroup group={groups[3]} users={superAdmins} />
-            <DemoAccountGroup group={groups[2]} users={collegeAdmins} />
+            <DemoAccountGroup group={groups[4]} users={superAdmins} />
+            <DemoAccountGroup group={groups[3]} users={collegeAdmins} />
           </div>
         </div>
       </div>

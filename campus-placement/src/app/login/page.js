@@ -15,7 +15,6 @@ import { showSandboxLoginBanner } from '@/lib/sandboxBanner';
 import {
   consumeLoginPrefillEmail,
   readLoginFormValues,
-  waitForAuthSession,
   writeLoginFormValues,
 } from '@/lib/loginClient';
 import { markBrowserSessionActive } from '@/lib/sessionPolicy';
@@ -28,6 +27,13 @@ const DEMO_GROUP_META = {
     color: 'var(--primary-700)',
     bg: 'var(--primary-50)',
     border: 'var(--primary-200)',
+  },
+  alumni: {
+    label: 'Alumni',
+    icon: GraduationCap,
+    color: 'var(--accent-700, #6d28d9)',
+    bg: 'var(--accent-50, #f5f3ff)',
+    border: 'var(--accent-200, #ddd6fe)',
   },
   employer: {
     label: 'Employers',
@@ -61,6 +67,7 @@ const DEMO_GROUP_META = {
 
 function getGroupKey(demo) {
   if (demo.isDummy) return 'dummy';
+  if (demo.group === 'alumni') return 'alumni';
   if (demo.icon === '🎓') return 'student';
   if (demo.icon === '🏢') return 'employer';
   if (demo.icon === '⚙️') return 'superadmin';
@@ -110,7 +117,7 @@ function LoginPageInner() {
     });
   }, []);
   const demosByGroup = useMemo(() => {
-    const buckets = { student: [], employer: [], admin: [], superadmin: [], dummy: [] };
+    const buckets = { student: [], alumni: [], employer: [], admin: [], superadmin: [], dummy: [] };
     for (const d of uniqueDemoLogins) {
       const k = getGroupKey(d);
       if (buckets[k]) buckets[k].push(d);
@@ -149,7 +156,9 @@ function LoginPageInner() {
         return;
       }
       if (!current) {
-        writeLoginFormValues(form, { email, password: DEMO_SEED_PASSWORD });
+        const prefill = { email };
+        if (emailFromStorage) prefill.password = DEMO_SEED_PASSWORD;
+        writeLoginFormValues(form, prefill);
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -237,14 +246,8 @@ function LoginPageInner() {
           return false;
         }
 
-        const sessionReady = await waitForAuthSession();
-        if (!sessionReady) {
-          setError('Sign-in succeeded but the session was slow to start. Click Sign In once more.');
-          return false;
-        }
-
         markBrowserSessionActive();
-        // Server reads the session cookie immediately — avoids client SessionProvider lag.
+        // /auth/continue reads the session cookie server-side — no need to wait for SessionProvider.
         if (typeof window !== 'undefined') {
           window.location.replace(`${window.location.origin}/auth/continue`);
         } else {
@@ -601,6 +604,7 @@ function LoginPageInner() {
                     >
                       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {renderDemoListCard('student')}
+                        {renderDemoListCard('alumni')}
                         {renderDemoListCard('dummy')}
                       </div>
                       <div style={{ minWidth: 0 }}>{renderDemoListCard('employer')}</div>

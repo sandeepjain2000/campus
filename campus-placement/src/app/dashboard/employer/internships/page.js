@@ -5,7 +5,10 @@ import useSWR from 'swr';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
-import { GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
+import {
+  GraduationCap, Plus, Users, IndianRupee, Activity, FileText, Settings,
+  LayoutGrid, List, Ban, ArrowRight,
+} from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
@@ -74,6 +77,7 @@ export default function EmployerInternshipsPage() {
   const [detailInternship, setDetailInternship] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [closingId, setClosingId] = useState(null);
+  const [viewMode, setViewMode] = useState('card');
 
   const approvedCampuses = useMemo(
     () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
@@ -538,24 +542,80 @@ export default function EmployerInternshipsPage() {
         </div>
       )}
       {!jobsLoading && !jobsError && totalCount > 0 && (
-        <DataTableToolbar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search title or keywords…"
-          filter={filter}
-          onFilterChange={setFilter}
-          filterOptions={internshipStatusFilterOptions}
-          filterLabel="Status"
-          sort={sort}
-          onSortChange={setSort}
-          sortOptions={COMMON_SORT_OPTIONS}
-          filteredCount={filteredCount}
-          totalCount={totalCount}
-          hasActiveFilters={hasActiveFilters}
-          onClear={clearFilters}
-        />
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <DataTableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search title or keywords…"
+              filter={filter}
+              onFilterChange={setFilter}
+              filterOptions={internshipStatusFilterOptions}
+              filterLabel="Status"
+              sort={sort}
+              onSortChange={setSort}
+              sortOptions={COMMON_SORT_OPTIONS}
+              filteredCount={filteredCount}
+              totalCount={totalCount}
+              hasActiveFilters={hasActiveFilters}
+              onClear={clearFilters}
+            />
+          </div>
+          <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '10px', padding: '3px', gap: '2px', border: '1px solid var(--border-default)', flexShrink: 0 }}>
+            {[{ mode: 'card', icon: LayoutGrid, label: 'Card view' }, { mode: 'list', icon: List, label: 'List view' }].map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                title={label}
+                aria-label={label}
+                aria-pressed={viewMode === mode}
+                onClick={() => setViewMode(mode)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '7px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  transition: 'all 0.15s ease',
+                  background: viewMode === mode ? 'var(--bg-primary)' : 'transparent',
+                  color: viewMode === mode ? 'var(--primary-600)' : 'var(--text-tertiary)',
+                  boxShadow: viewMode === mode ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                }}
+              >
+                <Icon size={15} aria-hidden />
+                {mode === 'card' ? 'Cards' : 'List'}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
-      {!jobsLoading && !jobsError && totalCount > 0 && (
+      {!jobsLoading && !jobsError && totalCount > 0 && viewMode === 'card' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
+          {displayInternships.map((intern) => (
+            <InternshipCard
+              key={String(intern.id)}
+              intern={intern}
+              closingId={closingId}
+              onCampusSync={openCampusSync}
+              onDetails={openDetails}
+              onManage={openManage}
+              onClosePosting={closePublishedInternship}
+            />
+          ))}
+          {displayInternships.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', padding: '4rem 2rem', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-default)' }}>
+              <GraduationCap size={48} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No internships match</h3>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Try adjusting your search or status filter.</p>
+            </div>
+          )}
+        </div>
+      )}
+      {!jobsLoading && !jobsError && totalCount > 0 && viewMode === 'list' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
           <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
             <table className="data-table" style={{ minWidth: 880 }}>
@@ -659,6 +719,134 @@ export default function EmployerInternshipsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InternshipCard({
+  intern,
+  closingId,
+  onCampusSync,
+  onDetails,
+  onManage,
+  onClosePosting,
+}) {
+  const parsed = parseInternshipDescription(intern.description || '');
+  const apps = Number(intern.applications) || 0;
+
+  return (
+    <div
+      className="card card-hover"
+      style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', height: '100%', border: '1px solid var(--border-default)' }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem', letterSpacing: '-0.01em' }}>
+            {intern.title}
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span className={`badge badge-${getStatusColor(intern.status)}`} style={{ padding: '0.2rem 0.5rem' }}>
+              {formatStatus(intern.status)}
+            </span>
+            <span className="badge badge-gray" style={{ padding: '0.2rem 0.5rem' }}>
+              {parsed.durationMonths} mo
+            </span>
+          </div>
+        </div>
+        <div style={{ background: 'var(--success-50)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
+          <GraduationCap size={20} className="text-success-700" />
+        </div>
+      </div>
+      {intern.keywords ? (
+        <p className="text-xs" style={{ margin: '0 0 1rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+          <span className="font-semibold text-tertiary">Skills:</span> {intern.keywords}
+        </p>
+      ) : null}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          marginTop: 'auto',
+          padding: '1rem 0',
+          borderTop: '1px solid var(--border-default)',
+          borderBottom: '1px solid var(--border-default)',
+        }}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <IndianRupee size={14} style={{ color: 'var(--text-tertiary)' }} />
+            {stipendLabel(intern.salaryMin, intern.salaryMax)}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <Users size={14} style={{ color: 'var(--text-tertiary)' }} />
+            {intern.vacancies ?? '—'} openings
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <GraduationCap size={14} style={{ color: 'var(--text-tertiary)' }} />
+            Min CGPA: {formatEmployerMinCgpa(intern.minCgpa ?? intern.cgpa)}
+          </span>
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.85rem',
+              color: 'var(--primary-700)',
+              fontWeight: 600,
+              background: 'var(--primary-50)',
+              padding: '0.1rem 0.4rem',
+              borderRadius: 'var(--radius-sm)',
+              width: 'fit-content',
+            }}
+          >
+            <FileText size={14} aria-hidden />
+            {apps} App{apps === 1 ? '' : 's'}
+          </span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button type="button" className="btn btn-secondary" style={{ flex: 1, padding: '0.6rem' }} onClick={() => onManage(intern)}>
+            Manage
+          </button>
+          <a
+            className="btn btn-primary"
+            href={`/dashboard/employer/applications?tab=internships&jobId=${intern.id}`}
+            style={{ flex: 1, padding: '0.6rem', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+          >
+            Pipeline <ArrowRight size={14} aria-hidden />
+          </a>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-ghost" style={{ flex: 1, padding: '0.55rem', fontSize: '0.85rem' }} onClick={() => onDetails(intern)}>
+            Details
+          </button>
+          {intern.status === 'published' && (
+            <button type="button" className="btn btn-ghost" style={{ flex: 1, padding: '0.55rem', fontSize: '0.85rem' }} onClick={() => onCampusSync(intern.id)}>
+              <Users size={14} style={{ marginRight: '0.25rem' }} aria-hidden />
+              Sync campuses
+            </button>
+          )}
+        </div>
+        {intern.status === 'published' && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ width: '100%', padding: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--text-secondary)' }}
+            disabled={closingId === intern.id}
+            onClick={() => void onClosePosting(intern)}
+          >
+            <Ban size={16} aria-hidden />
+            {closingId === intern.id ? 'Closing…' : 'Close posting'}
+          </button>
+        )}
+      </div>
+      <div className="text-xs text-tertiary" style={{ textAlign: 'center', marginTop: '1rem' }}>
+        Posted {intern.createdAt ? formatDate(intern.createdAt) : '—'}
+      </div>
     </div>
   );
 }

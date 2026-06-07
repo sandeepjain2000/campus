@@ -22,6 +22,7 @@ function buildBodies(replyEmail, subject, message) {
 const SKIP_REASON_MESSAGES = {
   no_from: 'Outbound email is not configured (missing From address).',
   no_smtp_credentials: 'Outbound email is not configured (SMTP credentials missing on the server).',
+  daily_limit_reached: 'The daily email send limit has been reached. Try again tomorrow.',
 };
 
 async function persistLoginSupportMessage({ replyEmail, subject, message, inbox, deliveryMode }) {

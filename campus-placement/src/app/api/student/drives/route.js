@@ -6,6 +6,7 @@ import { getStudentApplyGate } from '@/lib/studentApplyEligibility';
 import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
 import { getStudentBrowseGate } from '@/lib/studentBrowseGate';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
+import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,6 +16,9 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isAlumniStudent(session.user)) {
+      return campusProgramsForbiddenForAlumniResponse();
     }
 
     const studentProfileId = await getOrCreateStudentProfileId(session.user.id);

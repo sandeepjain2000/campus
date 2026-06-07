@@ -1,4 +1,5 @@
-import { notifyStudentsOfTenant } from '@/lib/notificationService';
+import { notifyAlumniStudentsOfTenant, notifyStudentsOfTenant } from '@/lib/notificationService';
+import { isAlumniJobType } from '@/lib/studentAlumni';
 
 /** SQL fragment — visibility row approved by college for this campus. */
 export const JPV_COLLEGE_APPROVED = "jpv.college_status = 'approved'";
@@ -37,7 +38,20 @@ export async function notifyStudentsListingApproved(client, { tenantId, title, j
     );
     return;
   }
-  if (jt === 'full_time' || jt === 'part_time' || jt === 'contract' || jt === 'ppo') {
+  if (isAlumniJobType(jt)) {
+    await notifyAlumniStudentsOfTenant(
+      tenantId,
+      {
+        title: `New alumni job: ${title}`,
+        message: `${companyName} posted an alumni role. Open Alumni Jobs to view and apply.`,
+        type: 'info',
+        link: '/dashboard/student/jobs',
+      },
+      client,
+    );
+    return;
+  }
+  if (jt === 'part_time' || jt === 'ppo') {
     await notifyStudentsOfTenant(
       tenantId,
       {
@@ -49,4 +63,18 @@ export async function notifyStudentsListingApproved(client, { tenantId, title, j
       client,
     );
   }
+}
+
+/** Notify alumni when an employer publishes a lateral job for their campus (no college gate). */
+export async function notifyAlumniStudentsJobPublished(client, { tenantId, title, companyName }) {
+  await notifyAlumniStudentsOfTenant(
+    tenantId,
+    {
+      title: `New alumni job: ${title}`,
+      message: `${companyName} posted an alumni role. Open Alumni Jobs to view and apply.`,
+      type: 'info',
+      link: '/dashboard/student/jobs',
+    },
+    client,
+  );
 }

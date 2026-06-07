@@ -34,6 +34,7 @@ const DEFAULT_OPEN_STATUSES = ['published'];
  * @typedef {{
  *   openStatuses?: string[];
  *   internshipLocked?: boolean;
+ *   skipCampusPlacementCriteria?: boolean;
  * }} ApplyBlockOptions
  */
 
@@ -49,6 +50,7 @@ const DEFAULT_OPEN_STATUSES = ['published'];
 export function getApplyBlockReason(opportunity, student, options = {}) {
   const openStatuses = options.openStatuses || DEFAULT_OPEN_STATUSES;
   const status = String(opportunity?.status || 'published').toLowerCase();
+  const skipCampus = Boolean(options.skipCampusPlacementCriteria);
 
   if (student?.hasResume === false) {
     return STUDENT_RESUME_REQUIRED_APPLY_MESSAGE;
@@ -62,28 +64,30 @@ export function getApplyBlockReason(opportunity, student, options = {}) {
     return STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE;
   }
 
-  const cgpaCheck = evaluateCgpaEligibility(opportunity?.minCgpa, student?.cgpa);
-  if (!cgpaCheck.eligible && cgpaCheck.reason) {
-    return cgpaCheck.reason;
-  }
+  if (!skipCampus) {
+    const cgpaCheck = evaluateCgpaEligibility(opportunity?.minCgpa, student?.cgpa);
+    if (!cgpaCheck.eligible && cgpaCheck.reason) {
+      return cgpaCheck.reason;
+    }
 
-  const backlogCheck = evaluateBacklogEligibility(opportunity?.maxBacklogs, student?.backlogsActive);
-  if (!backlogCheck.eligible && backlogCheck.reason) {
-    return backlogCheck.reason;
-  }
+    const backlogCheck = evaluateBacklogEligibility(opportunity?.maxBacklogs, student?.backlogsActive);
+    if (!backlogCheck.eligible && backlogCheck.reason) {
+      return backlogCheck.reason;
+    }
 
-  const branchCheck = evaluateBranchEligibility(
-    opportunity?.eligibleBranches,
-    student?.branch,
-    student?.department,
-  );
-  if (!branchCheck.eligible && branchCheck.reason) {
-    return branchCheck.reason;
-  }
+    const branchCheck = evaluateBranchEligibility(
+      opportunity?.eligibleBranches,
+      student?.branch,
+      student?.department,
+    );
+    if (!branchCheck.eligible && branchCheck.reason) {
+      return branchCheck.reason;
+    }
 
-  const batchCheck = evaluateBatchYearEligibility(opportunity?.batchYear, student?.batchYear);
-  if (!batchCheck.eligible && batchCheck.reason) {
-    return batchCheck.reason;
+    const batchCheck = evaluateBatchYearEligibility(opportunity?.batchYear, student?.batchYear);
+    if (!batchCheck.eligible && batchCheck.reason) {
+      return batchCheck.reason;
+    }
   }
 
   const deadlineCheck = evaluateApplicationDeadlineEligibility(opportunity?.applicationDeadline);

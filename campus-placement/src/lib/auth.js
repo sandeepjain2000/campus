@@ -77,7 +77,8 @@ export const authOptions = {
           result = await queryWithLoginRetry(
             `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo_url,
                     ep.logo_url AS employer_logo_url,
-                    sp.is_verified AS student_placement_verified
+                    sp.is_verified AS student_placement_verified,
+                    COALESCE(sp.is_alumni, false) AS student_is_alumni
              FROM users u
              LEFT JOIN tenants t ON u.tenant_id = t.id
              LEFT JOIN employer_profiles ep ON ep.user_id = u.id
@@ -160,6 +161,7 @@ export const authOptions = {
             user.role === 'student'
               ? Boolean(user.student_placement_verified) || SEED_DEMO_STUDENT_USER_IDS.has(user.id)
               : undefined,
+          isAlumni: user.role === 'student' ? Boolean(user.student_is_alumni) : undefined,
         };
       },
     }),
@@ -178,6 +180,7 @@ export const authOptions = {
         token.logoUrl = user.avatar;
         token.brandLogoUrl = user.brandLogoUrl ?? null;
         token.studentPlacementVerified = user.studentPlacementVerified;
+        token.isAlumni = user.isAlumni;
       }
       if (trigger === 'update' && session?.avatar !== undefined) {
         token.avatar = session.avatar;
@@ -202,6 +205,7 @@ export const authOptions = {
         session.user.logoUrl = token.logoUrl;
         session.user.brandLogoUrl = token.brandLogoUrl ?? null;
         session.user.studentPlacementVerified = token.studentPlacementVerified;
+        session.user.isAlumni = token.isAlumni;
       }
       return session;
     },

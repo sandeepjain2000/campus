@@ -22,7 +22,7 @@ import EmployerStudentProfileModal from '@/components/employer/EmployerStudentPr
 
 const TABS = [
   { id: 'drives', label: 'Placement drives', shortLabel: 'Drives', icon: Building2, desc: 'Students who registered for your campus placement drives.' },
-  { id: 'jobs', label: 'Jobs', shortLabel: 'Jobs', icon: Briefcase, desc: 'Students who applied to your published full-time, contract, and PPO job postings.' },
+  { id: 'jobs', label: 'Alumni Jobs', shortLabel: 'Alumni Jobs', icon: Briefcase, desc: 'Alumni who applied to your published full-time and contract job postings.' },
   { id: 'internships', label: 'Internships', shortLabel: 'Internships', icon: GraduationCap, desc: 'Students who applied to your published internship postings.' },
   { id: 'projects', label: 'Projects', shortLabel: 'Projects', icon: FolderDot, desc: 'Short projects and hackathons students applied to.' },
 ];

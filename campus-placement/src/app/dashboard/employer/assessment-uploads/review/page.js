@@ -8,7 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 
 const KIND_TABS = [
   { id: 'internship', label: 'Internship', icon: GraduationCap },
-  { id: 'jobs', label: 'Jobs', icon: Briefcase },
+  { id: 'jobs', label: 'Alumni Jobs', icon: Briefcase },
   { id: 'drive', label: 'Drive', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderDot },
 ];
