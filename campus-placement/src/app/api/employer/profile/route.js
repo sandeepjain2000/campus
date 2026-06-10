@@ -5,6 +5,8 @@ import { query } from '@/lib/db';
 import { EMPLOYER_COMPANY_TYPE_OPTIONS } from '@/lib/employerCompanyTypeLabels';
 import { isBrowserLoadableAssetUrl } from '@/lib/clientAssetUrl';
 import { pickBrowserAssetUrl } from '@/lib/resolveBrandLogoUrl';
+import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -79,8 +81,9 @@ async function getEmployerByUser(userId) {
 }
 
 export async function GET() {
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -95,22 +98,29 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('GET /api/employer/profile', error);
-    return NextResponse.json({ error: 'Failed to load employer profile' }, { status: 500 });
+    return respondPlatformError(error, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_PROFILE_READ,
+      sessionUser: session?.user,
+      defaultMessage: 'Failed to load employer profile',
+      logLabel: 'GET /api/employer/profile',
+    });
   }
 }
 
 export async function PATCH(request) {
+  let session = null;
+  let body = {};
+  let profile = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const profile = await getEmployerByUser(session.user.id);
+    profile = await getEmployerByUser(session.user.id);
     if (!profile) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
-    const body = await request.json();
+    body = await request.json();
     const description = String(body?.description || '').trim();
     const contactPerson = String(body?.contactPerson || '').trim();
     const contactEmail = String(body?.contactEmail || '').trim();
@@ -226,7 +236,14 @@ export async function PATCH(request) {
     const updated = await getEmployerByUser(session.user.id);
     return NextResponse.json({ profile: updated });
   } catch (error) {
-    console.error('PATCH /api/employer/profile', error);
-    return NextResponse.json({ error: 'Failed to update employer profile' }, { status: 500 });
+    return respondPlatformError(error, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_PROFILE_UPDATE,
+      request,
+      sessionUser: session?.user,
+      employerId: profile?.id,
+      requestBody: body,
+      defaultMessage: 'Failed to update employer profile',
+      logLabel: 'PATCH /api/employer/profile',
+    });
   }
 }

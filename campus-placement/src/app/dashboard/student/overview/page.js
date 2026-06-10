@@ -7,6 +7,7 @@ import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import PageLoading from '@/components/PageLoading';
+import { ALUMNI_BROWSE_JOBS_PATH, ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -28,16 +29,21 @@ export default function StudentOverviewPage() {
   }
 
   const { stats, recentDrives, applications } = data;
+  const isAlumni = Boolean(data.isAlumni ?? session?.user?.isAlumni);
 
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div className="page-header-left">
           <h1>Welcome back, {session?.user?.name?.split(' ')[0]} 👋</h1>
-          <p>Here&apos;s your placement journey at a glance</p>
+          <p>
+            {isAlumni
+              ? 'Your alumni job search at a glance'
+              : "Here's your placement journey at a glance"}
+          </p>
         </div>
-        <Link href="/dashboard/student/drives" className="btn btn-primary">
-          Browse Drives →
+        <Link href={isAlumni ? ALUMNI_BROWSE_JOBS_PATH : '/dashboard/student/drives'} className="btn btn-primary">
+          {isAlumni ? 'Browse Alumni Jobs →' : 'Browse Drives →'}
         </Link>
       </div>
 
@@ -68,7 +74,7 @@ export default function StudentOverviewPage() {
             <Target size={24} strokeWidth={1.5} />
           </div>
           <div className="stats-card-value">{stats.upcomingDrives}</div>
-          <div className="stats-card-label">Upcoming Drives</div>
+          <div className="stats-card-label">{isAlumni ? 'Alumni Jobs' : 'Upcoming Drives'}</div>
         </div>
       </div>
 
@@ -107,11 +113,11 @@ export default function StudentOverviewPage() {
           <div className="card-header" style={{ padding: '1.25rem 1.5rem', marginBottom: 0, borderBottom: '1px solid var(--border-default)' }}>
             <div>
               <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Calendar size={18} className="text-secondary" /> Upcoming Drives
+                <Calendar size={18} className="text-secondary" /> {isAlumni ? 'Alumni Jobs' : 'Upcoming Drives'}
               </h3>
-              <p className="card-subtitle">Drives you can apply to</p>
+              <p className="card-subtitle">{isAlumni ? 'Published roles for your network' : 'Drives you can apply to'}</p>
             </div>
-            <Link href="/dashboard/student/drives" className="btn btn-ghost btn-sm">
+            <Link href={isAlumni ? ALUMNI_BROWSE_JOBS_PATH : '/dashboard/student/drives'} className="btn btn-ghost btn-sm">
               View All <ArrowRight size={14} />
             </Link>
           </div>
@@ -143,8 +149,10 @@ export default function StudentOverviewPage() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <IndianRupee size={14} /> {drive.salary}
                   </span>
-                  <span className={`badge badge-${drive.type === 'virtual' ? 'blue' : 'indigo'}`} style={{ fontSize: '0.6875rem' }}>
-                    {drive.type === 'virtual' ? (
+                  <span className={`badge badge-${drive.type === 'alumni_job' ? 'blue' : drive.type === 'virtual' ? 'blue' : 'indigo'}`} style={{ fontSize: '0.6875rem' }}>
+                    {drive.type === 'alumni_job' ? (
+                      <>Alumni role</>
+                    ) : drive.type === 'virtual' ? (
                       <>
                         <Globe size={12} /> Virtual
                       </>
@@ -168,7 +176,7 @@ export default function StudentOverviewPage() {
               </h3>
               <p className="card-subtitle">Track your application status</p>
             </div>
-            <Link href="/dashboard/student/applications" className="btn btn-ghost btn-sm">
+            <Link href={isAlumni ? ALUMNI_MY_JOBS_PATH : '/dashboard/student/applications'} className="btn btn-ghost btn-sm">
               View All <ArrowRight size={14} />
             </Link>
           </div>
@@ -204,7 +212,9 @@ export default function StudentOverviewPage() {
                   <FileEdit size={32} />
                 </div>
                 <div className="empty-state-title">No applications yet</div>
-                <div className="empty-state-description">Browse upcoming drives and start applying!</div>
+                <div className="empty-state-description">
+                  {isAlumni ? 'Browse alumni jobs and start applying!' : 'Browse upcoming drives and start applying!'}
+                </div>
               </div>
             )}
           </div>

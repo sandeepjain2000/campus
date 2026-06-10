@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS, ROLE_FILTER_OPTIONS, roleFilterFn } from '@/lib/tableQueryPresets';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function DataEntryUsersPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'super_admin';
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({
@@ -158,6 +161,8 @@ export default function DataEntryUsersPage() {
     }
   };
 
+  const studentNameLocked = mode === 'edit' && form.role === 'student' && !isSuperAdmin;
+
   return (
     <div className="animate-fadeIn" style={{ minHeight: '100vh', background: 'var(--bg-secondary)', padding: '2rem' }}>
       <div style={{ maxWidth: '980px', margin: '0 auto' }}>
@@ -193,12 +198,32 @@ export default function DataEntryUsersPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">First name</label>
-                <input className="form-input" value={form.firstName} onChange={onChange('firstName')} required />
+                <input
+                  className="form-input"
+                  value={form.firstName}
+                  onChange={onChange('firstName')}
+                  required
+                  disabled={studentNameLocked}
+                  readOnly={studentNameLocked}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Last name</label>
-                <input className="form-input" value={form.lastName} onChange={onChange('lastName')} />
+                <input
+                  className="form-input"
+                  value={form.lastName}
+                  onChange={onChange('lastName')}
+                  disabled={studentNameLocked}
+                  readOnly={studentNameLocked}
+                />
               </div>
+              {studentNameLocked ? (
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <p className="text-xs text-secondary" style={{ margin: 0 }}>
+                    Student names can only be changed by a super admin.
+                  </p>
+                </div>
+              ) : null}
               {mode === 'add' ? (
                 <div className="form-group">
                   <label className="form-label">Password</label>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import StudentListAvatar from '@/components/student/StudentListAvatar';
 import {
   Award,
   BookOpen,
@@ -228,14 +229,6 @@ export default function StudentProfileView({ student, onVerify }) {
   const projects = list(sections.projects);
   const completed = getCompletedSectionCount(student);
   const total = getProfileSectionTotal(student);
-  const initials = student.name
-    .split(' ')
-    .filter(Boolean)
-    .map((name) => name[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   const profileLinks = [
     { label: 'LinkedIn', value: student.linkedinUrl },
     { label: 'GitHub', value: student.githubUrl },
@@ -269,11 +262,12 @@ export default function StudentProfileView({ student, onVerify }) {
       <article className="student-profile-shell" aria-labelledby="student-detail-title">
         <header className="student-detail-header surface-dark">
           <div className="student-detail-identity">
-            {student.photo ? (
-              <img src={student.photo} alt="" width={56} height={56} className="student-detail-avatar" />
-            ) : (
-              <div className="student-detail-avatar student-detail-avatar-fallback">{initials || 'S'}</div>
-            )}
+            <StudentListAvatar
+              photo={student.photo}
+              name={student.name}
+              size={56}
+              className="student-detail-avatar"
+            />
             <div>
               <h2 id="student-detail-title">{student.name}</h2>
               <div className="student-detail-subtitle">{student.roll || student.systemId}</div>

@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
+import { normalizeTimeHm, toDateOnlyString, validateInterviewDateTime } from '@/lib/dateOnly';
 import {
   buildEmployerInterviewCalendarDescription,
   deleteEmployerInterviewCalendarSlot,
   insertEmployerInterviewCalendarSlot,
   updateEmployerInterviewCalendarSlot,
 } from '@/lib/employerInterviewCalendarSync';
+import { normalizeInterviewOpportunityKind } from '@/lib/employerInterviewOpportunity';
+import { validateEmployerInterviewOpportunity } from '@/lib/employerInterviewOpportunityValidation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -88,8 +90,21 @@ export async function PATCH(request, { params }) {
     const assigned = Number(body?.assigned || 0);
     const panelNames = String(body?.panelNames || '').trim();
     const campus = String(body?.campus || '').trim();
+    const opportunityKind = normalizeInterviewOpportunityKind(body?.opportunityKind);
+    const opportunityId = String(body?.opportunityId || '').trim();
     if (!round || !date || !time) {
       return NextResponse.json({ error: 'round, date and time are required' }, { status: 400 });
+    }
+    if (!opportunityKind || !opportunityId) {
+      return NextResponse.json(
+        { error: 'opportunityKind and opportunityId are required — select a specific opening.' },
+        { status: 400 },
+      );
+    }
+
+    const oppCheck = await validateEmployerInterviewOpportunity(auth.employerId, campusId, opportunityKind, opportunityId);
+    if (!oppCheck.ok) {
+      return NextResponse.json({ error: oppCheck.error }, { status: 400 });
     }
 
     const tenant = await getTenant(campusId);
@@ -103,19 +118,26 @@ export async function PATCH(request, { params }) {
     }
 
     const existingDate = toDateOnlyString(rows[idx].date) || rows[idx].date;
-    const dateCheck = validatePlacementDate(date, { allowPast: date === existingDate });
-    if (!dateCheck.ok) {
-      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    const existingTime = normalizeTimeHm(rows[idx].time);
+    const allowPast =
+      toDateOnlyString(date) === existingDate && normalizeTimeHm(time) === existingTime;
+    const dateTimeCheck = validateInterviewDateTime(date, time, { allowPast });
+    if (!dateTimeCheck.ok) {
+      return NextResponse.json({ error: dateTimeCheck.error }, { status: 400 });
     }
 
     const campusLabel = campus || tenant.name;
     rows[idx] = {
       ...rows[idx],
       campus: campusLabel,
+      campusId,
       companyName: auth.companyName,
+      opportunityKind,
+      opportunityId,
+      opportunityTitle: oppCheck.title,
       round,
-      date: dateCheck.value,
-      time,
+      date: dateTimeCheck.value.date,
+      time: dateTimeCheck.value.time,
       mode,
       assigned: Number.isFinite(assigned) ? assigned : 0,
       panelNames,
@@ -125,11 +147,14 @@ export async function PATCH(request, { params }) {
 
     const calDesc = buildEmployerInterviewCalendarDescription({
       employerUserId: auth.userId,
-      time,
+      time: dateTimeCheck.value.time,
       mode,
       panelNames,
       assigned: Number.isFinite(assigned) ? assigned : 0,
       planId,
+      opportunityKind,
+      opportunityTitle: oppCheck.title,
+      opportunityId,
     });
     const calTitle = `${campusLabel} • ${round}`;
     try {
@@ -137,14 +162,14 @@ export async function PATCH(request, { params }) {
         tenantId: campusId,
         planId,
         title: calTitle,
-        dateYmd: dateCheck.value,
+        dateYmd: dateTimeCheck.value.date,
         description: calDesc,
       });
       if (!updated) {
         await insertEmployerInterviewCalendarSlot({
           tenantId: campusId,
           title: calTitle,
-          dateYmd: dateCheck.value,
+          dateYmd: dateTimeCheck.value.date,
           description: calDesc,
         });
       }

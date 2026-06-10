@@ -1,7 +1,13 @@
 import {
   ALUMNI_BROWSE_JOBS_PATH,
+  ALUMNI_GETTING_STARTED_PATH,
   ALUMNI_MY_JOBS_PATH,
 } from '@/lib/alumniRoutes';
+import {
+  EMPLOYER_ALUMNI_APPLICATIONS_PATH,
+  EMPLOYER_ALUMNI_INTERVIEWS_PATH,
+  EMPLOYER_ALUMNI_JOBS_PATH,
+} from '@/lib/employerAlumniRoutes';
 import {
   LayoutDashboard, User, Bell, Target, FileEdit, Award, FileText,
   Building2, GraduationCap, FolderDot, Briefcase, ClipboardList, Send, Gem, MessageSquare,
@@ -14,6 +20,7 @@ import {
   Trophy,
   Lock,
   UserX,
+  AlertTriangle,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -176,6 +183,7 @@ export const menuConfig = {
         items: [
           { label: 'Company Profile', href: '/dashboard/employer/profile', icon: Building2 },
           { label: 'Sponsorships', href: '/dashboard/employer/sponsorships', icon: Gem },
+          { label: 'Startup seed funding', href: '/dashboard/employer/startup-funding', icon: Rocket },
           { label: 'Campus guest needs', href: '/dashboard/employer/campus-guest-needs', icon: Mic },
         ],
       },
@@ -183,10 +191,18 @@ export const menuConfig = {
         id: 'employer-programs',
         title: '🎓 Student Opportunities',
         items: [
-          { label: 'Job Postings', href: '/dashboard/employer/jobs', icon: Briefcase },
           { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/employer/internships', icon: GraduationCap },
           { label: 'Projects', href: '/dashboard/employer/projects', icon: FolderDot },
+        ],
+      },
+      {
+        id: 'employer-alumni',
+        title: '🎓 Alumni',
+        items: [
+          { label: 'Alumni Job Postings', href: EMPLOYER_ALUMNI_JOBS_PATH, icon: Briefcase },
+          { label: 'Alumni Applications', href: EMPLOYER_ALUMNI_APPLICATIONS_PATH, icon: ClipboardList },
+          { label: 'Alumni Interview Scheduling', href: EMPLOYER_ALUMNI_INTERVIEWS_PATH, icon: Calendar },
         ],
       },
       {
@@ -229,6 +245,7 @@ export const menuConfig = {
         id: 'employer-settings',
         title: 'Settings',
         items: [
+          { label: 'Campus posting limits', href: '/dashboard/employer/settings', icon: Building2 },
           { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
         ],
       },
@@ -254,6 +271,7 @@ export const menuConfig = {
           { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
           { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests', icon: Inbox },
           { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
+          { label: 'Startup seed funding', href: '/dashboard/college/startup-funding', icon: Rocket },
         ],
       },
       {
@@ -367,6 +385,7 @@ export const menuConfig = {
         items: [
           { label: 'Onboard colleges & employers', href: '/dashboard/admin/pending-registrations', icon: Inbox },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },
+          { label: 'Error logs', href: '/dashboard/admin/error-logs', icon: AlertTriangle },
           { label: 'Audit reports', href: '/dashboard/admin/audit-reports', icon: FileText },
           { label: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
         ],
@@ -382,6 +401,7 @@ const STUDENT_CAMPUS_ONLY_HREFS = new Set([
   '/dashboard/student/projects',
   '/dashboard/student/hackathons',
   '/dashboard/student/calendar',
+  '/dashboard/student/clarifications',
   '/dashboard/student/applications/drives',
   '/dashboard/student/applications/internships',
   '/dashboard/student/applications/projects',
@@ -401,6 +421,9 @@ function mapStudentNavItem(item, isAlumni) {
   }
   if (isAlumni && item.href === '/dashboard/student/applications/jobs') {
     return { ...item, href: ALUMNI_MY_JOBS_PATH, label: 'My Alumni Jobs' };
+  }
+  if (isAlumni && item.href === '/dashboard/student/getting-started') {
+    return { ...item, href: ALUMNI_GETTING_STARTED_PATH };
   }
   return item;
 }
@@ -422,29 +445,11 @@ function filterStudentMenu(menu, isAlumni) {
   };
 }
 
-function mapEmployerAlumniJobLabels(menu) {
-  return {
-    ...menu,
-    sections: menu.sections.map((section) => ({
-      ...section,
-      items: section.items.map((item) => {
-        if (item.href === '/dashboard/employer/jobs') {
-          return { ...item, label: 'Alumni Job Postings' };
-        }
-        return item;
-      }),
-    })),
-  };
-}
-
 /** Role menu with alumni vs campus student visibility applied. */
 export function getDashboardMenu(role, user) {
   const base = menuConfig[role] || menuConfig.student;
   if (role === 'student') {
     return filterStudentMenu(base, Boolean(user?.isAlumni));
-  }
-  if (role === 'employer') {
-    return mapEmployerAlumniJobLabels(base);
   }
   return base;
 }

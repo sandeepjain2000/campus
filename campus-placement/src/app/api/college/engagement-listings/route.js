@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { validateTitlePayload } from '@/lib/apiInputValidation';
+import { normalizeTitle } from '@/lib/validators';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -50,7 +52,7 @@ export async function POST(request) {
 
     const body = await request.json();
     const kind = body.kind;
-    const title = (body.title || '').trim();
+    const title = normalizeTitle(body.title);
     const summary = (body.summary || '').trim() || null;
     const requirements = (body.requirements || '').trim() || null;
     const timeHint = (body.timeHint || '').trim() || null;
@@ -59,8 +61,9 @@ export async function POST(request) {
     if (!['guest_faculty', 'guest_lecture'].includes(kind)) {
       return NextResponse.json({ error: 'kind must be guest_faculty or guest_lecture' }, { status: 400 });
     }
-    if (title.length < 3) {
-      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    const titleErr = validateTitlePayload(title, { label: 'Listing title' });
+    if (titleErr) {
+      return NextResponse.json({ error: titleErr }, { status: 400 });
     }
 
     const ins = await query(

@@ -6,7 +6,13 @@ import { useSession } from 'next-auth/react';
 import EntityLogo from '@/components/EntityLogo';
 import { Search, Plus, ChevronDown, X, Eye, Trash2, Building2 } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { TIE_UP_REVOKE_MESSAGES, canRequestEmployerTieUp } from '@/lib/employerTieUpShared';
+import {
+  TIE_UP_REVOKE_DISABLED_TITLE,
+  TIE_UP_REVOKE_ENABLED,
+  TIE_UP_REVOKE_MESSAGES,
+  canRequestEmployerTieUp,
+} from '@/lib/employerTieUpShared';
+import { EMPLOYER_USE_CAMPUS_DISABLED_TITLE } from '@/lib/employerActiveCampus';
 
 const fetcher = async (url) => {
   const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -160,15 +166,6 @@ export default function SelectCampusPage() {
 
   const campusOptions = useMemo(() => [...colleges].sort((a,b) => (a.name||'').localeCompare(b.name||'')), [colleges]);
 
-  const handleSelectCampus = (college) => {
-    if (normalizeApprovalStatus(college.approval_status) !== 'approved') return;
-    const payload = JSON.stringify({ id: college.id, name: college.name, slug: college.slug, city: college.city, state: college.state });
-    sessionStorage.setItem('activeCampus', payload);
-    try { localStorage.setItem('activeCampus', payload); } catch { /**/ }
-    try { window.dispatchEvent(new Event('placementhub-active-campus')); } catch { /**/ }
-    router.replace('/dashboard/employer');
-  };
-
   const handleRequestAccess = async (college) => {
     setRequesting(college.id);
     try {
@@ -296,8 +293,8 @@ export default function SelectCampusPage() {
           }}
         >
           <div style={{ fontSize: '0.9rem', color: 'var(--primary-900)', lineHeight: 1.5 }}>
-            <strong>Switch campus:</strong> filter <strong>Approved</strong>, then click{' '}
-            <strong>Use campus</strong> — blue button in the <strong>Actions</strong> column (pinned on the right; scroll the table if needed).
+            <strong>All campuses:</strong> employer login includes every approved partnership — no campus switch needed.
+            The <strong>Use campus</strong> action is kept for reference but is disabled.
           </div>
           {counts.approved > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -309,8 +306,8 @@ export default function SelectCampusPage() {
                     key={c.id}
                     type="button"
                     className="btn btn-primary btn-sm"
-                    onClick={() => handleSelectCampus(c)}
-                    title={`Use ${c.name} as your active campus`}
+                    disabled
+                    title={EMPLOYER_USE_CAMPUS_DISABLED_TITLE}
                   >
                     Use {c.name?.split('(')[0]?.trim().slice(0, 28) || 'campus'}
                   </button>
@@ -417,7 +414,6 @@ export default function SelectCampusPage() {
                   <th>College Name</th>
                   <th className="select-campus-table__optional">Location</th>
                   <th className="select-campus-table__optional">Contact Details</th>
-                  <th className="select-campus-table__optional">Accreditation</th>
                   <th style={{ textAlign: 'right' }}>Students</th>
                   <th className="select-campus-table__optional" style={{ textAlign: 'right' }}>Placement</th>
                   <th>Status</th>
@@ -427,7 +423,7 @@ export default function SelectCampusPage() {
               <tbody>
                 {displayRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
                       <Building2 size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
                       <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>No colleges found</div>
                       <div>Try adjusting your filters or search query.</div>
@@ -443,11 +439,6 @@ export default function SelectCampusPage() {
                   const isApproved = status === 'approved';
                   const isPending = status === 'pending';
                   const showRequest = canRequestTieUp(c.approval_status);
-                  const accParts = [
-                    c.accreditation ? String(c.accreditation) : null,
-                    c.naac_grade ? `NAAC ${c.naac_grade}` : null,
-                    c.nirf_rank ? `NIRF #${c.nirf_rank}` : null,
-                  ].filter(Boolean);
 
                   return (
                     <tr key={c.id}>
@@ -487,9 +478,6 @@ export default function SelectCampusPage() {
                           ) : '—'}
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }} className="select-campus-table__optional">
-                        {accParts.length ? accParts.join(' · ') : '—'}
-                      </td>
                       <td style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>{c.total_students ?? 0}</td>
                       <td style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 500, color: placementPct != null && placementPct >= 70 ? 'var(--success-600)' : 'var(--text-primary)' }} className="select-campus-table__optional">
                         {placementPct != null ? `${placementPct}%` : '—'}
@@ -507,30 +495,30 @@ export default function SelectCampusPage() {
                       </td>
                       <td className="select-campus-table__actions">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'nowrap' }}>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: '0.4rem', border: '1px solid var(--border-default)', color: 'var(--primary-600)' }}
+                            onClick={() => router.push(`/dashboard/employer/select-campus/${c.id}`)}
+                            title={`View details for ${c.name}`}
+                          >
+                            <Eye size={16} />
+                          </button>
                           {isApproved && (
                             <>
                               <button
                                 type="button"
                                 className="btn btn-primary btn-sm"
-                                onClick={() => handleSelectCampus(c)}
-                                title={`Use ${c.name} as your active campus`}
+                                disabled
+                                title={EMPLOYER_USE_CAMPUS_DISABLED_TITLE}
                               >
                                 Use campus
                               </button>
                               <button
                                 className="btn btn-ghost btn-sm"
-                                style={{ padding: '0.4rem', border: '1px solid var(--border-default)', color: 'var(--primary-600)' }}
-                                onClick={() => router.push(`/dashboard/employer/select-campus/${c.id}`)}
-                                title={`View details for ${c.name}`}
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button
-                                className="btn btn-ghost btn-sm"
-                                style={{ padding: '0.4rem', border: '1px solid var(--border-default)', color: 'var(--danger-600)' }}
-                                onClick={() => setRevokeTarget(c)}
-                                disabled={revoking === c.id}
-                                title={`Revoke tie-up with ${c.name}`}
+                                style={{ padding: '0.4rem', border: '1px solid var(--border-default)', color: 'var(--danger-600)', opacity: TIE_UP_REVOKE_ENABLED ? 1 : 0.45 }}
+                                onClick={() => TIE_UP_REVOKE_ENABLED && setRevokeTarget(c)}
+                                disabled={!TIE_UP_REVOKE_ENABLED || revoking === c.id}
+                                title={TIE_UP_REVOKE_ENABLED ? `Revoke tie-up with ${c.name}` : TIE_UP_REVOKE_DISABLED_TITLE}
                               >
                                 {revoking === c.id ? '…' : <Trash2 size={16} />}
                               </button>

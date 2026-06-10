@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { syncPlacementDriveRegisteredCount } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -91,6 +92,8 @@ export async function POST(req) {
         }
       }
     }
+
+    await syncPlacementDriveRegisteredCount(drive_id);
 
     return NextResponse.json({ 
       success: true, 

@@ -339,6 +339,7 @@ export default function AddStudentForm({
                 fieldId={FIELD_IDS.STUDENT_BACKLOGS_ACTIVE}
                 className={`form-input${errors.backlogs_active ? ' input-error' : ''}`}
                 value={form.backlogs_active}
+                context={{ backlogsTotal: form.backlogs_history }}
                 onChange={(v) => set('backlogs_active', v)}
               />
             </Field>
@@ -347,6 +348,7 @@ export default function AddStudentForm({
                 fieldId={FIELD_IDS.STUDENT_BACKLOGS_TOTAL}
                 className={`form-input${errors.backlogs_history ? ' input-error' : ''}`}
                 value={form.backlogs_history}
+                context={{ backlogsActive: form.backlogs_active }}
                 onChange={(v) => set('backlogs_history', v)}
               />
             </Field>

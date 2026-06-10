@@ -3,6 +3,10 @@
  * Mirrors overview page behaviour so hub and inner pages stay consistent.
  */
 
+/** Employer login is all-campuses; "Use campus" selection is disabled in the UI. */
+export const EMPLOYER_USE_CAMPUS_DISABLED_TITLE =
+  'Employer accounts include all approved campuses. Campus selection is not used.';
+
 export function campusPayloadFromRow(campus) {
   if (!campus?.id) return null;
   return {

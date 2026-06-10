@@ -17,6 +17,7 @@ import {
   resolveStudentResumeUrl,
 } from '@/lib/studentResumeUrl';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
+import { resolveStudentPhotoDisplayUrl } from '@/lib/clientAssetUrl';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -159,7 +160,7 @@ export async function GET(request) {
           resumeUrl,
           cvFileName: primaryResumeFileName || profile.cvFileName,
         },
-        avatarUrl: sp.avatar_url || profile.avatarUrl || '',
+        avatarUrl: resolveStudentPhotoDisplayUrl(sp.avatar_url || profile.avatarUrl || '') || '',
         dateOfBirth: sp.date_of_birth || null,
         category: sp.category || '',
         placementStatus: sp.placement_status || '',

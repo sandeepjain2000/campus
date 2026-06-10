@@ -255,7 +255,7 @@ export default function AdminSettingsPage() {
               onChange={(e) => setMarketingWebsiteUrl(e.target.value)}
             />
             <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-              When set, the home page About / Contact links open this URL in the same tab (browser Back returns to PlacementHub). The <strong>Features</strong> link always opens the built-in <code>/features</code> page (program types, placement rules, role capabilities). Direct URLs <code>/features</code>, <code>/about</code>, and <code>/contact</code> always stay on this app. Leave empty to use built-in pages for all nav links.
+              Reserved for a future external brochure site. Landing nav links <strong>Features</strong>, <strong>About</strong>, and <strong>Contact</strong> always open the built-in pages <code>/features</code>, <code>/about</code>, and <code>/contact</code>. Support email and phone on <code>/contact</code> come from the fields below.
             </p>
           </div>
           <div className="form-group"><label className="form-label">Support Email</label><input className="form-input" placeholder="Set support email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} /></div>

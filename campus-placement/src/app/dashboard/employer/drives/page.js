@@ -4,13 +4,53 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
+import { formatEmployerMinCgpa } from '@/lib/employerJobDisplay';
+import {
+  formatEligibleBranchesLabel,
+  PLACEMENT_DRIVE_JOB_TYPE_LABELS,
+} from '@/lib/placementDriveJobFields';
+import { formatSalaryRange } from '@/lib/utils';
+import { DriveDetailsSection } from '@/components/employer/DriveFormSection';
 import EntityLogo from '@/components/EntityLogo';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { Target, Plus, Video, Building2, Calendar, Users, ChevronDown, Check, ClipboardList, LayoutGrid, List, Search, X, Ban, Pencil } from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import PageError from '@/components/PageError';
+import { reportClientApiFailure } from '@/lib/clientPlatformErrorReport';
+import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
+import { useEmployerPostingCampuses } from '@/hooks/useEmployerPostingCampuses';
 
-const fetcher = (url) => fetch(url).then((r) => r.json());
+const EMPLOYER_DRIVES_API = '/api/employer/drives';
+
+const drivesFetcher = async (url) => {
+  let json = {};
+  try {
+    const res = await fetch(url);
+    json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      void reportClientApiFailure({
+        context: PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_LIST,
+        route: url,
+        statusCode: res.status,
+        responseBody: json,
+      });
+      throw new Error(json.userMessage || json.error || 'Failed to load placement drives');
+    }
+    return json;
+  } catch (err) {
+    if (err instanceof Error && /Failed to load placement drives/i.test(err.message)) throw err;
+    void reportClientApiFailure({
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_LIST,
+      route: url,
+      message: err instanceof Error ? err.message : 'Network error loading drives',
+    });
+    throw err instanceof Error ? err : new Error('Failed to load placement drives');
+  }
+};
+
+const campusesFetcher = (url) => fetch(url).then((r) => r.json());
 
 const STATUS_TABS = [
   { id: '', label: 'All' },
@@ -90,6 +130,12 @@ function canReviewApplicants(drive) {
   return (drive.registered ?? 0) > 0 && drive.status !== 'requested' && drive.status !== 'rejected';
 }
 
+const REVIEW_APPLICANTS_TIP =
+  'Review student applications for this placement drive — shortlist, reject, or move candidates forward';
+const VIEW_DRIVE_TIP =
+  'View placement drive details — campus, role, date, venue, type, status, and registered students';
+const EDIT_DRIVE_TIP = 'Edit drive details — title, date, venue, eligibility, and job description';
+
 function canCancelDrive(drive) {
   return ['requested', 'approved', 'scheduled', 'in_progress'].includes(drive.status);
 }
@@ -98,9 +144,77 @@ function canEditDrive(drive) {
   return canCancelDrive(drive);
 }
 
-function cancelDriveLabel(drive) {
-  return drive.status === 'requested' ? 'Withdraw request' : 'Cancel drive';
+function cancelDriveTooltip(drive) {
+  return drive.status === 'requested'
+    ? 'Withdraw this drive request before the college approves it'
+    : 'Cancel this placement drive and stop accepting new applicants';
 }
+
+function driveDateMs(drive) {
+  if (!drive?.date) return null;
+  const t = new Date(drive.date).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+const DRIVE_SORT_OPTIONS = [
+  {
+    value: 'drive_date_asc',
+    label: 'Drive date (soonest first)',
+    compare: (a, b) => {
+      const da = driveDateMs(a);
+      const db = driveDateMs(b);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da - db;
+    },
+  },
+  {
+    value: 'drive_date_desc',
+    label: 'Drive date (latest first)',
+    compare: (a, b) => DRIVE_SORT_OPTIONS[0].compare(b, a),
+  },
+  {
+    value: 'campus_asc',
+    label: 'Campus (A → Z)',
+    compare: (a, b) =>
+      String(a.college ?? '').localeCompare(String(b.college ?? ''), undefined, { sensitivity: 'base' }),
+  },
+  {
+    value: 'campus_desc',
+    label: 'Campus (Z → A)',
+    compare: (a, b) => DRIVE_SORT_OPTIONS[2].compare(b, a),
+  },
+  {
+    value: 'title_asc',
+    label: 'Drive title (A → Z)',
+    compare: (a, b) =>
+      String(a.role ?? '').localeCompare(String(b.role ?? ''), undefined, { sensitivity: 'base' }),
+  },
+  {
+    value: 'title_desc',
+    label: 'Drive title (Z → A)',
+    compare: (a, b) => DRIVE_SORT_OPTIONS[4].compare(b, a),
+  },
+  {
+    value: 'registered_desc',
+    label: 'Registered (high → low)',
+    compare: (a, b) => (b.registered ?? 0) - (a.registered ?? 0),
+  },
+  {
+    value: 'registered_asc',
+    label: 'Registered (low → high)',
+    compare: (a, b) => (a.registered ?? 0) - (b.registered ?? 0),
+  },
+  {
+    value: 'status_asc',
+    label: 'Status (A → Z)',
+    compare: (a, b) =>
+      String(a.status ?? '').localeCompare(String(b.status ?? ''), undefined, { sensitivity: 'base' }),
+  },
+];
+
+const DEFAULT_DRIVE_SORT = 'drive_date_asc';
 
 export default function EmployerDrivesPage() {
   const { addToast } = useToast();
@@ -113,23 +227,19 @@ export default function EmployerDrivesPage() {
   const [dateFilter, setDateFilter] = useState('');
   const [registrationFilter, setRegistrationFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState(DEFAULT_DRIVE_SORT);
   const [cancellingId, setCancellingId] = useState(null);
+  const [viewDrive, setViewDrive] = useState(null);
   const dropdownRef = useRef(null);
 
   // Campus list
-  const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: false });
-  const approvedCampuses = (campusData?.colleges || []).filter((c) => c.approval_status === 'approved');
+  const { data: campusData } = useSWR('/api/employer/campuses', campusesFetcher, { revalidateOnFocus: false });
+  const approvedCampuses = useEmployerPostingCampuses(campusData, 'drives');
 
-  // Build SWR key — no filter if none/all selected
-  const swrKey = (() => {
-    if (selectedIds.size === 0 || selectedIds.size === approvedCampuses.length) {
-      return '/api/employer/drives';
-    }
-    const params = [...selectedIds].map((id) => `campusId=${id}`).join('&');
-    return `/api/employer/drives?${params}`;
-  })();
-
-  const { data, isLoading, mutate } = useSWR(swrKey, fetcher, { revalidateOnFocus: true });
+  const { data, error, isLoading, mutate } = useSWR(EMPLOYER_DRIVES_API, drivesFetcher, {
+    revalidateOnFocus: true,
+    revalidateOnMount: true,
+  });
   const allDrives = Array.isArray(data?.drives) ? data.drives : [];
 
   const statusCounts = useMemo(() => {
@@ -144,7 +254,10 @@ export default function EmployerDrivesPage() {
   }, [allDrives]);
 
   const filteredDrives = useMemo(() => {
-    return allDrives.filter((drive) => {
+    const campusFilterActiveLocal =
+      selectedIds.size > 0 && selectedIds.size < approvedCampuses.length;
+    const list = allDrives.filter((drive) => {
+      if (campusFilterActiveLocal && !selectedIds.has(drive.tenant_id)) return false;
       if (!matchesStatusFilter(drive.status, statusFilter)) return false;
       if (typeFilter && drive.type !== typeFilter) return false;
       if (!matchesDateFilter(drive.date, dateFilter)) return false;
@@ -153,11 +266,13 @@ export default function EmployerDrivesPage() {
       if (!matchesSearch(drive, searchQuery)) return false;
       return true;
     });
-  }, [allDrives, statusFilter, typeFilter, dateFilter, registrationFilter, searchQuery]);
+    const cmp = DRIVE_SORT_OPTIONS.find((o) => o.value === sortKey)?.compare;
+    return cmp ? [...list].sort(cmp) : list;
+  }, [allDrives, selectedIds, approvedCampuses.length, statusFilter, typeFilter, dateFilter, registrationFilter, searchQuery, sortKey]);
 
   const campusFilterActive = selectedIds.size > 0 && selectedIds.size < approvedCampuses.length;
   const hasActiveFilters = Boolean(
-    statusFilter || typeFilter || dateFilter || registrationFilter || searchQuery.trim() || campusFilterActive,
+    statusFilter || typeFilter || dateFilter || registrationFilter || searchQuery.trim() || campusFilterActive || sortKey !== DEFAULT_DRIVE_SORT,
   );
 
   const clearFilters = useCallback(() => {
@@ -166,6 +281,7 @@ export default function EmployerDrivesPage() {
     setDateFilter('');
     setRegistrationFilter('');
     setSearchQuery('');
+    setSortKey(DEFAULT_DRIVE_SORT);
     setSelectedIds(new Set());
   }, []);
 
@@ -208,6 +324,14 @@ export default function EmployerDrivesPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (!viewDrive) return;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [viewDrive]);
+
   const toggleCampus = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -222,7 +346,9 @@ export default function EmployerDrivesPage() {
       ? approvedCampuses.find((c) => selectedIds.has(c.id))?.name ?? '1 campus'
       : `${selectedIds.size} campuses`;
 
-
+  if (error) {
+    return <PageError error={error} reset={() => mutate()} />;
+  }
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -324,6 +450,14 @@ export default function EmployerDrivesPage() {
             <select id="drive-registration-filter" className="form-select" value={registrationFilter} onChange={(e) => setRegistrationFilter(e.target.value)}>
               {REGISTRATION_OPTIONS.map((o) => (
                 <option key={o.id || 'all'} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: '0 1 220px', minWidth: 200 }}>
+            <label className="form-label" htmlFor="drive-sort">Sort</label>
+            <select id="drive-sort" className="form-select" value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+              {DRIVE_SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
           </div>
@@ -479,109 +613,164 @@ export default function EmployerDrivesPage() {
 
       {/* ── Loading skeletons ── */}
       {isLoading && (
-        <>
-          <PageLoading message="Loading placement drives…" inline delayMs={0} />
+        <PageLoading message="Loading placement drives…" inline>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} aria-hidden="true">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="card" style={{ padding: '1.5rem' }}>
-              <div className="skeleton" style={{ height: '1.2rem', width: '45%', borderRadius: '6px', marginBottom: '0.6rem' }} />
-              <div className="skeleton" style={{ height: '0.9rem', width: '65%', borderRadius: '6px', marginBottom: '1.25rem' }} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                {[1, 2, 3, 4].map((j) => (
-                  <div key={j} className="skeleton" style={{ height: '3rem', borderRadius: '8px' }} />
-                ))}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="card" style={{ padding: '1.5rem' }}>
+                <div className="skeleton" style={{ height: '1.2rem', width: '45%', borderRadius: '6px', marginBottom: '0.6rem' }} />
+                <div className="skeleton" style={{ height: '0.9rem', width: '65%', borderRadius: '6px', marginBottom: '1.25rem' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="skeleton" style={{ height: '3rem', borderRadius: '8px' }} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-        </>
+            ))}
+          </div>
+        </PageLoading>
       )}
 
       {/* ── Drive list ── */}
       {!isLoading && viewMode === 'list' && filteredDrives.length > 0 && (
-        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.4fr 0.9fr 0.75fr 0.85fr 1fr 0.7fr auto', gap: 0, background: 'var(--bg-secondary)', padding: '0.65rem 1.25rem', borderBottom: '1px solid var(--border-default)' }}>
-            {['Campus', 'Drive title', 'Date', 'Type', 'Status', 'Venue', 'Registered', ''].map((h) => (
-              <span key={h || 'actions'} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>{h}</span>
-            ))}
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+          <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
+            <table className="data-table" style={{ minWidth: 960 }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)' }}>
+                  <th style={{ paddingLeft: '1.25rem' }}>Campus</th>
+                  <th>Drive title</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Venue</th>
+                  <th>Registered</th>
+                  <th style={{ textAlign: 'right', paddingRight: '1.25rem', width: 1 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDrives.map((drive) => (
+                  <tr key={drive.id}>
+                    <td style={{ paddingLeft: '1.25rem', maxWidth: 220 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                        <EntityLogo name={drive.college} size="sm" shape="rounded" />
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
+                            color: 'var(--text-primary)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {drive.college}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ maxWidth: 200 }}>
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          color: 'var(--text-primary)',
+                          display: 'block',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {drive.role}
+                      </span>
+                    </td>
+                    <td className="text-sm text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                      {drive.date ? formatDate(drive.date) : '—'}
+                    </td>
+                    <td>
+                      <DriveTypeBadge type={drive.type} />
+                    </td>
+                    <td>
+                      <span
+                        className={`badge badge-${getStatusColor(drive.status)} badge-dot`}
+                        style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+                      >
+                        {formatStatus(drive.status)}
+                      </span>
+                    </td>
+                    <td
+                      className="text-sm"
+                      style={{
+                        maxWidth: 160,
+                        color: drive.venue?.trim() ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {drive.venue?.trim() || '—'}
+                    </td>
+                    <td className="text-sm text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <Users size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} aria-hidden />
+                        {drive.registered ?? 0}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', paddingRight: '1.25rem', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', justifyContent: 'flex-end', gap: '0.35rem', flexWrap: 'wrap' }}>
+                        <StandardTableIconAction
+                          action="view"
+                          variant="ghost"
+                          showLabel={false}
+                          tooltip={VIEW_DRIVE_TIP}
+                          onClick={() => setViewDrive(drive)}
+                        />
+                        {canReviewApplicants(drive) && (
+                          <Link
+                            href={`/dashboard/employer/applications?tab=drives&driveId=${encodeURIComponent(drive.id)}`}
+                            className="btn btn-primary btn-icon btn-sm"
+                            title={REVIEW_APPLICANTS_TIP}
+                            aria-label={REVIEW_APPLICANTS_TIP}
+                          >
+                            <ClipboardList size={16} aria-hidden />
+                          </Link>
+                        )}
+                        {canEditDrive(drive) && (
+                          <Link
+                            href={`/dashboard/employer/drives/edit/${drive.id}`}
+                            className="btn btn-secondary btn-icon btn-sm"
+                            title={EDIT_DRIVE_TIP}
+                            aria-label={EDIT_DRIVE_TIP}
+                          >
+                            <Pencil size={16} aria-hidden />
+                          </Link>
+                        )}
+                        {canCancelDrive(drive) && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-icon btn-sm"
+                            disabled={cancellingId === drive.id}
+                            onClick={() => cancelDrive(drive)}
+                            title={
+                              cancellingId === drive.id
+                                ? 'Cancelling drive…'
+                                : cancelDriveTooltip(drive)
+                            }
+                            aria-label={
+                              cancellingId === drive.id
+                                ? 'Cancelling drive'
+                                : cancelDriveTooltip(drive)
+                            }
+                            style={{ color: 'var(--danger-600)' }}
+                          >
+                            <Ban size={16} aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {filteredDrives.map((drive, idx) => (
-            <div
-              key={drive.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1.6fr 1.4fr 0.9fr 0.75fr 0.85fr 1fr 0.7fr auto',
-                gap: 0,
-                alignItems: 'center',
-                padding: '0.9rem 1.25rem',
-                borderBottom: idx < filteredDrives.length - 1 ? '1px solid var(--border-default)' : 'none',
-                transition: 'background 0.15s ease',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0, paddingRight: '0.75rem' }}>
-                <EntityLogo name={drive.college} size="sm" shape="rounded" />
-                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {drive.college}
-                </span>
-              </div>
-              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '0.75rem' }}>
-                {drive.role}
-              </span>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                {drive.date ? formatDate(drive.date) : '—'}
-              </span>
-              <DriveTypeBadge type={drive.type} />
-              <span className={`badge badge-${getStatusColor(drive.status)} badge-dot`} style={{ fontSize: '0.72rem', whiteSpace: 'nowrap', width: 'fit-content' }}>
-                {formatStatus(drive.status)}
-              </span>
-              <span style={{ fontSize: '0.82rem', color: drive.venue?.trim() ? 'var(--text-secondary)' : 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '0.5rem' }}>
-                {drive.venue?.trim() || '—'}
-              </span>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
-                <Users size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                {drive.registered ?? 0}
-              </span>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', flexWrap: 'wrap' }}>
-                {canReviewApplicants(drive) && (
-                  <Link
-                    href={`/dashboard/employer/applications?tab=drives&driveId=${encodeURIComponent(drive.id)}`}
-                    className="btn btn-primary btn-sm"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
-                  >
-                    <ClipboardList size={13} aria-hidden />
-                    Review
-                  </Link>
-                )}
-                {canEditDrive(drive) && (
-                  <Link
-                    href={`/dashboard/employer/drives/edit/${drive.id}`}
-                    className="btn btn-secondary btn-sm"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
-                  >
-                    <Pencil size={13} aria-hidden />
-                    Edit
-                  </Link>
-                )}
-                {canCancelDrive(drive) && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    disabled={cancellingId === drive.id}
-                    onClick={() => cancelDrive(drive)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', color: 'var(--danger-600)' }}
-                  >
-                    <Ban size={13} aria-hidden />
-                    {cancellingId === drive.id ? 'Cancelling…' : (drive.status === 'requested' ? 'Withdraw' : 'Cancel')}
-                  </button>
-                )}
-                {!canReviewApplicants(drive) && !canEditDrive(drive) && !canCancelDrive(drive) && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>—</span>
-                )}
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
@@ -602,36 +791,54 @@ export default function EmployerDrivesPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <StandardTableIconAction
+                    action="view"
+                    variant="ghost"
+                    showLabel={false}
+                    tooltip={VIEW_DRIVE_TIP}
+                    onClick={() => setViewDrive(drive)}
+                  />
                   {canReviewApplicants(drive) && (
                     <Link
                       href={`/dashboard/employer/applications?tab=drives&driveId=${encodeURIComponent(drive.id)}`}
-                      className="btn btn-primary btn-sm"
-                      style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                      className="btn btn-primary btn-icon btn-sm"
+                      style={{ flexShrink: 0 }}
+                      title={REVIEW_APPLICANTS_TIP}
+                      aria-label={REVIEW_APPLICANTS_TIP}
                     >
-                      <ClipboardList size={14} aria-hidden />
-                      Review applicants
+                      <ClipboardList size={16} aria-hidden />
                     </Link>
                   )}
                   {canEditDrive(drive) && (
                     <Link
                       href={`/dashboard/employer/drives/edit/${drive.id}`}
-                      className="btn btn-secondary btn-sm"
-                      style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                      className="btn btn-secondary btn-icon btn-sm"
+                      style={{ flexShrink: 0 }}
+                      title={EDIT_DRIVE_TIP}
+                      aria-label={EDIT_DRIVE_TIP}
                     >
-                      <Pencil size={14} aria-hidden />
-                      Edit
+                      <Pencil size={16} aria-hidden />
                     </Link>
                   )}
                   {canCancelDrive(drive) && (
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="btn btn-ghost btn-icon btn-sm"
                       disabled={cancellingId === drive.id}
                       onClick={() => cancelDrive(drive)}
-                      style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--danger-600)' }}
+                      style={{ flexShrink: 0, color: 'var(--danger-600)' }}
+                      title={
+                        cancellingId === drive.id
+                          ? 'Cancelling drive…'
+                          : cancelDriveTooltip(drive)
+                      }
+                      aria-label={
+                        cancellingId === drive.id
+                          ? 'Cancelling drive'
+                          : cancelDriveTooltip(drive)
+                      }
                     >
-                      <Ban size={14} aria-hidden />
-                      {cancellingId === drive.id ? 'Cancelling…' : cancelDriveLabel(drive)}
+                      <Ban size={16} aria-hidden />
                     </button>
                   )}
                 </div>
@@ -721,6 +928,194 @@ export default function EmployerDrivesPage() {
         </div>
       )}
 
+      {viewDrive ? (
+        <DriveDetailsDialog drive={viewDrive} onClose={() => setViewDrive(null)} />
+      ) : null}
+
+    </div>
+  );
+}
+
+function DriveDetailsDialog({ drive, onClose }) {
+  const ctcBreakup = drive.ctc_breakup || drive.ctcBreakup;
+  const jobType = drive.job_type || drive.jobType;
+  const skills = drive.skills_required || drive.skillsRequired;
+  const locations = drive.locations;
+  const salaryLabel = formatSalaryRange(
+    drive.salary_min ?? drive.salaryMin,
+    drive.salary_max ?? drive.salaryMax,
+  );
+  const modalBackdrop = {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '1rem',
+    background: 'rgba(15, 23, 42, 0.55)',
+  };
+
+  return (
+    <div style={modalBackdrop} role="presentation" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drive-details-title"
+        className="card"
+        style={{
+          maxWidth: 520,
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          padding: '1.25rem',
+          position: 'relative',
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-lg)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          aria-label="Close"
+          style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}
+          onClick={onClose}
+        >
+          <X size={18} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingRight: '2rem' }}>
+          <EntityLogo name={drive.college} size="sm" shape="rounded" />
+          <div>
+            <p className="text-sm text-secondary" style={{ margin: 0 }}>
+              {drive.college}
+            </p>
+            <h2 id="drive-details-title" style={{ fontSize: '1.1rem', margin: '0.25rem 0 0' }}>
+              {drive.role}
+            </h2>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.85rem' }}>
+          <div>
+            <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Status</div>
+            <span className={`badge badge-${getStatusColor(drive.status)} badge-dot`}>{formatStatus(drive.status)}</span>
+          </div>
+          <div>
+            <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Drive date</div>
+            <div className="text-sm font-semibold">{drive.date ? formatDate(drive.date) : '—'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Type</div>
+            <DriveTypeBadge type={drive.type} />
+          </div>
+          <div>
+            <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Registered</div>
+            <div className="text-sm font-semibold">{drive.registered ?? 0} students</div>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Venue</div>
+            <div className="text-sm">{drive.venue?.trim() || '—'}</div>
+          </div>
+        </div>
+
+        {(drive.description || '').trim() ? (
+          <DriveDetailsSection title="Job description">
+            <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+              {drive.description.trim()}
+            </p>
+          </DriveDetailsSection>
+        ) : null}
+
+        <DriveDetailsSection title="Role & compensation">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Role type</div>
+              <div className="text-sm font-semibold">
+                {PLACEMENT_DRIVE_JOB_TYPE_LABELS[jobType] || jobType || '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Openings</div>
+              <div className="text-sm font-semibold">{drive.max_students ?? drive.vacancies ?? '—'}</div>
+            </div>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>CTC band (public)</div>
+              <div className="text-sm font-semibold">{salaryLabel}</div>
+            </div>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Skills</div>
+              <div className="text-sm">{Array.isArray(skills) && skills.length ? skills.join(', ') : '—'}</div>
+            </div>
+            {Array.isArray(locations) && locations.length ? (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Work locations</div>
+                <div className="text-sm">{locations.join(', ')}</div>
+              </div>
+            ) : null}
+          </div>
+        </DriveDetailsSection>
+
+        <DriveDetailsSection title="Eligibility">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Minimum CGPA</div>
+              <div className="text-sm font-semibold">
+                {formatEmployerMinCgpa(drive.min_cgpa ?? drive.minCgpa)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Eligible branches</div>
+              <div className="text-sm font-semibold">
+                {formatEligibleBranchesLabel(drive.eligible_branches ?? drive.eligibleBranches)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Max backlogs</div>
+              <div className="text-sm font-semibold">
+                {drive.max_backlogs ?? drive.maxBacklogs ?? '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-secondary" style={{ marginBottom: '0.25rem' }}>Batch year</div>
+              <div className="text-sm font-semibold">{drive.batch_year ?? drive.batchYear ?? '—'}</div>
+            </div>
+          </div>
+          {formatEmployerMinCgpa(drive.min_cgpa ?? drive.minCgpa) === '—' ? (
+            <p className="text-xs text-secondary" style={{ margin: '0.65rem 0 0' }}>
+              No drive-specific eligibility criteria set — campus placement rules still apply.
+            </p>
+          ) : null}
+        </DriveDetailsSection>
+
+        {ctcBreakup ? (
+          <DriveDetailsSection title="Compensation (internal)">
+            <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+              {ctcBreakup}
+            </p>
+            <p className="text-xs text-tertiary" style={{ margin: '0.35rem 0 0' }}>
+              Not shown to the college in the dashboard.
+            </p>
+          </DriveDetailsSection>
+        ) : null}
+        <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {canReviewApplicants(drive) ? (
+            <Link
+              href={`/dashboard/employer/applications?tab=drives&driveId=${encodeURIComponent(drive.id)}`}
+              className="btn btn-primary btn-sm"
+            >
+              Review applications
+            </Link>
+          ) : null}
+          {canEditDrive(drive) ? (
+            <Link href={`/dashboard/employer/drives/edit/${drive.id}`} className="btn btn-secondary btn-sm">
+              Edit drive
+            </Link>
+          ) : null}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

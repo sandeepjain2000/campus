@@ -1,5 +1,7 @@
 /** Shared college profile helpers for super-admin screens. */
 
+import { emptyInstitutionClassifications } from '@/lib/tenantInstitutionClassifications';
+
 export function collegeToForm(c) {
   return {
     name: c?.name || '',
@@ -12,6 +14,10 @@ export function collegeToForm(c) {
     naac: c?.naac || '',
     nirfRank: c?.nirfRank != null ? String(c.nirfRank) : '',
     active: c?.active !== false,
+    institutionClassifications: {
+      ...emptyInstitutionClassifications(),
+      ...(c?.institutionClassifications || {}),
+    },
   };
 }
 

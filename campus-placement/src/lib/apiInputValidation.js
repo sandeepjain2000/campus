@@ -2,8 +2,8 @@
  * Server-side validation using the same rules as UI (inputConstraints).
  */
 
-import { validateFieldOrError, FIELD_IDS, validateSalaryPair } from '@/lib/inputConstraints';
-import { validateEducationDetails } from '@/lib/validators';
+import { validateFieldOrError, FIELD_IDS, validateSalaryPair, validateStudentBacklogPair } from '@/lib/inputConstraints';
+import { validateEducationDetails, validateStudentProfileEmails } from '@/lib/validators';
 
 export { FIELD_IDS };
 
@@ -17,18 +17,27 @@ export function validateEducationDetailsPayload(educationDetails) {
   return validateEducationDetails(educationDetails);
 }
 
+export function validateStudentProfileEmailsPayload(fields) {
+  const err = validateStudentProfileEmails(fields);
+  return err || null;
+}
+
 export function validateStudentAcademicPayload(fields) {
   return rejectIfInvalid([
     validateFieldOrError(FIELD_IDS.STUDENT_CGPA, fields.cgpa),
     validateFieldOrError(FIELD_IDS.STUDENT_PERCENT, fields.tenthPercentage, { label: 'Class X %' }),
     validateFieldOrError(FIELD_IDS.STUDENT_PERCENT, fields.twelfthPercentage, { label: 'Class XII %' }),
     validateFieldOrError(FIELD_IDS.STUDENT_PERCENT, fields.diplomaPercentage, { label: 'Diploma %' }),
-    validateFieldOrError(FIELD_IDS.STUDENT_BATCH_YEAR, fields.batchYear),
+    validateFieldOrError(FIELD_IDS.STUDENT_BATCH_YEAR, fields.batchYear, {
+      isAlumni: Boolean(fields.isAlumni),
+    }),
     validateFieldOrError(FIELD_IDS.STUDENT_GRAD_YEAR, fields.graduationYear, {
       batchYear: fields.batchYear,
+      isAlumni: Boolean(fields.isAlumni),
     }),
     validateFieldOrError(FIELD_IDS.STUDENT_BACKLOGS_ACTIVE, fields.backlogsActive),
     validateFieldOrError(FIELD_IDS.STUDENT_BACKLOGS_TOTAL, fields.backlogsHistory),
+    validateStudentBacklogPair(fields.backlogsActive, fields.backlogsHistory),
     validateSalaryPair(
       fields.expectedSalaryMin,
       fields.expectedSalaryMax,
@@ -88,6 +97,10 @@ export function validateEmployerJobPayload({ salaryMin, salaryMax, minCgpa, vaca
 }
 
 /** Drive date on employer request/edit forms (required when UI shows *). */
+export function validateTitlePayload(title, { label = 'Title', required = true, maxLength } = {}) {
+  return validateFieldOrError(FIELD_IDS.COMMON_TITLE, title, { label, required, maxLength });
+}
+
 export function validateEmployerDriveDate(driveDate, { required = true } = {}) {
   if (driveDate == null || String(driveDate).trim() === '') {
     return required ? 'Drive date is required.' : null;

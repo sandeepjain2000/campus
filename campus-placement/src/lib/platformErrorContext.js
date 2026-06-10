@@ -1,0 +1,20 @@
+/** Stable context keys for platform_error_logs (super-admin Error logs UI). */
+export const PLATFORM_ERROR_CONTEXT = {
+  EMPLOYER_DRIVE_CREATE: 'employer_drive_create',
+  EMPLOYER_DRIVE_LIST: 'employer_drive_list',
+  EMPLOYER_DRIVE_GET: 'employer_drive_get',
+  EMPLOYER_DRIVE_UPDATE: 'employer_drive_update',
+  EMPLOYER_DRIVE_CANCEL: 'employer_drive_cancel',
+  EMPLOYER_CALENDAR: 'employer_calendar',
+  EMPLOYER_PROFILE_READ: 'employer_profile_read',
+  EMPLOYER_PROFILE_UPDATE: 'employer_profile_update',
+  EMPLOYER_JOB_LIST: 'employer_job_list',
+  EMPLOYER_JOB_CREATE: 'employer_job_create',
+  EMPLOYER_JOB_UPDATE: 'employer_job_update',
+  EMPLOYER_CAMPUS_LIST: 'employer_campus_list',
+  EMPLOYER_CAMPUS_REQUEST: 'employer_campus_request',
+  EMPLOYER_DASHBOARD: 'employer_dashboard',
+  EMPLOYER_APPLICATION_LIST: 'employer_application_list',
+  EMPLOYER_APPLICATION_UPDATE: 'employer_application_update',
+  CLIENT_API_FAILURE: 'client_api_failure',
+};

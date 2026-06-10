@@ -62,3 +62,19 @@ export async function offerNotDeletedSql(alias = 'o') {
   }
   return '';
 }
+
+/** applications soft-delete filter — noop when column missing. */
+export async function applicationNotDeletedSql(alias = 'a') {
+  if (await hasColumn('applications', 'is_deleted')) {
+    return `AND COALESCE(${alias}.is_deleted, false) = false`;
+  }
+  return '';
+}
+
+/** placement_drives soft-delete filter — noop when column missing. */
+export async function placementDriveNotDeletedSql(alias = 'd') {
+  if (await hasColumn('placement_drives', 'is_deleted')) {
+    return `AND COALESCE(${alias}.is_deleted, false) = false`;
+  }
+  return '';
+}

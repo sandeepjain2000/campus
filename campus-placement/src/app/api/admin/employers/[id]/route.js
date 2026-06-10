@@ -8,6 +8,8 @@ import {
   formatEmployerNameInUseMessage,
   normalizeOrganizationName,
 } from '@/lib/organizationNames';
+import { validateAdminEmployerForm } from '@/lib/adminEmployerForm';
+import { setEmployerUserActive } from '@/lib/adminOrganizationActive';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -92,8 +94,22 @@ export async function PATCH(request, { params }) {
     if (!isUuid(id)) return NextResponse.json({ error: 'Invalid employer id' }, { status: 400 });
 
     const body = await request.json();
-    const name = normalizeOrganizationName(body?.name ?? body?.companyName ?? '');
-    if (!name) return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
+    const existing = await loadEmployer(id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Employer not found' }, { status: 404 });
+    }
+
+    const formErr = validateAdminEmployerForm({
+      name: body?.name ?? body?.companyName ?? existing.company_name,
+      contactPerson: body?.contactPerson ?? body?.contact_person ?? existing.contact_person,
+      contactEmail: body?.contactEmail ?? body?.contact_email ?? existing.contact_email,
+      contactPhone: body?.contactPhone ?? body?.contact_phone ?? existing.contact_phone,
+    });
+    if (formErr) {
+      return NextResponse.json({ error: formErr }, { status: 400 });
+    }
+
+    const name = normalizeOrganizationName(body?.name ?? body?.companyName ?? existing.company_name);
 
     try {
       await assertEmployerNameAvailable(query, name, { excludeEmployerId: id });
@@ -107,15 +123,42 @@ export async function PATCH(request, { params }) {
       throw e;
     }
 
-    const industry = String(body?.industry ?? '').trim();
-    const website = String(body?.website ?? '').trim();
-    const headquarters = String(body?.headquarters ?? '').trim();
-    const contactPerson = String(body?.contactPerson ?? body?.contact_person ?? '').trim();
-    const contactEmail = String(body?.contactEmail ?? body?.contact_email ?? '').trim();
-    const contactPhone = String(body?.contactPhone ?? body?.contact_phone ?? '').trim();
-    const verified = Boolean(body?.verified ?? body?.is_verified);
-    const blacklisted = Boolean(body?.blacklisted ?? body?.is_blacklisted);
-    const blacklistReason = String(body?.blacklistReason ?? body?.blacklist_reason ?? '').trim();
+    const industry =
+      body?.industry !== undefined ? String(body.industry ?? '').trim() : String(existing.industry ?? '').trim();
+    const website =
+      body?.website !== undefined ? String(body.website ?? '').trim() : String(existing.website ?? '').trim();
+    const headquarters =
+      body?.headquarters !== undefined
+        ? String(body.headquarters ?? '').trim()
+        : String(existing.headquarters ?? '').trim();
+    const contactPerson =
+      body?.contactPerson !== undefined || body?.contact_person !== undefined
+        ? String(body?.contactPerson ?? body?.contact_person ?? '').trim()
+        : String(existing.contact_person ?? '').trim();
+    const contactEmail =
+      body?.contactEmail !== undefined || body?.contact_email !== undefined
+        ? String(body?.contactEmail ?? body?.contact_email ?? '').trim()
+        : String(existing.contact_email ?? '').trim();
+    const contactPhone =
+      body?.contactPhone !== undefined || body?.contact_phone !== undefined
+        ? String(body?.contactPhone ?? body?.contact_phone ?? '').trim()
+        : String(existing.contact_phone ?? '').trim();
+    const verified =
+      body?.verified !== undefined || body?.is_verified !== undefined
+        ? Boolean(body?.verified ?? body?.is_verified)
+        : Boolean(existing.is_verified);
+    const blacklisted =
+      body?.blacklisted !== undefined || body?.is_blacklisted !== undefined
+        ? Boolean(body?.blacklisted ?? body?.is_blacklisted)
+        : Boolean(existing.is_blacklisted);
+    const blacklistReason =
+      body?.blacklistReason !== undefined || body?.blacklist_reason !== undefined
+        ? String(body?.blacklistReason ?? body?.blacklist_reason ?? '').trim()
+        : String(existing.blacklist_reason ?? '').trim();
+    const accountActive =
+      body?.accountActive !== undefined || body?.active !== undefined
+        ? Boolean(body?.accountActive ?? body?.active)
+        : Boolean(existing.account_active);
 
     const updated = await query(
       `UPDATE employer_profiles
@@ -150,6 +193,10 @@ export async function PATCH(request, { params }) {
 
     if (!updated.rowCount) {
       return NextResponse.json({ error: 'Employer not found' }, { status: 404 });
+    }
+
+    if (accountActive !== Boolean(existing.account_active)) {
+      await setEmployerUserActive(query, existing.user_id, accountActive);
     }
 
     const row = await loadEmployer(id);

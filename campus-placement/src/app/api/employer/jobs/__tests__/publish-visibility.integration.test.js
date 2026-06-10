@@ -60,6 +60,25 @@ describe('PATCH /api/employer/jobs publish visibility', () => {
     });
   });
 
+  it('closes a published internship via action close', async () => {
+    mockQuery.mockImplementation(async (sql) => {
+      if (String(sql).includes('employer_profiles')) {
+        return { rows: [{ id: EMPLOYER_ID, company_name: 'TechCorp' }] };
+      }
+      if (String(sql).includes("status = 'closed'")) {
+        return { rows: [{ id: JOB_ID, title: 'Summer Intern', job_type: 'internship', status: 'closed' }] };
+      }
+      return { rows: [] };
+    });
+
+    const res = await PATCH(buildPatchRequest({ action: 'close', id: JOB_ID }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.job.status).toBe('closed');
+  });
+
   it('returns 400 when moving a published posting back to draft', async () => {
     mockTransaction.mockImplementation(async (fn) => {
       const client = {

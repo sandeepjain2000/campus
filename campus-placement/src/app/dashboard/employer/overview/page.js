@@ -13,6 +13,8 @@ import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import PageLoading from '@/components/PageLoading';
 import { useToast } from '@/components/ToastProvider';
+import { EMPLOYER_ALUMNI_JOBS_PATH } from '@/lib/employerAlumniRoutes';
+import { useEmployerScopedApiPath } from '@/lib/employerAcademicYearContext';
 
 const fetcher = async (url) => {
   const res = await fetch(url, { credentials: 'include' });
@@ -100,8 +102,10 @@ export default function EmployerOverviewPage() {
     };
   }, [router]);
 
+  const dashboardUrl = useEmployerScopedApiPath('/api/employer/dashboard');
+
   const { data, error, isLoading } = useSWR(
-    activeCampus ? `/api/employer/dashboard?campusId=${activeCampus.id}` : null,
+    activeCampus ? dashboardUrl : null,
     fetcher
   );
 
@@ -207,7 +211,7 @@ export default function EmployerOverviewPage() {
           <Link href="/dashboard/employer/assessment-summary" className="btn gradient-banner-glass-btn" style={{ backdropFilter: 'blur(10px)' }}>
             Assessment Map
           </Link>
-          <Link href="/dashboard/employer/jobs" className="btn gradient-banner-solid-btn" style={{ border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <Link href={EMPLOYER_ALUMNI_JOBS_PATH} className="btn gradient-banner-solid-btn" style={{ border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             + Post New Job
           </Link>
         </div>

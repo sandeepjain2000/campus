@@ -14,6 +14,17 @@ import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { validateEmployerOfferPayload } from '@/lib/apiInputValidation';
+import EmployerListFormLayout from '@/components/employer/EmployerListFormLayout';
+
+const emptyOfferForm = {
+  studentId: '',
+  driveId: '',
+  jobTitle: '',
+  salary: '',
+  location: '',
+  joiningDate: '',
+  deadlineAt: '',
+};
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -33,15 +44,7 @@ export default function EmployerOffersPage() {
   const [sortOption, setSortOption] = useState('date_desc');
   const [editId, setEditId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
-  const [form, setForm] = useState({
-    studentId: '',
-    driveId: '',
-    jobTitle: '',
-    salary: '',
-    location: '',
-    joiningDate: '',
-    deadlineAt: '',
-  });
+  const [form, setForm] = useState(emptyOfferForm);
   const [editForm, setEditForm] = useState({
     driveId: '',
     jobTitle: '',
@@ -103,7 +106,7 @@ export default function EmployerOffersPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Failed to create offer');
       setShowCreate(false);
-      setForm({ studentId: '', driveId: '', jobTitle: '', salary: '', location: '', joiningDate: '', deadlineAt: '' });
+      setForm(emptyOfferForm);
       await mutate();
       addToast('Offer created successfully.', 'success');
     } catch (e) {
@@ -265,6 +268,126 @@ export default function EmployerOffersPage() {
   const pendingCount = offers.filter((offer) => offer.status === 'pending').length;
   const declinedCount = offers.filter((offer) => ['rejected', 'declined'].includes(offer.status)).length;
 
+  const closeCreateForm = () => {
+    setShowCreate(false);
+    setForm(emptyOfferForm);
+  };
+
+  const closeEditForm = () => setEditId(null);
+
+  if (showCreate) {
+    return (
+      <EmployerListFormLayout
+        title="Create offer"
+        subtitle="Creates a pending offer the student can accept or decline on My Offers."
+        onBack={closeCreateForm}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button type="button" className="btn btn-secondary" disabled={submitting} onClick={closeCreateForm}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary" onClick={submitCreateOffer} disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create Offer'}
+            </button>
+          </div>
+        }
+      >
+        <div className="grid grid-2">
+          <div className="form-group">
+            <label className="form-label">Student</label>
+            <select className="form-select" value={form.studentId} onChange={(e) => setForm((p) => ({ ...p, studentId: e.target.value }))}>
+              <option value="">Select student</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}{s.collegeName ? ` — ${s.collegeName}` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Drive (optional)</label>
+            <select className="form-select" value={form.driveId} onChange={(e) => setForm((p) => ({ ...p, driveId: e.target.value }))}>
+              <option value="">Not linked</option>
+              {drives.map((d) => (
+                <option key={d.id} value={d.id}>{d.title} {d.drive_date ? `(${formatDate(d.drive_date)})` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Job title</label>
+            <input className="form-input" value={form.jobTitle} onChange={(e) => setForm((p) => ({ ...p, jobTitle: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Salary (INR annual)</label>
+            <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={form.salary} onChange={(v) => setForm((p) => ({ ...p, salary: v }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Location</label>
+            <input className="form-input" value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Joining date</label>
+            <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} context={{ deadline: form.deadlineAt }} value={form.joiningDate} onChange={(v) => setForm((p) => ({ ...p, joiningDate: v }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Response deadline</label>
+            <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={form.deadlineAt} onChange={(v) => setForm((p) => ({ ...p, deadlineAt: v }))} />
+          </div>
+        </div>
+      </EmployerListFormLayout>
+    );
+  }
+
+  if (editId) {
+    return (
+      <EmployerListFormLayout
+        title="Edit offer"
+        subtitle="Updates terms for this row. Use Reopen to pending on the list to roll back status."
+        onBack={closeEditForm}
+        footer={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="button" className="btn btn-primary" onClick={submitEditOffer} disabled={submitting}>
+              {submitting ? 'Saving…' : 'Save changes'}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={closeEditForm} disabled={submitting}>
+              Cancel
+            </button>
+          </div>
+        }
+      >
+        <div className="grid grid-2">
+          <div className="form-group">
+            <label className="form-label">Drive (optional)</label>
+            <select className="form-select" value={editForm.driveId} onChange={(e) => setEditForm((p) => ({ ...p, driveId: e.target.value }))}>
+              <option value="">Not linked</option>
+              {drives.map((d) => (
+                <option key={d.id} value={d.id}>{d.title} {d.drive_date ? `(${formatDate(d.drive_date)})` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Job title</label>
+            <input className="form-input" value={editForm.jobTitle} onChange={(e) => setEditForm((p) => ({ ...p, jobTitle: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Salary (INR annual)</label>
+            <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={editForm.salary} onChange={(v) => setEditForm((p) => ({ ...p, salary: v }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Location</label>
+            <input className="form-input" value={editForm.location} onChange={(e) => setEditForm((p) => ({ ...p, location: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Joining date</label>
+            <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} context={{ deadline: editForm.deadlineAt }} value={editForm.joiningDate} onChange={(v) => setEditForm((p) => ({ ...p, joiningDate: v }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Response deadline</label>
+            <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={editForm.deadlineAt} onChange={(v) => setEditForm((p) => ({ ...p, deadlineAt: v }))} />
+          </div>
+        </div>
+      </EmployerListFormLayout>
+    );
+  }
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -292,27 +415,14 @@ export default function EmployerOffersPage() {
             fullCount={offers.length}
             getRows={getOffersCsv}
           />
-          {showCreate ? (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                setShowCreate(false);
-                setEditId(null);
-              }}
-            >
-              Close
-            </button>
-          ) : (
-            <StandardTableIconAction
-              action="add"
-              variant="primary"
-              onClick={() => {
-                setShowCreate(true);
-                setEditId(null);
-              }}
-            />
-          )}
+          <StandardTableIconAction
+            action="add"
+            variant="primary"
+            onClick={() => {
+              setShowCreate(true);
+              setEditId(null);
+            }}
+          />
         </div>
       </div>
 
@@ -330,107 +440,6 @@ export default function EmployerOffersPage() {
           Each row is <strong>one student</strong>. If five students received the same package, you will see <strong>five lines</strong> — that is expected.
         </p>
       </div>
-
-      {editId && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h3 className="card-title">Edit offer</h3>
-          <p className="text-sm text-secondary" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            Updates terms for this row. Use <strong>Reopen to pending</strong> in the table to roll back status.
-          </p>
-          <div className="grid grid-2">
-            <div className="form-group">
-              <label className="form-label">Drive (optional)</label>
-              <select className="form-select" value={editForm.driveId} onChange={(e) => setEditForm((p) => ({ ...p, driveId: e.target.value }))}>
-                <option value="">Not linked</option>
-                {drives.map((d) => (
-                  <option key={d.id} value={d.id}>{d.title} {d.drive_date ? `(${formatDate(d.drive_date)})` : ''}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Job title</label>
-              <input className="form-input" value={editForm.jobTitle} onChange={(e) => setEditForm((p) => ({ ...p, jobTitle: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Salary (INR annual)</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={editForm.salary} onChange={(v) => setEditForm((p) => ({ ...p, salary: v }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Location</label>
-              <input className="form-input" value={editForm.location} onChange={(e) => setEditForm((p) => ({ ...p, location: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Joining date</label>
-              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} context={{ deadline: editForm.deadlineAt }} value={editForm.joiningDate} onChange={(v) => setEditForm((p) => ({ ...p, joiningDate: v }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Response deadline</label>
-              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={editForm.deadlineAt} onChange={(v) => setEditForm((p) => ({ ...p, deadlineAt: v }))} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-            <button type="button" className="btn btn-primary" onClick={submitEditOffer} disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save changes'}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={() => setEditId(null)} disabled={submitting}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showCreate && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">Create offer</h3>
-          </div>
-          <div className="grid grid-2">
-            <div className="form-group">
-              <label className="form-label">Student</label>
-              <select className="form-select" value={form.studentId} onChange={(e) => setForm((p) => ({ ...p, studentId: e.target.value }))}>
-                <option value="">Select student</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}{s.collegeName ? ` — ${s.collegeName}` : ''}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Drive (optional)</label>
-              <select className="form-select" value={form.driveId} onChange={(e) => setForm((p) => ({ ...p, driveId: e.target.value }))}>
-                <option value="">Not linked</option>
-                {drives.map((d) => (
-                  <option key={d.id} value={d.id}>{d.title} {d.drive_date ? `(${formatDate(d.drive_date)})` : ''}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Job title</label>
-              <input className="form-input" value={form.jobTitle} onChange={(e) => setForm((p) => ({ ...p, jobTitle: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Salary (INR annual)</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_OFFER_SALARY} value={form.salary} onChange={(v) => setForm((p) => ({ ...p, salary: v }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Location</label>
-              <input className="form-input" value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Joining date</label>
-              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_JOINING} context={{ deadline: form.deadlineAt }} value={form.joiningDate} onChange={(v) => setForm((p) => ({ ...p, joiningDate: v }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Response deadline</label>
-              <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={form.deadlineAt} onChange={(v) => setForm((p) => ({ ...p, deadlineAt: v }))} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-            <button className="btn btn-primary" onClick={submitCreateOffer} disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create Offer'}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
         <div className="stats-card green">

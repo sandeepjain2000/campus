@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { mutate } from 'swr';
 import { useToast } from '@/components/ToastProvider';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
+import { MAX_FEEDBACK_TITLE_LENGTH } from '@/lib/validators';
 
 const categories = ['Feature Request', 'Bug Report', 'General Feedback'];
 
@@ -18,7 +20,15 @@ export default function NewFeedbackPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim()) return;
+    const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, title, {
+      label: 'Feedback title',
+      maxLength: MAX_FEEDBACK_TITLE_LENGTH,
+    });
+    if (titleErr) {
+      addToast(titleErr, 'warning');
+      return;
+    }
+    if (!description.trim()) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/feedback', {

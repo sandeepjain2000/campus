@@ -14,10 +14,10 @@ import {
   resolveStudentRollNumber,
   validatePhone,
   validateURL,
-  validateStudentBranchField,
 } from '@/lib/validators';
 import { parseJoiningBatch, reconcileBatchFields } from '@/lib/studentBatch';
-import { validateFieldOrError, FIELD_IDS } from '@/lib/inputConstraints';
+import { validateFieldOrError, FIELD_IDS, validateStudentBacklogPair } from '@/lib/inputConstraints';
+import { isBrowserLoadableAssetUrl } from '@/lib/clientAssetUrl';
 
 export const ADD_STUDENT_DEPARTMENTS = [
   'Computer Science', 'Electrical Engineering', 'Mechanical Engineering',
@@ -114,6 +114,16 @@ function parseOptionalUrl(raw, label) {
   return { value: s };
 }
 
+function parsePhotoUrl(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return { value: null };
+  if (!validateURL(s)) return { error: 'Photo must be a valid URL.' };
+  if (!isBrowserLoadableAssetUrl(s)) {
+    return { error: 'Photo URL must be a public https link (not a local file path).' };
+  }
+  return { value: s };
+}
+
 export function buildAuxProfileFromForm(form, existingAux = {}) {
   const base = existingAux && typeof existingAux === 'object' && !Array.isArray(existingAux) ? existingAux : {};
   return {
@@ -193,6 +203,10 @@ export function validateCollegeStudentForm(form, { isEdit = false, collegeShortC
     const e = validateFieldOrError(fieldId, form[key]);
     if (e) errors[key] = e;
   }
+  const backlogPairErr = validateStudentBacklogPair(form.backlogs_active, form.backlogs_history);
+  if (backlogPairErr && !errors.backlogs_active && !errors.backlogs_history) {
+    errors.backlogs_active = backlogPairErr;
+  }
 
   const batchErr = validateFieldOrError(FIELD_IDS.STUDENT_BATCH_YEAR, form.batch_year);
   if (batchErr) errors.batch_year = batchErr;
@@ -225,8 +239,10 @@ export function validateCollegeStudentForm(form, { isEdit = false, collegeShortC
   });
   if (salMaxErr) errors.expected_salary_max = salMaxErr;
 
+  const photoParsed = parsePhotoUrl(form.photo_url);
+  if (photoParsed.error) errors.photo_url = photoParsed.error;
+
   for (const [key, label] of [
-    ['photo_url', 'Photo URL'],
     ['linkedin_url', 'LinkedIn'],
     ['github_url', 'GitHub'],
     ['portfolio_url', 'Portfolio'],
@@ -235,11 +251,6 @@ export function validateCollegeStudentForm(form, { isEdit = false, collegeShortC
     const r = parseOptionalUrl(form[key], label);
     if (r.error) errors[key] = r.error;
   }
-
-  const deptErr = validateStudentBranchField(form.department, { label: 'Department' });
-  if (deptErr) errors.department = deptErr;
-  const branchErr = validateStudentBranchField(form.branch);
-  if (branchErr) errors.branch = branchErr;
 
   return { errors, valid: Object.keys(errors).length === 0 };
 }
@@ -326,7 +337,7 @@ export function parseCollegeStudentAdminPayload(body, { isEdit = false, collegeS
     user: {
       phone: form.phone?.trim() || null,
       communication_email: form.communication_email?.trim() || null,
-      avatar_url: parseOptionalUrl(form.photo_url, 'Photo').value,
+      avatar_url: parsePhotoUrl(form.photo_url).value,
     },
     auxProfile: buildAuxProfileFromForm({
       ...form,

@@ -10,11 +10,11 @@ import {
   CalendarDays,
   ShieldCheck,
   ArrowRight,
-  Mail,
 } from 'lucide-react';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
 import DevScreenTag from '@/components/DevScreenTag';
+import LandingDemoToolsDock from '@/components/demo/LandingDemoToolsDock';
 
 export default function LandingPage() {
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '?';
@@ -47,9 +47,11 @@ export default function LandingPage() {
     });
   }, [appVersion, buildTimeIso, gitSha, deployId]);
 
+  const BUILTIN_MARKETING_ROUTES = new Set(['/features', '/about', '/contact']);
+
   /** Same-tab navigation so browser Back returns to the landing page. */
   function MarketingNavLink({ internalHref, children, alwaysInternal = false, ...rest }) {
-    const useBuiltIn = alwaysInternal || internalHref === '/features';
+    const useBuiltIn = alwaysInternal || BUILTIN_MARKETING_ROUTES.has(internalHref);
     if (marketingUrl && !useBuiltIn) {
       return (
         <a href={marketingUrl} {...rest}>
@@ -74,51 +76,10 @@ export default function LandingPage() {
         {' · '}
         <Link href="/developer" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Developer</Link>
         {' · '}
-        <Link href="/data-entry" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Data</Link>
+        <Link href="/?demo=apis" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Demo APIs</Link>
       </div>
 
-      {/* Bottom-left: email workflows only */}
-      <div
-        data-ph-demo-stack
-        style={{
-          position: 'fixed',
-          bottom: '1.5rem',
-          left: '1.5rem',
-          zIndex: 99999,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          pointerEvents: 'auto',
-          maxWidth: '12rem',
-        }}
-      >
-        <div data-ph-runner-slot aria-hidden="true" style={{ display: 'none' }} />
-        <div>
-          <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem', marginBottom: '0.35rem' }}>
-            Demo Tools
-          </div>
-          <Link
-            href="/email-notifications"
-            prefetch={false}
-            style={{
-              borderRadius: 'var(--radius-md)',
-              padding: '0.5rem 0.75rem',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              backgroundColor: 'var(--bg-primary)',
-              border: '1px solid var(--border-default)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              textDecoration: 'none',
-              boxShadow: 'var(--shadow-md)',
-            }}
-          >
-            <Mail size={14} aria-hidden /> Email workflows
-          </Link>
-        </div>
-      </div>
+      <LandingDemoToolsDock />
 
       {/* Top Navbar */}
       <header style={{ borderBottom: '1px solid var(--border-default)', backgroundColor: 'var(--bg-primary)', position: 'sticky', top: 0, zIndex: 40 }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Pencil, Trash2, Archive, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, Pencil, Trash2, Archive, Plus, CheckCircle, XCircle, Download, Mail, Users, FileText, Settings } from 'lucide-react';
 
 const META = {
   view: { label: 'View', Icon: Eye },
@@ -10,11 +10,16 @@ const META = {
   add: { label: 'Add', Icon: Plus },
   approve: { label: 'Approve for campus', Icon: CheckCircle },
   reject: { label: 'Reject', Icon: XCircle },
+  download: { label: 'Download', Icon: Download },
+  email: { label: 'Email', Icon: Mail },
+  sync: { label: 'Sync', Icon: Users },
+  details: { label: 'Details', Icon: FileText },
+  manage: { label: 'Manage', Icon: Settings },
 };
 
 /**
  * @param {object} props
- * @param {'view'|'edit'|'delete'|'archive'|'add'|'approve'|'reject'} props.action
+ * @param {'view'|'edit'|'delete'|'archive'|'add'|'approve'|'reject'|'download'|'email'|'sync'|'details'|'manage'} props.action
  * @param {() => void} [props.onClick]
  * @param {boolean} [props.disabled]
  * @param {'secondary'|'danger'|'primary'|'ghost'} [props.variant]

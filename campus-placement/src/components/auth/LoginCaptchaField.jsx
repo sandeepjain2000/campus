@@ -36,7 +36,7 @@ export default function LoginCaptchaField({
   }, [setVerified]);
 
   const runVerify = useCallback(async () => {
-    if (!verifyEarly || !token || String(answer ?? '').trim() === '') {
+    if (!verifyEarly || !token) {
       resetVerification();
       return false;
     }
@@ -164,8 +164,6 @@ export default function LoginCaptchaField({
           }
         }}
         disabled={disabled || loading || !token}
-        required
-        aria-required="true"
         aria-invalid={verifyState === 'invalid'}
         aria-describedby={verifyEarly && verifyMessage ? `${inputId}-verify-status` : undefined}
       />

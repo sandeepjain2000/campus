@@ -48,6 +48,7 @@ const STEP_ICONS = {
 
 const ROLE_INTRO = {
   student: 'Complete these steps to set up your profile and start applying.',
+  studentAlumni: 'Complete your alumni profile and apply to lateral roles published for your campus network.',
   employer: 'Set up your company profile, connect with campuses, and run your first placement activity.',
   college_admin: 'Configure your campus, employers, and student records to go live.',
   super_admin: 'Review pending sign-ups and platform settings to onboard colleges and employers.',
@@ -63,6 +64,7 @@ const ROLE_HOME = {
 export default function GettingStartedPage() {
   const { data: session, status: sessionStatus } = useSession();
   const role = session?.user?.role;
+  const isAlumni = Boolean(session?.user?.isAlumni);
   const userId = session?.user?.id;
   const { data, error, isLoading, mutate } = useSWR(
     userId ? '/api/user/onboarding' : null,
@@ -101,7 +103,8 @@ export default function GettingStartedPage() {
   const homeHref = ROLE_HOME[role] || '/dashboard';
 
   const intro =
-    ROLE_INTRO[role] || 'Complete these steps to set up your account and get the most out of the platform.';
+    (role === 'student' && isAlumni ? ROLE_INTRO.studentAlumni : ROLE_INTRO[role]) ||
+    'Complete these steps to set up your account and get the most out of the platform.';
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>

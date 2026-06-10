@@ -2,6 +2,9 @@
  * Per-posting eligibility rules the system can verify from profile + posting fields.
  */
 
+/** Free-text branch/specialisation matching is off until a multi-select branch picker ships. */
+export const BRANCH_ELIGIBILITY_MATCHING_ENABLED = false;
+
 function normalizeToken(value) {
   return String(value || '')
     .trim()
@@ -20,6 +23,10 @@ function isOpenToAllBranches(label) {
  * @param {string | null | undefined} studentDepartment
  */
 export function evaluateBranchEligibility(eligibleBranches, studentBranch, studentDepartment) {
+  if (!BRANCH_ELIGIBILITY_MATCHING_ENABLED) {
+    return { eligible: true };
+  }
+
   const list = Array.isArray(eligibleBranches)
     ? eligibleBranches.map((b) => String(b || '').trim()).filter(Boolean)
     : [];

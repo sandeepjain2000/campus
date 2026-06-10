@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
-import { buildCollegeInterviewDescription, mapCollegeInterviewRow } from '@/lib/collegeInterviewSlot';
+import { normalizeTimeHm, toDateOnlyString, validateInterviewDateTime } from '@/lib/dateOnly';
+import {
+  buildCollegeInterviewDescription,
+  mapCollegeInterviewRow,
+  parseCollegeInterviewMeta,
+} from '@/lib/collegeInterviewSlot';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -68,11 +72,13 @@ export async function PATCH(request, { params }) {
     }
 
     const existingDate = toDateOnlyString(existing.start_date);
-    const dateCheck = validatePlacementDate(fields.date, {
-      allowPast: fields.date === existingDate,
-    });
-    if (!dateCheck.ok) {
-      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    const existingStartTime = parseCollegeInterviewMeta(existing.description).startTime;
+    const allowPast =
+      toDateOnlyString(fields.date) === existingDate &&
+      normalizeTimeHm(fields.startTime) === normalizeTimeHm(existingStartTime);
+    const dateTimeCheck = validateInterviewDateTime(fields.date, fields.startTime, { allowPast });
+    if (!dateTimeCheck.ok) {
+      return NextResponse.json({ error: dateTimeCheck.error }, { status: 400 });
     }
 
     const title = `${fields.company} • ${fields.round}`;
@@ -86,7 +92,7 @@ export async function PATCH(request, { params }) {
            description = $3
        WHERE id = $4::uuid AND tenant_id = $5::uuid AND event_type = 'interview_slot'
        RETURNING id, title, start_date, description`,
-      [title, dateCheck.value, desc, id, tenantId],
+      [title, dateTimeCheck.value.date, desc, id, tenantId],
     );
 
     const row = updated.rows[0];

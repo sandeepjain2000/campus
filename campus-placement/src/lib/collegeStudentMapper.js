@@ -1,4 +1,5 @@
 import { normalizeInternshipStatus } from '@/lib/collegeStudentsCsv';
+import { resolveStudentPhotoDisplayUrl } from '@/lib/clientAssetUrl';
 import { resolveStudentBatch } from '@/lib/studentBatch';
 import {
   filterDisplayDocuments,
@@ -184,7 +185,7 @@ export function mapCollegeStudentRow(row, { semesterDisplay = '' } = {}) {
     email: row.email || '',
     communicationEmail: row.communication_email || '',
     phone: row.phone || '',
-    photo: row.avatar_url || null,
+    photo: resolveStudentPhotoDisplayUrl(row.avatar_url),
     roll: rollNo,
     enrollmentNumber: row.enrollment_number || '',
     dept: row.department || '',

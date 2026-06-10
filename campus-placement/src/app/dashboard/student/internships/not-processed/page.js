@@ -7,6 +7,8 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import PageLoading from '@/components/PageLoading';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { buildStudentOpportunityCsvPayload } from '@/lib/studentOpportunityCsvExport';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -24,6 +26,20 @@ export default function StudentNotProcessedInternshipsPage() {
   const locked = data?.locked === true;
   const selected = data?.selectedInternship;
 
+  const buildCsvRows = () => {
+    const headers = ['Company', 'Role', 'Stipend (INR/mo)', 'Deadline', 'Reason'];
+    const rows = items.map((row) => [
+      row.companyName || '',
+      row.title || '',
+      row.salaryMin != null || row.salaryMax != null
+        ? formatCurrency(row.salaryMin || row.salaryMax)
+        : '',
+      row.applicationDeadline ? formatDate(row.applicationDeadline) : '',
+      row.notProcessedReason || 'Not processed after internship selection',
+    ]);
+    return { headers, rows };
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -36,7 +52,16 @@ export default function StudentNotProcessedInternshipsPage() {
             Read-only list of internships you could not apply to after FCFS internship selection (max 1 per student).
           </p>
         </div>
-        <div className="page-header-actions">
+        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          {items.length > 0 ? (
+            <ExportCsvSplitButton
+              filenameBase="not_processed_internships"
+              currentCount={items.length}
+              fullCount={items.length}
+              getRows={buildCsvRows}
+              size="sm"
+            />
+          ) : null}
           <Link href="/dashboard/student/internships" className="btn btn-secondary btn-sm">
             <GraduationCap size={16} style={{ marginRight: '0.35rem' }} />
             Browse internships

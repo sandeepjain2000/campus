@@ -7,21 +7,21 @@ import useSWR from 'swr';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
-import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
 import { validateEmployerDriveDate } from '@/lib/apiInputValidation';
 import { buildDriveCtcBreakup } from '@/lib/amountInWords';
-import { FIELD_IDS } from '@/lib/inputConstraints';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
+import {
+  driveFormFromApiDrive,
+  emptyPlacementDriveForm,
+  parsePlacementDriveJobPayload,
+  placementDriveFormToApiBody,
+} from '@/lib/placementDriveJobFields';
 import PageLoading from '@/components/PageLoading';
 import { formatCurrency, formatStatus } from '@/lib/utils';
+import { DriveFormSection, driveFormCompactField, driveFormFullRow } from '@/components/employer/DriveFormSection';
+import PlacementDriveJobFormSections from '@/components/employer/PlacementDriveJobFormSections';
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
-
-function toDateInputValue(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return String(dateStr).slice(0, 10);
-  return d.toISOString().slice(0, 10);
-}
 
 export default function EmployerEditDrivePage() {
   const router = useRouter();
@@ -29,15 +29,7 @@ export default function EmployerEditDrivePage() {
   const driveId = params?.id;
   const { addToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    title: '',
-    driveType: 'on_campus',
-    driveDate: '',
-    venue: '',
-    description: '',
-    packageCtc: '',
-    ctcBreakup: '',
-  });
+  const [form, setForm] = useState(emptyPlacementDriveForm);
 
   const { data, error, isLoading } = useSWR(
     driveId ? `/api/employer/drives/${driveId}` : null,
@@ -49,21 +41,14 @@ export default function EmployerEditDrivePage() {
 
   useEffect(() => {
     if (!drive) return;
-    setForm({
-      title: drive.role || '',
-      driveType: drive.type || 'on_campus',
-      driveDate: toDateInputValue(drive.date),
-      venue: drive.venue || '',
-      description: drive.description || '',
-      packageCtc: '',
-      ctcBreakup: drive.ctc_breakup || '',
-    });
+    setForm(driveFormFromApiDrive(drive));
   }, [drive]);
 
   const saveDrive = useCallback(async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) {
-      addToast('Drive title is required', 'error');
+    const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, form.title, { label: 'Drive title' });
+    if (titleErr) {
+      addToast(titleErr, 'error');
       return;
     }
     const driveDateErr = validateEmployerDriveDate(form.driveDate);
@@ -71,19 +56,19 @@ export default function EmployerEditDrivePage() {
       addToast(driveDateErr, 'warning');
       return;
     }
+    const ctcBreakup = buildDriveCtcBreakup(form.packageCtc, form.ctcBreakup, formatCurrency);
+    const apiBody = placementDriveFormToApiBody(form, { ctcBreakup });
+    const jobParsed = parsePlacementDriveJobPayload(apiBody);
+    if (jobParsed.error) {
+      addToast(jobParsed.error, 'warning');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`/api/employer/drives/${driveId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title.trim(),
-          description: form.description,
-          driveType: form.driveType,
-          driveDate: form.driveDate || null,
-          venue: form.venue,
-          ctcBreakup: buildDriveCtcBreakup(form.packageCtc, form.ctcBreakup, formatCurrency),
-        }),
+        body: JSON.stringify(apiBody),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -155,15 +140,19 @@ export default function EmployerEditDrivePage() {
           </span>
           Edit placement drive
         </h1>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, maxWidth: 560 }}>
-          Update drive details for <strong>{drive.college}</strong>. Campus cannot be changed after submission.
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+          Update drive and role details for <strong>{drive.college}</strong>. Campus cannot be changed after submission.
           {drive.status ? ` Current status: ${formatStatus(drive.status)}.` : ''}
         </p>
       </div>
 
-      <div className="card" style={{ padding: '1.25rem', maxWidth: 720 }}>
-        <form onSubmit={saveDrive} style={{ display: 'grid', gap: '0.75rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+      <form onSubmit={saveDrive} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
+        <DriveFormSection
+          title="Drive details"
+          description="Campus, schedule, and logistics for this placement drive."
+          first
+        >
+          <div className="form-group" style={driveFormFullRow}>
             <label className="form-label">Campus</label>
             <input className="form-input" value={drive.college || ''} readOnly disabled />
             <span className="form-hint">Campus is fixed for this drive request.</span>
@@ -190,7 +179,7 @@ export default function EmployerEditDrivePage() {
               <option value="off_campus">Off campus</option>
             </select>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group" style={driveFormCompactField}>
             <label className="form-label">Drive Date <span style={{ color: 'red' }}>*</span></label>
             <ValidatedDateInput
               fieldId={FIELD_IDS.EMPLOYER_DRIVE_DATE}
@@ -198,7 +187,7 @@ export default function EmployerEditDrivePage() {
               onChange={(v) => setForm((p) => ({ ...p, driveDate: v }))}
             />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group" style={driveFormFullRow}>
             <label className="form-label">Venue</label>
             <input
               className="form-input"
@@ -207,45 +196,30 @@ export default function EmployerEditDrivePage() {
               placeholder="Venue (optional — add when known)"
             />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group" style={driveFormFullRow}>
             <label className="form-label">Notes for placement office</label>
             <textarea
               className="form-textarea"
               rows={3}
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              value={form.placementNotes}
+              onChange={(e) => setForm((p) => ({ ...p, placementNotes: e.target.value }))}
+              placeholder="Scheduling constraints, contact person, or internal context for the TPO team"
             />
+            <span className="form-hint">Optional. For the placement office when reviewing your request — not shown to students.</span>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Offered CTC (annual INR, optional)</label>
-            <CurrencyAmountInput
-              fieldId={FIELD_IDS.EMPLOYER_SALARY_MIN}
-              value={form.packageCtc}
-              onChange={(v) => setForm((p) => ({ ...p, packageCtc: v }))}
-              placeholder="1200000"
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">CTC breakup details (optional)</label>
-            <textarea
-              className="form-textarea"
-              rows={3}
-              value={form.ctcBreakup}
-              onChange={(e) => setForm((p) => ({ ...p, ctcBreakup: e.target.value }))}
-              placeholder="e.g. fixed + variable split, joining bonus, RSUs — for your records only"
-            />
-            <span className="form-hint">Stored on this drive for your team. Not shown on the college dashboard.</span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.25rem' }}>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save changes'}
-            </button>
-            <Link href="/dashboard/employer/drives" className="btn btn-ghost">
-              Cancel
-            </Link>
-          </div>
-        </form>
-      </div>
+        </DriveFormSection>
+
+        <PlacementDriveJobFormSections form={form} setForm={setForm} />
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '1.25rem', borderTop: '1px solid var(--border-default)' }}>
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Saving…' : 'Save changes'}
+          </button>
+          <Link href="/dashboard/employer/drives" className="btn btn-ghost">
+            Cancel
+          </Link>
+        </div>
+      </form>
     </div>
   );
 }

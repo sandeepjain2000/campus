@@ -6,6 +6,7 @@ import { isFacebookPageShareConfigured } from '@/lib/facebookPageShare';
 import { emailPlacementDriveApproved } from '@/lib/placementDriveEmail';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { DRIVE_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -37,7 +38,7 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
       WHERE d.tenant_id = $1::uuid${yearFilter} ${AND_DRIVE_NOT_DELETED}
       ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC`;
 
-  const coreSelect = `
+  const coreSelectBase = `
         d.id,
         ep.company_name AS company,
         ep.website AS website,
@@ -45,9 +46,24 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
         d.drive_date AS date,
         d.drive_type AS type,
         d.status,
-        d.registered_count AS registered,
+        ${DRIVE_APPLICANT_COUNT_SUBQUERY} AS registered,
         d.selected_count AS selected,
-        d.venue`;
+        d.venue,
+        d.min_cgpa,
+        d.description`;
+
+  const coreSelectJob = `
+        d.job_type,
+        d.salary_min,
+        d.salary_max,
+        d.eligible_branches,
+        d.max_backlogs,
+        d.batch_year,
+        d.skills_required,
+        d.max_students`;
+
+  const coreSelect = `${coreSelectBase},
+        ${coreSelectJob}`;
 
   const tiers = [
     {
@@ -67,6 +83,20 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
     },
     {
       select: coreSelect,
+      map: (r) => mapDriveRow(r),
+    },
+    {
+      select: `${coreSelectBase},
+        COALESCE(d.social_shared, ARRAY[]::text[]) AS social_shared,
+        COALESCE(d.attached_staff_user_ids, ARRAY[]::uuid[]) AS attached_staff_user_ids`,
+      map: (r) =>
+        mapDriveRow(r, {
+          socialShared: r.social_shared ?? [],
+          staffIds: r.attached_staff_user_ids ?? [],
+        }),
+    },
+    {
+      select: coreSelectBase,
       map: (r) => mapDriveRow(r),
     },
   ];

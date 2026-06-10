@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from 'react';
 import { validateField, validateFieldWithConfirm } from '@/lib/inputConstraints';
+import SegmentedDateInput from '@/components/form/SegmentedDateInput';
 
 /**
- * Date input with shared constraints.
+ * Date input with shared constraints (DD / MM / YYYY segments) and optional calendar picker.
  */
 export default function ValidatedDateInput({
   fieldId,
@@ -16,6 +17,10 @@ export default function ValidatedDateInput({
   confirmWarnings = true,
   disabled = false,
   id,
+  min,
+  max,
+  showPicker = true,
+  'aria-label': ariaLabel,
 }) {
   const [error, setError] = useState('');
 
@@ -42,23 +47,39 @@ export default function ValidatedDateInput({
     [fieldId, context, confirmWarnings],
   );
 
+  const handleChange = (next) => {
+    onChange(next);
+    if (!next) {
+      setError('');
+      return;
+    }
+    runValidation(next, { confirm: false });
+  };
+
+  const handleBlur = () => {
+    const v = value || '';
+    if (!v) {
+      setError('');
+      return;
+    }
+    if (runValidation(v, { confirm: confirmWarnings })) {
+      onValidatedChange?.(v);
+    }
+  };
+
   return (
     <div>
-      <input
+      <SegmentedDateInput
         id={id}
-        type="date"
-        className={`${className}${error ? ' input-error' : ''}`}
         value={value || ''}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setError('');
-        }}
-        onBlur={() => {
-          if (runValidation(value, { confirm: confirmWarnings })) {
-            onValidatedChange?.(value);
-          }
-        }}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        className={`${className}${error ? ' input-error' : ''}`}
         disabled={disabled}
+        min={min}
+        max={max}
+        showPicker={showPicker}
+        aria-label={ariaLabel}
       />
       {error ? (
         <p className="text-xs" style={{ color: 'var(--danger-600)', marginTop: '0.35rem' }}>

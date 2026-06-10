@@ -4,8 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { profileFromDb, payloadToDbParts } from '@/lib/studentProfileDbMap';
 import { resolveStudentResumeUrl, resolveStudentResumeFileName } from '@/lib/studentResumeUrl';
-import { validateStudentAcademicScores, validateStudentBranchField } from '@/lib/validators';
-import { validateStudentAcademicPayload, validateEducationDetailsPayload } from '@/lib/apiInputValidation';
+import { validateStudentAcademicScores } from '@/lib/validators';
+import {
+  validateStudentAcademicPayload,
+  validateEducationDetailsPayload,
+  validateStudentProfileEmailsPayload,
+} from '@/lib/apiInputValidation';
+import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -106,7 +111,10 @@ export async function GET() {
       cvFileName: profile.cvFileName,
     });
 
-    return NextResponse.json({ profile });
+    const isAlumni = await resolveAlumniStudentFlag(session.user.id, session.user);
+    profile.isAlumni = isAlumni;
+
+    return NextResponse.json({ profile, isAlumni });
   } catch (e) {
     console.error('GET /api/student/profile', e);
     return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 });
@@ -121,6 +129,17 @@ export async function PUT(request) {
     }
 
     const body = await request.json().catch(() => ({}));
+
+    const forbiddenNameFields = ['firstName', 'lastName', 'first_name', 'last_name', 'name', 'fullName'];
+    for (const field of forbiddenNameFields) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) {
+        return NextResponse.json(
+          { error: 'Your name cannot be changed here. Contact your placement office or super admin.' },
+          { status: 403 }
+        );
+      }
+    }
+
     const accountEmail = session.user.email || '';
 
     await ensureStudentProfileRow(session.user.id);
@@ -140,14 +159,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: academicErr }, { status: 400 });
     }
 
-    const branchErr = validateStudentBranchField(parts.branch ?? body.branch);
-    if (branchErr) {
-      return NextResponse.json({ error: branchErr }, { status: 400 });
-    }
-    const deptErr = validateStudentBranchField(parts.department ?? body.department, { label: 'Department' });
-    if (deptErr) {
-      return NextResponse.json({ error: deptErr }, { status: 400 });
-    }
+    const isAlumni = await resolveAlumniStudentFlag(session.user.id, session.user);
 
     const salaryPayloadErr = validateStudentAcademicPayload({
       cgpa: existingCgpa,
@@ -160,6 +172,7 @@ export async function PUT(request) {
       backlogsHistory: parts.backlogs_history,
       expectedSalaryMin: parts.expected_salary_min ?? body.expectedSalaryMin,
       expectedSalaryMax: parts.expected_salary_max ?? body.expectedSalaryMax,
+      isAlumni,
     });
     if (salaryPayloadErr) {
       return NextResponse.json({ error: salaryPayloadErr }, { status: 400 });
@@ -168,6 +181,14 @@ export async function PUT(request) {
     const educationErr = validateEducationDetailsPayload(body.educationDetails);
     if (educationErr) {
       return NextResponse.json({ error: educationErr }, { status: 400 });
+    }
+
+    const emailErr = validateStudentProfileEmailsPayload({
+      communicationEmail: body.communicationEmail,
+      emails: body.emails,
+    });
+    if (emailErr) {
+      return NextResponse.json({ error: emailErr }, { status: 400 });
     }
 
     const auxProfileAvailable = await hasAuxProfileColumn();
@@ -337,8 +358,9 @@ export async function PUT(request) {
       userPhone: sp.user_phone,
       avatarUrl: sp.avatar_url,
     });
+    profile.isAlumni = isAlumni;
 
-    return NextResponse.json({ profile });
+    return NextResponse.json({ profile, isAlumni });
   } catch (e) {
     console.error('PUT /api/student/profile', e);
     return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 });

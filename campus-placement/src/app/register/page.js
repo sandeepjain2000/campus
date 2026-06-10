@@ -56,7 +56,7 @@ export default function RegisterPage() {
   const [captchaChecking, setCaptchaChecking] = useState(false);
   const [departments, setDepartments] = useState([]);
 
-  const captchaReady = Boolean(captchaToken && captchaAnswer.trim() !== '');
+  const captchaReady = Boolean(formData.role);
 
   const selectRegisterRole = (roleId) => {
     setFormData((prev) => ({ ...prev, role: roleId }));
@@ -74,8 +74,8 @@ export default function RegisterPage() {
   };
 
   const ensureCaptchaVerified = async () => {
-    if (!captchaReady) {
-      setError('Answer the verification question to continue.');
+    if (!formData.role) {
+      setError('Select an account type to continue.');
       return false;
     }
     if (captchaVerified) return true;

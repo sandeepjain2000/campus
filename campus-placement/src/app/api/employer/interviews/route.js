@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
+import { toDateOnlyString, validateInterviewDateTime } from '@/lib/dateOnly';
 import {
   buildEmployerInterviewCalendarDescription,
   insertEmployerInterviewCalendarSlot,
 } from '@/lib/employerInterviewCalendarSync';
+import {
+  interviewSlotMatchesKind,
+  normalizeInterviewOpportunityKind,
+} from '@/lib/employerInterviewOpportunity';
+import { validateEmployerInterviewOpportunity } from '@/lib/employerInterviewOpportunityValidation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -36,14 +41,17 @@ export async function GET(request) {
     }
     const { searchParams } = new URL(request.url);
     const campusId = searchParams.get('campusId');
+    const kind = normalizeInterviewOpportunityKind(searchParams.get('kind'));
     if (!campusId) return NextResponse.json({ error: 'campusId is required' }, { status: 400 });
 
     const tenant = await getTenant(campusId);
     if (!tenant) return NextResponse.json({ rows: [] });
 
     const list = Array.isArray(tenant.settings?.employerInterviewPlans) ? tenant.settings.employerInterviewPlans : [];
+    const userId = session.user.id || session.user.sub;
     const rows = list
-      .filter((r) => r.employerUserId === session.user.id)
+      .filter((r) => r.employerUserId === userId)
+      .filter((r) => interviewSlotMatchesKind(r, kind))
       .map((r) => ({ ...r, date: toDateOnlyString(r.date) || r.date }));
     return NextResponse.json({ rows, campusName: tenant.name });
   } catch (error) {
@@ -93,13 +101,26 @@ export async function POST(request) {
     const assigned = Number(body?.assigned || 0);
     const panelNames = String(body?.panelNames || '').trim();
     const campus = String(body?.campus || '').trim();
+    const opportunityKind = normalizeInterviewOpportunityKind(body?.opportunityKind);
+    const opportunityId = String(body?.opportunityId || '').trim();
     if (!round || !date || !time) {
       return NextResponse.json({ error: 'round, date and time are required' }, { status: 400 });
     }
+    if (!opportunityKind || !opportunityId) {
+      return NextResponse.json(
+        { error: 'opportunityKind and opportunityId are required — select a specific opening.' },
+        { status: 400 },
+      );
+    }
 
-    const dateCheck = validatePlacementDate(date, { allowPast: false });
-    if (!dateCheck.ok) {
-      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    const oppCheck = await validateEmployerInterviewOpportunity(employerId, campusId, opportunityKind, opportunityId);
+    if (!oppCheck.ok) {
+      return NextResponse.json({ error: oppCheck.error }, { status: 400 });
+    }
+
+    const dateTimeCheck = validateInterviewDateTime(date, time, { allowPast: false });
+    if (!dateTimeCheck.ok) {
+      return NextResponse.json({ error: dateTimeCheck.error }, { status: 400 });
     }
 
     const tenant = await getTenant(campusId);
@@ -110,12 +131,16 @@ export async function POST(request) {
     const rows = Array.isArray(settings.employerInterviewPlans) ? settings.employerInterviewPlans : [];
     rows.unshift({
       id: planId,
-      employerUserId: session.user.id,
+      employerUserId: userId,
       campus: campus || tenant.name,
+      campusId,
       companyName,
+      opportunityKind,
+      opportunityId,
+      opportunityTitle: oppCheck.title,
       round,
-      date: dateCheck.value,
-      time,
+      date: dateTimeCheck.value.date,
+      time: dateTimeCheck.value.time,
       mode,
       assigned: Number.isFinite(assigned) ? assigned : 0,
       panelNames,
@@ -127,14 +152,17 @@ export async function POST(request) {
       await insertEmployerInterviewCalendarSlot({
         tenantId: campusId,
         title: `${campus || tenant.name} • ${round}`,
-        dateYmd: dateCheck.value,
+        dateYmd: dateTimeCheck.value.date,
         description: buildEmployerInterviewCalendarDescription({
-          employerUserId: session.user.id,
-          time,
+          employerUserId: userId,
+          time: dateTimeCheck.value.time,
           mode,
           panelNames,
           assigned: Number.isFinite(assigned) ? assigned : 0,
           planId,
+          opportunityKind,
+          opportunityTitle: oppCheck.title,
+          opportunityId,
         }),
       });
     } catch (calErr) {
@@ -142,7 +170,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json({
-      rows: rows.filter((r) => r.employerUserId === session.user.id).map((r) => ({
+      rows: rows.filter((r) => r.employerUserId === userId).map((r) => ({
         ...r,
         date: toDateOnlyString(r.date) || r.date,
       })),

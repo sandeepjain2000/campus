@@ -19,6 +19,8 @@ import {
   X,
 } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
+import { getDegreeTimelineWarning } from '@/lib/degreeTimeline';
+import StudentListAvatar from '@/components/student/StudentListAvatar';
 
 const PROFILE_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -150,9 +152,10 @@ function ActivityList({ items }) {
 function SchoolingDetails({ details }) {
   if (!details || typeof details !== 'object') return null;
   const levels = [
-    { key: 'tenth', label: 'Class X' },
-    { key: 'twelfth', label: 'Class XII' },
+    { key: 'graduation', label: 'Graduation' },
     { key: 'diploma', label: 'Diploma' },
+    { key: 'twelfth', label: 'Class XII' },
+    { key: 'tenth', label: 'Class X' },
   ];
   const rows = levels
     .map(({ key, label }) => {
@@ -245,14 +248,7 @@ export default function EmployerStudentProfileModal({
 
   const student = profileData?.student;
   const profile = student?.profile || {};
-  const avatarSrc = student?.avatarUrl || profile.avatarUrl || '';
-  const initials = (student?.name || 'Student')
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const avatarPhoto = student?.avatarUrl || profile.avatarUrl || '';
 
   const profileLinks = asList(profile.profileLinks).filter((link) => link?.url);
   const educationRecords = asList(student?.educationRecords);
@@ -265,6 +261,13 @@ export default function EmployerStudentProfileModal({
   const skillItems = asList(student?.skillsDetailed).length
     ? student.skillsDetailed.map((s) => ({ name: s.name, proficiency: s.proficiency }))
     : asList(profile.skills).map((name) => ({ name }));
+
+  const degreeTimelineWarning = getDegreeTimelineWarning({
+    batchYear: profile.batchYear,
+    graduationYear: profile.graduationYear,
+    joiningAcademicYear: profile.joiningAcademicYear,
+    batch: profile.batch,
+  });
 
   const statusTone = applicationContext?.status ? getStatusColor(applicationContext.status) : 'gray';
 
@@ -284,14 +287,12 @@ export default function EmployerStudentProfileModal({
       >
         <header className="employer-student-profile-header">
           <div className="employer-student-profile-identity">
-            {avatarSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarSrc} alt="" className="employer-student-profile-avatar employer-student-profile-avatar-img" />
-            ) : (
-              <div className="employer-student-profile-avatar" aria-hidden>
-                {initials || 'S'}
-              </div>
-            )}
+            <StudentListAvatar
+              photo={avatarPhoto}
+              name={student?.name || 'Student'}
+              size={56}
+              className="employer-student-profile-avatar employer-student-profile-avatar-img"
+            />
             <div className="employer-student-profile-identity-text">
               <h2 id="employer-student-profile-title">{student?.name || 'Student profile'}</h2>
               <p>
@@ -422,8 +423,19 @@ export default function EmployerStudentProfileModal({
 
               {activeTab === 'academics' && (
                 <>
+                  {degreeTimelineWarning ? (
+                    <div className="employer-student-profile-timeline-warning" role="status">
+                      <strong>Unusual degree timeline</strong>
+                      <p>{degreeTimelineWarning.message}</p>
+                    </div>
+                  ) : null}
                   <ProfileSection icon={GraduationCap} title="Academics">
                     <InfoGrid>
+                      <InfoBlock
+                        label="Admission year"
+                        value={degreeTimelineWarning?.joiningYear ?? profile.batchYear ?? profile.batch}
+                      />
+                      <InfoBlock label="Graduation year" value={profile.graduationYear} />
                       <InfoBlock label="Department" value={profile.department} />
                       <InfoBlock label="Class X %" value={formatPercent(profile.tenthPercentage)} />
                       <InfoBlock label="Class XII %" value={formatPercent(profile.twelfthPercentage)} />

@@ -1,7 +1,8 @@
+import { isBrowserLoadableAssetUrl } from '@/lib/clientAssetUrl';
 import { parseJoiningBatch, reconcileBatchFields } from '@/lib/studentBatch';
 import { defaultAdmissionBatchYear } from '@/lib/admissionBatchYear';
 import { formatProfileSectionsCell } from '@/lib/studentProfileSections';
-import { validateStudentCgpa, validateStudentBranchField } from '@/lib/validators';
+import { validateStudentCgpa } from '@/lib/validators';
 
 /** Display + template defaults (import falls back when cells are blank). */
 export const CURRENT_ACADEMIC_YEAR = '2025-26';
@@ -279,11 +280,6 @@ export function parseStudentRow(cells, idx, line, options = {}) {
   const photo = g('Photo URL');
   const sectionsCell = g('Sections');
 
-  const branchErr = validateStudentBranchField(specialization) || validateStudentBranchField(dept, { label: 'Department' });
-  if (branchErr) {
-    return { ok: false, error: `Line ${line}: ${branchErr}` };
-  }
-
   if (strictNoBlanks) {
     if (!dept) return { ok: false, error: `Line ${line}: Department is required` };
     if (!specialization) return { ok: false, error: `Line ${line}: Specialization is required` };
@@ -356,7 +352,11 @@ export function parseStudentRow(cells, idx, line, options = {}) {
       jobStatus,
       internshipStatus,
       verified,
-      photo: photo || `https://i.pravatar.cc/64?u=${encodeURIComponent(roll)}`,
+      photo: (() => {
+        const fallback = `https://i.pravatar.cc/64?u=${encodeURIComponent(roll)}`;
+        const candidate = photo || fallback;
+        return isBrowserLoadableAssetUrl(candidate) ? candidate : fallback;
+      })(),
       importRemarks: remarks,
       sectionsCell,
     },

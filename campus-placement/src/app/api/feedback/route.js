@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getSessionUserId, isSuperAdmin } from '@/lib/sessionUser';
+import { MAX_FEEDBACK_TITLE_LENGTH, normalizeTitle, validateTitle } from '@/lib/validators';
 
 const ALLOWED_CATEGORIES = new Set(['Feature Request', 'Bug Report', 'General Feedback']);
 
@@ -130,12 +131,19 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const title = String(body.title || '').trim();
+    const title = normalizeTitle(body.title);
     const category = String(body.category || '').trim();
     const description = String(body.description || '').trim();
 
-    if (!title || !description) {
-      return NextResponse.json({ error: 'Title and description are required' }, { status: 400 });
+    const titleErr = validateTitle(title, {
+      label: 'Feedback title',
+      maxLength: MAX_FEEDBACK_TITLE_LENGTH,
+    });
+    if (titleErr) {
+      return NextResponse.json({ error: titleErr }, { status: 400 });
+    }
+    if (!description) {
+      return NextResponse.json({ error: 'Description is required' }, { status: 400 });
     }
     if (!ALLOWED_CATEGORIES.has(category)) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 });

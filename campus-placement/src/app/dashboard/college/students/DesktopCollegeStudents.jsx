@@ -23,9 +23,11 @@ import StudentListFiltersPanel from './StudentListFiltersPanel';
 import StudentSectionSummaryCards from './StudentSectionSummaryCards';
 import { useStudentListFilters } from './useStudentListFilters';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import PageLoading from '@/components/PageLoading';
 import StudentDegreeSpecializationCell, {
   StudentDegreeSpecializationHeader,
 } from './StudentDegreeSpecializationCell';
+import StudentListAvatar from '@/components/student/StudentListAvatar';
 import StudentSystemIdBatchCell, {
   StudentSystemIdBatchHeader,
 } from './StudentSystemIdBatchCell';
@@ -270,9 +272,7 @@ export default function DesktopCollegeStudents() {
       />
 
       {isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-md)' }} />)}
-        </div>
+        <PageLoading message="Loading students…" variant="skeleton-list" inline />
       )}
 
       {!isLoading && (
@@ -304,19 +304,12 @@ export default function DesktopCollegeStudents() {
                 </thead>
                 <tbody>
                   {filtered.map((s, index) => {
-                    const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
                     return (
                       <tr key={s.id} style={{ transition: 'background 0.15s' }}>
                         <td style={{ color: 'var(--text-tertiary)', paddingLeft: '1.5rem', fontSize: '0.85rem' }}>{index + 1}</td>
                         <td className="college-students-name-cell">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-                            {s.photo ? (
-                              <img src={s.photo} alt={s.name} width={34} height={34} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)', flexShrink: 0 }} />
-                            ) : (
-                              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--primary-300)', flexShrink: 0 }}>
-                                {initials || 'S'}
-                              </div>
-                            )}
+                            <StudentListAvatar photo={s.photo} name={s.name} size={34} />
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <Link href={`/dashboard/college/students/${s.id}`} className="student-name-link">
                                 {s.name}

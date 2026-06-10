@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
-import { validateEmployerOfferPayload } from '@/lib/apiInputValidation';
+import { validateEmployerOfferPayload, validateTitlePayload } from '@/lib/apiInputValidation';
+import { normalizeTitle } from '@/lib/validators';
 import { toDateOnlyString } from '@/lib/dateOnly';
 import { isMissingReportedCompanyColumnError } from '@/lib/offerReportedColumn';
 import { OfferService } from '@/lib/domain/offers/service';
@@ -65,14 +66,18 @@ export async function POST(request) {
     const body = await request.json();
     const studentId = String(body?.studentId || '').trim();
     const driveId = String(body?.driveId || '').trim() || null;
-    const jobTitle = String(body?.jobTitle || '').trim();
+    const jobTitle = normalizeTitle(body?.jobTitle);
     const salary = Number(body?.salary || 0);
     const location = String(body?.location || '').trim() || null;
     const joiningDate = String(body?.joiningDate || '').trim() || null;
     const deadlineAt = String(body?.deadlineAt || '').trim() || null;
 
-    if (!studentId || !jobTitle) {
-      return NextResponse.json({ error: 'studentId and jobTitle are required' }, { status: 400 });
+    if (!studentId) {
+      return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
+    }
+    const jobTitleErr = validateTitlePayload(jobTitle, { label: 'Job title' });
+    if (jobTitleErr) {
+      return NextResponse.json({ error: jobTitleErr }, { status: 400 });
     }
 
     const offerErr = validateEmployerOfferPayload({
@@ -182,7 +187,12 @@ export async function PATCH(request) {
     }
 
     if (body.jobTitle != null || body.job_title != null) {
-      push('job_title =', String(body.jobTitle ?? body.job_title ?? '').trim());
+      const nextJobTitle = normalizeTitle(body.jobTitle ?? body.job_title);
+      const patchTitleErr = validateTitlePayload(nextJobTitle, { label: 'Job title' });
+      if (patchTitleErr) {
+        return NextResponse.json({ error: patchTitleErr }, { status: 400 });
+      }
+      push('job_title =', nextJobTitle);
     }
     if (body.salary != null) {
       const n = Number(body.salary);

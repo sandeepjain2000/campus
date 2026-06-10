@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import useSWR from 'swr';
 import {
   Briefcase,
@@ -19,8 +19,12 @@ import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import PageLoading from '@/components/PageLoading';
 import EmployerStudentProfileModal from '@/components/employer/EmployerStudentProfileModal';
+import {
+  EMPLOYER_ALUMNI_APPLICATIONS_PATH,
+  isEmployerAlumniDashboardPath,
+} from '@/lib/employerAlumniRoutes';
 
-const TABS = [
+const ALL_TABS = [
   { id: 'drives', label: 'Placement drives', shortLabel: 'Drives', icon: Building2, desc: 'Students who registered for your campus placement drives.' },
   { id: 'jobs', label: 'Alumni Jobs', shortLabel: 'Alumni Jobs', icon: Briefcase, desc: 'Alumni who applied to your published full-time and contract job postings.' },
   { id: 'internships', label: 'Internships', shortLabel: 'Internships', icon: GraduationCap, desc: 'Students who applied to your published internship postings.' },
@@ -35,6 +39,7 @@ const STATUS_PILLS = [
   { key: 'selected', label: 'Selected' },
   { key: 'rejected', label: 'Rejected' },
   { key: 'on_hold', label: 'On Hold' },
+  { key: 'withdrawn', label: 'Withdrawn' },
 ];
 
 async function fetcher(url) {
@@ -67,10 +72,17 @@ function profileApplicationContext(profileContext) {
 export default function EmployerApplicationsPage() {
   const { addToast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
+  const isAlumniScope = isEmployerAlumniDashboardPath(pathname);
+  const applicationsBasePath = isAlumniScope ? EMPLOYER_ALUMNI_APPLICATIONS_PATH : '/dashboard/employer/applications';
+  const visibleTabs = useMemo(
+    () => (isAlumniScope ? ALL_TABS.filter((t) => t.id === 'jobs') : ALL_TABS.filter((t) => t.id !== 'jobs')),
+    [isAlumniScope],
+  );
   const searchParams = useSearchParams();
   const driveIdFromUrl = String(searchParams.get('driveId') || '').trim();
   const jobIdFromUrl = String(searchParams.get('jobId') || '').trim();
-  const [tab, setTab] = useState('drives');
+  const [tab, setTab] = useState(isAlumniScope ? 'jobs' : 'drives');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [sortOption, setSortOption] = useState('date_desc');
@@ -83,20 +95,32 @@ export default function EmployerApplicationsPage() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam === 'drives' || tabParam === 'jobs' || tabParam === 'internships' || tabParam === 'projects') {
+    if (isAlumniScope) {
+      if (tabParam && tabParam !== 'jobs') {
+        router.replace(EMPLOYER_ALUMNI_APPLICATIONS_PATH);
+        return;
+      }
+      setTab('jobs');
+      return;
+    }
+    if (tabParam === 'jobs') {
+      router.replace(EMPLOYER_ALUMNI_APPLICATIONS_PATH);
+      return;
+    }
+    if (tabParam === 'drives' || tabParam === 'internships' || tabParam === 'projects') {
       setTab(tabParam);
       return;
     }
     if (jobIdFromUrl && !tabParam) {
-      setTab('jobs');
+      router.replace(`${EMPLOYER_ALUMNI_APPLICATIONS_PATH}?jobId=${encodeURIComponent(jobIdFromUrl)}`);
       return;
     }
     if (driveIdFromUrl && !tabParam) {
       setTab('drives');
     }
-  }, [searchParams, jobIdFromUrl, driveIdFromUrl]);
+  }, [searchParams, jobIdFromUrl, driveIdFromUrl, isAlumniScope, router]);
 
-  const applicationsUrl = useMemo(() => {
+  const applicationsBaseUrl = useMemo(() => {
     const params = new URLSearchParams({ tab });
     if (driveIdFromUrl && tab === 'drives') params.set('driveId', driveIdFromUrl);
     if (jobIdFromUrl && (tab === 'jobs' || tab === 'internships' || tab === 'projects')) {
@@ -105,7 +129,7 @@ export default function EmployerApplicationsPage() {
     return `/api/employer/applications?${params.toString()}`;
   }, [tab, driveIdFromUrl, jobIdFromUrl]);
 
-  const { data, error, isLoading, mutate } = useSWR(applicationsUrl, fetcher, {
+  const { data, error, isLoading, mutate } = useSWR(applicationsBaseUrl, fetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 0,
   });
@@ -123,7 +147,13 @@ export default function EmployerApplicationsPage() {
 
   const filtered = useMemo(() => {
     const result = items.filter((a) => {
-      if (statusFilter && a.status !== statusFilter) return false;
+      if (statusFilter === 'withdrawn') {
+        if (a.status !== 'withdrawn') return false;
+      } else if (statusFilter) {
+        if (a.status !== statusFilter) return false;
+      } else if (a.status === 'withdrawn') {
+        return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         const blob = [a.studentName, a.systemId, a.rollNumber, a.email, a.collegeName, a.openingTitle, a.branch]
@@ -144,42 +174,72 @@ export default function EmployerApplicationsPage() {
     });
   }, [items, statusFilter, search, sortOption]);
 
-  const tabMeta = TABS.find((t) => t.id === tab) || TABS[0];
+  const tabMeta = visibleTabs.find((t) => t.id === tab) || visibleTabs[0] || ALL_TABS[0];
 
   const getApplicationsCsv = useCallback(
     (scope) => {
       const list = scope === 'current' ? filtered : items;
-      const headers = [
-        'Student',
-        'System ID',
-        'Roll number',
-        'Email',
-        'College',
-        'Branch',
-        'CGPA',
-        'Opening',
-        'Type',
-        'Status',
-        'Applied',
-        'Source',
-      ];
-      const rows = list.map((a) => [
-        a.studentName,
-        a.systemId || '',
-        a.rollNumber || '',
-        a.email,
-        a.collegeName,
-        a.branch,
-        a.cgpa != null ? String(a.cgpa) : '',
-        a.openingTitle,
-        jobTypeLabel(a.jobType),
-        a.status,
-        a.appliedAt ? formatDate(a.appliedAt) : '',
-        a.sourceKind === 'drive' ? 'Placement drive' : 'Program',
-      ]);
+      const headers = isAlumniScope
+        ? [
+            'Opening',
+            'College',
+            'Student',
+            'System ID',
+            'Email',
+            'Branch',
+            'CGPA',
+            'Type',
+            'Status',
+            'Applied',
+            'Source',
+          ]
+        : [
+            'Student',
+            'System ID',
+            'Roll number',
+            'Email',
+            'College',
+            'Branch',
+            'CGPA',
+            'Opening',
+            'Type',
+            'Status',
+            'Applied',
+            'Source',
+          ];
+      const rows = list.map((a) =>
+        isAlumniScope
+          ? [
+              a.openingTitle,
+              a.collegeName,
+              a.studentName,
+              a.systemId || '',
+              a.email,
+              a.branch,
+              a.cgpa != null ? String(a.cgpa) : '',
+              jobTypeLabel(a.jobType),
+              a.status,
+              a.appliedAt ? formatDate(a.appliedAt) : '',
+              a.sourceKind === 'drive' ? 'Placement drive' : 'Program',
+            ]
+          : [
+              a.studentName,
+              a.systemId || '',
+              a.rollNumber || '',
+              a.email,
+              a.collegeName,
+              a.branch,
+              a.cgpa != null ? String(a.cgpa) : '',
+              a.openingTitle,
+              jobTypeLabel(a.jobType),
+              a.status,
+              a.appliedAt ? formatDate(a.appliedAt) : '',
+              a.sourceKind === 'drive' ? 'Placement drive' : 'Program',
+            ],
+      );
       return { headers, rows };
     },
-    [filtered, items],
+    [filtered, items, isAlumniScope],
   );
 
   const openResume = (url) => {
@@ -228,7 +288,7 @@ export default function EmployerApplicationsPage() {
         
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ color: '#ffffff', fontSize: '2.25rem', fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <ClipboardList size={28} /> Applications Pipeline
+            <ClipboardList size={28} /> {isAlumniScope ? 'Alumni Applications' : 'Applications Pipeline'}
           </h1>
           <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
             {tabMeta.desc}
@@ -303,50 +363,51 @@ export default function EmployerApplicationsPage() {
             <strong>{items.length}</strong> applicant{items.length === 1 ? '' : 's'} for this opening
             {statusFilter || search ? ` (${filtered.length} shown with current filters)` : ''}.
           </span>
-          <Link href={`/dashboard/employer/applications?tab=${tab}`} className="btn btn-ghost btn-sm">
-            Show all {tab === 'internships' ? 'internships' : tab === 'projects' ? 'projects' : 'jobs'}
+          <Link href={`${applicationsBasePath}?tab=${tab}`} className="btn btn-ghost btn-sm">
+            Show all {tab === 'internships' ? 'internships' : tab === 'projects' ? 'projects' : 'alumni jobs'}
           </Link>
         </div>
       )}
 
-      {/* Type Tabs - pill style */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const n = counts[t.id] ?? 0;
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setTab(t.id);
-                setStatusFilter('');
-                router.replace(`/dashboard/employer/applications?tab=${t.id}`);
-              }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.6rem 1.5rem',
-                borderRadius: '999px',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                transition: 'all 0.2s ease',
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'var(--primary-600)' : 'var(--bg-secondary)',
-                color: active ? 'white' : 'var(--text-secondary)',
-                boxShadow: active ? '0 4px 10px rgba(79, 70, 229, 0.25)' : 'none',
-              }}
-            >
-              <Icon size={17} strokeWidth={active ? 2.5 : 1.75} />
-              {t.shortLabel}
-              <span style={{ opacity: 0.85, fontSize: '0.8rem', background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)', borderRadius: '999px', padding: '0.1rem 0.4rem', fontWeight: 700, color: active ? 'white' : 'var(--text-tertiary)' }}>
-                {n}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {visibleTabs.length > 1 ? (
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+          {visibleTabs.map((t) => {
+            const Icon = t.icon;
+            const n = counts[t.id] ?? 0;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTab(t.id);
+                  setStatusFilter('');
+                  router.replace(`${applicationsBasePath}?tab=${t.id}`);
+                }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.6rem 1.5rem',
+                  borderRadius: '999px',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  transition: 'all 0.2s ease',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: active ? 'var(--primary-600)' : 'var(--bg-secondary)',
+                  color: active ? 'white' : 'var(--text-secondary)',
+                  boxShadow: active ? '0 4px 10px rgba(79, 70, 229, 0.25)' : 'none',
+                }}
+              >
+                <Icon size={17} strokeWidth={active ? 2.5 : 1.75} />
+                {t.shortLabel}
+                <span style={{ opacity: 0.85, fontSize: '0.8rem', background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)', borderRadius: '999px', padding: '0.1rem 0.4rem', fontWeight: 700, color: active ? 'white' : 'var(--text-tertiary)' }}>
+                  {n}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {error && (
         <div className="card" style={{ marginBottom: '1.5rem', border: '1px solid var(--danger-200)', background: 'var(--danger-50)', padding: '1.25rem 1.5rem' }}>
@@ -405,14 +466,13 @@ export default function EmployerApplicationsPage() {
       </div>
 
       {isLoading && (
-        <>
-          <PageLoading message="Loading applications…" inline delayMs={0} />
+        <PageLoading message="Loading applications…" inline>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} aria-hidden="true">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="skeleton" style={{ height: '56px', borderRadius: 'var(--radius-md)' }} />
             ))}
           </div>
-        </>
+        </PageLoading>
       )}
 
       {!isLoading && !error && filtered.length === 0 && (
@@ -432,127 +492,185 @@ export default function EmployerApplicationsPage() {
             <table className="data-table">
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)' }}>
-                  <th style={{ paddingLeft: '1.5rem' }}>Student</th>
-                  <th>System ID</th>
-                  <th>College</th>
-                  <th>Branch</th>
-                  <th>CGPA</th>
-                  <th>Opening</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Applied</th>
-                  <th style={{ textAlign: 'right', paddingRight: '1.5rem', minWidth: 280 }}>Actions</th>
+                  {isAlumniScope ? (
+                    <>
+                      <th style={{ paddingLeft: '1.5rem' }}>Opening</th>
+                      <th>College</th>
+                      <th>Student</th>
+                      <th>System ID</th>
+                      <th>Branch</th>
+                      <th>CGPA</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Applied</th>
+                      <th style={{ textAlign: 'right', paddingRight: '1.5rem', minWidth: 280 }}>Actions</th>
+                    </>
+                  ) : (
+                    <>
+                      <th style={{ paddingLeft: '1.5rem' }}>Student</th>
+                      <th>System ID</th>
+                      <th>College</th>
+                      <th>Branch</th>
+                      <th>CGPA</th>
+                      <th>Opening</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Applied</th>
+                      <th style={{ textAlign: 'right', paddingRight: '1.5rem', minWidth: 280 }}>Actions</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((app) => {
                   const appName = String(app?.studentName || 'Student').trim() || 'Student';
                   const initials = appName.split(' ').filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase();
-                  return (
-                    <tr key={`${app.sourceKind}-${app.id}`}>
-                      <td style={{ paddingLeft: '1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div
-                            className="avatar avatar-sm"
-                            style={{
-                              background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))',
-                              color: 'var(--primary-700)',
-                              fontWeight: 700, fontSize: '0.75rem',
-                              border: '1px solid var(--primary-300)'
-                            }}
-                          >
-                            {initials || 'S'}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-sm">{app.studentName}</div>
-                            <div className="text-xs text-tertiary">{app.email}</div>
-                          </div>
+                  const openingCell = (
+                    <td style={{ maxWidth: 220, fontSize: '0.9rem', paddingLeft: isAlumniScope ? '1.5rem' : undefined }}>
+                      <div style={{ fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>{app.openingTitle}</div>
+                    </td>
+                  );
+                  const collegeCell = (
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        <Building2 size={13} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
+                        {app.collegeName}
+                      </div>
+                    </td>
+                  );
+                  const studentCell = (
+                    <td style={{ paddingLeft: isAlumniScope ? undefined : '1.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div
+                          className="avatar avatar-sm"
+                          style={{
+                            background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))',
+                            color: 'var(--primary-700)',
+                            fontWeight: 700, fontSize: '0.75rem',
+                            border: '1px solid var(--primary-300)'
+                          }}
+                        >
+                          {initials || 'S'}
                         </div>
-                      </td>
-                      <td className="font-mono text-sm text-secondary">{app.systemId || '—'}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                          <Building2 size={13} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />
-                          {app.collegeName}
+                        <div>
+                          <div className="font-semibold text-sm">{app.studentName}</div>
+                          <div className="text-xs text-tertiary">{app.email}</div>
                         </div>
-                      </td>
-                      <td className="text-sm text-secondary">{app.branch || '—'}</td>
-                      <td>
-                        {app.cgpa != null ? (
-                          <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{app.cgpa}</span>
-                        ) : '—'}
-                      </td>
-                      <td style={{ maxWidth: 220, fontSize: '0.9rem' }}>
-                        <div style={{ fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>{app.openingTitle}</div>
-                      </td>
-                      <td>
-                        <span className="badge badge-gray" style={{ fontSize: '0.75rem' }}>{jobTypeLabel(app.jobType)}</span>
-                      </td>
-                      <td>
-                        <span className={`badge badge-${getStatusColor(app.status)} badge-dot`} style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}>
-                          {formatStatus(app.status)}
-                        </span>
-                      </td>
-                      <td className="text-sm text-secondary">{app.appliedAt ? formatDate(app.appliedAt) : '—'}</td>
-                      <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() =>
-                              setProfileContext({
-                                studentId: app.studentProfileId,
-                                openingTitle: app.openingTitle,
-                                status: app.status,
-                                appliedAt: app.appliedAt,
-                                currentRound: app.currentRound,
-                                jobType: app.jobType,
-                                notes: app.notes,
-                                sourceKind: app.sourceKind,
-                              })
-                            }
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                            title="View full student profile, CV, and all uploaded documents"
-                          >
-                            <UserRound size={14} /> View
-                            {app.documentCount > 0 ? (
-                              <span className="badge badge-gray" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-                                {app.documentCount}
-                              </span>
-                            ) : null}
+                      </div>
+                    </td>
+                  );
+                  const systemIdCell = <td className="font-mono text-sm text-secondary">{app.systemId || '—'}</td>;
+                  const branchCell = <td className="text-sm text-secondary">{app.branch || '—'}</td>;
+                  const cgpaCell = (
+                    <td>
+                      {app.cgpa != null ? (
+                        <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{app.cgpa}</span>
+                      ) : '—'}
+                    </td>
+                  );
+                  const typeCell = (
+                    <td>
+                      <span className="badge badge-gray" style={{ fontSize: '0.75rem' }}>{jobTypeLabel(app.jobType)}</span>
+                    </td>
+                  );
+                  const statusCell = (
+                    <td>
+                      <span className={`badge badge-${getStatusColor(app.status)} badge-dot`} style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}>
+                        {formatStatus(app.status)}
+                      </span>
+                    </td>
+                  );
+                  const appliedCell = <td className="text-sm text-secondary">{app.appliedAt ? formatDate(app.appliedAt) : '—'}</td>;
+                  const actionsCell = (
+                    <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() =>
+                            setProfileContext({
+                              studentId: app.studentProfileId,
+                              openingTitle: app.openingTitle,
+                              status: app.status,
+                              appliedAt: app.appliedAt,
+                              currentRound: app.currentRound,
+                              jobType: app.jobType,
+                              notes: app.notes,
+                              sourceKind: app.sourceKind,
+                            })
+                          }
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                          title="View full student profile, CV, and all uploaded documents"
+                        >
+                          <UserRound size={14} /> View
+                          {app.documentCount > 0 ? (
+                            <span className="badge badge-gray" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+                              {app.documentCount}
+                            </span>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => openResume(app.resumeUrl)}
+                          disabled={!app.hasResume}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                          title={app.hasResume ? 'Open CV only' : 'No CV uploaded'}
+                        >
+                          <FileText size={14} /> CV
+                        </button>
+                        {app.status !== 'withdrawn' && (app.status === 'applied' || app.status === 'on_hold') && (
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'shortlisted')}>
+                            Shortlist
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => openResume(app.resumeUrl)}
-                            disabled={!app.hasResume}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                            title={app.hasResume ? 'Open CV only' : 'No CV uploaded'}
-                          >
-                            <FileText size={14} /> CV
-                          </button>
-                          {(app.status === 'applied' || app.status === 'on_hold') && (
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'shortlisted')}>
-                              Shortlist
-                            </button>
-                          )}
-                          {app.status === 'shortlisted' && (
-                            <>
-                              <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(app, 'selected')}>
-                                Select
-                              </button>
-                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'rejected')}>
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {app.status === 'in_progress' && (
+                        )}
+                        {app.status !== 'withdrawn' && app.status === 'shortlisted' && (
+                          <>
                             <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(app, 'selected')}>
                               Select
                             </button>
-                          )}
-                        </div>
-                      </td>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'rejected')}>
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {app.status !== 'withdrawn' && app.status === 'in_progress' && (
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(app, 'selected')}>
+                            Select
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  );
+                  return (
+                    <tr key={`${app.sourceKind}-${app.id}-${app.jobId || app.driveId || app.openingTitle}`}>
+                      {isAlumniScope ? (
+                        <>
+                          {openingCell}
+                          {collegeCell}
+                          {studentCell}
+                          {systemIdCell}
+                          {branchCell}
+                          {cgpaCell}
+                          {typeCell}
+                          {statusCell}
+                          {appliedCell}
+                          {actionsCell}
+                        </>
+                      ) : (
+                        <>
+                          {studentCell}
+                          {systemIdCell}
+                          {collegeCell}
+                          {branchCell}
+                          {cgpaCell}
+                          {openingCell}
+                          {typeCell}
+                          {statusCell}
+                          {appliedCell}
+                          {actionsCell}
+                        </>
+                      )}
                     </tr>
                   );
                 })}

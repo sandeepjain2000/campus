@@ -6,6 +6,7 @@ import {
   revokeEmployerTieUp,
   TIE_UP_REVOKE_CONFIRM_REQUIRED,
 } from '@/lib/employerTieUp';
+import { TIE_UP_REVOKE_ENABLED } from '@/lib/employerTieUpShared';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,6 +16,13 @@ export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!TIE_UP_REVOKE_ENABLED) {
+      return NextResponse.json(
+        { error: 'Tie-up cancellation is temporarily disabled.' },
+        { status: 403 },
+      );
     }
 
     const { role, tenant_id, id: user_id } = session.user;

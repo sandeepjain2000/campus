@@ -99,6 +99,7 @@ export function getStatusColor(status) {
     draft: 'gray',
     published: 'green',
     closed: 'red',
+    cancelled: 'gray',
     // Student statuses
     unplaced: 'amber',
     placed: 'green',

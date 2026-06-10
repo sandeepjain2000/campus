@@ -28,3 +28,9 @@ export function toSignedViewUrl(value) {
   if (!isAwsS3Url(s)) return s;
   return `/api/s3/view?url=${encodeURIComponent(s)}`;
 }
+
+/** Safe display URL for student profile photos (S3 proxy, invalid paths → null). */
+export function resolveStudentPhotoDisplayUrl(value) {
+  const resolved = toSignedViewUrl(value);
+  return resolved || null;
+}

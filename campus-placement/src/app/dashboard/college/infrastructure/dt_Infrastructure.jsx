@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import InfrastructureResourceManager from '@/components/college/InfrastructureResourceManager';
+import { CampusCalendarGrid } from '@/components/calendar/CampusCalendarGrid';
+import { infrastructureBookingsToCalendarItems } from '@/lib/calendarItems';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 const CHANNELS = [
   { id: 'web', label: 'Web' },
@@ -29,23 +33,6 @@ function normalizeExternalUrl(raw) {
 
 function emptyChannelsMap(bookings) {
   return Object.fromEntries(bookings.map((b) => [b.id, b.channels || []]));
-}
-
-function buildMonthGrid(year, monthIndex) {
-  const first = new Date(year, monthIndex, 1);
-  const last = new Date(year, monthIndex + 1, 0);
-  const pad = first.getDay();
-  const daysInMonth = last.getDate();
-  const cells = [];
-  for (let i = 0; i < pad; i += 1) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d += 1) cells.push(d);
-  return cells;
-}
-
-function bookingsForDay(bookings, year, monthIndex, day) {
-  if (!day) return [];
-  const iso = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  return bookings.filter((b) => b.date === iso);
 }
 
 export default function CollegeInfrastructurePage() {
@@ -133,17 +120,7 @@ export default function CollegeInfrastructurePage() {
     }
   }, [collegeComms.website]);
 
-  const monthCells = useMemo(() => buildMonthGrid(calYear, calMonth), [calYear, calMonth]);
-  const monthLabel = useMemo(
-    () => new Date(calYear, calMonth, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
-    [calYear, calMonth],
-  );
-
-  const shiftMonth = (delta) => {
-    const d = new Date(calYear, calMonth + delta, 1);
-    setCalYear(d.getFullYear());
-    setCalMonth(d.getMonth());
-  };
+  const bookingCalItems = useMemo(() => infrastructureBookingsToCalendarItems(bookings), [bookings]);
 
   const toggleChannel = async (bookingId, ch) => {
     const cur = channelToggles[bookingId] || [];
@@ -363,7 +340,12 @@ export default function CollegeInfrastructurePage() {
 
             <div className="form-group">
               <label className="form-label">Date <span className="required">*</span></label>
-              <input className="form-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.COLLEGE_INFRA_DATE}
+                value={date}
+                onChange={setDate}
+                aria-label="Booking date"
+              />
             </div>
 
             <div className="form-group">
@@ -401,50 +383,21 @@ export default function CollegeInfrastructurePage() {
               Saved placement bookings on your campus schedule (PlacementHub only — not synced to external calendars).
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => shiftMonth(-1)} aria-label="Previous month">←</button>
-            <span className="text-sm font-semibold" style={{ minWidth: '10rem', textAlign: 'center' }}>{monthLabel}</span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => shiftMonth(1)} aria-label="Next month">→</button>
-          </div>
         </div>
 
-        <div className="infra-panel">
-          <div className="infra-panel-inner">
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '0.35rem',
-                marginBottom: '0.5rem',
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                color: 'var(--text-tertiary)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
+        <div className="infra-panel" style={{ overflow: 'hidden' }}>
+          <div className="infra-panel-inner" style={{ padding: 0 }}>
+            <CampusCalendarGrid
+              items={bookingCalItems}
+              initialYear={calYear}
+              initialMonth={calMonth}
+              viewMode="month"
+              showToolbar
+              onCursorChange={(year, month) => {
+                setCalYear(year);
+                setCalMonth(month);
               }}
-            >
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                <div key={d} style={{ textAlign: 'center' }}>{d}</div>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.35rem' }}>
-              {monthCells.map((day, idx) => {
-                const dayBookings = day ? bookingsForDay(bookings, calYear, calMonth, day) : [];
-                return (
-                  <div
-                    key={idx}
-                    className={`infra-calendar-cell ${day ? '' : 'infra-calendar-cell--muted'}`}
-                  >
-                    {day != null && <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{day}</span>}
-                    {dayBookings.map((b) => (
-                      <span key={b.id} className="infra-calendar-chip" title={b.description}>
-                        {b.company}
-                      </span>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+            />
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { hash } from 'bcryptjs';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 import { assertEmailAvailable, formatEmailInUseMessage } from '@/lib/userEmail';
+import { writeAuditLog } from '@/lib/auditLog';
 
 const ALLOWED_ROLES = new Set(['student', 'college_admin', 'employer']);
 
@@ -108,14 +109,58 @@ export async function PUT(request) {
     if (!id || !firstName || !ALLOWED_ROLES.has(role)) {
       return NextResponse.json({ error: 'id, firstName, and valid role are required' }, { status: 400 });
     }
+
+    const existing = await query(
+      `SELECT email, role, first_name, last_name FROM users WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId]
+    );
+    if (!existing.rows[0]) {
+      return NextResponse.json({ error: 'User not found in your tenant' }, { status: 404 });
+    }
+
+    const existingUser = existing.rows[0];
+    const normalizedLastName = lastName || null;
+    const existingLastName = existingUser.last_name || null;
+    const nameChanged =
+      firstName !== String(existingUser.first_name || '').trim() ||
+      normalizedLastName !== existingLastName;
+
+    if (existingUser.role === 'student' && nameChanged && gate.session.user.role !== 'super_admin') {
+      return NextResponse.json(
+        { error: 'Student name can only be changed by a super admin.' },
+        { status: 403 }
+      );
+    }
+
     const updated = await query(
       `UPDATE users
        SET first_name = $1, last_name = $2, role = $3, is_verified = $4, is_active = $5, updated_at = NOW()
        WHERE id = $6 AND tenant_id = $7
        RETURNING id, email, role, first_name, last_name, is_verified, is_active`,
-      [firstName, lastName || null, role, isVerified, isActive, id, tenantId]
+      [firstName, normalizedLastName, role, isVerified, isActive, id, tenantId]
     );
     if (!updated.rows[0]) return NextResponse.json({ error: 'User not found in your tenant' }, { status: 404 });
+
+    if (existingUser.role === 'student' && nameChanged) {
+      await writeAuditLog({
+        userId: gate.session.user.id,
+        tenantId,
+        action: 'student_name_updated',
+        entityType: 'user',
+        entityId: id,
+        oldValues: {
+          email: existingUser.email,
+          first_name: existingUser.first_name,
+          last_name: existingUser.last_name,
+        },
+        newValues: {
+          email: updated.rows[0].email,
+          first_name: updated.rows[0].first_name,
+          last_name: updated.rows[0].last_name,
+        },
+      });
+    }
+
     return NextResponse.json({ user: updated.rows[0] });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });

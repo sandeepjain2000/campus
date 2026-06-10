@@ -24,6 +24,9 @@ TRUNCATE TABLE
   sponsorship_donation_receipt_sends,
   sponsorship_payments,
   sponsorship_opportunities,
+  startup_funding_receipt_sends,
+  startup_funding_payments,
+  startup_funding_opportunities,
   offers,
   shortlists,
   application_status_log,
@@ -274,7 +277,7 @@ INSERT INTO student_profiles (user_id, tenant_id, roll_number, enrollment_number
 ('b1000000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'ME2021001', 'ENR-IITM-ME2021001', 'Mechanical', 'Mechanical Engineering', 2022, 2026, 7.20, 85.0, 82.0, 'male', 'unplaced', true, 'Interested in product design and manufacturing automation.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
 ('b1000000-0000-0000-0000-000000000015', 'a1000000-0000-0000-0000-000000000002', 'CS2021101', 'ENR-NITT-CS2021101', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 8.90, 95.0, 92.5, 'female', 'unplaced', true, 'Full stack developer with passion for building scalable web applications.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
 ('b1000000-0000-0000-0000-000000000024', 'a1000000-0000-0000-0000-000000000002', 'EE2021102', 'ENR-NITT-EE2021102', 'Electrical', 'Electrical & Electronics Engineering', 2022, 2026, 8.10, 91.0, 88.0, 'male', 'unplaced', true, 'Power systems and embedded control interests.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'),
-('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'CS2021201', 'ENR-BITS-CS2021201', 'Computer Science', 'Computer Science & Engineering', 2022, 2026, 9.20, 98.0, 96.0, 'male', 'unplaced', true, 'AI/ML enthusiast. Working on deep learning applications and research.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+('b1000000-0000-0000-0000-000000000016', 'a1000000-0000-0000-0000-000000000003', 'CS2021201', 'ENR-BITS-CS2021201', 'Computer Science', 'Computer Science & Engineering', 2021, 2029, 9.20, 98.0, 96.0, 'male', 'unplaced', true, 'AI/ML enthusiast. Working on deep learning applications and research.', 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
 
 -- Degree = B.Tech; department/branch hold stream names (specialisation).
 UPDATE student_profiles
@@ -745,6 +748,17 @@ INSERT INTO sponsorship_opportunities (id, tenant_id, category, description, tie
 ('ab100000-0000-0000-0000-000000000010', 'a1000000-0000-0000-0000-000000000001', 'Scholarship & Access', 'Merit and need-based awards for undergraduate and postgraduate students.', 'Merit Scholarship Patron', 500000, ARRAY['Named scholarship (1 seat/year)', 'Annual scholar meet invite', 'Report on outcomes'], NULL, true, 1),
 ('ab100000-0000-0000-0000-000000000011', 'a1000000-0000-0000-0000-000000000001', 'Research & Industry Connect', 'Joint workshops, sabbaticals, and PhD engagement with industry labs.', 'Industry Lab Consortium — Associate', 750000, ARRAY['Seminar series co-host', 'Faculty visit day', 'Student project showcase slot'], NULL, true, 1),
 ('ab100000-0000-0000-0000-000000000012', 'a1000000-0000-0000-0000-000000000001', 'Sports & Wellness', 'Inter-IIT events, wellness programs, and student fitness infrastructure.', 'Wellness Series Sponsor', 280000, ARRAY['Branding at sports complex', 'Wellness week activation', 'Social media thank-you'], NULL, true, 1);
+
+-- 24b. Startup seed funding opportunities (employer → college incubation programs)
+INSERT INTO startup_funding_opportunities (id, tenant_id, category, description, tier_name, price_inr, benefits, label, is_active, payments_permitted) VALUES
+('ac100000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Incubation & Pre-seed', 'Support early-stage student startups in campus incubators with grant-style seed capital.', 'Micro Grant', 200000, ARRAY['Fund one pre-seed startup cohort slot', 'Quarterly progress digest', 'Invite to demo day'], 'Entry', true, 1),
+('ac100000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Incubation & Pre-seed', 'Support early-stage student startups in campus incubators with grant-style seed capital.', 'Pre-seed Partner', 750000, ARRAY['Micro grant benefits', 'Named mentor hours pool', 'Priority pitch to investors'], 'Popular', true, 1),
+('ac100000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Demo Day & Pitch', 'Fund demo day winners and inter-college pitch competitions.', 'Demo Day Prize Pool', 350000, ARRAY['Co-branded demo day awards', 'Judge seat for one representative', 'Media mention in event recap'], NULL, true, 1),
+('ac100000-0000-0000-0000-000000000004', 'a1000000-0000-0000-0000-000000000001', 'Sector Innovation Fund', 'Deep tech, climate, and healthtech ventures from student founders.', 'Deep Tech Seed', 1500000, ARRAY['Sector-specific startup shortlist access', 'Lab partnership day', 'Annual innovation report'], 'Featured', true, 1),
+('ac100000-0000-0000-0000-000000000005', 'a1000000-0000-0000-0000-000000000002', 'Incubation & Pre-seed', 'Capital for NIT Trichy incubation hub ventures.', 'Campus Venture Grant', 250000, ARRAY['One incubation seat funded', 'Mentor connect session', 'Showcase on careers portal'], NULL, true, 1),
+('ac100000-0000-0000-0000-000000000006', 'a1000000-0000-0000-0000-000000000002', 'Mentor-linked Seed Pool', 'Seed capital paired with structured mentor engagement.', 'Mentor Seed Circle', 500000, ARRAY['Grant benefits', 'Quarterly mentor roundtable', 'Startup hiring visibility'], 'Popular', true, 1),
+('ac100000-0000-0000-0000-000000000007', 'a1000000-0000-0000-0000-000000000003', 'Incubation & Pre-seed', 'Support BITS Pilani student-led ventures.', 'PIEDE Seed Grant', 300000, ARRAY['Incubation cell grant allocation', 'Demo showcase slot', 'Alumni investor intro'], NULL, true, 1),
+('ac100000-0000-0000-0000-000000000008', 'a1000000-0000-0000-0000-000000000003', 'Demo Day & Pitch', 'Prize and follow-on funding for pitch winners.', 'Pitch Winner Fund', 450000, ARRAY['Named pitch track', 'Winner prize co-funding', 'Employer office hours'], NULL, true, 1);
 
 -- 25. Clarifications / Q&A (DB-backed)
 INSERT INTO clarification_batches (id, tenant_id, company, posted_by, posted_at, created_by, created_at) VALUES

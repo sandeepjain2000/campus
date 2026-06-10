@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Trophy, School, CreditCard, Building2, Landmark, X, Eye, Lock, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import PageLoading from '@/components/PageLoading';
 
 /** Demo-only checkout — values are illustrative (Stripes-123 is not a real processor). */
 const DEMO_CHECKOUT = {
@@ -53,6 +54,7 @@ function flattenOpportunities(colleges) {
 export default function EmployerSponsorshipsPage() {
   const { addToast } = useToast();
   const [colleges, setColleges] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [sponsorModal, setSponsorModal] = useState(null);
   const [detailsRow, setDetailsRow] = useState(null);
   const [payTab, setPayTab] = useState('online');
@@ -69,22 +71,28 @@ export default function EmployerSponsorshipsPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const loadColleges = useCallback(async () => {
-    const res = await fetch('/api/employer/sponsorships');
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'Failed to load sponsorship data');
-    const list = Array.isArray(json.colleges) ? json.colleges : [];
-    setColleges(list);
+  const loadColleges = useCallback(async ({ showLoading = false } = {}) => {
+    if (showLoading) setLoading(true);
+    try {
+      const res = await fetch('/api/employer/sponsorships');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to load sponsorship data');
+      const list = Array.isArray(json.colleges) ? json.colleges : [];
+      setColleges(list);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        await loadColleges();
+        await loadColleges({ showLoading: true });
       } catch {
         if (!mounted) return;
         setColleges([]);
+        setLoading(false);
         addToast('Failed to load sponsorship data', 'error');
       }
     })();
@@ -368,11 +376,38 @@ export default function EmployerSponsorshipsPage() {
             />
           </label>
           <span className="text-xs text-secondary" style={{ marginLeft: 'auto' }}>
-            Showing {filteredRows.length} of {allRows.length}
+            {loading ? 'Loading…' : `Showing ${filteredRows.length} of ${allRows.length}`}
           </span>
         </div>
       </div>
 
+      {loading ? (
+        <PageLoading message="Loading sponsorship opportunities…" inline>
+          <div className="table-container" aria-hidden="true">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>College</th>
+                  <th>Category</th>
+                  <th>Tier</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th style={{ width: 1 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={6}>
+                      <div className="skeleton" style={{ height: 44, borderRadius: 6 }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </PageLoading>
+      ) : (
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -450,6 +485,7 @@ export default function EmployerSponsorshipsPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {detailsRow ? (
         <div

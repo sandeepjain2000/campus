@@ -38,10 +38,14 @@ npm run test:guided:playbook-list
 | **College approve → student apply → employer select** (after publish) | `npm run test:guided:playbook-apply` | CI-01, SI-04, EI-15, EI-16, SI-09 |
 | **Split E2E** (two sessions) | Run **publish**, then **apply** | Reuses SQLite marker |
 
-One-off partnership setup (if campuses empty — IIT Madras for every employer):
+One-off partnership setup (if campuses empty):
 
 ```powershell
+# IIT Madras × every employer
 npm run qa:ensure-partnership
+
+# TechCorp (hr@techcorp.com) × all active colleges — internship playbook / EI-15
+npm run qa:ensure-techcorp-partnerships
 ```
 
 Or in the app: **Data entry** → **Campus tie-ups** → **Ensure IIT Madras tie-up (all employers)**.

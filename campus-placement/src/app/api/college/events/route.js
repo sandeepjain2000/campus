@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { validatePlacementDate } from '@/lib/dateOnly';
+import { validateTitlePayload } from '@/lib/apiInputValidation';
+import { normalizeTitle } from '@/lib/validators';
 import { AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
@@ -70,7 +72,7 @@ export async function POST(request) {
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
     const body = await request.json();
-    const title = String(body?.title || '').trim();
+    const title = normalizeTitle(body?.title);
     const eventType = String(body?.eventType || 'other').trim();
     const startDate = String(body?.startDate || '').trim();
     const endDate = String(body?.endDate || startDate).trim();
@@ -80,6 +82,10 @@ export async function POST(request) {
     const allowedTypes = new Set(['exam', 'holiday', 'festival', 'placement_drive', 'interview_slot', 'workshop', 'other']);
     if (!title || !startDate || !allowedTypes.has(eventType)) {
       return NextResponse.json({ error: 'title, eventType and startDate are required' }, { status: 400 });
+    }
+    const titleErr = validateTitlePayload(title, { label: 'Event title' });
+    if (titleErr) {
+      return NextResponse.json({ error: titleErr }, { status: 400 });
     }
 
     const startCheck = validatePlacementDate(startDate, { allowPast: false });

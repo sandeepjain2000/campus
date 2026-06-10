@@ -184,6 +184,7 @@ export const authOptions = {
         token.id = user.id;
         token.email = user.email;
         token.communication_email = user.communication_email || user.email;
+        token.name = user.name;
         token.role = user.role;
         token.tenantId = user.tenantId;
         token.tenantName = user.tenantName;
@@ -201,6 +202,20 @@ export const authOptions = {
       if (trigger === 'update' && session?.brandLogoUrl !== undefined) {
         token.brandLogoUrl = session.brandLogoUrl || null;
       }
+      if (token?.id) {
+        try {
+          const refreshed = await query(
+            `SELECT first_name, last_name FROM users WHERE id = $1::uuid LIMIT 1`,
+            [token.id],
+          );
+          const row = refreshed.rows[0];
+          if (row) {
+            token.name = `${row.first_name || ''} ${row.last_name || ''}`.trim() || token.name;
+          }
+        } catch {
+          /* keep cached name on transient DB errors */
+        }
+      }
       return token;
     },
     async session({ session, token }) {
@@ -208,6 +223,7 @@ export const authOptions = {
         session.user.id = token.id;
         session.user.email = token.email;
         session.user.communication_email = token.communication_email || token.email;
+        session.user.name = token.name;
         session.user.role = token.role;
         session.user.tenantId = token.tenantId;
         session.user.tenant_id = token.tenantId ?? null;

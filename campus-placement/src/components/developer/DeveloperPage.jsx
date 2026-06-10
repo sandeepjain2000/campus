@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
 import {
   DEVELOPER_PAGE_META,
+  DEVELOPER_PAGE_TOC,
   QUICK_START_STEPS,
   GUIDED_PLAYBOOKS,
   RUNNER_PANEL_STEPS,
@@ -18,7 +19,9 @@ import {
   DEMO_PASSWORD,
   RUNNER_CHANGE_ALERTS,
   EMAIL_DEMO_NOTES,
-  PURGE_NOTES,
+  CLEANUP_OVERVIEW,
+  CLEANUP_COMMANDS,
+  RESTORE_AFTER_CLEANUP,
   LEGACY_RUNNER_COMMANDS,
   RELATED_DOCS,
 } from '@/content/developerNotes';
@@ -86,18 +89,23 @@ export default function DeveloperPage() {
           </p>
         </div>
 
-        <nav className="dev-notes-toc" aria-label="On this page">
-          <a href="#quick-start">Quick start</a>
-          <a href="#playbooks">Playbooks</a>
-          <a href="#runner-alerts">Runner alerts</a>
-          <a href="#email-demo">Email &amp; demo mail</a>
-          <a href="#e2e-roles">Internship E2E roles</a>
-          <a href="#panel">Next button</a>
-          <a href="#screen-tag">Screen tag states</a>
-          <a href="#marker">Session marker</a>
-          <a href="#logins">Demo logins</a>
-          <a href="#purge">Clean up</a>
-          <a href="#legacy">Legacy commands</a>
+        <nav id="toc" className="dev-notes-toc-card" aria-labelledby="dev-notes-toc-heading">
+          <h2 id="dev-notes-toc-heading" className="dev-notes-toc-title">
+            Table of contents
+          </h2>
+          <ol className="dev-notes-toc-list">
+            {DEVELOPER_PAGE_TOC.map((item, index) => (
+              <li key={item.id}>
+                <a href={`#${item.id}`} className="dev-notes-toc-link">
+                  <span className="dev-notes-toc-num">{index + 1}</span>
+                  <span className="dev-notes-toc-text">
+                    <span className="dev-notes-toc-label">{item.label}</span>
+                    {item.hint ? <span className="dev-notes-toc-hint">{item.hint}</span> : null}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ol>
         </nav>
 
         <Section id="quick-start" title="Three commands">
@@ -295,15 +303,90 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
-        <Section id="purge" title="Clean up test data">
+        {/* Legacy anchor #purge */}
+        <span id="purge" className="dev-notes-anchor" aria-hidden />
+        <Section id="cleanup" title="Clean up &amp; restore test data">
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
-            On the <Link href="/data-entry">Demo data</Link> page:
+            {CLEANUP_OVERVIEW} Open the landing{' '}
+            <Link href="/?demo=apis">Demo APIs</Link> or <Link href="/?demo=cleanup">Cleanup (purge)</Link> panels, or use
+            the commands below from the app folder.
           </p>
-          <ul className="dev-notes-bullets">
-            {PURGE_NOTES.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+
+          <h3 className="dev-notes-subtitle">Wipe &amp; selective cleanup</h3>
+          <div className="dev-notes-table-wrap">
+            <table className="dev-notes-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Command</th>
+                  <th>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CLEANUP_COMMANDS.map((row) => (
+                  <tr key={row.command}>
+                    <td>
+                      <strong>{row.title}</strong>
+                      <p className="dev-notes-detail" style={{ margin: '0.35rem 0 0' }}>
+                        {row.detail}
+                      </p>
+                      {row.alt ? (
+                        <p className="dev-notes-muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem' }}>
+                          Alt: <code className="dev-notes-inline-code">{row.alt}</code>
+                        </p>
+                      ) : null}
+                    </td>
+                    <td>
+                      <CopyBlock text={row.command} />
+                    </td>
+                    <td className="dev-notes-muted">{row.when}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 id="restore" className="dev-notes-subtitle">
+            Restore after cleanup
+          </h3>
+          <p className="dev-notes-detail" style={{ marginTop: 0 }}>
+            Run these after <code className="dev-notes-inline-code">npm run db:clear-placement</code> so employers can
+            publish again.
+          </p>
+          <div className="dev-notes-table-wrap">
+            <table className="dev-notes-table">
+              <thead>
+                <tr>
+                  <th>Step</th>
+                  <th>Command</th>
+                </tr>
+              </thead>
+              <tbody>
+                {RESTORE_AFTER_CLEANUP.map((row) => (
+                  <tr key={row.command}>
+                    <td>
+                      <strong>{row.title}</strong>
+                      <p className="dev-notes-detail" style={{ margin: '0.35rem 0 0' }}>
+                        {row.detail}
+                      </p>
+                      {row.alt ? (
+                        <p className="dev-notes-muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem' }}>
+                          Alt: <code className="dev-notes-inline-code">{row.alt}</code>
+                        </p>
+                      ) : null}
+                    </td>
+                    <td>
+                      <code className="dev-notes-inline-code">{row.command}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="dev-notes-callout">
+            Also on <Link href="/data-entry">Demo data</Link> — same actions as the landing Demo APIs panel.
+          </p>
         </Section>
 
         <Section id="legacy" title="Legacy runner modes">
@@ -386,9 +469,9 @@ export default function DeveloperPage() {
           padding: 2rem 1.25rem 4rem;
         }
         .dev-notes-hero {
-          margin-bottom: 2rem;
-          padding-bottom: 1.5rem;
-          border-bottom: 1px solid var(--border-default);
+          margin-bottom: 1.25rem;
+          padding-bottom: 0;
+          border-bottom: none;
         }
         .dev-notes-hero-icon {
           width: 3rem;
@@ -427,24 +510,92 @@ export default function DeveloperPage() {
           color: var(--text-tertiary);
           margin: 0;
         }
-        .dev-notes-toc {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem 1rem;
+        .dev-notes-toc-card {
           margin-bottom: 2rem;
-          padding: 0.85rem 1rem;
+          padding: 1.1rem 1.25rem 1.25rem;
           background: var(--bg-secondary);
           border: 1px solid var(--border-default);
           border-radius: var(--radius-lg);
-          font-size: 0.8125rem;
-          font-weight: 600;
         }
-        .dev-notes-toc a {
-          color: var(--primary-700);
+        .dev-notes-toc-title {
+          margin: 0 0 0.85rem;
+          font-size: 0.75rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--text-tertiary);
+        }
+        .dev-notes-toc-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: grid;
+          gap: 0.35rem;
+        }
+        @media (min-width: 40rem) {
+          .dev-notes-toc-list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 1.5rem;
+          }
+        }
+        .dev-notes-toc-link {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.65rem;
+          padding: 0.45rem 0.5rem;
+          border-radius: var(--radius-md);
           text-decoration: none;
+          color: inherit;
+          transition: background 0.15s ease;
         }
-        .dev-notes-toc a:hover {
+        .dev-notes-toc-link:hover,
+        .dev-notes-toc-link:focus-visible {
+          background: var(--bg-primary);
+          outline: none;
+        }
+        .dev-notes-toc-link:hover .dev-notes-toc-label,
+        .dev-notes-toc-link:focus-visible .dev-notes-toc-label {
+          color: var(--primary-700);
           text-decoration: underline;
+        }
+        .dev-notes-toc-num {
+          flex-shrink: 0;
+          width: 1.5rem;
+          height: 1.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.6875rem;
+          font-weight: 800;
+          color: var(--primary-700);
+          background: var(--primary-50);
+          border: 1px solid var(--primary-200);
+          border-radius: 999px;
+        }
+        .dev-notes-toc-text {
+          display: flex;
+          flex-direction: column;
+          gap: 0.1rem;
+          min-width: 0;
+        }
+        .dev-notes-toc-label {
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          line-height: 1.3;
+        }
+        .dev-notes-toc-hint {
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: var(--text-tertiary);
+          line-height: 1.35;
+        }
+        .dev-notes-anchor {
+          display: block;
+          position: relative;
+          top: -4rem;
+          visibility: hidden;
+          pointer-events: none;
         }
         .dev-notes-section {
           margin-bottom: 2.25rem;

@@ -7,6 +7,13 @@ import {
   normalizeOrganizationName,
 } from '@/lib/organizationNames';
 import { SP_ACTIVE_ON } from '@/lib/studentProfileActive';
+import {
+  INSTITUTION_CLASSIFICATION_SELECT_SQL,
+  institutionClassificationPatchEntries,
+  mapInstitutionClassificationsFromRow,
+  parseInstitutionClassificationsFromBody,
+} from '@/lib/tenantInstitutionClassifications';
+import { syncCollegeAdminUsersActive } from '@/lib/adminOrganizationActive';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -28,6 +35,7 @@ async function loadCollege(id) {
         t.phone,
         t.naac_grade,
         t.nirf_rank,
+        ${INSTITUTION_CLASSIFICATION_SELECT_SQL},
         t.is_active,
         t.created_at,
         COUNT(sp.id) AS students,
@@ -72,6 +80,7 @@ function mapCollege(row) {
     createdAt: row.created_at,
     adminEmail: admin.email || '',
     adminName: [admin.firstName, admin.lastName].filter(Boolean).join(' ') || '',
+    institutionClassifications: mapInstitutionClassificationsFromRow(row),
   };
 }
 
@@ -102,7 +111,12 @@ export async function PATCH(request, { params }) {
     if (!isUuid(id)) return NextResponse.json({ error: 'Invalid college id' }, { status: 400 });
 
     const body = await request.json();
-    const name = normalizeOrganizationName(body?.name ?? '');
+    const existing = await loadCollege(id);
+    if (!existing) {
+      return NextResponse.json({ error: 'College not found' }, { status: 404 });
+    }
+
+    const name = normalizeOrganizationName(body?.name ?? existing.name);
     if (!name) return NextResponse.json({ error: 'College name is required' }, { status: 400 });
 
     try {
@@ -132,30 +146,49 @@ export async function PATCH(request, { params }) {
     if (nirfRank != null && !Number.isFinite(nirfRank)) {
       return NextResponse.json({ error: 'NIRF rank must be a number' }, { status: 400 });
     }
-    const active = Boolean(body?.active ?? body?.is_active ?? true);
+    const active =
+      body?.active !== undefined || body?.is_active !== undefined
+        ? Boolean(body?.active ?? body?.is_active)
+        : Boolean(existing.is_active);
+    const classificationPatch = parseInstitutionClassificationsFromBody(body);
+    const classificationEntries = classificationPatch
+      ? institutionClassificationPatchEntries(classificationPatch)
+      : [];
+
+    const setParts = [
+      'name = $2',
+      "city = NULLIF($3, '')",
+      "state = NULLIF($4, '')",
+      "pincode = NULLIF($5, '')",
+      "website = NULLIF($6, '')",
+      "email = NULLIF($7, '')",
+      "communication_email = COALESCE(NULLIF($7, ''), communication_email)",
+      "phone = NULLIF($8, '')",
+      "naac_grade = NULLIF($9, '')",
+      'nirf_rank = $10',
+      'is_active = $11',
+    ];
+    const params = [id, name, city, state, pincode, website, email, phone, naac, nirfRank, active];
+    for (const entry of classificationEntries) {
+      params.push(entry.value);
+      setParts.push(`${entry.column} = $${params.length}`);
+    }
+    setParts.push('updated_at = NOW()');
 
     const updated = await query(
       `UPDATE tenants
-       SET
-         name = $2,
-         city = NULLIF($3, ''),
-         state = NULLIF($4, ''),
-         pincode = NULLIF($5, ''),
-         website = NULLIF($6, ''),
-         email = NULLIF($7, ''),
-         communication_email = COALESCE(NULLIF($7, ''), communication_email),
-         phone = NULLIF($8, ''),
-         naac_grade = NULLIF($9, ''),
-         nirf_rank = $10,
-         is_active = $11,
-         updated_at = NOW()
+       SET ${setParts.join(',\n         ')}
        WHERE id = $1::uuid AND type = 'college'
        RETURNING id`,
-      [id, name, city, state, pincode, website, email, phone, naac, nirfRank, active],
+      params,
     );
 
     if (!updated.rowCount) {
       return NextResponse.json({ error: 'College not found' }, { status: 404 });
+    }
+
+    if (active !== Boolean(existing.is_active)) {
+      await syncCollegeAdminUsersActive(query, id, active);
     }
 
     const row = await loadCollege(id);

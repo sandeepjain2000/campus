@@ -9,7 +9,11 @@ import { formatStatus, getStatusColor } from '@/lib/utils';
 import EmployerCompanyCell from '@/components/employer/EmployerCompanyCell';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { TIE_UP_REVOKE_MESSAGES } from '@/lib/employerTieUpShared';
+import {
+  TIE_UP_REVOKE_DISABLED_TITLE,
+  TIE_UP_REVOKE_ENABLED,
+  TIE_UP_REVOKE_MESSAGES,
+} from '@/lib/employerTieUpShared';
 import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
 import { Building2, Globe, Users, Shield, Star, ExternalLink, X, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
@@ -255,7 +259,7 @@ export default function DesktopEmployers() {
                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPocModal(emp)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border-default)', fontSize: '0.8rem' }}>
                                   <Users size={13} /> POCs
                                 </button>
-                                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', padding: '0.35rem' }} onClick={() => setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={processingId === emp.employer_id} title="Revoke tie-up">
+                                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', padding: '0.35rem', opacity: TIE_UP_REVOKE_ENABLED ? 1 : 0.45 }} onClick={() => TIE_UP_REVOKE_ENABLED && setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={!TIE_UP_REVOKE_ENABLED || processingId === emp.employer_id} title={TIE_UP_REVOKE_ENABLED ? 'Revoke tie-up' : TIE_UP_REVOKE_DISABLED_TITLE}>
                                   {processingId === emp.employer_id ? '…' : <X size={13} />}
                                 </button>
                               </>

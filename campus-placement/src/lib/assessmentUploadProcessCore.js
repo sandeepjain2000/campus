@@ -1,6 +1,6 @@
 import { isUuid } from '@/lib/tenantContext';
 import { INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED } from '@/lib/assessmentUploadDbError';
-import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED, AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export function sanitizeUuidInput(raw) {
   let s = String(raw ?? '').trim().replace(/^\uFEFF/, '');
@@ -65,6 +65,20 @@ export async function resolveTarget(client, employerId, { driveId, jobId, tenant
 }
 
 export async function findApplicationForStudent(client, studentId, targetDriveId, targetJobId) {
+  if (targetJobId) {
+    const progRes = await client.query(
+      `SELECT id
+       FROM program_applications pa
+       WHERE pa.student_id = $1::uuid
+         AND pa.job_id = $2::uuid
+         ${AND_PA_NOT_DELETED}
+       ORDER BY pa.applied_at DESC
+       LIMIT 1`,
+      [studentId, targetJobId],
+    );
+    if (progRes.rows[0]?.id) return progRes.rows[0].id;
+  }
+
   const appRes = await client.query(
     `SELECT id
      FROM applications a

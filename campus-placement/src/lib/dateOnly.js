@@ -106,3 +106,79 @@ export function validateDriveDateForApply(driveDateYmd) {
   }
   return v;
 }
+
+/**
+ * Parse HH:MM or HH:MM:SS (24h).
+ * @param {unknown} value
+ * @returns {{ hours: number, minutes: number } | null}
+ */
+export function parseTimeHm(value) {
+  const m = String(value || '').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!m) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return { hours, minutes };
+}
+
+/** @param {unknown} value @returns {string} HH:MM or empty when invalid */
+export function normalizeTimeHm(value) {
+  const parsed = parseTimeHm(value);
+  if (!parsed) return '';
+  return `${String(parsed.hours).padStart(2, '0')}:${String(parsed.minutes).padStart(2, '0')}`;
+}
+
+/**
+ * @param {string} ymd
+ * @param {string} timeHm
+ * @returns {Date | null}
+ */
+export function combineYmdAndTimeToLocalDate(ymd, timeHm) {
+  const date = parseYmdToLocalDate(toDateOnlyString(ymd));
+  const time = parseTimeHm(timeHm);
+  if (!date || !time) return null;
+  date.setHours(time.hours, time.minutes, 0, 0);
+  return date;
+}
+
+/**
+ * Interview slots must be scheduled in the future (date + time).
+ * @param {string} ymd
+ * @param {string} timeHm
+ * @param {{ allowPast?: boolean }} [opts] — skip future check when editing an unchanged slot
+ */
+export function validateInterviewDateTime(ymd, timeHm, opts = {}) {
+  const { allowPast = false } = opts;
+  const normalizedDate = toDateOnlyString(ymd);
+  if (!normalizedDate) {
+    return { ok: false, error: 'Enter a valid date (YYYY-MM-DD).' };
+  }
+  if (!parseTimeHm(timeHm)) {
+    return { ok: false, error: 'Enter a valid time (HH:MM).' };
+  }
+
+  const dateCheck = validatePlacementDate(normalizedDate, { allowPast });
+  if (!dateCheck.ok) return dateCheck;
+
+  if (!allowPast) {
+    const scheduledAt = combineYmdAndTimeToLocalDate(normalizedDate, timeHm);
+    if (!scheduledAt) {
+      return { ok: false, error: 'Enter a valid date and time.' };
+    }
+    if (scheduledAt.getTime() <= Date.now()) {
+      return { ok: false, error: 'Interview time must be in the future.' };
+    }
+  }
+
+  return {
+    ok: true,
+    value: { date: dateCheck.value, time: normalizeTimeHm(timeHm) },
+  };
+}
+
+/** @returns {string | null} First error message, or null when valid. */
+export function validateInterviewDateTimeOrError(ymd, timeHm, opts = {}) {
+  const result = validateInterviewDateTime(ymd, timeHm, opts);
+  return result.ok ? null : result.error;
+}

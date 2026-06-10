@@ -3,17 +3,22 @@
 import { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import DataTableToolbar from '@/components/DataTableToolbar';
+import PageLoading from '@/components/PageLoading';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
 import { FolderGit2, Plus, Users, IndianRupee, Activity, FileText, Settings } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
-import { FIELD_IDS } from '@/lib/inputConstraints';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
 import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
 import { formatEmployerMinCgpa } from '@/lib/employerJobDisplay';
 import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
+import { useEmployerPostingCampuses } from '@/hooks/useEmployerPostingCampuses';
+import EmployerListFormLayout from '@/components/employer/EmployerListFormLayout';
+import EmployerCampusSyncDialog from '@/components/employer/EmployerCampusSyncDialog';
 
 function projectPrizeLabel(min, max) {
   if (min == null && max == null) return '—';
@@ -32,13 +37,14 @@ async function swrFetcher(url) {
 
 export default function EmployerProjectsPage() {
   const { addToast } = useToast();
+  const jobsApiPath = '/api/employer/jobs?scope=programs';
   const { data: campusData } = useSWR('/api/employer/campuses', swrFetcher, { revalidateOnFocus: true });
   const {
     data: jobData,
     error: jobsError,
     isLoading: jobsLoading,
     mutate: mutateJobs,
-  } = useSWR('/api/employer/jobs?scope=programs', swrFetcher, {
+  } = useSWR(jobsApiPath, swrFetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 0,
   });
@@ -58,10 +64,7 @@ export default function EmployerProjectsPage() {
   const [campusSyncSelection, setCampusSyncSelection] = useState({});
   const [campusSyncSubmitting, setCampusSyncSubmitting] = useState(false);
 
-  const approvedCampuses = useMemo(
-    () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
-    [campusData],
-  );
+  const approvedCampuses = useEmployerPostingCampuses(campusData, 'projects');
 
   const projects = useMemo(() => {
     const jobs = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
@@ -96,6 +99,10 @@ export default function EmployerProjectsPage() {
     defaultSort: 'date_desc',
   });
 
+  const closeForm = useCallback(() => {
+    setShowForm(false);
+  }, []);
+
   const openForm = () => {
     setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses));
     setProjectKind('short_project');
@@ -118,8 +125,9 @@ export default function EmployerProjectsPage() {
   }, [projects]);
 
   const publishProject = useCallback(async () => {
-    if (!title.trim()) {
-      addToast('Title is required', 'error');
+    const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, title, { label: 'Project title' });
+    if (titleErr) {
+      addToast(titleErr, 'error');
       return;
     }
     const tenantIds = Object.entries(selectedTenantIds)
@@ -167,7 +175,7 @@ export default function EmployerProjectsPage() {
         return;
       }
       addToast('Project published. Students at selected campuses can apply.', 'success');
-      setShowForm(false);
+      closeForm();
       await mutateJobs();
     } catch {
       addToast('Network error', 'error');
@@ -186,15 +194,25 @@ export default function EmployerProjectsPage() {
     keywords,
     addToast,
     mutateJobs,
+    closeForm,
   ]);
+
+  const campusSyncProject = useMemo(
+    () => projects.find((j) => j.id === campusSyncJobId) ?? null,
+    [projects, campusSyncJobId],
+  );
 
   const openCampusSync = useCallback(
     (jobId) => {
+      if (!approvedCampuses.length) {
+        addToast('No approved campuses yet. Ask a college to approve your tie-up first.', 'warning');
+        return;
+      }
       const job = projects.find((j) => j.id === jobId);
       setCampusSyncSelection(buildDefaultTenantSelection(approvedCampuses, job?.tenantIds));
       setCampusSyncJobId(jobId);
     },
-    [approvedCampuses, projects],
+    [approvedCampuses, projects, addToast],
   );
 
   const submitCampusSync = useCallback(async () => {
@@ -234,6 +252,74 @@ export default function EmployerProjectsPage() {
     }
   }, [campusSyncJobId, campusSyncSelection, addToast, mutateJobs]);
 
+  if (showForm) {
+    return (
+      <EmployerListFormLayout
+        title="Post New Project"
+        subtitle="Publish a short project or hackathon to approved campuses."
+        onBack={closeForm}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <button type="button" className="btn btn-secondary" disabled={submitting} onClick={closeForm}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary" disabled={submitting} onClick={publishProject}>
+              {submitting ? 'Publishing…' : 'Publish'}
+            </button>
+          </div>
+        }
+      >
+        <div className="grid grid-2">
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <EmployerCampusTargetPicker
+              campuses={approvedCampuses}
+              selection={selectedTenantIds}
+              onSelectionChange={setSelectedTenantIds}
+              label="Target campuses (approved)"
+              required
+              emptyMessage="No approved campuses. Complete a campus tie-up first."
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Type</label>
+            <select className="form-select" value={projectKind} onChange={(e) => setProjectKind(e.target.value)}>
+              <option value="short_project">Short project</option>
+              <option value="hackathon">Hackathon</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Title <span className="required">*</span></label>
+            <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., 48h GenAI sprint" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Prize / stipend min (INR, optional)</label>
+            <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MIN} value={stipend} onChange={setStipend} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Max (optional)</label>
+            <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MAX} context={{ salaryMin: stipend }} value={stipendMax} onChange={setStipendMax} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Team slots / openings</label>
+            <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} value={vacancies} onChange={setVacancies} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Min CGPA</label>
+            <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" value={minCgpa} onChange={setMinCgpa} />
+          </div>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label className="form-label">Skills (comma-separated)</label>
+            <input className="form-input" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="React, Python…" />
+          </div>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label className="form-label">Description / brief</label>
+            <textarea className="form-textarea" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+      </EmployerListFormLayout>
+    );
+  }
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -247,77 +333,11 @@ export default function EmployerProjectsPage() {
           </p>
         </div>
         <div className="page-header-actions">
-          <button type="button" className="btn btn-primary" onClick={() => (showForm ? setShowForm(false) : openForm())}>
-            <Plus size={16} /> {showForm ? 'Close form' : 'Post project'}
+          <button type="button" className="btn btn-primary" onClick={openForm}>
+            <Plus size={16} /> Post project
           </button>
         </div>
       </div>
-
-      {showForm && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">New project</h3>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>
-              ✕ Close
-            </button>
-          </div>
-          <div className="grid grid-2">
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <EmployerCampusTargetPicker
-                campuses={approvedCampuses}
-                selection={selectedTenantIds}
-                onSelectionChange={setSelectedTenantIds}
-                label="Target campuses (approved)"
-                required
-                emptyMessage="No approved campuses. Complete a campus tie-up first."
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Type</label>
-              <select className="form-select" value={projectKind} onChange={(e) => setProjectKind(e.target.value)}>
-                <option value="short_project">Short project</option>
-                <option value="hackathon">Hackathon</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Title <span className="required">*</span></label>
-              <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., 48h GenAI sprint" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Prize / stipend min (INR, optional)</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MIN} value={stipend} onChange={setStipend} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Max (optional)</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_STIPEND_MAX} context={{ salaryMin: stipend }} value={stipendMax} onChange={setStipendMax} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Team slots / openings</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} value={vacancies} onChange={setVacancies} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Min CGPA</label>
-              <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" value={minCgpa} onChange={setMinCgpa} />
-            </div>
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Skills (comma-separated)</label>
-              <input className="form-input" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="React, Python…" />
-            </div>
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Description / brief</label>
-              <textarea className="form-textarea" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-secondary" disabled={submitting} onClick={() => setShowForm(false)}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn-primary" disabled={submitting} onClick={publishProject}>
-              {submitting ? 'Publishing…' : 'Publish'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {jobsError && (
         <div className="card" style={{ marginBottom: '1rem', borderColor: 'var(--danger-500)' }}>
@@ -351,11 +371,11 @@ export default function EmployerProjectsPage() {
         </div>
       </div>
 
-      {jobsLoading && <p className="text-sm text-secondary">Loading…</p>}
+      {jobsLoading && <PageLoading message="Loading projects…" variant="skeleton-list" inline />}
       {!jobsLoading && !jobsError && projects.length === 0 && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem', border: '1px dashed var(--border-default)' }}>
           <FolderGit2 size={40} style={{ color: 'var(--text-tertiary)', margin: '0 auto 1rem', opacity: 0.35 }} />
-          <p className="text-sm text-secondary" style={{ margin: 0 }}>No project postings yet. Publish one above.</p>
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>No project postings yet. Use Post project to publish one.</p>
         </div>
       )}
       {!jobsLoading && !jobsError && totalCount > 0 && (
@@ -419,17 +439,34 @@ export default function EmployerProjectsPage() {
                     </td>
                     <td className="text-sm text-secondary">{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
                     <td style={{ textAlign: 'right', paddingRight: '1.25rem', whiteSpace: 'nowrap' }}>
-                      {p.status === 'published' && (
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openCampusSync(p.id)}>
-                          <Users size={14} style={{ marginRight: '0.25rem' }} /> Sync
-                        </button>
-                      )}
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast(p.title, 'info')}>
-                        <FileText size={14} style={{ marginRight: '0.25rem' }} /> Details
-                      </button>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => addToast('Editing via API can be added later.', 'info')}>
-                        <Settings size={14} style={{ marginRight: '0.25rem' }} /> Manage
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                        {p.status === 'published' ? (
+                          <StandardTableIconAction
+                            action="sync"
+                            variant="ghost"
+                            showLabel={false}
+                            disabled={campusSyncSubmitting && campusSyncJobId === p.id}
+                            tooltip={
+                              campusSyncSubmitting && campusSyncJobId === p.id
+                                ? 'Syncing campuses…'
+                                : undefined
+                            }
+                            onClick={() => openCampusSync(p.id)}
+                          />
+                        ) : null}
+                        <StandardTableIconAction
+                          action="details"
+                          variant="ghost"
+                          showLabel={false}
+                          onClick={() => addToast(p.title, 'info')}
+                        />
+                        <StandardTableIconAction
+                          action="manage"
+                          variant="ghost"
+                          showLabel={false}
+                          onClick={() => addToast('Editing via API can be added later.', 'info')}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -439,34 +476,16 @@ export default function EmployerProjectsPage() {
         </div>
       )}
 
-      {campusSyncJobId && (
-        <div className="card" style={{ marginTop: '1.25rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">Campus visibility</h3>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCampusSyncJobId(null)}>
-              ✕ Close
-            </button>
-          </div>
-          <p className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
-            Use this if the posting is published but students do not see it. Requires an approved tie-up per campus.
-          </p>
-          <EmployerCampusTargetPicker
-            campuses={approvedCampuses}
-            selection={campusSyncSelection}
-            onSelectionChange={setCampusSyncSelection}
-            compact
-            emptyMessage="No approved campuses."
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-            <button type="button" className="btn btn-secondary" disabled={campusSyncSubmitting} onClick={() => setCampusSyncJobId(null)}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn-primary" disabled={campusSyncSubmitting} onClick={submitCampusSync}>
-              {campusSyncSubmitting ? 'Saving…' : 'Save visibility'}
-            </button>
-          </div>
-        </div>
-      )}
+      <EmployerCampusSyncDialog
+        open={Boolean(campusSyncJobId)}
+        jobTitle={campusSyncProject?.title}
+        campuses={approvedCampuses}
+        selection={campusSyncSelection}
+        onSelectionChange={setCampusSyncSelection}
+        submitting={campusSyncSubmitting}
+        onClose={() => setCampusSyncJobId(null)}
+        onSubmit={() => void submitCampusSync()}
+      />
     </div>
   );
 }

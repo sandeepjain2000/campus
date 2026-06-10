@@ -1,12 +1,12 @@
 'use client';
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { parseYmdToLocalDate, toDateOnlyString } from '@/lib/dateOnly';
+import { toDateOnlyString } from '@/lib/dateOnly';
 import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCursor';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { CampusCalendarGrid } from '@/components/calendar/CampusCalendarGrid';
+import { collegeEventsToCalendarItems } from '@/lib/calendarItems';
 import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -19,21 +19,8 @@ export default function CollegeCalendarPage() {
   const { addToast } = useToast();
   const { data, error, mutate } = useSWR('/api/college/events', fetcher);
 
-  const events = useMemo(
-    () =>
-      (Array.isArray(data?.events) ? data.events : []).map((e) => {
-        const startYmd = toDateOnlyString(e.start_date);
-        const endYmd = toDateOnlyString(e.end_date);
-        return {
-          id: e.id,
-          title: e.title,
-          type: e.event_type,
-          startDate: startYmd ? parseYmdToLocalDate(startYmd) : null,
-          endDate: endYmd ? parseYmdToLocalDate(endYmd) : null,
-        };
-      }),
-    [data],
-  );
+  const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
+  const calItems = useMemo(() => collegeEventsToCalendarItems(events), [events]);
 
   const initialCursor = useMemo(
     () =>
@@ -50,30 +37,17 @@ export default function CollegeCalendarPage() {
     setCurrentMonth(new Date(initialCursor.initialYear, initialCursor.initialMonth, 1));
   }, [data?.events, initialCursor.initialYear, initialCursor.initialMonth]);
 
-  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-  const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
-  const cells = [];
-  
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
   const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const shiftMonth = (delta) => {
-    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
-  };
-
   const isSameMonth = useCallback(
-    (date) => date && date.getMonth() === currentMonth.getMonth() && date.getFullYear() === currentMonth.getFullYear(),
-    [currentMonth]
+    (ev) => {
+      const d = String(ev.date || '').slice(0, 10);
+      if (!d) return false;
+      const [y, m] = d.split('-').map(Number);
+      return y === currentMonth.getFullYear() && m === currentMonth.getMonth() + 1;
+    },
+    [currentMonth],
   );
-
-  const eventTypeClass = (type) => {
-    if (type === 'placement_drive') return 'drive';
-    if (type === 'exam') return 'exam';
-    if (type === 'holiday') return 'holiday';
-    return 'drive';
-  };
 
   const createCalendarEntry = async ({ title, eventType, startDate, endDate, isBlocking }) => {
     const res = await fetch('/api/college/events', {
@@ -124,17 +98,15 @@ export default function CollegeCalendarPage() {
   const getScheduleCsv = useCallback(
     (_scope) => {
       const headers = ['Month', 'Day', 'Title', 'Type'];
-      const rows = events
-        .filter((ev) => isSameMonth(ev.startDate))
-        .map((ev) => [
-          monthName,
-          String(ev.startDate.getDate()),
-          ev.title,
-          ev.type,
-        ]);
+      const rows = calItems
+        .filter((ev) => isSameMonth(ev))
+        .map((ev) => {
+          const day = String(ev.date || '').slice(8, 10);
+          return [monthName, day, ev.title, ev.type];
+        });
       return { headers, rows };
     },
-    [events, isSameMonth, monthName]
+    [calItems, isSameMonth, monthName],
   );
 
   return (
@@ -144,7 +116,7 @@ export default function CollegeCalendarPage() {
         <div className="page-header-actions">
           <ExportCsvSplitButton
             filenameBase="interview_schedule"
-            currentCount={events.filter((ev) => isSameMonth(ev.startDate)).length}
+            currentCount={calItems.filter((ev) => isSameMonth(ev)).length}
             fullCount={events.length}
             getRows={getScheduleCsv}
           />
@@ -153,38 +125,18 @@ export default function CollegeCalendarPage() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <button className="btn btn-ghost btn-sm" onClick={() => shiftMonth(-1)}>← Prev</button>
-          <h3 className="card-title">{monthName}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={() => shiftMonth(1)}>Next →</button>
-        </div>
-
-        <div className="calendar-grid">
-          {DAYS.map(d => <div key={d} className="calendar-header-cell">{d}</div>)}
-          {cells.map((day, i) => {
-            const dayEvents = day
-              ? events.filter((e) => isSameMonth(e.startDate) && e.startDate.getDate() === day)
-              : [];
-            const isToday = day === 13;
-            return (
-              <div key={i} className={`calendar-cell ${!day ? 'other-month' : ''} ${isToday ? 'today' : ''}`}>
-                {day && (
-                  <>
-                    <div className="calendar-date">{day}</div>
-                    {dayEvents.map((ev, j) => (
-                      <div key={j} className={`calendar-event ${eventTypeClass(ev.type)}`}>{ev.title}</div>
-                    ))}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {error && <p className="text-secondary" style={{ marginTop: '0.75rem' }}>Failed to load calendar events.</p>}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <CampusCalendarGrid
+          items={calItems}
+          initialYear={currentMonth.getFullYear()}
+          initialMonth={currentMonth.getMonth()}
+          viewMode="month"
+          onCursorChange={(year, month) => setCurrentMonth(new Date(year, month, 1))}
+        />
+        {error && <p className="text-secondary" style={{ margin: '0.75rem 1.5rem 0' }}>Failed to load calendar events.</p>}
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem', fontSize: '0.8125rem' }}>
+        <div style={{ display: 'flex', gap: '1.5rem', margin: '1rem 1.5rem 1.5rem', fontSize: '0.8125rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--primary-100)' }} />
             Placement Drive

@@ -3,7 +3,6 @@ import {
   evaluateApplicationDeadlineEligibility,
   evaluateBacklogEligibility,
   evaluateBatchYearEligibility,
-  evaluateBranchEligibility,
 } from '@/lib/postingEligibilityCriteria';
 import { formatStatus } from '@/lib/utils';
 
@@ -68,23 +67,18 @@ export function buildPostingEligibilityChecks(opportunity, student, options = {}
 
   const branches = opportunity?.eligibleBranches;
   if (Array.isArray(branches) && branches.length > 0 && !branches.some((b) => /^all$/i.test(String(b).trim()))) {
-    if (audience === 'student' && student) {
-      const br = evaluateBranchEligibility(branches, student.branch, student.department);
-      rows.push({
-        id: 'branch',
-        label: 'Eligible branches',
-        requirement: branches.join(', '),
-        met: br.eligible,
-        detail: student.branch || student.department ? `Your branch: ${student.branch || student.department}` : 'Add branch on profile',
-      });
-    } else {
-      rows.push({
-        id: 'branch',
-        label: 'Eligible branches',
-        requirement: branches.join(', '),
-        met: null,
-      });
-    }
+    rows.push({
+      id: 'branch',
+      label: 'Eligible branches',
+      requirement: branches.join(', '),
+      met: null,
+      detail:
+        audience === 'student' && student && (student.branch || student.department)
+          ? `Your branch: ${student.branch || student.department}`
+          : audience === 'college'
+            ? 'Informational only (branch matching not enforced yet)'
+            : undefined,
+    });
   }
 
   if (opportunity?.batchYear != null) {

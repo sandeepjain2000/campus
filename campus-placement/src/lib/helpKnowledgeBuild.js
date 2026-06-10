@@ -7,7 +7,9 @@ import { HELP_SECTIONS } from '../content/helpDocumentation.js';
 import {
   RUNNER_CHANGE_ALERTS,
   EMAIL_DEMO_NOTES,
-  PURGE_NOTES,
+  CLEANUP_OVERVIEW,
+  CLEANUP_COMMANDS,
+  RESTORE_AFTER_CLEANUP,
   DEMO_LOGINS,
   DEMO_PASSWORD,
 } from '../content/developerNotes.js';
@@ -97,15 +99,35 @@ export function buildHelpKnowledgeChunks() {
     });
   }
 
-  if (PURGE_NOTES.length) {
+  if (CLEANUP_COMMANDS.length) {
+    const cleanupLines = [
+      CLEANUP_OVERVIEW,
+      '',
+      'Wipe & selective cleanup:',
+      ...CLEANUP_COMMANDS.flatMap((row) => [
+        `- ${row.title}`,
+        `  Command: ${row.command}`,
+        ...(row.alt ? [`  Alt: ${row.alt}`] : []),
+        `  ${row.detail}`,
+        `  When: ${row.when}`,
+      ]),
+      '',
+      'Restore after cleanup:',
+      ...RESTORE_AFTER_CLEANUP.flatMap((row) => [
+        `- ${row.title}`,
+        `  ${row.command}`,
+        ...(row.alt ? [`  Alt: ${row.alt}`] : []),
+        `  ${row.detail}`,
+      ]),
+    ];
     out.push({
-      chunkKey: 'developer:purge',
+      chunkKey: 'developer:cleanup',
       source: 'developer',
       sectionId: 'developer',
-      itemId: 'purge',
+      itemId: 'cleanup',
       sectionTitle: 'Developer / QA',
-      itemTitle: 'Purge test data',
-      content: PURGE_NOTES.join('\n'),
+      itemTitle: 'Clean up & restore test data',
+      content: cleanupLines.join('\n'),
       audience: ['all'],
       sortOrder: order++,
     });

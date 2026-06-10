@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { toDateOnlyString, validatePlacementDate } from '@/lib/dateOnly';
+import { toDateOnlyString, validateInterviewDateTime } from '@/lib/dateOnly';
 import { buildCollegeInterviewDescription, mapCollegeInterviewRow } from '@/lib/collegeInterviewSlot';
 import {
   AND_APP_NOT_DELETED,
@@ -129,9 +129,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'company, round, date, startTime, endTime, and interviewer are required' }, { status: 400 });
     }
 
-    const dateCheck = validatePlacementDate(date, { allowPast: false });
-    if (!dateCheck.ok) {
-      return NextResponse.json({ error: dateCheck.error }, { status: 400 });
+    const dateTimeCheck = validateInterviewDateTime(date, startTime, { allowPast: false });
+    if (!dateTimeCheck.ok) {
+      return NextResponse.json({ error: dateTimeCheck.error }, { status: 400 });
     }
 
     const title = `${company} • ${round}`;
@@ -150,7 +150,7 @@ export async function POST(request) {
       `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
        VALUES ($1::uuid, $2, 'interview_slot', $3::date, $3::date, false, $4)
        RETURNING id, title, start_date, description`,
-      [tenantId, title, dateCheck.value, desc],
+      [tenantId, title, dateTimeCheck.value.date, desc],
     );
 
     const row = inserted.rows[0];

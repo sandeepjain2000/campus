@@ -7,6 +7,25 @@ export function validateEmail(email) {
   return re.test(String(email || '').trim());
 }
 
+/** Returns an error message, or empty string when valid. */
+export function validateStudentProfileEmails({ communicationEmail, emails } = {}) {
+  const comm = String(communicationEmail || '').trim();
+  if (comm && !validateEmail(comm)) {
+    return 'Communication email must be a valid email address (e.g. name@example.com).';
+  }
+
+  const rows = Array.isArray(emails) ? emails : [];
+  for (const row of rows) {
+    const value = String(row?.value || '').trim();
+    if (!value) continue;
+    const label = String(row?.label || 'Email').trim() || 'Email';
+    if (!validateEmail(value)) {
+      return `${label} must be a valid email address (e.g. name@example.com).`;
+    }
+  }
+  return '';
+}
+
 export const MAX_STUDENT_BRANCH_LENGTH = 100;
 
 /** Department, branch, and specialisation fields on student profiles. */
@@ -223,12 +242,13 @@ export function validateEducationBoard(value, { label = 'Board', allowEmpty = tr
 }
 
 const EDUCATION_LEVEL_LABELS = {
-  tenth: 'Class X board',
-  twelfth: 'Class XII board',
+  graduation: 'University / degree',
   diploma: 'Diploma board',
+  twelfth: 'Class XII board',
+  tenth: 'Class X board',
 };
 
-/** Validate board names under educationDetails (tenth / twelfth / diploma). */
+/** Validate board names under educationDetails (graduation / tenth / twelfth / diploma). */
 export function validateEducationDetails(details = {}) {
   if (!details || typeof details !== 'object') return null;
   for (const [key, label] of Object.entries(EDUCATION_LEVEL_LABELS)) {
@@ -316,12 +336,38 @@ export function validateRegistration(data) {
   };
 }
 
+export const MAX_TITLE_LENGTH = 255;
+export const MAX_FEEDBACK_TITLE_LENGTH = 500;
+
+/** Letters, numbers, spaces, hyphens, underscores; must start and end with alphanumeric. */
+export const TITLE_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9\s_-]*[A-Za-z0-9])?$/;
+
+export function normalizeTitle(title) {
+  return String(title || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+/** Returns an error message, or empty string when valid. */
+export function validateTitle(
+  title,
+  { required = true, label = 'Title', minLength = 3, maxLength = MAX_TITLE_LENGTH } = {},
+) {
+  const s = normalizeTitle(title);
+  if (!s) return required ? `${label} is required` : '';
+  if (s.length < minLength) return `${label} must be at least ${minLength} characters`;
+  if (s.length > maxLength) return `${label} must be ${maxLength} characters or fewer`;
+  if (!TITLE_PATTERN.test(s)) {
+    return `${label} may only contain letters, numbers, spaces, hyphens, and underscores`;
+  }
+  return '';
+}
+
 export function validateJobPosting(data) {
   const errors = {};
-  
-  if (!data.title || data.title.trim().length < 3) {
-    errors.title = 'Job title is required (min 3 characters)';
-  }
+
+  const titleErr = validateTitle(data.title, { label: 'Job title' });
+  if (titleErr) errors.title = titleErr;
   if (!data.job_type || !['full_time', 'internship', 'contract', 'ppo'].includes(data.job_type)) {
     errors.job_type = 'Valid job type is required';
   }

@@ -181,6 +181,10 @@ export default function EmployerCampusTargetPicker({
                       <MapPin size={12} aria-hidden />
                       {location}
                     </span>
+                  ) : campus?.slug ? (
+                    <span className="employer-campus-picker-card-meta text-tertiary">
+                      {campus.slug}
+                    </span>
                   ) : null}
                 </span>
               </button>

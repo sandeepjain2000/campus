@@ -8,6 +8,10 @@ import CompanyNameLink from '@/components/CompanyNameLink';
 import EntityLogo from '@/components/EntityLogo';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import { collegePlacementRate, collegeToForm } from '@/lib/adminCollegeProfile';
+import {
+  COLLEGE_TYPE_CLASSIFICATIONS,
+  UNIVERSITY_TYPE_CLASSIFICATIONS,
+} from '@/lib/tenantInstitutionClassifications';
 import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
@@ -25,6 +29,88 @@ function DetailRow({ label, children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+function YesNoBadge({ value }) {
+  return (
+    <span className={`badge ${value ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: '0.75rem' }}>
+      {value ? 'Yes' : 'No'}
+    </span>
+  );
+}
+
+function InstitutionClassificationView({ title, subtitle, fields, values }) {
+  return (
+    <section className="card" style={{ margin: 0 }}>
+      <h2 className="card-title" style={{ fontSize: '1rem' }}>{title}</h2>
+      {subtitle ? (
+        <p className="text-sm text-secondary" style={{ margin: '0 0 0.85rem', lineHeight: 1.5 }}>
+          {subtitle}
+        </p>
+      ) : null}
+      <div style={{ display: 'grid', gap: '0.65rem' }}>
+        {fields.map((field) => (
+          <div
+            key={field.key}
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              paddingBottom: '0.65rem',
+              borderBottom: '1px solid var(--border-subtle, rgba(0,0,0,0.06))',
+            }}
+          >
+            <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+              <div className="text-sm" style={{ fontWeight: 600 }}>{field.label}</div>
+              {field.hint ? (
+                <div className="text-xs text-secondary" style={{ marginTop: '0.15rem', lineHeight: 1.45 }}>
+                  {field.hint}
+                </div>
+              ) : null}
+            </div>
+            <YesNoBadge value={Boolean(values?.[field.key])} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function InstitutionClassificationEdit({ title, subtitle, fields, values, onChange }) {
+  return (
+    <section className="card" style={{ margin: 0 }}>
+      <h2 className="card-title" style={{ fontSize: '1rem' }}>{title}</h2>
+      {subtitle ? (
+        <p className="text-sm text-secondary" style={{ margin: '0 0 0.85rem', lineHeight: 1.5 }}>
+          {subtitle}
+        </p>
+      ) : null}
+      <div style={{ display: 'grid', gap: '0.75rem' }}>
+        {fields.map((field) => (
+          <div key={field.key} className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">{field.label}</label>
+            {field.hint ? (
+              <p className="text-xs text-secondary" style={{ margin: '0.15rem 0 0.35rem', lineHeight: 1.45 }}>
+                {field.hint}
+              </p>
+            ) : null}
+            <select
+              className="form-input"
+              value={values?.[field.key] ? 'yes' : 'no'}
+              onChange={(e) =>
+                onChange(field.key, e.target.value === 'yes')
+              }
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -58,6 +144,7 @@ export default function AdminCollegeProfileScreen({ collegeId }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [togglingActive, setTogglingActive] = useState(false);
   const [editing, setEditing] = useState(false);
 
   const loadCollege = useCallback(async () => {
@@ -100,6 +187,35 @@ export default function AdminCollegeProfileScreen({ collegeId }) {
     router.replace(`/dashboard/admin/colleges/${collegeId}`, { scroll: false });
   };
 
+  const toggleCollegeActive = async (nextActive) => {
+    if (!detail) return;
+    const prompt = nextActive
+      ? `Reactivate ${detail.name} on the platform? College admins will be able to sign in again.`
+      : `Deactivate ${detail.name}? The college will be hidden from employer campus lists and college admins cannot sign in until reactivated.`;
+    if (!window.confirm(prompt)) return;
+
+    setTogglingActive(true);
+    try {
+      const res = await fetch(`/api/admin/colleges/${collegeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...collegeToForm(detail), active: nextActive }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to update college status');
+      setDetail(json.college);
+      setForm(collegeToForm(json.college));
+      addToast(
+        nextActive ? 'College reactivated on the platform.' : 'College deactivated on the platform.',
+        'success',
+      );
+    } catch (e) {
+      addToast(e.message || 'Failed to update college status', 'error');
+    } finally {
+      setTogglingActive(false);
+    }
+  };
+
   const saveCollege = async () => {
     if (form.nirfRank !== '' && form.nirfRank != null) {
       const nirfErr = validateFieldOrError(FIELD_IDS.ADMIN_NIRF_RANK, form.nirfRank);
@@ -124,6 +240,7 @@ export default function AdminCollegeProfileScreen({ collegeId }) {
           naac: form.naac,
           nirfRank: form.nirfRank,
           active: form.active,
+          institutionClassifications: form.institutionClassifications,
         }),
       });
       const json = await res.json();
@@ -197,10 +314,31 @@ export default function AdminCollegeProfileScreen({ collegeId }) {
               </button>
             </>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={startEdit}>
-              <Pencil size={15} aria-hidden style={{ marginRight: '0.35rem' }} />
-              Edit college
-            </button>
+            <>
+              {detail.active ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={togglingActive}
+                  onClick={() => toggleCollegeActive(false)}
+                >
+                  {togglingActive ? 'Updating…' : 'Deactivate college'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={togglingActive}
+                  onClick={() => toggleCollegeActive(true)}
+                >
+                  {togglingActive ? 'Updating…' : 'Reactivate college'}
+                </button>
+              )}
+              <button type="button" className="btn btn-primary" onClick={startEdit}>
+                <Pencil size={15} aria-hidden style={{ marginRight: '0.35rem' }} />
+                Edit college
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -331,6 +469,28 @@ export default function AdminCollegeProfileScreen({ collegeId }) {
               <DetailRow label="Students placed">{detail.placed}</DetailRow>
             </section>
           </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gap: '1.25rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+              marginTop: '1.25rem',
+            }}
+          >
+            <InstitutionClassificationView
+              title="University types (degree granting)"
+              subtitle="Super-admin only. Not visible to the college login."
+              fields={UNIVERSITY_TYPE_CLASSIFICATIONS}
+              values={detail.institutionClassifications}
+            />
+            <InstitutionClassificationView
+              title="College types (teaching institutes)"
+              subtitle="Super-admin only. Shown to employers on the campus profile."
+              fields={COLLEGE_TYPE_CLASSIFICATIONS}
+              values={detail.institutionClassifications}
+            />
+          </div>
         </>
       ) : (
         <section className="card" style={{ maxWidth: '42rem' }}>
@@ -423,8 +583,48 @@ export default function AdminCollegeProfileScreen({ collegeId }) {
                 checked={form.active}
                 onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
               />
-              <span className="text-sm">College is active on the platform</span>
+              <span className="text-sm">College is active on the platform (visible to employers; admins can sign in)</span>
             </label>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gap: '1.25rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+              marginTop: '1.25rem',
+            }}
+          >
+            <InstitutionClassificationEdit
+              title="University types (degree granting)"
+              subtitle="Set Yes/No for each classification. Employers can view these on the campus profile."
+              fields={UNIVERSITY_TYPE_CLASSIFICATIONS}
+              values={form.institutionClassifications}
+              onChange={(key, value) =>
+                setForm((p) => ({
+                  ...p,
+                  institutionClassifications: {
+                    ...p.institutionClassifications,
+                    [key]: value,
+                  },
+                }))
+              }
+            />
+            <InstitutionClassificationEdit
+              title="College types (teaching institutes)"
+              subtitle="Set Yes/No for each classification. Employers can view these on the campus profile."
+              fields={COLLEGE_TYPE_CLASSIFICATIONS}
+              values={form.institutionClassifications}
+              onChange={(key, value) =>
+                setForm((p) => ({
+                  ...p,
+                  institutionClassifications: {
+                    ...p.institutionClassifications,
+                    [key]: value,
+                  },
+                }))
+              }
+            />
           </div>
         </section>
       )}

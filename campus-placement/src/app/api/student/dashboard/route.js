@@ -3,13 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import {
-
-
   AND_APP_NOT_DELETED,
   AND_DRIVE_NOT_DELETED,
-  AND_JP_NOT_DELETED,
 } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { jobPostingNotDeletedSql, programApplicationNotDeletedSql } from '@/lib/migrationReady';
+import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
+import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -59,55 +59,140 @@ export async function GET(request) {
     }
 
     const userId = session.user.id;
+    const isAlumni = await resolveAlumniStudentFlag(userId, session.user);
+    const paNotDeletedSql = await programApplicationNotDeletedSql('pa');
+    const jpNotDeletedSql = await jobPostingNotDeletedSql('jp');
 
-    // Fetch stats
-    const statsQuery = await query(`
-      SELECT 
-        COUNT(*) AS "totalApplications",
-        COALESCE(SUM(CASE WHEN status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted",
-        COALESCE(SUM(CASE WHEN status = 'selected' THEN 1 ELSE 0 END), 0) AS "offersReceived"
-      FROM applications a
-      JOIN student_profiles sp ON sp.id = a.student_id
-      WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE} ${AND_APP_NOT_DELETED}
-    `, [userId]);
+    let statsQuery;
+    let drivesQuery;
+    let appsQuery;
 
-    // Fetch upcoming drives available for student's college
-    const drivesQuery = await query(`
-      SELECT
-        d.id,
-        ep.company_name AS company,
-        ep.website AS website,
-        d.title AS role,
-        d.drive_date AS date,
-        d.drive_type AS type,
-        d.status
-      FROM placement_drives d
-      JOIN employer_profiles ep ON d.employer_id = ep.id
-      WHERE d.tenant_id = $1 AND d.status IN ('approved', 'scheduled') ${AND_DRIVE_NOT_DELETED}
-      ORDER BY d.drive_date ASC
-      LIMIT 3
-    `, [session.user.tenantId]);
+    if (isAlumni) {
+      statsQuery = await query(
+        `SELECT
+          COUNT(*) AS "totalApplications",
+          COALESCE(SUM(CASE WHEN pa.status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted",
+          COALESCE(SUM(CASE WHEN pa.status = 'selected' THEN 1 ELSE 0 END), 0) AS "offersReceived"
+        FROM program_applications pa
+        JOIN student_profiles sp ON sp.id = pa.student_id
+        WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE} ${paNotDeletedSql}`,
+        [userId],
+      );
 
-    // Fetch recent applications
-    const appsQuery = await query(`
-      SELECT
-        a.id,
-        a.drive_id AS "driveId",
-        ep.company_name AS company,
-        ep.website AS website,
-        d.title AS role,
-        a.status,
-        a.current_round AS "currentRound",
-        a.applied_at AS "appliedAt"
-      FROM applications a
-      JOIN placement_drives d ON a.drive_id = d.id
-      JOIN employer_profiles ep ON d.employer_id = ep.id
-      JOIN student_profiles sp ON a.student_id = sp.id
-      WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE}
-        ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED} ${AND_JP_NOT_DELETED}
-      ORDER BY a.applied_at DESC
-      LIMIT 3
-    `, [userId]);
+      drivesQuery = await query(
+        `SELECT
+          jp.id,
+          ep.company_name AS company,
+          ep.website AS website,
+          jp.title AS role,
+          jp.application_deadline AS date,
+          'alumni_job' AS type,
+          jp.status
+        FROM job_postings jp
+        JOIN employer_profiles ep ON jp.employer_id = ep.id
+        INNER JOIN job_posting_visibility jpv
+          ON jpv.job_id = jp.id AND jpv.tenant_id = $1::uuid
+        WHERE jp.job_type = ANY($2::text[])
+          AND jp.status = 'published'
+          AND jpv.college_status = 'approved'
+          ${jpNotDeletedSql}
+        ORDER BY jp.created_at DESC
+        LIMIT 3`,
+        [session.user.tenantId, ALUMNI_JOB_TYPES],
+      ).catch(async (e) => {
+        if (e?.code !== '42703') throw e;
+        return query(
+          `SELECT
+            jp.id,
+            ep.company_name AS company,
+            ep.website AS website,
+            jp.title AS role,
+            jp.application_deadline AS date,
+            'alumni_job' AS type,
+            jp.status
+          FROM job_postings jp
+          JOIN employer_profiles ep ON jp.employer_id = ep.id
+          INNER JOIN job_posting_visibility jpv
+            ON jpv.job_id = jp.id AND jpv.tenant_id = $1::uuid
+          WHERE jp.job_type = ANY($2::text[])
+            AND jp.status = 'published'
+            ${jpNotDeletedSql}
+          ORDER BY jp.created_at DESC
+          LIMIT 3`,
+          [session.user.tenantId, ALUMNI_JOB_TYPES],
+        );
+      });
+
+      appsQuery = await query(
+        `SELECT
+          pa.id,
+          pa.job_id AS "driveId",
+          ep.company_name AS company,
+          ep.website AS website,
+          jp.title AS role,
+          pa.status,
+          0 AS "currentRound",
+          pa.applied_at AS "appliedAt"
+        FROM program_applications pa
+        JOIN job_postings jp ON pa.job_id = jp.id
+        JOIN employer_profiles ep ON jp.employer_id = ep.id
+        JOIN student_profiles sp ON pa.student_id = sp.id
+        WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE}
+          ${paNotDeletedSql} ${jpNotDeletedSql}
+        ORDER BY pa.applied_at DESC
+        LIMIT 3`,
+        [userId],
+      );
+    } else {
+      statsQuery = await query(
+        `SELECT
+          COUNT(*) AS "totalApplications",
+          COALESCE(SUM(CASE WHEN status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted",
+          COALESCE(SUM(CASE WHEN status = 'selected' THEN 1 ELSE 0 END), 0) AS "offersReceived"
+        FROM applications a
+        JOIN student_profiles sp ON sp.id = a.student_id
+        WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE} ${AND_APP_NOT_DELETED}`,
+        [userId],
+      );
+
+      drivesQuery = await query(
+        `SELECT
+          d.id,
+          ep.company_name AS company,
+          ep.website AS website,
+          d.title AS role,
+          d.drive_date AS date,
+          d.drive_type AS type,
+          d.status
+        FROM placement_drives d
+        JOIN employer_profiles ep ON d.employer_id = ep.id
+        WHERE d.tenant_id = $1 AND d.status IN ('approved', 'scheduled') ${AND_DRIVE_NOT_DELETED}
+        ORDER BY d.drive_date ASC
+        LIMIT 3`,
+        [session.user.tenantId],
+      );
+
+      appsQuery = await query(
+        `SELECT
+          a.id,
+          a.drive_id AS "driveId",
+          ep.company_name AS company,
+          ep.website AS website,
+          d.title AS role,
+          a.status,
+          a.current_round AS "currentRound",
+          a.applied_at AS "appliedAt"
+        FROM applications a
+        JOIN placement_drives d ON a.drive_id = d.id
+        JOIN employer_profiles ep ON d.employer_id = ep.id
+        JOIN student_profiles sp ON a.student_id = sp.id
+        WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE}
+          ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
+        ORDER BY a.applied_at DESC
+        LIMIT 3`,
+        [userId],
+      );
+    }
 
     const profileQuery = await query(
       `
@@ -132,6 +217,7 @@ export async function GET(request) {
     const profileCompletion = calculateProfileCompletion(profileRowForCompletion(profileQuery.rows[0]));
 
     return NextResponse.json({
+      isAlumni,
       stats: {
         totalApplications: parseInt(statsQuery.rows[0].totalApplications || 0),
         shortlisted: parseInt(statsQuery.rows[0].shortlisted || 0),
@@ -141,7 +227,7 @@ export async function GET(request) {
       },
       recentDrives: drivesQuery.rows.map((d) => ({
         ...d,
-        salary: 'See drive details',
+        salary: d.type === 'alumni_job' ? 'See job details' : 'See drive details',
       })),
       applications: appsQuery.rows.map((a) => ({
         ...a,

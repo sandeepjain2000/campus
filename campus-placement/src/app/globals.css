@@ -527,6 +527,167 @@ h6 { font-size: 1rem; }
   font-weight: 500;
 }
 
+.number-stepper-field {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.number-stepper-field__control {
+  flex: 1;
+  min-width: 0;
+}
+
+.number-stepper-field__control .form-input {
+  width: 100%;
+}
+
+.number-stepper-field__control input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.number-stepper-field__control input[type='number']::-webkit-outer-spin-button,
+.number-stepper-field__control input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-stepper-field__actions {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.number-stepper-field__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  padding: 0;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.number-stepper-field__btn:last-child {
+  border-right: none;
+}
+
+.number-stepper-field__btn:hover:not(:disabled) {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.number-stepper-field__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.number-stepper-field--disabled .number-stepper-field__actions {
+  opacity: 0.65;
+}
+
+.segmented-date-input-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.segmented-date-input-wrap .segmented-date-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.segmented-date-input-wrap--disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.segmented-date-input__picker {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.segmented-date-input__native {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  pointer-events: none;
+}
+
+.segmented-date-input__picker-btn {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 0.375rem);
+  background: var(--bg-primary);
+}
+
+.segmented-date-input__picker-btn:hover:not(:disabled) {
+  color: var(--primary-600);
+  border-color: var(--primary-300, #93c5fd);
+  background: var(--primary-50, #eff6ff);
+}
+
+.segmented-date-input {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.segmented-date-input__segment {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.segmented-date-input__segment:nth-child(1) {
+  flex: 0 1 3.25rem;
+}
+
+.segmented-date-input__segment:nth-child(3) {
+  flex: 0 1 3.25rem;
+}
+
+.segmented-date-input__segment:nth-child(5) {
+  flex: 1 1 4.5rem;
+}
+
+.segmented-date-input__sep {
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.segmented-date-input--disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 .form-input.error {
   border-color: var(--danger-500);
 }
@@ -1573,6 +1734,15 @@ a.admin-entity-name-btn {
   min-width: 0;
 }
 
+.student-opportunities-col-select {
+  width: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.student-opportunities-table tr.is-row-selected td {
+  background: var(--primary-50);
+}
+
 .student-opportunities-col-company {
   width: 17%;
 }
@@ -1602,7 +1772,8 @@ a.admin-entity-name-btn {
 }
 
 .student-opportunities-col-actions {
-  width: 8.5rem;
+  width: 14.5rem;
+  min-width: 14.5rem;
 }
 
 .student-opportunities-table .cell-truncate {
@@ -1616,6 +1787,17 @@ a.admin-entity-name-btn {
 .student-opportunities-table th.student-opportunities-col-company {
   max-width: none;
   overflow: visible;
+}
+
+/* Company name must stay visible — generic .cell-truncate uses max-width:0 and hides the label. */
+.student-opportunities-table td.student-opportunities-col-company .cell-truncate,
+.student-opportunities-table td:first-child .cell-truncate.font-semibold {
+  max-width: none;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .college-students-col-num {
@@ -2602,6 +2784,37 @@ button.dev-screen-id-tag {
   line-height: 1.55;
 }
 
+.employer-student-profile-timeline-warning {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--warning-50);
+  border: 1px solid var(--warning-100);
+  color: var(--warning-700, #b45309);
+}
+
+.employer-student-profile-timeline-warning strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.employer-student-profile-timeline-warning p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+[data-theme='dark'] .employer-student-profile-timeline-warning {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fde68a;
+}
+
+[data-theme='dark'] .employer-student-profile-timeline-warning strong {
+  color: #fef3c7;
+}
+
 .employer-student-profile-links {
   display: flex;
   flex-wrap: wrap;
@@ -3177,6 +3390,25 @@ button.dev-screen-id-tag {
 .page-loading--inline .page-loading-message {
   justify-content: flex-start;
   margin-bottom: 0.75rem;
+}
+
+.page-loading-slow {
+  margin: -0.35rem 0 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-tertiary, var(--text-secondary));
+  text-align: center;
+  animation: page-loading-fade-in 0.35s ease-out;
+}
+
+.page-loading--inline .page-loading-slow {
+  text-align: left;
+  margin-top: -0.25rem;
+}
+
+@keyframes page-loading-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page-loading-spinner {
@@ -5067,6 +5299,116 @@ html:not([data-theme='dark']) .auth-job-aid-btn-primary {
 .calendar-event.exam { background: var(--danger-100); color: var(--danger-600); }
 .calendar-event.holiday { background: var(--success-100); color: var(--success-700); }
 
+/* Campus calendar month grid — fixed cells, clipped event labels, opaque hover tooltips */
+.campus-cal-month,
+.employer-cal-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 6.75rem;
+  gap: 1px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+
+.campus-cal-month__pad,
+.employer-cal-month__pad {
+  height: 6.75rem;
+  min-height: 6.75rem;
+  max-height: 6.75rem;
+  background: var(--bg-inset);
+  opacity: 0.5;
+}
+
+.campus-cal-month__cell,
+.employer-cal-month__cell {
+  height: 6.75rem;
+  min-height: 6.75rem;
+  max-height: 6.75rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.4rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  transition: background 0.2s;
+}
+
+.campus-cal-month__cell--today,
+.employer-cal-month__cell--today {
+  background: var(--primary-50);
+}
+
+.campus-cal-month__events,
+.employer-cal-month__events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.campus-cal-month__pill-wrap,
+.employer-cal-month__pill-wrap {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.campus-cal-month__pill,
+.employer-cal-month__pill {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 500;
+  line-height: 1.35;
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.campus-cal-year__day,
+.employer-cal-year__day {
+  min-width: 0;
+  cursor: default;
+}
+
+.campus-cal-tooltip,
+.employer-cal-tooltip {
+  position: fixed;
+  z-index: 10050;
+  min-width: 11rem;
+  max-width: 18rem;
+  padding: 0.65rem 0.75rem;
+  background-color: #ffffff;
+  background: var(--bg-primary);
+  opacity: 1;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  pointer-events: none;
+  isolation: isolate;
+}
+
+[data-theme='dark'] .campus-cal-tooltip,
+[data-theme='dark'] .employer-cal-tooltip {
+  background-color: #1e293b;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
 /* ============================================
    Profile Page
    ============================================ */
@@ -5105,6 +5447,121 @@ html:not([data-theme='dark']) .auth-job-aid-btn-primary {
   font-weight: 800;
   flex-shrink: 0;
   border: 3px solid rgba(255,255,255,0.3);
+}
+
+.profile-avatar--clickable {
+  cursor: zoom-in;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profile-avatar--clickable:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.profile-avatar--clickable:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.profile-edit-section-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--primary-50, #eef2ff);
+  color: var(--primary-700, #4338ca);
+  border: 1.5px solid var(--primary-300, #a5b4fc);
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.15);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.profile-edit-section-btn:hover:not(:disabled) {
+  background: var(--primary-100, #e0e7ff);
+  border-color: var(--primary-500, #6366f1);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  transform: translateY(-1px);
+}
+
+.profile-edit-section-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.profile-header .profile-edit-summary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary-700, #4338ca);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.profile-header .profile-edit-summary-btn:hover:not(:disabled) {
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+  transform: translateY(-1px);
+}
+
+.profile-photo-lightbox-panel {
+  position: relative;
+  max-width: min(92vw, 560px);
+  max-height: min(92vh, 560px);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+}
+
+.profile-photo-lightbox-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(88vh, 560px);
+  object-fit: contain;
+  background: var(--bg-secondary);
+}
+
+.profile-photo-lightbox-close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.65);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.profile-photo-lightbox-close:hover {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.profile-photo-lightbox-close:focus-visible {
+  outline: 2px solid var(--primary-400);
+  outline-offset: 2px;
 }
 
 .profile-info h2 {
@@ -5159,6 +5616,17 @@ html:not([data-theme='dark']) .auth-job-aid-btn-primary {
 .profile-header .text-tertiary,
 .profile-header .text-xs.text-tertiary {
   color: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme='dark'] .profile-edit-section-btn {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-300, #a5b4fc);
+  border-color: rgba(129, 140, 248, 0.45);
+}
+
+[data-theme='dark'] .profile-edit-section-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--primary-400, #818cf8);
 }
 
 /* ============================================

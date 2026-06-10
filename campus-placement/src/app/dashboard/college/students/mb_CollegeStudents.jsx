@@ -11,7 +11,9 @@ import StudentSectionSummaryCards from './StudentSectionSummaryCards';
 import StudentQuickViewModal from './StudentQuickViewModal';
 import { useStudentListFilters } from './useStudentListFilters';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import PageLoading from '@/components/PageLoading';
 import StudentDegreeSpecializationCell from './StudentDegreeSpecializationCell';
+import StudentListAvatar from '@/components/student/StudentListAvatar';
 import StudentSystemIdBatchCell from './StudentSystemIdBatchCell';
 import {
   academicYearQueryString,
@@ -192,16 +194,13 @@ export default function mb_CollegeStudents() {
       />
 
       {isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-md)' }} />)}
-        </div>
+        <PageLoading message="Loading students…" variant="skeleton-list" inline />
       )}
 
       {!isLoading && (
         <>
           <div className="mobile-cards">
             {filtered.map((s) => {
-              const initials = s.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
               return (
                 <div
                   key={s.id}
@@ -214,13 +213,7 @@ export default function mb_CollegeStudents() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    {s.photo ? (
-                      <img src={s.photo} alt={s.name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-default)' }} />
-                    ) : (
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary-100), var(--primary-200))', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, border: '1px solid var(--primary-300)', flexShrink: 0 }}>
-                        {initials || 'S'}
-                      </div>
-                    )}
+                    <StudentListAvatar photo={s.photo} name={s.name} size={40} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Link href={`/dashboard/college/students/${s.id}`} className="student-name-link" style={{ fontSize: '1rem' }}>{s.name}</Link>
                       <div style={{ marginTop: '0.2rem' }}>

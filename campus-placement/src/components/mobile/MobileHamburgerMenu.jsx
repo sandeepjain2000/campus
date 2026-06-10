@@ -8,6 +8,7 @@ import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 import EntityLogo from '@/components/EntityLogo';
 import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
 import { ALUMNI_BROWSE_JOBS_PATH, ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
+import { EMPLOYER_ALUMNI_JOBS_PATH } from '@/lib/employerAlumniRoutes';
 
 export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
   const brandLogoUrl = useResolvedBrandLogoUrl();
@@ -53,7 +54,7 @@ export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
 
               {role === 'employer' && (
                 <>
-                  <Link href="/dashboard/employer/jobs" onClick={onClose} className="mobile-nav-link"><Briefcase size={20} strokeWidth={2} /> Job Postings</Link>
+                  <Link href={EMPLOYER_ALUMNI_JOBS_PATH} onClick={onClose} className="mobile-nav-link"><Briefcase size={20} strokeWidth={2} /> Alumni Jobs</Link>
                   <Link href="/dashboard/employer/drives" onClick={onClose} className="mobile-nav-link"><Calendar size={20} strokeWidth={2} /> Placement Drives</Link>
                   <Link href="/dashboard/employer/applications" onClick={onClose} className="mobile-nav-link"><CheckSquare size={20} strokeWidth={2} /> Applications</Link>
                 </>

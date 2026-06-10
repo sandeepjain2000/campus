@@ -9,6 +9,8 @@ import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import { auditReportsFetcher } from '@/lib/auditReportsFetcher';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 const swrQuiet = { shouldRetryOnError: false, revalidateOnFocus: false };
 
@@ -149,11 +151,23 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
         <div className="grid grid-4">
           <div className="form-group">
             <label className="form-label">From date</label>
-            <input className="form-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <ValidatedDateInput
+              fieldId={FIELD_IDS.DATE_RANGE_FROM}
+              context={{ dateTo: to, maxSpanYears: 10 }}
+              value={from}
+              onChange={setFrom}
+              aria-label="From date"
+            />
           </div>
           <div className="form-group">
             <label className="form-label">To date</label>
-            <input className="form-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <ValidatedDateInput
+              fieldId={FIELD_IDS.DATE_RANGE_TO}
+              context={{ dateFrom: from, maxSpanYears: 10 }}
+              value={to}
+              onChange={setTo}
+              aria-label="To date"
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Action (optional)</label>

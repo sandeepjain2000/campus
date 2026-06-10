@@ -27,6 +27,9 @@ import {
   resolveApplyBlockReason,
 } from '@/lib/getApplyBlockReason';
 import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/studentApplyContext';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { buildStudentOpportunityCsvPayload } from '@/lib/studentOpportunityCsvExport';
+import { formatInternshipPeriodLabel } from '@/lib/internshipPostingMeta';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -117,6 +120,11 @@ export default function StudentInternshipsPage() {
     }
   };
 
+  const buildCsvRows = (scope) => {
+    const dataset = scope === 'full' ? items : displayItems;
+    return buildStudentOpportunityCsvPayload(dataset, { kind: 'internship' });
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -138,6 +146,15 @@ export default function StudentInternshipsPage() {
             <Link href="/dashboard/student/internships/not-processed" className="btn btn-secondary btn-sm">
               Not processed internships
             </Link>
+          ) : null}
+          {canBrowseListings && totalCount > 0 ? (
+            <ExportCsvSplitButton
+              filenameBase="internships"
+              currentCount={displayItems.length}
+              fullCount={items.length}
+              getRows={buildCsvRows}
+              size="sm"
+            />
           ) : null}
           {canBrowseListings ? (
             <span className="badge badge-blue" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
@@ -247,7 +264,7 @@ export default function StudentInternshipsPage() {
                 <th className="student-opportunities-col-stipend">Stipend</th>
                 <th className="student-opportunities-col-cgpa">CGPA</th>
                 <th className="student-opportunities-col-openings">Openings</th>
-                <th className="student-opportunities-col-deadline">Deadline</th>
+                <th className="student-opportunities-col-deadline">Period</th>
                 <th className="student-opportunities-col-status">Status</th>
                 <th className="student-opportunities-col-actions" style={{ textAlign: 'right', paddingRight: '1rem' }}>Actions</th>
               </tr>
@@ -293,8 +310,11 @@ export default function StudentInternshipsPage() {
                   </td>
                   <td className="text-sm">{row.minCgpa != null ? row.minCgpa : '—'}</td>
                   <td className="text-sm">{row.vacancies ?? '—'}</td>
-                  <td className="text-sm cell-truncate" title={row.applicationDeadline ? formatDate(row.applicationDeadline) : undefined}>
-                    {row.applicationDeadline ? formatDate(row.applicationDeadline) : '—'}
+                  <td
+                    className="text-sm cell-truncate"
+                    title={formatInternshipPeriodLabel(row.startDate, row.endDate, formatDate) || undefined}
+                  >
+                    {formatInternshipPeriodLabel(row.startDate, row.endDate, formatDate) || '—'}
                   </td>
                   <td>
                     {row.hasApplied ? (

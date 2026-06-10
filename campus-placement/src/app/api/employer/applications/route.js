@@ -15,16 +15,21 @@ import {
   AND_PA_NOT_DELETED,
 } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
-import { sqlEmployerTieUpIsActive } from '@/lib/employerTieUp';
+import {
+  dedupeEmployerApplicationItems,
+  employerMayUpdateApplicationStatus,
+  normalizeEmployerApplicationStatus,
+} from '@/lib/employerApplicationList';
 import {
   assertEmployerMayConfirmStudent,
   fcfsTrackFromApplicationsTab,
   getCampusFcfsClaim,
 } from '@/lib/campusFcfsSelection';
+import { sqlJobAcademicYearFilter } from '@/lib/employerAcademicYear';
+import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
+import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 const JOB_POSTING_TYPES_SQL = `AND jp.job_type NOT IN ('internship', 'short_project', 'hackathon')`;
-
-const ACTIVE_CAMPUS_TIE_UP = (employerCol) =>
-  `INNER JOIN employer_approvals ea_campus ON ea_campus.tenant_id = sp.tenant_id AND ea_campus.employer_id = ${employerCol} AND ${sqlEmployerTieUpIsActive('ea_campus')}`;
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -39,9 +44,10 @@ function mapRow(row) {
   return {
     id: row.id,
     sourceKind: row.source_kind,
-    status: row.status,
+    status: normalizeEmployerApplicationStatus(row.application_status ?? row.status),
     appliedAt: row.applied_at,
     currentRound: row.current_round,
+    jobId: row.job_id || null,
     studentProfileId: row.student_id,
     studentName: `${first} ${last}`.trim() || row.email || 'Student',
     email: row.email,
@@ -86,8 +92,10 @@ async function filterItemsByFcfs(items, tab, employerId) {
  * Drives = placement drive applications. Jobs / internships / projects = program_applications.
  */
 export async function GET(request) {
+  let session = null;
+  let employerId = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -97,7 +105,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
     }
 
-    const employerId = await getEmployerProfileId(userId);
+    employerId = await getEmployerProfileId(userId);
     if (!employerId) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
     }
@@ -108,61 +116,93 @@ export async function GET(request) {
       tabParam === 'jobs' || tabParam === 'internships' || tabParam === 'projects' ? tabParam : 'drives';
     const driveIdFilter = String(searchParams.get('driveId') || '').trim();
     const jobIdFilter = String(searchParams.get('jobId') || '').trim();
+    const campusId = String(searchParams.get('campusId') || '').trim() || null;
 
-    const countsParams = [employerId];
+    let academicYearId = null;
+    if (campusId) {
+      try {
+        // Optional campus scope only — do not block the list on tie-up status (matches drives tab).
+        const ay = await resolveTenantAcademicYear(campusId, searchParams);
+        academicYearId = ay.year?.id || null;
+      } catch (ayErr) {
+        if (ayErr?.statusCode === 400) {
+          return NextResponse.json({ error: ayErr.message }, { status: ayErr.statusCode });
+        }
+        throw ayErr;
+      }
+    }
+
+    const scopeParams = [employerId];
     let drivesDriveIdx = null;
     let jobsJobIdx = null;
     let internshipsJobIdx = null;
     let projectsJobIdx = null;
+    let campusIdx = null;
+    let yearIdx = null;
 
     if (driveIdFilter) {
-      countsParams.push(driveIdFilter);
-      drivesDriveIdx = countsParams.length;
+      scopeParams.push(driveIdFilter);
+      drivesDriveIdx = scopeParams.length;
     }
     if (jobIdFilter) {
-      countsParams.push(jobIdFilter);
-      jobsJobIdx = countsParams.length;
-      internshipsJobIdx = countsParams.length;
-      projectsJobIdx = countsParams.length;
+      scopeParams.push(jobIdFilter);
+      jobsJobIdx = scopeParams.length;
+      internshipsJobIdx = scopeParams.length;
+      projectsJobIdx = scopeParams.length;
     }
+    if (campusId) {
+      scopeParams.push(campusId);
+      campusIdx = scopeParams.length;
+    }
+    if (academicYearId) {
+      scopeParams.push(academicYearId);
+      yearIdx = scopeParams.length;
+    }
+
+    const driveCampusSql = campusIdx ? ` AND d.tenant_id = $${campusIdx}::uuid` : '';
+    // Placement drive applicants match the drives list: campus scope only (no academic-year or tie-up gate).
+    const jobVisSql = campusIdx
+      ? ` INNER JOIN job_posting_visibility jpv_scope ON jpv_scope.job_id = jp.id AND jpv_scope.tenant_id = $${campusIdx}::uuid`
+      : '';
+    const programCampusSql = campusIdx ? ` AND sp.tenant_id = $${campusIdx}::uuid` : '';
+    const jobYearSql = yearIdx ? sqlJobAcademicYearFilter('jp', yearIdx) : '';
 
     const countsSql = `
       SELECT
         (SELECT COUNT(*)::int FROM applications a
          INNER JOIN placement_drives d ON d.id = a.drive_id
          INNER JOIN student_profiles sp ON sp.id = a.student_id AND ${SP_ACTIVE_CLAUSE}
-         ${ACTIVE_CAMPUS_TIE_UP('d.employer_id')}
          WHERE d.employer_id = $1::uuid
            AND a.status <> 'withdrawn'
            ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
-           ${drivesDriveIdx ? `AND d.id = $${drivesDriveIdx}::uuid` : ''}) AS drives,
+           ${drivesDriveIdx ? `AND d.id = $${drivesDriveIdx}::uuid` : ''}${driveCampusSql}) AS drives,
         (SELECT COUNT(*)::int FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
+         ${jobVisSql}
          INNER JOIN student_profiles sp ON sp.id = pa.student_id AND ${SP_ACTIVE_CLAUSE}
-         ${ACTIVE_CAMPUS_TIE_UP('jp.employer_id')}
          WHERE jp.employer_id = $1::uuid
            ${JOB_POSTING_TYPES_SQL}
            AND pa.status <> 'withdrawn'
            ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-           ${jobsJobIdx ? `AND jp.id = $${jobsJobIdx}::uuid` : ''}) AS jobs,
+           ${jobsJobIdx ? `AND jp.id = $${jobsJobIdx}::uuid` : ''}${programCampusSql}${jobYearSql}) AS jobs,
         (SELECT COUNT(*)::int FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
+         ${jobVisSql}
          INNER JOIN student_profiles sp ON sp.id = pa.student_id AND ${SP_ACTIVE_CLAUSE}
-         ${ACTIVE_CAMPUS_TIE_UP('jp.employer_id')}
          WHERE jp.employer_id = $1::uuid AND jp.job_type = 'internship'
            AND pa.status <> 'withdrawn'
            ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-           ${internshipsJobIdx ? `AND jp.id = $${internshipsJobIdx}::uuid` : ''}) AS internships,
+           ${internshipsJobIdx ? `AND jp.id = $${internshipsJobIdx}::uuid` : ''}${programCampusSql}${jobYearSql}) AS internships,
         (SELECT COUNT(*)::int FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
+         ${jobVisSql}
          INNER JOIN student_profiles sp ON sp.id = pa.student_id AND ${SP_ACTIVE_CLAUSE}
-         ${ACTIVE_CAMPUS_TIE_UP('jp.employer_id')}
          WHERE jp.employer_id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')
            AND pa.status <> 'withdrawn'
            ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-           ${projectsJobIdx ? `AND jp.id = $${projectsJobIdx}::uuid` : ''}) AS projects
+           ${projectsJobIdx ? `AND jp.id = $${projectsJobIdx}::uuid` : ''}${programCampusSql}${jobYearSql}) AS projects
     `;
-    const countsRes = await query(countsSql, countsParams);
+    const countsRes = await query(countsSql, scopeParams);
     const counts = countsRes.rows[0] || { drives: 0, jobs: 0, internships: 0, projects: 0 };
 
     const resumeLateral = `LEFT JOIN LATERAL (
@@ -175,12 +215,16 @@ export async function GET(request) {
          ) resume_doc ON TRUE`;
 
     let itemsRes;
+    const driveItemFilterSql = `${drivesDriveIdx ? `AND d.id = $${drivesDriveIdx}::uuid` : ''}${driveCampusSql}`;
+    const jobItemFilterSql = (jobIdx) =>
+      `${jobIdx ? `AND jp.id = $${jobIdx}::uuid` : ''}${jobYearSql}`;
+
     if (tab === 'drives') {
       itemsRes = await query(
         `SELECT
            a.id,
            'drive' AS source_kind,
-           a.status,
+           a.status AS application_status,
            a.applied_at,
            a.current_round,
            sp.id AS student_id,
@@ -202,32 +246,28 @@ export async function GET(request) {
            d.title AS opening_title,
            'placement_drive'::text AS job_type,
            d.id AS drive_id,
+           NULL::uuid AS job_id,
            NULL::text AS notes
          FROM applications a
          INNER JOIN placement_drives d ON d.id = a.drive_id
          INNER JOIN employer_profiles ep ON ep.id = d.employer_id
          INNER JOIN student_profiles sp ON sp.id = a.student_id
-         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          ${resumeLateral}
          WHERE ep.id = $1::uuid
-           AND a.status <> 'withdrawn'
            AND ${SP_ACTIVE_CLAUSE}
            ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
-           ${driveIdFilter ? 'AND d.id = $2::uuid' : ''}
+           ${driveItemFilterSql}
          ORDER BY a.applied_at DESC`,
-        driveIdFilter ? [employerId, driveIdFilter] : [employerId],
+        scopeParams,
       );
     } else if (tab === 'jobs') {
-      const jobParams = [employerId];
-      if (jobIdFilter) jobParams.push(jobIdFilter);
-      const jobBind = jobIdFilter ? `$${jobParams.length}` : '';
       itemsRes = await query(
         `SELECT
            pa.id,
            'program' AS source_kind,
-           pa.status,
+           pa.status AS application_status,
            pa.applied_at,
            NULL::int AS current_round,
            sp.id AS student_id,
@@ -249,30 +289,30 @@ export async function GET(request) {
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
+           pa.job_id,
            pa.notes
          FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
+         ${jobVisSql}
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
-         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          ${resumeLateral}
          WHERE ep.id = $1::uuid
            ${JOB_POSTING_TYPES_SQL}
-           AND pa.status <> 'withdrawn'
            AND ${SP_ACTIVE_CLAUSE}
            ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-           ${jobBind ? `AND jp.id = ${jobBind}::uuid` : ''}
+           ${jobItemFilterSql(jobsJobIdx)}${programCampusSql}
          ORDER BY pa.applied_at DESC`,
-        jobParams,
+        scopeParams,
       );
     } else if (tab === 'internships') {
       itemsRes = await query(
         `SELECT
            pa.id,
            'program' AS source_kind,
-           pa.status,
+           pa.status AS application_status,
            pa.applied_at,
            NULL::int AS current_round,
            sp.id AS student_id,
@@ -294,12 +334,13 @@ export async function GET(request) {
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
+           pa.job_id,
            pa.notes
          FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
+         ${jobVisSql}
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
-         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN LATERAL (
@@ -311,19 +352,18 @@ export async function GET(request) {
            LIMIT 1
          ) resume_doc ON TRUE
          WHERE ep.id = $1::uuid AND jp.job_type = 'internship'
-           AND pa.status <> 'withdrawn'
            AND ${SP_ACTIVE_CLAUSE}
            ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-           ${jobIdFilter ? 'AND jp.id = $2::uuid' : ''}
+           ${jobItemFilterSql(internshipsJobIdx)}${programCampusSql}
          ORDER BY pa.applied_at DESC`,
-        jobIdFilter ? [employerId, jobIdFilter] : [employerId],
+        scopeParams,
       );
     } else {
       itemsRes = await query(
         `SELECT
            pa.id,
            'program' AS source_kind,
-           pa.status,
+           pa.status AS application_status,
            pa.applied_at,
            NULL::int AS current_round,
            sp.id AS student_id,
@@ -345,12 +385,13 @@ export async function GET(request) {
            jp.title AS opening_title,
            jp.job_type::text AS job_type,
            NULL::uuid AS drive_id,
+           pa.job_id,
            pa.notes
          FROM program_applications pa
          INNER JOIN job_postings jp ON jp.id = pa.job_id
+         ${jobVisSql}
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
-         ${ACTIVE_CAMPUS_TIE_UP('ep.id')}
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN LATERAL (
@@ -362,16 +403,15 @@ export async function GET(request) {
            LIMIT 1
          ) resume_doc ON TRUE
          WHERE ep.id = $1::uuid AND jp.job_type IN ('short_project', 'hackathon')
-           AND pa.status <> 'withdrawn'
            AND ${SP_ACTIVE_CLAUSE}
            ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-           ${jobIdFilter ? 'AND jp.id = $2::uuid' : ''}
+           ${jobItemFilterSql(projectsJobIdx)}${programCampusSql}
          ORDER BY pa.applied_at DESC`,
-        jobIdFilter ? [employerId, jobIdFilter] : [employerId],
+        scopeParams,
       );
     }
 
-    let items = itemsRes.rows.map(mapRow);
+    let items = dedupeEmployerApplicationItems(itemsRes.rows.map(mapRow));
     items = await filterItemsByFcfs(items, tab, employerId);
 
     return NextResponse.json({
@@ -387,14 +427,23 @@ export async function GET(request) {
       items,
     });
   } catch (e) {
-    console.error('GET /api/employer/applications', e);
-    return NextResponse.json({ error: 'Failed to load applications' }, { status: 500 });
+    return respondPlatformError(e, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_APPLICATION_LIST,
+      request,
+      sessionUser: session?.user,
+      employerId: employerId || null,
+      defaultMessage: 'Failed to load applications',
+      logLabel: 'GET /api/employer/applications',
+    });
   }
 }
 
 export async function PATCH(request) {
+  let session = null;
+  let employerId = null;
+  let body = {};
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -404,18 +453,49 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Session user id missing' }, { status: 401 });
     }
 
-    const employerId = await getEmployerProfileId(userId);
+    employerId = await getEmployerProfileId(userId);
     if (!employerId) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
     }
 
-    const body = await request.json().catch(() => ({}));
+    body = await request.json().catch(() => ({}));
     const applicationId = String(body?.applicationId || '').trim();
     const sourceKind = String(body?.sourceKind || '').trim().toLowerCase();
     const nextStatus = String(body?.status || '').trim().toLowerCase();
     const allowed = new Set(['applied', 'shortlisted', 'in_progress', 'selected', 'rejected', 'on_hold']);
     if (!applicationId || !['drive', 'program'].includes(sourceKind) || !allowed.has(nextStatus)) {
       return NextResponse.json({ error: 'applicationId, sourceKind and valid status are required' }, { status: 400 });
+    }
+
+    const currentRes =
+      sourceKind === 'drive'
+        ? await query(
+            `SELECT a.status
+             FROM applications a
+             INNER JOIN placement_drives d ON d.id = a.drive_id
+             WHERE a.id = $1::uuid AND d.employer_id = $2::uuid
+               ${AND_APP_NOT_DELETED} ${AND_DRIVE_NOT_DELETED}
+             LIMIT 1`,
+            [applicationId, employerId],
+          )
+        : await query(
+            `SELECT pa.status
+             FROM program_applications pa
+             INNER JOIN job_postings jp ON jp.id = pa.job_id
+             WHERE pa.id = $1::uuid AND jp.employer_id = $2::uuid
+               ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+             LIMIT 1`,
+            [applicationId, employerId],
+          );
+
+    const currentStatus = currentRes.rows[0]?.status;
+    if (!currentRes.rows[0]) {
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    }
+
+    const mayUpdate = employerMayUpdateApplicationStatus(currentStatus, nextStatus);
+    if (!mayUpdate.ok) {
+      return NextResponse.json({ error: mayUpdate.error }, { status: 409 });
     }
 
     if (nextStatus === 'selected') {
@@ -491,15 +571,27 @@ export async function PATCH(request) {
          AND jp.id = pa.job_id
          AND jp.employer_id = $3::uuid
          ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-       RETURNING pa.id, pa.status`,
+       RETURNING pa.id, pa.status, pa.job_id`,
       [nextStatus, applicationId, employerId],
     );
     if (!updated.rows[0]) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
-    return NextResponse.json({ application: updated.rows[0] });
+    return NextResponse.json({
+      application: {
+        ...updated.rows[0],
+        status: normalizeEmployerApplicationStatus(updated.rows[0].status),
+      },
+    });
   } catch (e) {
-    console.error('PATCH /api/employer/applications', e);
-    return NextResponse.json({ error: 'Failed to update application status' }, { status: 500 });
+    return respondPlatformError(e, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_APPLICATION_UPDATE,
+      request,
+      sessionUser: session?.user,
+      employerId: employerId || null,
+      requestBody: body,
+      defaultMessage: 'Failed to update application status',
+      logLabel: 'PATCH /api/employer/applications',
+    });
   }
 }

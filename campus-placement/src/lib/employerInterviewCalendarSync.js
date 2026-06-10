@@ -7,9 +7,17 @@ export function buildEmployerInterviewCalendarDescription({
   panelNames,
   assigned,
   planId,
+  opportunityKind,
+  opportunityTitle,
+  opportunityId,
 }) {
   return [
     'Employer interview slot',
+    opportunityKind && opportunityTitle
+      ? `Opening (${opportunityKind}): ${opportunityTitle}`
+      : opportunityId
+        ? `Opening id: ${opportunityId}`
+        : '',
     time ? `Time: ${time}` : '',
     mode ? `Mode: ${mode}` : '',
     panelNames ? `Panel: ${panelNames}` : '',

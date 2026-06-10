@@ -5,6 +5,13 @@ import { query } from '@/lib/db';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
 import { AND_DRIVE_PD_NOT_DELETED } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import {
+  INSTITUTION_CLASSIFICATION_SELECT_SQL,
+  mapInstitutionClassificationsFromRow,
+} from '@/lib/tenantInstitutionClassifications';
+import { loadEmployerPostingCampusConstraints } from '@/lib/employerPostingCampusConstraints';
+import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -30,6 +37,7 @@ function serializeCollegeRow(row) {
     requested_at: row.requested_at ?? null,
     approved_at: row.approved_at ?? null,
     active_drives: Number(row.active_drives) || 0,
+    institutionClassifications: mapInstitutionClassificationsFromRow(row),
   };
 }
 
@@ -65,6 +73,7 @@ async function fetchCollegesDetailed(employerId) {
         t.nirf_rank,
         t.accreditation,
         t.website,
+        ${INSTITUTION_CLASSIFICATION_SELECT_SQL},
         COUNT(DISTINCT sp.id) AS total_students,
         COUNT(DISTINCT sp.id) FILTER (WHERE sp.placement_status = 'placed') AS placed_students,
         ROUND(AVG(sp.cgpa), 2) AS avg_cgpa,
@@ -79,6 +88,10 @@ async function fetchCollegesDetailed(employerId) {
      WHERE t.is_active = true AND t.type = 'college'
      GROUP BY t.id, t.name, t.slug, t.city, t.state, t.email, t.phone, t.logo_url,
               t.naac_grade, t.nirf_rank, t.accreditation, t.website,
+              t.is_central_university, t.is_state_university, t.is_deemed_university,
+              t.is_private_university, t.is_institution_national_importance, t.is_institute_state_legislature,
+              t.is_affiliated_college, t.is_autonomous_college, t.is_constituent_college,
+              t.is_government_college, t.is_private_aided_college, t.is_private_unaided_college,
               ea.status, ea.created_at, ea.approved_at
      ORDER BY t.name`,
     [employerId],
@@ -101,6 +114,7 @@ async function fetchCollegesSimple(employerId) {
         t.nirf_rank,
         t.accreditation,
         t.website,
+        ${INSTITUTION_CLASSIFICATION_SELECT_SQL},
         ea.status AS approval_status,
         ea.created_at AS requested_at,
         ea.approved_at
@@ -123,13 +137,15 @@ async function fetchCollegesSimple(employerId) {
 
 // GET /api/employer/campuses
 export async function GET() {
+  let session = null;
+  let employer = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized — sign in as an employer' }, { status: 401 });
     }
 
-    const employer = await resolveEmployer(session);
+    employer = await resolveEmployer(session);
     if (!employer) {
       return NextResponse.json(
         {
@@ -147,34 +163,43 @@ export async function GET() {
       colleges = await fetchCollegesSimple(employer.id);
     }
 
+    const postingCampusConstraints = await loadEmployerPostingCampusConstraints(query, employer.id);
+
     return NextResponse.json({
       employerId: employer.id,
       companyName: employer.company_name,
       colleges,
+      postingCampusConstraints,
     });
   } catch (error) {
-    console.error('Campuses API error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch campuses' },
-      { status: 500 },
-    );
+    return respondPlatformError(error, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_CAMPUS_LIST,
+      sessionUser: session?.user,
+      employerId: employer?.id || null,
+      defaultMessage: 'Failed to fetch campuses',
+      logLabel: 'GET /api/employer/campuses',
+    });
   }
 }
 
 // POST /api/employer/campuses
 export async function POST(req) {
+  let session = null;
+  let employer = null;
+  let body = {};
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { collegeId } = await req.json();
+    body = await req.json().catch(() => ({}));
+    const { collegeId } = body;
     if (!collegeId) {
       return NextResponse.json({ error: 'collegeId is required' }, { status: 400 });
     }
 
-    const employer = await resolveEmployer(session);
+    employer = await resolveEmployer(session);
     if (!employer) {
       return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
     }
@@ -235,7 +260,14 @@ export async function POST(req) {
 
     return NextResponse.json({ error: 'Could not create tie-up request' }, { status: 400 });
   } catch (error) {
-    console.error('Campus request error:', error);
-    return NextResponse.json({ error: 'Failed to request access' }, { status: 500 });
+    return respondPlatformError(error, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_CAMPUS_REQUEST,
+      request: req,
+      sessionUser: session?.user,
+      employerId: employer?.id || null,
+      requestBody: body,
+      defaultMessage: 'Failed to request campus access',
+      logLabel: 'POST /api/employer/campuses',
+    });
   }
 }

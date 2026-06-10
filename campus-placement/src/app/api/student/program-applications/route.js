@@ -97,7 +97,6 @@ export async function GET() {
     const isAlumni = await resolveAlumniStudentFlag(userId, session.user);
     const allowedTypes = isAlumni ? ALUMNI_JOB_TYPES : CAMPUS_PROGRAM_JOB_TYPES;
     const paNotDeletedSql = await programApplicationNotDeletedSql('pa');
-    const jpNotDeletedSql = await jobPostingNotDeletedSql('jp');
 
     const result = await query(
       `SELECT
@@ -112,12 +111,11 @@ export async function GET() {
          ep.website
        FROM program_applications pa
        JOIN student_profiles sp ON sp.id = pa.student_id
-       JOIN job_postings jp ON jp.id = pa.job_id
-       JOIN employer_profiles ep ON ep.id = jp.employer_id
+       LEFT JOIN job_postings jp ON jp.id = pa.job_id
+       LEFT JOIN employer_profiles ep ON ep.id = jp.employer_id
        WHERE sp.user_id = $1::uuid
-         AND jp.job_type = ANY($2::text[])
+         AND (jp.id IS NULL OR jp.job_type = ANY($2::text[]))
          ${paNotDeletedSql}
-         ${jpNotDeletedSql}
        ORDER BY pa.applied_at DESC`,
       [userId, allowedTypes],
     );
@@ -129,9 +127,9 @@ export async function GET() {
         appliedAt: r.applied_at,
         notes: r.notes,
         jobId: r.job_id,
-        title: r.title,
+        title: r.title || 'Role unavailable',
         jobType: r.job_type,
-        companyName: r.company_name,
+        companyName: r.company_name || 'Company unavailable',
         website: r.website || null,
       })),
     });

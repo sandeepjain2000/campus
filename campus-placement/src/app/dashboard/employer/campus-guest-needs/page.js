@@ -6,17 +6,48 @@ import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
-import { Eye, Send, X } from 'lucide-react';
+import { Calendar, Info, LayoutGrid, List, Mic, Send, X } from 'lucide-react';
 
 const KIND_LABEL = {
   guest_faculty: 'Guest faculty',
   guest_lecture: 'Guest lecture / session',
 };
 
+const SUMMARY_PREVIEW_CHARS = 48;
+
 function truncate(s, n) {
   if (s == null || s === '') return '—';
   const t = String(s);
   return t.length <= n ? t : `${t.slice(0, n)}…`;
+}
+
+/** @param {{ summary?: string | null; requirements?: string | null; timeHint?: string | null }} item */
+function hasExtraDetails(item) {
+  const summary = item.summary ? String(item.summary).trim() : '';
+  if (summary.length > SUMMARY_PREVIEW_CHARS) return true;
+  if (item.requirements && String(item.requirements).trim()) return true;
+  if (item.timeHint && String(item.timeHint).trim()) return true;
+  return false;
+}
+
+/** @param {{ confirmationSentAt?: string | null; canConfirm?: boolean }} item */
+function ConfirmationBadge({ item }) {
+  const sent = Boolean(item.confirmationSentAt);
+  if (sent) {
+    return (
+      <span className="badge badge-green">
+        Sent {new Date(item.confirmationSentAt).toLocaleDateString()}
+      </span>
+    );
+  }
+  if (!item.canConfirm) {
+    return (
+      <span className="badge badge-gray" title="College has no contact email on file">
+        Unavailable
+      </span>
+    );
+  }
+  return <span className="text-secondary text-sm">Ready to confirm</span>;
 }
 
 export default function EmployerCampusGuestNeedsPage() {
@@ -35,6 +66,8 @@ export default function EmployerCampusGuestNeedsPage() {
   const [confirmationFilter, setConfirmationFilter] = useState('');
   /** @type {'' | 'guest_faculty' | 'guest_lecture'} */
   const [typeFilter, setTypeFilter] = useState('');
+  /** @type {'card' | 'list'} */
+  const [viewMode, setViewMode] = useState('card');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,7 +127,9 @@ export default function EmployerCampusGuestNeedsPage() {
     clearFilters,
   } = useDataTableQuery(tabFilteredRows, {
     getSearchText: (item) =>
-      [item.collegeName, item.title, item.summary, KIND_LABEL[item.kind], item.timingLabel].filter(Boolean).join(' '),
+      [item.college?.name, item.title, item.summary, item.requirements, item.timeHint, KIND_LABEL[item.kind]]
+        .filter(Boolean)
+        .join(' '),
     sortOptions: COMMON_SORT_OPTIONS,
     defaultSort: 'date_desc',
   });
@@ -226,124 +261,346 @@ export default function EmployerCampusGuestNeedsPage() {
             </span>
           </div>
         </div>
-        {tabTotalCount > 0 ? (
-          <DataTableToolbar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search college, title, or summary…"
-            sort={sort}
-            onSortChange={setSort}
-            sortOptions={COMMON_SORT_OPTIONS}
-            filteredCount={filteredCount}
-            totalCount={tabTotalCount}
-            hasActiveFilters={hasActiveFilters}
-            onClear={clearFilters}
-            style={{ marginBottom: '1rem' }}
-          />
+        {rows.length > 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '1rem',
+              alignItems: 'flex-start',
+              marginBottom: '1rem',
+            }}
+          >
+            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+              <DataTableToolbar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search college, title, or summary…"
+                sort={sort}
+                onSortChange={setSort}
+                sortOptions={COMMON_SORT_OPTIONS}
+                filteredCount={filteredCount}
+                totalCount={tabTotalCount}
+                hasActiveFilters={hasActiveFilters}
+                onClear={clearFilters}
+              />
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                background: 'var(--bg-secondary)',
+                borderRadius: '10px',
+                padding: '3px',
+                gap: '2px',
+                border: '1px solid var(--border-default)',
+                flexShrink: 0,
+              }}
+            >
+              {[
+                { mode: 'card', icon: LayoutGrid, label: 'Card view' },
+                { mode: 'list', icon: List, label: 'List view' },
+              ].map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  title={label}
+                  aria-label={label}
+                  aria-pressed={viewMode === mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '7px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    transition: 'all 0.15s ease',
+                    background: viewMode === mode ? 'var(--bg-primary)' : 'transparent',
+                    color: viewMode === mode ? 'var(--primary-600)' : 'var(--text-tertiary)',
+                    boxShadow: viewMode === mode ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  <Icon size={15} aria-hidden />
+                  {mode === 'card' ? 'Cards' : 'List'}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>College</th>
-                <th>Type</th>
-                <th>Title</th>
-                <th>Summary</th>
-                <th>Timing</th>
-                <th>Posted</th>
-                <th>Confirmation</th>
-                <th style={{ width: 1 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 && tabTotalCount > 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center text-secondary">
-                    No listings match your search.
-                  </td>
-                </tr>
-              ) : null}
-              {filteredRows.map((item) => {
-                const sent = Boolean(item.confirmationSentAt);
-                const canSend = item.canConfirm && !sent;
-                return (
-                  <tr key={item.id}>
-                    <td>
-                      <div className="font-semibold">{item.college?.name || '—'}</div>
-                      <div className="text-xs text-secondary">
-                        {[item.college?.city, item.college?.state].filter(Boolean).join(', ') || ''}
+
+        {viewMode === 'card' ? (
+          <>
+            {rows.length === 0 ? (
+              <div
+                className="card"
+                style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}
+              >
+                <Mic size={40} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.45 }} />
+                <p className="text-secondary" style={{ margin: 0 }}>
+                  No published campus needs right now.
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                  gap: '1.25rem',
+                }}
+              >
+                {filteredRows.map((item) => {
+                  const sent = Boolean(item.confirmationSentAt);
+                  const canSend = item.canConfirm && !sent;
+                  return (
+                    <div
+                      key={item.id}
+                      className="card"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        padding: '1.25rem',
+                        border: '1px solid var(--border-default)',
+                        height: '100%',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="font-semibold">{item.college?.name || '—'}</div>
+                          <div className="text-xs text-secondary">
+                            {[item.college?.city, item.college?.state].filter(Boolean).join(', ') || '—'}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            background: 'var(--primary-50)',
+                            padding: '0.45rem',
+                            borderRadius: 'var(--radius-md)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Mic size={18} className="text-primary-600" />
+                        </div>
                       </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-indigo">{KIND_LABEL[item.kind] || item.kind}</span>
-                    </td>
-                    <td className="font-medium">{item.title}</td>
-                    <td className="text-sm text-secondary" style={{ maxWidth: 220 }}>
-                      {truncate(item.summary, 100)}
-                    </td>
-                    <td className="text-sm">{truncate(item.timeHint, 40)}</td>
-                    <td className="text-sm text-secondary">
-                      {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}
-                    </td>
-                    <td>
-                      {sent ? (
-                        <span className="badge badge-green">
-                          Sent {new Date(item.confirmationSentAt).toLocaleDateString()}
-                        </span>
-                      ) : !item.canConfirm ? (
-                        <span className="badge badge-gray" title="College has no contact email on file">
-                          Unavailable
-                        </span>
-                      ) : (
-                        <span className="text-secondary text-sm">—</span>
-                      )}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        onClick={() => setViewItem(item)}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                          alignItems: 'center',
+                          marginBottom: '0.65rem',
+                        }}
                       >
-                        <Eye size={14} /> View
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        disabled={!canSend}
-                        title={
-                          sent
-                            ? 'Already confirmed'
-                            : !item.canConfirm
-                              ? 'College contact email missing'
-                              : 'Send confirmation email'
-                        }
-                        onClick={() => void openConfirm(item)}
+                        <span className="badge badge-indigo">{KIND_LABEL[item.kind] || item.kind}</span>
+                        <span
+                          className="text-xs text-secondary"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Calendar size={12} aria-hidden />
+                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}
+                        </span>
+                      </div>
+                      <h3
+                        style={{
+                          fontSize: '1.05rem',
+                          fontWeight: 700,
+                          margin: '0 0 0.5rem',
+                          color: 'var(--text-primary)',
+                        }}
                       >
-                        <Send size={14} /> Confirm
-                      </button>
+                        {item.title}
+                      </h3>
+                      <div
+                        className="text-sm text-secondary"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 4,
+                          marginBottom: '0.75rem',
+                          flex: 1,
+                        }}
+                      >
+                        <span style={{ flex: 1, lineHeight: 1.45 }}>
+                          {item.summary ? truncate(item.summary, SUMMARY_PREVIEW_CHARS) : '—'}
+                        </span>
+                        {hasExtraDetails(item) ? (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}
+                            aria-label="View summary, requirements, and timing"
+                            title="View details"
+                            onClick={() => setViewItem(item)}
+                          >
+                            <Info size={14} />
+                          </button>
+                        ) : null}
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          paddingTop: '0.85rem',
+                          borderTop: '1px solid var(--border-default)',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <ConfirmationBadge item={item} />
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          disabled={!canSend}
+                          title={
+                            sent
+                              ? 'Already confirmed'
+                              : !item.canConfirm
+                                ? 'College contact email missing'
+                                : 'Send confirmation email'
+                          }
+                          onClick={() => void openConfirm(item)}
+                        >
+                          <Send size={14} /> Confirm
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredRows.length === 0 ? (
+                  <div
+                    style={{
+                      gridColumn: '1 / -1',
+                      padding: '3rem 1.5rem',
+                      textAlign: 'center',
+                      background: 'var(--bg-secondary)',
+                      borderRadius: 'var(--radius-xl)',
+                      border: '1px dashed var(--border-default)',
+                    }}
+                  >
+                    <p className="text-secondary" style={{ margin: 0 }}>
+                      No listings match your search or filters.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </>
+        ) : null}
+
+        {viewMode === 'list' ? (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>College</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Posted</th>
+                  <th>Type</th>
+                  <th>Title</th>
+                  <th style={{ width: 140, maxWidth: 140 }}>Summary</th>
+                  <th>Confirmation</th>
+                  <th style={{ width: 1 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 && tabTotalCount > 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No listings match your search.
                     </td>
                   </tr>
-                );
-              })}
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center text-secondary">
-                    No published campus needs right now.
-                  </td>
-                </tr>
-              ) : null}
-              {rows.length > 0 && filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center text-secondary">
-                    No listings match your filters. Try &quot;All&quot; or a different status.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                ) : null}
+                {filteredRows.map((item) => {
+                  const sent = Boolean(item.confirmationSentAt);
+                  const canSend = item.canConfirm && !sent;
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="font-semibold">{item.college?.name || '—'}</div>
+                        <div className="text-xs text-secondary">
+                          {[item.college?.city, item.college?.state].filter(Boolean).join(', ') || ''}
+                        </div>
+                      </td>
+                      <td className="text-sm text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td>
+                        <span className="badge badge-indigo">{KIND_LABEL[item.kind] || item.kind}</span>
+                      </td>
+                      <td className="font-medium">{item.title}</td>
+                      <td className="text-sm text-secondary" style={{ width: 140, maxWidth: 140 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                          <span
+                            title={item.summary || undefined}
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            {item.summary ? truncate(item.summary, SUMMARY_PREVIEW_CHARS) : '—'}
+                          </span>
+                          {hasExtraDetails(item) ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              style={{ padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}
+                              aria-label="View summary, requirements, and timing"
+                              title="View details"
+                              onClick={() => setViewItem(item)}
+                            >
+                              <Info size={14} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>
+                        <ConfirmationBadge item={item} />
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          disabled={!canSend}
+                          title={
+                            sent
+                              ? 'Already confirmed'
+                              : !item.canConfirm
+                                ? 'College contact email missing'
+                                : 'Send confirmation email'
+                          }
+                          onClick={() => void openConfirm(item)}
+                        >
+                          <Send size={14} /> Confirm
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No published campus needs right now.
+                    </td>
+                  </tr>
+                ) : null}
+                {rows.length > 0 && filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-secondary">
+                      No listings match your filters. Try &quot;All&quot; or a different status.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
         </>
       )}
 

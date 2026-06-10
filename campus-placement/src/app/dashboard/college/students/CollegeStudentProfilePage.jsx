@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import MobileHeader from '@/components/mobile/MobileHeader';
+import PageLoading from '@/components/PageLoading';
 import StudentProfileView from './StudentProfileView';
 import {
   academicYearQueryString,
@@ -67,7 +68,7 @@ export default function CollegeStudentProfilePage({ mobile = false }) {
 
   const content = (() => {
     if (isLoading) {
-      return <div className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-xl)' }} />;
+      return <PageLoading message="Loading student profile…" variant="skeleton-card" inline />;
     }
     if (loadError || !student) {
       return (

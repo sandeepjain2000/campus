@@ -15,6 +15,7 @@ import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction
 import AdminRecordModal from '@/components/admin/AdminRecordModal';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import { useToast } from '@/components/ToastProvider';
+import { validateAdminEmployerForm } from '@/lib/adminEmployerForm';
 
 function employerToForm(e) {
   return {
@@ -28,6 +29,7 @@ function employerToForm(e) {
     verified: Boolean(e?.verified),
     blacklisted: Boolean(e?.blacklisted),
     blacklistReason: e?.blacklistReason || '',
+    accountActive: e?.accountActive !== false,
   };
 }
 
@@ -58,7 +60,14 @@ export default function AdminEmployersPage() {
   const [form, setForm] = useState(employerToForm(null));
   const [panelLoading, setPanelLoading] = useState(false);
   const [panelError, setPanelError] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [togglingActive, setTogglingActive] = useState(false);
+
+  const updateForm = useCallback((patch) => {
+    setSaveError('');
+    setForm((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const loadEmployers = useCallback(async () => {
     setIsLoading(true);
@@ -102,6 +111,7 @@ export default function AdminEmployersPage() {
     setSelectedId(null);
     setDetail(null);
     setPanelError('');
+    setSaveError('');
   };
 
   const openPanel = async (id, mode) => {
@@ -109,6 +119,7 @@ export default function AdminEmployersPage() {
     setPanelMode(mode);
     setPanelLoading(true);
     setPanelError('');
+    setSaveError('');
     setDetail(null);
     try {
       const res = await fetch(`/api/admin/employers/${id}`);
@@ -133,15 +144,29 @@ export default function AdminEmployersPage() {
 
   const saveEmployer = async () => {
     if (!selectedId) return;
+
+    const validationErr = validateAdminEmployerForm(form);
+    if (validationErr) {
+      setSaveError(validationErr);
+      addToast(validationErr, 'warning');
+      return;
+    }
+
     setSaving(true);
+    setSaveError('');
     try {
       const res = await fetch(`/api/admin/employers/${selectedId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed to save employer');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = json?.error || 'Failed to save employer';
+        setSaveError(msg);
+        addToast(msg, 'warning');
+        return;
+      }
       addToast('Employer updated', 'success');
       setDetail(json.employer);
       setEmployers((prev) =>
@@ -154,25 +179,73 @@ export default function AdminEmployersPage() {
                 industry: json.employer.industry || '—',
                 verified: json.employer.verified,
                 blacklisted: json.employer.blacklisted,
+                active: json.employer.accountActive,
               }
             : e,
         ),
       );
       setPanelMode('view');
+      setSaveError('');
     } catch (e) {
-      addToast(e.message || 'Failed to save employer', 'error');
+      const msg = e.message || 'Failed to save employer';
+      setSaveError(msg);
+      addToast(msg, 'error');
     } finally {
       setSaving(false);
     }
   };
 
+  const toggleEmployerActive = async (nextActive) => {
+    if (!selectedId || !detail) return;
+    const action = nextActive ? 'Reactivate' : 'Deactivate';
+    const prompt = nextActive
+      ? `Reactivate the employer login for ${detail.name}? They will be able to sign in again.`
+      : `Deactivate the employer account for ${detail.name}? They will not be able to sign in until reactivated.`;
+    if (!window.confirm(prompt)) return;
+
+    setTogglingActive(true);
+    setSaveError('');
+    try {
+      const res = await fetch(`/api/admin/employers/${selectedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...employerToForm(detail), accountActive: nextActive }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = json?.error || `Failed to ${action.toLowerCase()} employer`;
+        setSaveError(msg);
+        addToast(msg, 'warning');
+        return;
+      }
+      setDetail(json.employer);
+      setForm(employerToForm(json.employer));
+      setEmployers((prev) =>
+        prev.map((e) =>
+          e.id === json.employer.id ? { ...e, active: json.employer.accountActive } : e,
+        ),
+      );
+      addToast(
+        nextActive ? 'Employer account reactivated.' : 'Employer account deactivated.',
+        'success',
+      );
+    } catch (e) {
+      const msg = e.message || `Failed to ${action.toLowerCase()} employer`;
+      setSaveError(msg);
+      addToast(msg, 'error');
+    } finally {
+      setTogglingActive(false);
+    }
+  };
+
   const getExportRows = () => {
-    const headers = ['Company', 'Industry', 'Total Hires', 'Verified'];
+    const headers = ['Company', 'Industry', 'Total Hires', 'Verified', 'Account'];
     const rowsList = employers.map((e) => [
       e.name,
       e.industry,
       String(e.hires),
       e.verified ? 'Yes' : 'No',
+      e.active !== false ? 'Active' : 'Inactive',
     ]);
     return { headers, rows: rowsList };
   };
@@ -226,13 +299,14 @@ export default function AdminEmployersPage() {
               <th>Industry</th>
               <th>Total Hires</th>
               <th>Verified</th>
+              <th>Account</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {displayEmployers.length === 0 && totalCount > 0 ? (
               <tr>
-                <td colSpan={5} className="text-center text-secondary">
+                <td colSpan={6} className="text-center text-secondary">
                   No employers match your search or filters.
                 </td>
               </tr>
@@ -282,6 +356,13 @@ export default function AdminEmployersPage() {
                     <span className="badge badge-amber">Pending</span>
                   )}
                 </td>
+                <td>
+                  {e.active === false ? (
+                    <span className="badge badge-gray">Inactive</span>
+                  ) : (
+                    <span className="badge badge-green">Active</span>
+                  )}
+                </td>
                 <td onClick={(ev) => ev.stopPropagation()}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     <StandardTableIconAction action="view" onClick={() => openPanel(e.id, 'view')} />
@@ -292,7 +373,7 @@ export default function AdminEmployersPage() {
             ))}
             {!isLoading && totalCount === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center text-secondary">
+                <td colSpan={6} className="text-center text-secondary">
                   {listError || 'No employers found.'}
                 </td>
               </tr>
@@ -311,16 +392,38 @@ export default function AdminEmployersPage() {
         onSave={saveEmployer}
         footer={
           panelMode === 'view' && detail && !panelLoading && !panelError ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                setForm(employerToForm(detail));
-                setPanelMode('edit');
-              }}
-            >
-              Edit employer
-            </button>
+            <>
+              {detail.accountActive ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={togglingActive || saving}
+                  onClick={() => toggleEmployerActive(false)}
+                >
+                  {togglingActive ? 'Updating…' : 'Deactivate account'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={togglingActive || saving}
+                  onClick={() => toggleEmployerActive(true)}
+                >
+                  {togglingActive ? 'Updating…' : 'Reactivate account'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setForm(employerToForm(detail));
+                  setSaveError('');
+                  setPanelMode('edit');
+                }}
+              >
+                Edit employer
+              </button>
+            </>
           ) : null
         }
       >
@@ -345,40 +448,62 @@ export default function AdminEmployersPage() {
 
         {panelMode === 'edit' && detail ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {saveError ? (
+              <div
+                className="card"
+                role="alert"
+                style={{ borderColor: 'var(--danger-500)', padding: '0.85rem 1rem', marginBottom: 0 }}
+              >
+                <p style={{ margin: 0, color: 'var(--danger-600)', fontSize: '0.875rem' }}>{saveError}</p>
+              </div>
+            ) : null}
             <div className="form-group">
               <label className="form-label">Company name</label>
-              <input className="form-input" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+              <input className="form-input" value={form.name} onChange={(e) => updateForm({ name: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Industry</label>
-              <input className="form-input" value={form.industry} onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))} />
+              <input className="form-input" value={form.industry} onChange={(e) => updateForm({ industry: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Website</label>
-              <input className="form-input" value={form.website} onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))} placeholder="https://…" />
+              <input className="form-input" value={form.website} onChange={(e) => updateForm({ website: e.target.value })} placeholder="https://…" />
             </div>
             <div className="form-group">
               <label className="form-label">Headquarters</label>
-              <input className="form-input" value={form.headquarters} onChange={(e) => setForm((p) => ({ ...p, headquarters: e.target.value }))} />
+              <input className="form-input" value={form.headquarters} onChange={(e) => updateForm({ headquarters: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Contact person</label>
-              <input className="form-input" value={form.contactPerson} onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))} />
+              <input className="form-input" value={form.contactPerson} onChange={(e) => updateForm({ contactPerson: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Contact email</label>
-              <input className="form-input" type="email" value={form.contactEmail} onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))} />
+              <input className="form-input" type="email" value={form.contactEmail} onChange={(e) => updateForm({ contactEmail: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Contact phone</label>
-              <input className="form-input" value={form.contactPhone} onChange={(e) => setForm((p) => ({ ...p, contactPhone: e.target.value }))} />
+              <input
+                className="form-input"
+                value={form.contactPhone}
+                onChange={(e) => updateForm({ contactPhone: e.target.value })}
+                placeholder="+91 9876543210"
+              />
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.verified} onChange={(e) => setForm((p) => ({ ...p, verified: e.target.checked }))} />
+              <input
+                type="checkbox"
+                checked={form.accountActive}
+                onChange={(e) => updateForm({ accountActive: e.target.checked })}
+              />
+              <span className="text-sm">Employer account is active (can sign in)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.verified} onChange={(e) => updateForm({ verified: e.target.checked })} />
               <span className="text-sm">Mark as verified employer</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.blacklisted} onChange={(e) => setForm((p) => ({ ...p, blacklisted: e.target.checked }))} />
+              <input type="checkbox" checked={form.blacklisted} onChange={(e) => updateForm({ blacklisted: e.target.checked })} />
               <span className="text-sm">Block employer from campus access</span>
             </label>
             {form.blacklisted ? (
@@ -388,7 +513,7 @@ export default function AdminEmployersPage() {
                   className="form-input"
                   rows={3}
                   value={form.blacklistReason}
-                  onChange={(e) => setForm((p) => ({ ...p, blacklistReason: e.target.value }))}
+                  onChange={(e) => updateForm({ blacklistReason: e.target.value })}
                 />
               </div>
             ) : null}

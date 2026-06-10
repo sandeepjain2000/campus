@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowLeft, Mic } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
 
 const KIND_LABEL = {
   guest_faculty: 'Guest faculty',
@@ -26,12 +27,12 @@ export default function CollegeGuestEngagementsAddPage() {
 
   const create = async (e) => {
     e.preventDefault();
-    const title = form.title.trim();
-    const summary = form.summary.trim();
-    if (!title) {
-      addToast('Title is required.', 'error');
+    const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, form.title, { label: 'Listing title' });
+    if (titleErr) {
+      addToast(titleErr, 'error');
       return;
     }
+    const summary = form.summary.trim();
     if (!summary) {
       addToast('Summary is required.', 'error');
       return;

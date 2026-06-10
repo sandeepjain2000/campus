@@ -26,6 +26,18 @@ CREATE TABLE tenants (
     naac_grade VARCHAR(10),
     nirf_rank INTEGER,
     established_year INTEGER,
+    is_central_university BOOLEAN NOT NULL DEFAULT false,
+    is_state_university BOOLEAN NOT NULL DEFAULT false,
+    is_deemed_university BOOLEAN NOT NULL DEFAULT false,
+    is_private_university BOOLEAN NOT NULL DEFAULT false,
+    is_institution_national_importance BOOLEAN NOT NULL DEFAULT false,
+    is_institute_state_legislature BOOLEAN NOT NULL DEFAULT false,
+    is_affiliated_college BOOLEAN NOT NULL DEFAULT false,
+    is_autonomous_college BOOLEAN NOT NULL DEFAULT false,
+    is_constituent_college BOOLEAN NOT NULL DEFAULT false,
+    is_government_college BOOLEAN NOT NULL DEFAULT false,
+    is_private_aided_college BOOLEAN NOT NULL DEFAULT false,
+    is_private_unaided_college BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     settings JSONB DEFAULT '{}',
     parent_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
@@ -286,6 +298,24 @@ CREATE TABLE placement_drives (
     ppt_completed BOOLEAN DEFAULT false,
     notes TEXT,
     ctc_breakup TEXT,
+    min_cgpa DECIMAL(4,2),
+    job_type VARCHAR(30) CHECK (job_type IS NULL OR job_type IN ('full_time', 'internship', 'contract', 'ppo')),
+    salary_min DECIMAL(12,2),
+    salary_max DECIMAL(12,2),
+    salary_currency VARCHAR(3) DEFAULT 'INR',
+    eligible_branches TEXT[],
+    max_backlogs INTEGER,
+    batch_year INTEGER,
+    skills_required TEXT[],
+    additional_info TEXT,
+    application_deadline TIMESTAMP,
+    min_tenth_pct DECIMAL(5,2),
+    min_twelfth_pct DECIMAL(5,2),
+    bond_duration_months INTEGER DEFAULT 0,
+    bond_penalty DECIMAL(12,2),
+    locations TEXT[],
+    category VARCHAR(100),
+    perks TEXT[],
     social_shared TEXT[] DEFAULT '{}',
     attached_staff_user_ids UUID[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
@@ -544,6 +574,66 @@ CREATE INDEX idx_sponsorship_payments_tenant_created ON sponsorship_payments(ten
 CREATE INDEX idx_sponsorship_payments_employer ON sponsorship_payments(employer_profile_id);
 
 -- ============================================
+-- 20b. STARTUP SEED FUNDING
+-- ============================================
+CREATE TABLE startup_funding_opportunities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    category VARCHAR(120) NOT NULL,
+    description TEXT,
+    tier_name VARCHAR(120) NOT NULL,
+    price_inr BIGINT NOT NULL CHECK (price_inr >= 0),
+    benefits TEXT[] DEFAULT '{}',
+    label VARCHAR(60),
+    is_active BOOLEAN DEFAULT true,
+    payments_permitted INTEGER NOT NULL DEFAULT 1 CHECK (payments_permitted >= 1 AND payments_permitted <= 36),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_startup_funding_opportunities_tenant ON startup_funding_opportunities(tenant_id);
+CREATE INDEX idx_startup_funding_opportunities_active ON startup_funding_opportunities(is_active);
+
+CREATE TABLE startup_funding_payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    opportunity_id UUID NOT NULL REFERENCES startup_funding_opportunities(id) ON DELETE CASCADE,
+    employer_profile_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    payment_sequence INTEGER NOT NULL CHECK (payment_sequence >= 1),
+    amount_inr BIGINT NOT NULL CHECK (amount_inr > 0),
+    method VARCHAR(20) NOT NULL CHECK (method IN ('online', 'cheque', 'bank_transfer')),
+    status VARCHAR(40) NOT NULL DEFAULT 'recorded',
+    gateway_provider VARCHAR(80),
+    gateway_reference VARCHAR(200),
+    cheque_mailed_at TIMESTAMPTZ,
+    bank_transfer_confirmed_at TIMESTAMPTZ,
+    proof_attachment TEXT,
+    billing_legal_name VARCHAR(280),
+    billing_pan VARCHAR(10),
+    billing_gst_number VARCHAR(18),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (opportunity_id, employer_profile_id, payment_sequence)
+);
+
+CREATE INDEX idx_startup_funding_payments_tenant_created ON startup_funding_payments(tenant_id, created_at DESC);
+CREATE INDEX idx_startup_funding_payments_employer ON startup_funding_payments(employer_profile_id);
+
+CREATE TABLE startup_funding_receipt_sends (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    payment_id UUID NOT NULL REFERENCES startup_funding_payments(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    sent_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    to_email TEXT NOT NULL,
+    receipt_number VARCHAR(96) NOT NULL,
+    subject TEXT,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (payment_id)
+);
+
+CREATE INDEX idx_startup_funding_receipt_sends_tenant ON startup_funding_receipt_sends(tenant_id, sent_at DESC);
+
+-- ============================================
 -- 21. CLARIFICATION BATCHES + QUESTIONS
 -- ============================================
 CREATE TABLE clarification_batches (
@@ -609,6 +699,28 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_audit_user ON audit_logs(user_id);
 CREATE INDEX idx_audit_tenant ON audit_logs(tenant_id);
 CREATE INDEX idx_audit_action ON audit_logs(action);
+
+-- Platform error logs (super-admin diagnostics)
+CREATE TABLE platform_error_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    severity VARCHAR(20) NOT NULL DEFAULT 'error'
+        CHECK (severity IN ('info', 'warning', 'error')),
+    context VARCHAR(80) NOT NULL,
+    status_code INTEGER,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
+    employer_id UUID REFERENCES employer_profiles(id) ON DELETE SET NULL,
+    user_message TEXT,
+    error_message TEXT NOT NULL,
+    error_code VARCHAR(50),
+    details JSONB,
+    ip_address VARCHAR(45)
+);
+
+CREATE INDEX idx_platform_error_logs_created ON platform_error_logs (created_at DESC);
+CREATE INDEX idx_platform_error_logs_context ON platform_error_logs (context);
+CREATE INDEX idx_platform_error_logs_status ON platform_error_logs (status_code);
 
 -- ============================================
 -- 24. MESSAGE TEMPLATES

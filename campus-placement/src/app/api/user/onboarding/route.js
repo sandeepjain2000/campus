@@ -5,6 +5,9 @@ import { query } from '@/lib/db';
 import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 import { ALUMNI_BROWSE_JOBS_PATH } from '@/lib/alumniRoutes';
+import { EMPLOYER_ALUMNI_JOBS_PATH } from '@/lib/employerAlumniRoutes';
+import { programApplicationNotDeletedSql } from '@/lib/migrationReady';
+import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
 export async function GET() {
   try {
@@ -23,6 +26,8 @@ export async function GET() {
     };
 
     if (role === 'student') {
+      const isAlumni = await resolveAlumniStudentFlag(userId, session.user);
+
       // Step 1: Complete Academic Profile
       // Step 2: Upload Resume
       const profileRes = await query(
@@ -34,20 +39,34 @@ export async function GET() {
       const hasCgpa = profile && profile.cgpa !== null && profile.cgpa > 0;
       const hasResume = profile && profile.resume_url !== null && profile.resume_url.trim() !== '';
 
-      // Step 3: Apply to First Job
+      // Step 3: first application (placement drives vs alumni jobs)
       let hasApplications = false;
       if (profile) {
-        const appsRes = await query(
-          `SELECT 1 FROM applications a WHERE a.student_id = $1 ${AND_APP_NOT_DELETED} LIMIT 1`,
-          [profile.id]
-        );
-        hasApplications = appsRes.rowCount > 0;
+        if (isAlumni) {
+          const paNotDeletedSql = await programApplicationNotDeletedSql('pa');
+          const appsRes = await query(
+            `SELECT 1 FROM program_applications pa WHERE pa.student_id = $1::uuid ${paNotDeletedSql} LIMIT 1`,
+            [profile.id],
+          );
+          hasApplications = appsRes.rowCount > 0;
+        } else {
+          const appsRes = await query(
+            `SELECT 1 FROM applications a WHERE a.student_id = $1 ${AND_APP_NOT_DELETED} LIMIT 1`,
+            [profile.id],
+          );
+          hasApplications = appsRes.rowCount > 0;
+        }
       }
 
       progress.steps = [
         { id: 'academic', title: 'Complete Academic Profile', completed: !!hasCgpa, href: '/dashboard/student/profile' },
         { id: 'resume', title: 'Upload Resume', completed: !!hasResume, href: '/dashboard/student/documents' },
-        { id: 'apply', title: 'Apply to First Job', completed: !!hasApplications, href: session.user.isAlumni ? ALUMNI_BROWSE_JOBS_PATH : '/dashboard/student/drives' },
+        {
+          id: 'apply',
+          title: isAlumni ? 'Apply to Your First Alumni Job' : 'Apply to First Job',
+          completed: !!hasApplications,
+          href: isAlumni ? ALUMNI_BROWSE_JOBS_PATH : '/dashboard/student/drives',
+        },
       ];
       
       progress.isComplete = progress.steps.every(s => s.completed);
@@ -99,7 +118,7 @@ export async function GET() {
           id: 'drive',
           title: 'Post a Job or Schedule a Drive',
           completed: hasRecruitingActivity,
-          href: '/dashboard/employer/jobs',
+          href: EMPLOYER_ALUMNI_JOBS_PATH,
         },
       ];
 

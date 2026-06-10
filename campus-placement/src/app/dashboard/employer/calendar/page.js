@@ -7,16 +7,39 @@ import { formatDate, formatStatus } from '@/lib/utils';
 import { Search, Filter, Calendar as CalendarIcon, List as ListIcon, CalendarDays, CalendarRange, MapPin, Clock, Video } from 'lucide-react';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
+import { reportClientApiFailure } from '@/lib/clientPlatformErrorReport';
+import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
+
+const CALENDAR_API = '/api/employer/calendar';
 
 const fetcher = async (url) => {
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load calendar');
-  return json;
+  let json = {};
+  try {
+    const res = await fetch(url);
+    json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      void reportClientApiFailure({
+        context: PLATFORM_ERROR_CONTEXT.EMPLOYER_CALENDAR,
+        route: url,
+        statusCode: res.status,
+        responseBody: json,
+      });
+      throw new Error(json?.userMessage || json?.error || 'Failed to load calendar events');
+    }
+    return json;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Failed to load calendar')) throw err;
+    void reportClientApiFailure({
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_CALENDAR,
+      route: url,
+      message: err instanceof Error ? err.message : 'Network error loading calendar',
+    });
+    throw err instanceof Error ? err : new Error('Failed to load calendar events');
+  }
 };
 
 export default function EmployerCalendarPage() {
-  const { data, isLoading, error } = useSWR('/api/employer/calendar', fetcher);
+  const { data, isLoading, error } = useSWR(CALENDAR_API, fetcher);
   const events = Array.isArray(data?.events) ? data.events : [];
   const now = new Date();
   const [view, setView] = useState('list'); // 'list', 'month', 'week', 'year'

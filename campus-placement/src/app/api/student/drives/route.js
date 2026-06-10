@@ -7,9 +7,22 @@ import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
 import { getStudentBrowseGate } from '@/lib/studentBrowseGate';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
+import { mapStudentDriveListRow } from '@/lib/placementDriveJobFields';
+import { DRIVE_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const STUDENT_DRIVE_JOB_COLUMNS = `
+        d.salary_min,
+        d.salary_max,
+        d.eligible_branches,
+        d.max_backlogs,
+        d.batch_year,
+        d.skills_required,
+        d.additional_info,
+        d.application_deadline,
+        d.job_type`;
 
 export async function GET() {
   try {
@@ -37,8 +50,7 @@ export async function GET() {
 
     const applyProfile = await loadStudentApplyProfile(studentProfileId, session.user.tenantId);
 
-    const res = await query(
-      `
+    const driveSqlFull = `
       SELECT
         d.id,
         ep.company_name AS company,
@@ -48,8 +60,11 @@ export async function GET() {
         d.drive_type AS type,
         d.venue,
         d.status,
+        d.description,
         d.max_students AS vacancies,
-        d.registered_count AS registered,
+        ${DRIVE_APPLICANT_COUNT_SUBQUERY} AS registered,
+        d.min_cgpa,
+        ${STUDENT_DRIVE_JOB_COLUMNS},
         a.status AS application_status,
         (a.status IS NOT NULL AND a.status IN ('applied', 'shortlisted', 'in_progress', 'selected', 'on_hold')) AS applied
       FROM placement_drives d
@@ -62,35 +77,34 @@ export async function GET() {
         AND d.status IN ('approved', 'scheduled')
         AND COALESCE(d.is_deleted, false) = false
       ORDER BY d.drive_date ASC, d.created_at DESC
-      `,
-      [studentProfileId, session.user.tenantId],
-    );
+    `;
+    const driveSqlLegacy = driveSqlFull
+      .replace(`${STUDENT_DRIVE_JOB_COLUMNS},\n`, '')
+      .replace('        d.min_cgpa,\n', '');
+
+    let res;
+    try {
+      res = await query(driveSqlFull, [studentProfileId, session.user.tenantId]);
+    } catch (err) {
+      if (err?.code !== '42703') throw err;
+      const msg = String(err?.message || '');
+      if (msg.includes('min_cgpa') || msg.includes('salary_min') || msg.includes('job_type')) {
+        try {
+          res = await query(
+            driveSqlFull.replace(`${STUDENT_DRIVE_JOB_COLUMNS},\n`, ''),
+            [studentProfileId, session.user.tenantId],
+          );
+        } catch (err2) {
+          if (err2?.code !== '42703') throw err2;
+          res = await query(driveSqlLegacy, [studentProfileId, session.user.tenantId]);
+        }
+      } else {
+        throw err;
+      }
+    }
 
     const driveRows = browseGate.canBrowseListings
-      ? res.rows.map((row) => ({
-        id: row.id,
-        company: row.company,
-        website: row.website || null,
-        role: row.role,
-        date: row.date,
-        type: row.type,
-        venue: row.venue || 'TBD',
-        offCampusCity: null,
-        salary: 'See drive details',
-        status: row.status,
-        branch: ['All eligible branches'],
-        cgpa: null,
-        minCgpa: null,
-        maxBacklogs: null,
-        batchYear: null,
-        eligibleBranches: null,
-        applicationDeadline: null,
-        vacancies: row.vacancies ?? 0,
-        registered: row.registered ?? 0,
-        deadline: null,
-        applied: Boolean(row.applied),
-        applicationStatus: row.application_status || null,
-      }))
+      ? res.rows.map((row) => mapStudentDriveListRow(row))
       : [];
 
     return NextResponse.json({

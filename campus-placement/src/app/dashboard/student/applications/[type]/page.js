@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
+import { useSession } from 'next-auth/react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
 import CompanyNameLink from '@/components/CompanyNameLink';
@@ -10,7 +11,7 @@ import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import StudentOfferRespondActions from '@/components/student/StudentOfferRespondActions';
 import { findPendingOfferForApplication } from '@/lib/offerStatusNormalize';
-import { ClipboardList, Eye, X } from 'lucide-react';
+import { ClipboardList, Eye, Mail, X } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { use, useMemo } from 'react';
@@ -23,6 +24,11 @@ import {
   WITHDRAWAL_CONFIRM_TITLE,
 } from '@/lib/applicationWithdrawal';
 import { ALUMNI_BROWSE_JOBS_PATH } from '@/lib/alumniRoutes';
+import { useTableRowSelection, usePruneRowSelection } from '@/hooks/useTableRowSelection';
+import TableBulkActionBar from '@/components/table/TableBulkActionBar';
+import OpportunityEmailComposeModal from '@/components/student/OpportunityEmailComposeModal';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import { downloadStudentOpportunityCsv } from '@/lib/studentOpportunityCsvExport';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -33,11 +39,46 @@ const fetcher = async (url) => {
   return res.json();
 };
 
+function normalizeAppStatus(status) {
+  return String(status || '').toLowerCase().trim();
+}
+
+function applicationStatusCounts(applications) {
+  const counts = {
+    all: applications.length,
+    applied: 0,
+    shortlisted: 0,
+    selected: 0,
+    rejected: 0,
+    withdrawn: 0,
+  };
+  for (const app of applications) {
+    const key = normalizeAppStatus(app.status);
+    if (Object.prototype.hasOwnProperty.call(counts, key)) {
+      counts[key] += 1;
+    }
+  }
+  return counts;
+}
+
 function roundLabel(item) {
-  if (item.status === 'selected') return 'All rounds cleared';
-  if (item.status === 'rejected') return 'Not qualified';
+  if (normalizeAppStatus(item.status) === 'selected') return 'All rounds cleared';
+  if (normalizeAppStatus(item.status) === 'rejected') return 'Not qualified';
+  if (normalizeAppStatus(item.status) === 'withdrawn') return 'Withdrawn';
   if (Number(item.currentRound) > 0) return `Round ${item.currentRound}`;
   return 'Pending review';
+}
+
+/** Map application row to opportunity shape for email / CSV actions. */
+function appToOpportunityRow(app) {
+  return {
+    id: app.jobId,
+    title: app.role || app.title,
+    companyName: app.company || app.companyName,
+    website: app.website || null,
+    hasApplied: true,
+    applicationStatus: app.status,
+  };
 }
 
 const VALID_TYPES = ['jobs', 'internships', 'projects', 'mentorship', 'hackathons', 'drives'];
@@ -91,10 +132,13 @@ export default function StudentApplicationsPage({ params }) {
   }
 
   const { addToast } = useToast();
+  const { data: session } = useSession();
   const [statusTab, setStatusTab] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
   const [withdrawConfirmId, setWithdrawConfirmId] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
+  const [emailComposeRows, setEmailComposeRows] = useState(null);
+  const isJobApplications = type === 'jobs';
   const apiEndpoint = type === 'drives' ? '/api/student/applications' : '/api/student/program-applications';
   const { data, error, isLoading, mutate } = useSWR(apiEndpoint, fetcher);
   const {
@@ -139,7 +183,10 @@ export default function StudentApplicationsPage({ params }) {
   }, [allApplications, typeMatcher]);
 
   const tabFiltered = useMemo(
-    () => typeApplications.filter((a) => !statusTab || a.status === statusTab),
+    () =>
+      typeApplications.filter(
+        (a) => !statusTab || normalizeAppStatus(a.status) === statusTab,
+      ),
     [typeApplications, statusTab],
   );
 
@@ -159,16 +206,45 @@ export default function StudentApplicationsPage({ params }) {
     defaultSort: 'company_asc',
   });
 
-  const statusCounts = {
-    all: typeApplications.length,
-    applied: typeApplications.filter((a) => a.status === 'applied').length,
-    shortlisted: typeApplications.filter((a) => a.status === 'shortlisted').length,
-    selected: typeApplications.filter((a) => a.status === 'selected').length,
-    rejected: typeApplications.filter((a) => a.status === 'rejected').length,
+  const statusCounts = useMemo(
+    () => applicationStatusCounts(typeApplications),
+    [typeApplications],
+  );
+
+  const selection = useTableRowSelection({ getRowId: (app) => String(app.id) });
+  usePruneRowSelection(selection, isJobApplications ? displayApplications : []);
+
+  const userEmail = String(session?.user?.email || session?.user?.communicationEmail || '').trim();
+
+  const emailJobs = (apps) => {
+    const rows = (apps || [])
+      .map(appToOpportunityRow)
+      .filter((row) => row.id);
+    if (!rows.length) {
+      addToast('Select at least one job application to email.', 'warning');
+      return;
+    }
+    setEmailComposeRows(rows);
   };
 
+  const emailFilteredJobs = () => emailJobs(displayApplications);
+  const emailAllJobs = () => emailJobs(typeApplications);
+  const emailSelectedJobs = () => emailJobs(selection.selectedRows(displayApplications));
+
+  const downloadJobApplication = (app) => {
+    const row = appToOpportunityRow(app);
+    if (!row.id) {
+      addToast('Job details are unavailable for this application.', 'warning');
+      return;
+    }
+    downloadStudentOpportunityCsv(row, { kind: 'job' });
+  };
+
+  const pageAllSelected = selection.allSelected(displayApplications);
+  const pageSomeSelected = selection.someSelected(displayApplications);
+
   const pendingOfferForSelected = useMemo(() => {
-    if (!selectedApp || selectedApp.status !== 'selected') return null;
+    if (!selectedApp || normalizeAppStatus(selectedApp.status) !== 'selected') return null;
     return findPendingOfferForApplication(offers, selectedApp, { type });
   }, [offers, selectedApp, type]);
 
@@ -239,10 +315,36 @@ export default function StudentApplicationsPage({ params }) {
           </h1>
           <p>Track the status of your {type === 'hackathons' ? 'hackathon' : type} applications</p>
         </div>
-        <div className="page-header-actions" style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
           <a href={browseHref} className="btn btn-secondary">
             {browseText}
           </a>
+          {isJobApplications && tabTotalCount > 0 ? (
+            <>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={emailFilteredJobs}
+                title="Compose email for jobs in the current view"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                <Mail size={15} aria-hidden />
+                Email view ({displayApplications.length})
+              </button>
+              {displayApplications.length !== typeApplications.length ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={emailAllJobs}
+                  title="Compose email for all your job applications"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <Mail size={15} aria-hidden />
+                  Email all ({typeApplications.length})
+                </button>
+              ) : null}
+            </>
+          ) : null}
           <ExportCsvSplitButton
             filenameBase={`${type}_applications`}
             currentCount={displayApplications.length}
@@ -259,6 +361,7 @@ export default function StudentApplicationsPage({ params }) {
         <button className={`tab ${statusTab === 'shortlisted' ? 'active' : ''}`} onClick={() => setStatusTab('shortlisted')}>Shortlisted ({statusCounts.shortlisted})</button>
         <button className={`tab ${statusTab === 'selected' ? 'active' : ''}`} onClick={() => setStatusTab('selected')}>Selected ({statusCounts.selected})</button>
         <button className={`tab ${statusTab === 'rejected' ? 'active' : ''}`} onClick={() => setStatusTab('rejected')}>Rejected ({statusCounts.rejected})</button>
+        <button className={`tab ${statusTab === 'withdrawn' ? 'active' : ''}`} onClick={() => setStatusTab('withdrawn')}>Withdrawn ({statusCounts.withdrawn})</button>
       </div>
 
       {/* Tabular Applications */}
@@ -280,32 +383,72 @@ export default function StudentApplicationsPage({ params }) {
           />
         )}
 
+        {isJobApplications && !isLoading && tabTotalCount > 0 ? (
+          <TableBulkActionBar
+            count={selection.count}
+            onEmail={emailSelectedJobs}
+            onClear={selection.clear}
+            emailLabel="Email selected jobs"
+          />
+        ) : null}
+
         {!isLoading && tabTotalCount > 0 && (
           <div className="card card-table-shell">
             <div className="table-container">
-            <table className="data-table">
+            <table className={`data-table${isJobApplications ? ' student-opportunities-table' : ''}`}>
               <thead>
                 <tr>
-                  <th style={{ paddingLeft: '1rem' }}>Company</th>
+                  {isJobApplications ? (
+                    <th className="student-opportunities-col-select" style={{ paddingLeft: '0.75rem' }}>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all job applications on this page"
+                        checked={pageAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = pageSomeSelected;
+                        }}
+                        onChange={() => selection.toggleAll(displayApplications)}
+                      />
+                    </th>
+                  ) : null}
+                  <th style={{ paddingLeft: isJobApplications ? '0.5rem' : '1rem' }}>Company</th>
                   <th>Role</th>
                   <th>Status</th>
                   <th>Stage</th>
                   <th>Applied On</th>
                   {type === 'jobs' && <th>Drive Date</th>}
-                  <th style={{ textAlign: 'center' }}>Actions</th>
+                  <th
+                    className={isJobApplications ? 'student-opportunities-col-actions' : undefined}
+                    style={{ textAlign: isJobApplications ? 'right' : 'center', paddingRight: isJobApplications ? '1rem' : undefined }}
+                  >
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {displayApplications.length === 0 ? (
                   <tr>
-                    <td colSpan={type === 'jobs' ? 7 : 6} className="text-center text-secondary">
+                    <td colSpan={isJobApplications ? 8 : type === 'jobs' ? 7 : 6} className="text-center text-secondary">
                       No applications match your search.
                     </td>
                   </tr>
                 ) : null}
                 {displayApplications.map(app => (
-                  <tr key={app.id}>
-                    <td style={{ paddingLeft: '1rem' }}>
+                  <tr
+                    key={app.id}
+                    className={isJobApplications && selection.isSelected(app) ? 'is-row-selected' : undefined}
+                  >
+                    {isJobApplications ? (
+                      <td className="student-opportunities-col-select" style={{ paddingLeft: '0.75rem' }}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${app.role || 'job application'} at ${app.company || 'company'}`}
+                          checked={selection.isSelected(app)}
+                          onChange={() => selection.toggle(app)}
+                        />
+                      </td>
+                    ) : null}
+                    <td style={{ paddingLeft: isJobApplications ? '0.5rem' : '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <EntityLogo name={app.company} size="sm" shape="rounded" />
                         <CompanyNameLink name={app.company} website={app.website} className="font-semibold" />
@@ -318,26 +461,76 @@ export default function StudentApplicationsPage({ params }) {
                     <td className="text-sm">{roundLabel(app)}</td>
                     <td className="text-sm">{formatDate(app.appliedAt)}</td>
                     {type === 'jobs' && <td className="text-sm">{formatDate(app.driveDate)}</td>}
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => setSelectedApp(app)}
-                          title="View details"
+                    <td
+                      className={isJobApplications ? 'student-opportunities-col-actions' : undefined}
+                      style={{ textAlign: isJobApplications ? 'right' : 'center', paddingRight: isJobApplications ? '1rem' : undefined }}
+                    >
+                      {isJobApplications ? (
+                        <div
+                          className="table-actions"
+                          style={{
+                            display: 'inline-flex',
+                            gap: '0.35rem',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            flexWrap: 'nowrap',
+                            whiteSpace: 'nowrap',
+                          }}
                         >
-                          <Eye size={14} /> View
-                        </button>
-                        {app.status === 'applied' && (
+                          <StandardTableIconAction
+                            action="view"
+                            showLabel={false}
+                            onClick={() => setSelectedApp(app)}
+                            tooltip="View application details"
+                          />
+                          <StandardTableIconAction
+                            action="email"
+                            showLabel={false}
+                            onClick={() => emailJobs([app])}
+                            tooltip="Email this job"
+                            disabled={!app.jobId}
+                          />
+                          <StandardTableIconAction
+                            action="download"
+                            showLabel={false}
+                            onClick={() => downloadJobApplication(app)}
+                            tooltip="Download job details as CSV"
+                            disabled={!app.jobId}
+                          />
+                          {normalizeAppStatus(app.status) === 'applied' ? (
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm btn-icon"
+                              disabled={withdrawingId === app.id}
+                              onClick={() => requestWithdraw(app.id)}
+                              title="Withdraw application"
+                              aria-label="Withdraw application"
+                            >
+                              <X size={14} aria-hidden />
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                           <button
-                            className="btn btn-danger btn-sm"
-                            disabled={withdrawingId === app.id}
-                            onClick={() => requestWithdraw(app.id)}
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setSelectedApp(app)}
+                            title="View details"
                           >
-                            {withdrawingId === app.id ? 'Withdrawing...' : 'Withdraw'}
+                            <Eye size={14} /> View
                           </button>
-                        )}
-                      </div>
+                          {normalizeAppStatus(app.status) === 'applied' && (
+                            <button
+                              className="btn btn-danger btn-sm"
+                              disabled={withdrawingId === app.id}
+                              onClick={() => requestWithdraw(app.id)}
+                            >
+                              {withdrawingId === app.id ? 'Withdrawing...' : 'Withdraw'}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -501,7 +694,7 @@ export default function StudentApplicationsPage({ params }) {
             </div>
 
             {/* Withdraw */}
-            {selectedApp.status === 'applied' && (
+            {normalizeAppStatus(selectedApp.status) === 'applied' && (
               <button
                 className="btn btn-danger"
                 style={{ width: '100%' }}
@@ -530,6 +723,15 @@ export default function StudentApplicationsPage({ params }) {
           if (withdrawConfirmId) void handleWithdraw(withdrawConfirmId);
         }}
       />
+
+      {emailComposeRows ? (
+        <OpportunityEmailComposeModal
+          rows={emailComposeRows}
+          kind="job"
+          defaultTo={userEmail}
+          onClose={() => setEmailComposeRows(null)}
+        />
+      ) : null}
     </div>
   );
 }

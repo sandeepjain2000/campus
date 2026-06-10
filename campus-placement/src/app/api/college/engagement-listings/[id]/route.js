@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { validateTitlePayload } from '@/lib/apiInputValidation';
+import { normalizeTitle } from '@/lib/validators';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -32,9 +34,10 @@ export async function PATCH(request, { params }) {
     let n = 1;
 
     if (body.title !== undefined) {
-      const t = String(body.title).trim();
-      if (t.length < 3) {
-        return NextResponse.json({ error: 'Title too short' }, { status: 400 });
+      const t = normalizeTitle(body.title);
+      const titleErr = validateTitlePayload(t, { label: 'Listing title' });
+      if (titleErr) {
+        return NextResponse.json({ error: titleErr }, { status: 400 });
       }
       parts.push(`title = $${n++}`);
       vals.push(t);

@@ -11,15 +11,23 @@ import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 import { uploadStudentAvatarViaServer } from '@/lib/clientStudentAvatarUpload';
 import { studentAvatarAcceptAttr, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
-import { validateStudentAcademicPayload, validateEducationDetailsPayload } from '@/lib/apiInputValidation';
+import {
+  validateStudentAcademicPayload,
+  validateEducationDetailsPayload,
+  validateStudentProfileEmailsPayload,
+} from '@/lib/apiInputValidation';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import ValidatedTextInput from '@/components/form/ValidatedTextInput';
+import ValidatedEmailInput from '@/components/form/ValidatedEmailInput';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { STUDENT_RESUME_ACCEPT_ATTR, validateStudentResumeFileAsync } from '@/lib/studentDocumentUpload';
 import { uploadStudentDocumentViaServer } from '@/lib/clientStudentDocumentUpload';
 import TagPicker from '@/components/TagPicker';
 import StudentResumeUploadCard from '@/components/student/StudentResumeUploadCard';
 import PageLoading from '@/components/PageLoading';
+import ProfilePhotoLightbox from '@/components/student/ProfilePhotoLightbox';
+import { Pencil } from 'lucide-react';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -40,6 +48,13 @@ const PROFILE_TABS = [
   { key: 'preferences', label: 'Preferences' },
   { key: 'links', label: 'Links' },
   { key: 'about', label: 'About' },
+];
+
+const PROFILE_EDUCATION_DETAIL_SECTIONS = [
+  ['graduation', 'Graduation', 'University / degree'],
+  ['diploma', 'Diploma', 'Diploma board'],
+  ['twelfth', '12th Standard', 'Class XII board'],
+  ['tenth', '10th Standard', 'Class X board'],
 ];
 
 function newLinkId() {
@@ -139,7 +154,9 @@ export default function StudentProfilePage() {
   const [cvUploading, setCvUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [profile, setProfile] = useState(() => defaultStudentProfile(session?.user));
+  const isAlumni = Boolean(profile?.isAlumni ?? session?.user?.isAlumni);
   const currentSemester = deriveCurrentSemester(profile);
   const editingHeader = editingTab === 'header';
   const editing = editingTab === activeTab;
@@ -150,7 +167,10 @@ export default function StudentProfilePage() {
     if (!res.ok) throw new Error(json?.error || 'Failed to load calendar');
     return json;
   }, []);
-  const { data: placementCalData, isLoading: placementCalLoading } = useSWR('/api/student/calendar', calendarFetcher);
+  const { data: placementCalData, isLoading: placementCalLoading } = useSWR(
+    isAlumni ? null : '/api/student/calendar',
+    calendarFetcher,
+  );
   const upcomingPlacementDates = useMemo(() => {
     const events = Array.isArray(placementCalData?.events) ? placementCalData.events : [];
     const now = new Date();
@@ -185,7 +205,12 @@ export default function StudentProfilePage() {
           setProfile(defaultStudentProfile(session?.user));
           return;
         }
-        if (data.profile) setProfile(data.profile);
+        if (data.profile) {
+          setProfile({
+            ...data.profile,
+            isAlumni: Boolean(data.isAlumni ?? data.profile.isAlumni),
+          });
+        }
       } catch {
         addToast('Could not load profile (network).', 'warning');
         setProfile(defaultStudentProfile(session?.user));
@@ -221,6 +246,7 @@ export default function StudentProfilePage() {
       backlogsHistory: profile.backlogsHistory,
       expectedSalaryMin: profile.expectedSalaryMin,
       expectedSalaryMax: profile.expectedSalaryMax,
+      isAlumni,
     });
     if (validationErr) {
       addToast(validationErr, 'warning');
@@ -229,6 +255,14 @@ export default function StudentProfilePage() {
     const educationErr = validateEducationDetailsPayload(profile.educationDetails);
     if (educationErr) {
       addToast(educationErr, 'warning');
+      return;
+    }
+    const emailErr = validateStudentProfileEmailsPayload({
+      communicationEmail: profile.communicationEmail,
+      emails: profile.emails,
+    });
+    if (emailErr) {
+      addToast(emailErr, 'warning');
       return;
     }
     const savedSummary = editingTab === 'header';
@@ -244,7 +278,12 @@ export default function StudentProfilePage() {
         addToast(data.hint ? `${data.error || 'Save failed'}: ${data.hint}` : data.error || 'Save failed', 'warning');
         return;
       }
-      if (data.profile) setProfile(data.profile);
+      if (data.profile) {
+        setProfile({
+          ...data.profile,
+          isAlumni: Boolean(data.isAlumni ?? data.profile.isAlumni ?? isAlumni),
+        });
+      }
       setEditingTab(null);
       addToast(savedSummary ? 'Profile summary saved.' : 'Profile saved.', 'success');
     } catch {
@@ -529,13 +568,22 @@ export default function StudentProfilePage() {
             zIndex: 1,
           }}
         >
-          <div className="profile-avatar" style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}>
-            {avatarSrc ? (
+          {avatarSrc ? (
+            <button
+              type="button"
+              className="profile-avatar profile-avatar--clickable"
+              style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}
+              onClick={() => setAvatarPreviewOpen(true)}
+              aria-label="View profile photo"
+              title="View profile photo"
+            >
               <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              getInitials(session?.user?.name)
-            )}
-          </div>
+            </button>
+          ) : (
+            <div className="profile-avatar" style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}>
+              {getInitials(session?.user?.name)}
+            </div>
+          )}
           <label
             aria-label={avatarUploading ? 'Uploading profile photo' : 'Change profile photo'}
             style={{
@@ -557,8 +605,16 @@ export default function StudentProfilePage() {
         <div className="profile-info" style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
             <h2 style={{ margin: 0 }}>{session?.user?.name}</h2>
+            <p className="text-xs" style={{ margin: '0.25rem 0 0', color: 'rgba(255,255,255,0.75)' }}>
+              Name is set by your college and can only be changed by a super admin.
+            </p>
             {!editingHeader ? (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditingTab('header')}>
+              <button
+                type="button"
+                className="profile-edit-summary-btn"
+                onClick={() => setEditingTab('header')}
+              >
+                <Pencil size={15} aria-hidden />
                 Edit summary
               </button>
             ) : (
@@ -667,12 +723,10 @@ export default function StudentProfilePage() {
                 <div className="drive-info-label" style={{ marginBottom: '0.35rem' }}>
                   Communication email (notifications)
                 </div>
-                <input
-                  className="form-input"
-                  type="email"
-                  placeholder="email@example.com"
+                <ValidatedEmailInput
                   value={profile.communicationEmail || ''}
-                  onChange={(e) => persist({ ...profile, communicationEmail: e.target.value })}
+                  onChange={(value) => persist({ ...profile, communicationEmail: value })}
+                  errorMessage="Communication email must be a valid email address (e.g. name@example.com)."
                 />
               </div>
               <div>
@@ -688,13 +742,11 @@ export default function StudentProfilePage() {
                       value={row.label}
                       onChange={(e) => updateEmailRow(i, { label: e.target.value })}
                     />
-                    <input
-                      className="form-input"
+                    <ValidatedEmailInput
                       style={{ flex: '1 1 180px', minWidth: 0 }}
-                      type="email"
-                      placeholder="email@example.com"
+                      wrapperStyle={{ flex: '1 1 180px', minWidth: 0 }}
                       value={row.value}
-                      onChange={(e) => updateEmailRow(i, { value: e.target.value })}
+                      onChange={(value) => updateEmailRow(i, { value })}
                     />
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeEmailRow(i)} aria-label="Remove email">
                       ✕
@@ -774,6 +826,7 @@ export default function StudentProfilePage() {
         onCvChange={onCvChange}
       />
 
+      {!isAlumni ? (
       <div
         className="card"
         style={{
@@ -822,6 +875,7 @@ export default function StudentProfilePage() {
           </ul>
         )}
       </div>
+      ) : null}
 
       <div className="card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem' }}>
         <div className="horizontal-scroll" style={{ display: 'flex', gap: '0.35rem', paddingBottom: '0.1rem' }} role="tablist" aria-label="Profile sections">
@@ -876,8 +930,9 @@ export default function StudentProfilePage() {
             </button>
           </div>
         ) : !editingHeader ? (
-          <button type="button" className="btn btn-secondary" onClick={() => setEditingTab(activeTab)}>
-            ✏️ Edit section
+          <button type="button" className="profile-edit-section-btn" onClick={() => setEditingTab(activeTab)}>
+            <Pencil size={16} aria-hidden />
+            Edit section
           </button>
         ) : null}
       </div>
@@ -982,7 +1037,7 @@ export default function StudentProfilePage() {
               {editing ? (
                 <ValidatedNumberInput
                   fieldId={FIELD_IDS.STUDENT_GRAD_YEAR}
-                  context={{ batchYear: profile.batchYear }}
+                  context={{ batchYear: profile.batchYear, isAlumni }}
                   value={profile.graduationYear === '' ? '' : profile.graduationYear}
                   onChange={(v) => persist({ ...profile, graduationYear: v })}
                 />
@@ -992,34 +1047,40 @@ export default function StudentProfilePage() {
                 </div>
               )}
             </div>
-            <div className="drive-info-item">
-              <div className="drive-info-label">Current Semester</div>
-              <div className="drive-info-value">{currentSemester}</div>
-            </div>
-            <div className="drive-info-item">
-              <div className="drive-info-label">Active Backlogs</div>
-              {editing ? (
-                <ValidatedNumberInput
-                  fieldId={FIELD_IDS.STUDENT_BACKLOGS_ACTIVE}
-                  value={profile.backlogsActive ?? 0}
-                  onChange={(v) => persist({ ...profile, backlogsActive: v === '' ? 0 : v })}
-                />
-              ) : (
-                <div className="drive-info-value">{profile.backlogsActive ?? 0}</div>
-              )}
-            </div>
-            <div className="drive-info-item">
-              <div className="drive-info-label">Total Backlogs</div>
-              {editing ? (
-                <ValidatedNumberInput
-                  fieldId={FIELD_IDS.STUDENT_BACKLOGS_TOTAL}
-                  value={profile.backlogsHistory ?? 0}
-                  onChange={(v) => persist({ ...profile, backlogsHistory: v === '' ? 0 : v })}
-                />
-              ) : (
-                <div className="drive-info-value">{profile.backlogsHistory ?? 0}</div>
-              )}
-            </div>
+            {!isAlumni ? (
+              <>
+                <div className="drive-info-item">
+                  <div className="drive-info-label">Current Semester</div>
+                  <div className="drive-info-value">{currentSemester}</div>
+                </div>
+                <div className="drive-info-item">
+                  <div className="drive-info-label">Active Backlogs</div>
+                  {editing ? (
+                    <ValidatedNumberInput
+                      fieldId={FIELD_IDS.STUDENT_BACKLOGS_ACTIVE}
+                      value={profile.backlogsActive ?? 0}
+                      context={{ backlogsTotal: profile.backlogsHistory ?? 0 }}
+                      onChange={(v) => persist({ ...profile, backlogsActive: v === '' ? 0 : v })}
+                    />
+                  ) : (
+                    <div className="drive-info-value">{profile.backlogsActive ?? 0}</div>
+                  )}
+                </div>
+                <div className="drive-info-item">
+                  <div className="drive-info-label">Total Backlogs</div>
+                  {editing ? (
+                    <ValidatedNumberInput
+                      fieldId={FIELD_IDS.STUDENT_BACKLOGS_TOTAL}
+                      value={profile.backlogsHistory ?? 0}
+                      context={{ backlogsActive: profile.backlogsActive ?? 0 }}
+                      onChange={(v) => persist({ ...profile, backlogsHistory: v === '' ? 0 : v })}
+                    />
+                  ) : (
+                    <div className="drive-info-value">{profile.backlogsHistory ?? 0}</div>
+                  )}
+                </div>
+              </>
+            ) : null}
             <div className="drive-info-item">
               <div className="drive-info-label">Gender</div>
               {editing ? (
@@ -1036,30 +1097,29 @@ export default function StudentProfilePage() {
             </div>
           </div>
           <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.875rem' }}>
-            {[
-              ['tenth', '10th Standard'],
-              ['twelfth', '12th Standard'],
-              ['diploma', 'Diploma'],
-            ].map(([key, label]) => {
+            {PROFILE_EDUCATION_DETAIL_SECTIONS.map(([key, label, boardLabel]) => {
               const row = (profile.educationDetails || {})[key] || {};
               const hasDetails = row.institution || row.board || row.year || row.notes;
-              const boardLabel =
-                key === 'tenth' ? 'Class X board' : key === 'twelfth' ? 'Class XII board' : 'Diploma board';
               return (
                 <div key={key} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.875rem', background: 'var(--bg-secondary)' }}>
                   <div className="drive-info-label" style={{ marginBottom: '0.6rem' }}>{label} Details</div>
                   {editing ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.6rem' }}>
-                      <input className="form-input" placeholder="School / institution" value={row.institution || ''} onChange={(e) => updateEducationDetail(key, { institution: e.target.value })} />
+                      <input
+                        className="form-input"
+                        placeholder={key === 'graduation' ? 'College / university' : 'School / institution'}
+                        value={row.institution || ''}
+                        onChange={(e) => updateEducationDetail(key, { institution: e.target.value })}
+                      />
                       <ValidatedTextInput
                         fieldId={FIELD_IDS.EDUCATION_BOARD}
                         context={{ label: boardLabel }}
-                        placeholder="Board / university"
+                        placeholder={key === 'graduation' ? 'Degree / university' : 'Board / university'}
                         value={row.board || ''}
                         onChange={(v) => updateEducationDetail(key, { board: v })}
                       />
                       <input className="form-input" type="number" placeholder="Passing year" value={row.year || ''} onChange={(e) => updateEducationDetail(key, { year: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                      <textarea className="form-textarea" rows={2} style={{ gridColumn: '1 / -1' }} placeholder="Notes, stream, achievements, or subjects" value={row.notes || ''} onChange={(e) => updateEducationDetail(key, { notes: e.target.value })} />
+                      <textarea className="form-textarea" rows={2} style={{ gridColumn: '1 / -1' }} placeholder={key === 'graduation' ? 'Branch, specialisation, achievements, or CGPA notes' : 'Notes, stream, achievements, or subjects'} value={row.notes || ''} onChange={(e) => updateEducationDetail(key, { notes: e.target.value })} />
                     </div>
                   ) : hasDetails ? (
                     <div className="text-sm" style={{ lineHeight: 1.6 }}>
@@ -1088,13 +1148,12 @@ export default function StudentProfilePage() {
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 {editing ? (
-                  <input
-                    className="form-input"
+                  <ValidatedEmailInput
                     style={{ flex: 1 }}
-                    type="email"
-                    placeholder="email@example.com"
+                    wrapperStyle={{ flex: 1 }}
                     value={profile.communicationEmail || ''}
-                    onChange={(e) => persist({ ...profile, communicationEmail: e.target.value })}
+                    onChange={(value) => persist({ ...profile, communicationEmail: value })}
+                    errorMessage="Communication email must be a valid email address (e.g. name@example.com)."
                   />
                 ) : (
                   <div className="text-sm">
@@ -1121,13 +1180,11 @@ export default function StudentProfilePage() {
                         value={row.label}
                         onChange={(e) => updateEmailRow(i, { label: e.target.value })}
                       />
-                      <input
-                        className="form-input"
+                      <ValidatedEmailInput
                         style={{ flex: 1 }}
-                        type="email"
-                        placeholder="email@example.com"
+                        wrapperStyle={{ flex: 1 }}
                         value={row.value}
-                        onChange={(e) => updateEmailRow(i, { value: e.target.value })}
+                        onChange={(value) => updateEmailRow(i, { value })}
                       />
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeEmailRow(i)} aria-label="Remove email">
                         ✕
@@ -1453,8 +1510,18 @@ export default function StudentProfilePage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
                       <input className="form-input" type="url" placeholder="Project URL" value={project.projectUrl || ''} onChange={(e) => updateProject(index, { projectUrl: e.target.value })} />
                       <input className="form-input" type="url" placeholder="GitHub URL" value={project.githubUrl || ''} onChange={(e) => updateProject(index, { githubUrl: e.target.value })} />
-                      <input className="form-input" type="date" value={project.startDate || ''} onChange={(e) => updateProject(index, { startDate: e.target.value })} />
-                      <input className="form-input" type="date" value={project.endDate || ''} onChange={(e) => updateProject(index, { endDate: e.target.value })} />
+                      <ValidatedDateInput
+                        fieldId={FIELD_IDS.PROJECT_START}
+                        value={project.startDate || ''}
+                        onChange={(v) => updateProject(index, { startDate: v })}
+                        aria-label="Project start date"
+                      />
+                      <ValidatedDateInput
+                        fieldId={FIELD_IDS.PROJECT_END}
+                        value={project.endDate || ''}
+                        onChange={(v) => updateProject(index, { endDate: v })}
+                        aria-label="Project end date"
+                      />
                     </div>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeProject(index)} style={{ justifySelf: 'start' }}>
                       Remove project
@@ -1608,7 +1675,7 @@ export default function StudentProfilePage() {
         {activeTab === 'preferences' && (
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">🎯 Placement preferences</h3>
+            <h3 className="card-title">{isAlumni ? '🎯 Job preferences' : '🎯 Placement preferences'}</h3>
           </div>
           <div className="drive-info-grid">
             <div className="drive-info-item" style={{ gridColumn: '1 / -1' }}>
@@ -1805,6 +1872,14 @@ export default function StudentProfilePage() {
         )}
       </div>
       )}
+
+      {avatarPreviewOpen && avatarSrc ? (
+        <ProfilePhotoLightbox
+          src={avatarSrc}
+          alt={session?.user?.name ? `${session.user.name} profile photo` : 'Profile photo'}
+          onClose={() => setAvatarPreviewOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

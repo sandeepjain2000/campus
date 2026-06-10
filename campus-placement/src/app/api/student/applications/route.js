@@ -5,11 +5,13 @@ import { query } from '@/lib/db';
 import { WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE, isWithdrawnApplicationStatus } from '@/lib/applicationWithdrawal';
 import { toDateOnlyString, validateDriveDateForApply } from '@/lib/dateOnly';
 import { getApplyBlockReason } from '@/lib/getApplyBlockReason';
+import { driveEligibilityOpportunity } from '@/lib/placementDriveJobFields';
 import { assertStudentMayApplyToPlacement } from '@/lib/studentApplyEligibility';
 import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
 import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 import { assertActiveEmployerTieUp } from '@/lib/employerTieUp';
 import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
+import { syncPlacementDriveRegisteredCount } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -114,13 +116,41 @@ export async function POST(req) {
 
     try {
       const meta = await query(
-        `SELECT d.id, d.drive_date, d.employer_id, d.status AS drive_status, sp.tenant_id
+        `SELECT d.id, d.drive_date, d.employer_id, d.status AS drive_status,
+                d.min_cgpa, d.max_backlogs, d.batch_year, d.eligible_branches, d.application_deadline,
+                sp.tenant_id, sp.cgpa AS student_cgpa
          FROM placement_drives d
          CROSS JOIN student_profiles sp
          WHERE d.id = $1 AND sp.id = $2
            AND COALESCE(d.is_deleted, false) = false`,
         [drive_id, studentId]
-      );
+      ).catch(async (err) => {
+        if (err?.code !== '42703') throw err;
+        const msg = String(err?.message || '');
+        if (msg.includes('max_backlogs') || msg.includes('eligible_branches') || msg.includes('application_deadline')) {
+          return query(
+            `SELECT d.id, d.drive_date, d.employer_id, d.status AS drive_status, d.min_cgpa,
+                    sp.tenant_id, sp.cgpa AS student_cgpa
+             FROM placement_drives d
+             CROSS JOIN student_profiles sp
+             WHERE d.id = $1 AND sp.id = $2
+               AND COALESCE(d.is_deleted, false) = false`,
+            [drive_id, studentId],
+          );
+        }
+        if (msg.includes('min_cgpa')) {
+          return query(
+            `SELECT d.id, d.drive_date, d.employer_id, d.status AS drive_status,
+                    sp.tenant_id, sp.cgpa AS student_cgpa
+             FROM placement_drives d
+             CROSS JOIN student_profiles sp
+             WHERE d.id = $1 AND sp.id = $2
+               AND COALESCE(d.is_deleted, false) = false`,
+            [drive_id, studentId],
+          );
+        }
+        throw err;
+      });
 
       if (meta.rowCount === 0) {
         return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
@@ -142,11 +172,8 @@ export async function POST(req) {
       const driveRow = meta.rows[0];
       const applyProfile = await loadStudentApplyProfile(studentId, studentTenantId);
       const blockReason = getApplyBlockReason(
-        { status: driveRow.drive_status },
-        {
-          hasResume: applyProfile.hasResume,
-          isPlacementLocked: applyProfile.isPlacementLocked,
-        },
+        driveEligibilityOpportunity(driveRow),
+        applyProfile,
         { openStatuses: ['approved', 'scheduled'] },
       );
       if (blockReason) {
@@ -192,6 +219,8 @@ export async function POST(req) {
         }
         return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
       }
+
+      await syncPlacementDriveRegisteredCount(drive_id);
 
       return NextResponse.json({ success: true, message: 'Application submitted successfully' });
     } catch (dbError) {

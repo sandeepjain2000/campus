@@ -12,7 +12,7 @@ import {
   validateOfferDates,
   validatePlacementDate,
 } from '@/lib/dateOnly';
-import { validateEducationBoard } from '@/lib/validators';
+import { MAX_TITLE_LENGTH, validateEducationBoard, validateTitle } from '@/lib/validators';
 
 const NOW_YEAR = new Date().getFullYear();
 
@@ -72,6 +72,7 @@ export const FIELD_IDS = {
   DATE_RANGE_TO: 'common.dateRangeTo',
   DATE_FUTURE: 'common.dateFuture',
   DATE_ANY: 'common.dateAny',
+  COMMON_TITLE: 'common.title',
   PROJECT_START: 'common.projectStart',
   PROJECT_END: 'common.projectEnd',
 
@@ -122,19 +123,32 @@ function checkPercent(value, { required = false, label = 'Percentage' } = {}) {
   return ok();
 }
 
-function batchYearBounds() {
+const ALUMNI_YEAR_MIN = 1990;
+
+function batchYearBounds({ isAlumni = false } = {}) {
+  if (isAlumni) {
+    return { min: ALUMNI_YEAR_MIN, max: NOW_YEAR - 1 };
+  }
   return { min: NOW_YEAR - 12, max: NOW_YEAR + 8 };
 }
 
-function checkBatchYear(value, { required = false } = {}) {
-  const { min, max } = batchYearBounds();
+function gradYearBounds({ isAlumni = false } = {}) {
+  if (isAlumni) {
+    return { min: ALUMNI_YEAR_MIN, max: NOW_YEAR - 1 };
+  }
+  return { min: NOW_YEAR - 1, max: NOW_YEAR + 8 };
+}
+
+function checkBatchYear(value, { required = false, isAlumni = false } = {}) {
+  const { min, max } = batchYearBounds({ isAlumni });
   return checkIntRange(value, { min, max, allowEmpty: !required, label: 'Batch / admission year' });
 }
 
-function checkGradYear(value, { batchYear, required = false } = {}) {
+function checkGradYear(value, { batchYear, required = false, isAlumni = false } = {}) {
+  const { min, max } = gradYearBounds({ isAlumni });
   const r = checkIntRange(value, {
-    min: NOW_YEAR - 1,
-    max: NOW_YEAR + 8,
+    min,
+    max,
     allowEmpty: !required,
     label: 'Graduation year',
   });
@@ -242,16 +256,40 @@ export function validateField(fieldId, value, ctx = {}) {
       return checkPercent(value, { required: Boolean(ctx.required), label: ctx.label || 'Percentage' });
 
     case FIELD_IDS.STUDENT_BATCH_YEAR:
-      return checkBatchYear(value, { required: Boolean(ctx.required) });
+      return checkBatchYear(value, { required: Boolean(ctx.required), isAlumni: Boolean(ctx.isAlumni) });
 
     case FIELD_IDS.STUDENT_GRAD_YEAR:
-      return checkGradYear(value, { batchYear: ctx.batchYear, required: Boolean(ctx.required) });
+      return checkGradYear(value, {
+        batchYear: ctx.batchYear,
+        required: Boolean(ctx.required),
+        isAlumni: Boolean(ctx.isAlumni),
+      });
 
-    case FIELD_IDS.STUDENT_BACKLOGS_ACTIVE:
-      return checkIntRange(value, { min: 0, max: 20, allowZero: true, allowEmpty: true, label: 'Active backlogs' });
+    case FIELD_IDS.STUDENT_BACKLOGS_ACTIVE: {
+      const base = checkIntRange(value, { min: 0, max: 20, allowZero: true, allowEmpty: true, label: 'Active backlogs' });
+      if (!base.ok) return base;
+      if (ctx.backlogsTotal != null && ctx.backlogsTotal !== '') {
+        const active = Number.parseInt(String(value ?? '0'), 10) || 0;
+        const total = Number.parseInt(String(ctx.backlogsTotal ?? '0'), 10) || 0;
+        if (active > total) {
+          return err('Active backlogs cannot exceed total backlogs.');
+        }
+      }
+      return ok();
+    }
 
-    case FIELD_IDS.STUDENT_BACKLOGS_TOTAL:
-      return checkIntRange(value, { min: 0, max: 50, allowZero: true, allowEmpty: true, label: 'Total backlogs' });
+    case FIELD_IDS.STUDENT_BACKLOGS_TOTAL: {
+      const base = checkIntRange(value, { min: 0, max: 50, allowZero: true, allowEmpty: true, label: 'Total backlogs' });
+      if (!base.ok) return base;
+      if (ctx.backlogsActive != null && ctx.backlogsActive !== '') {
+        const active = Number.parseInt(String(ctx.backlogsActive ?? '0'), 10) || 0;
+        const total = Number.parseInt(String(value ?? '0'), 10) || 0;
+        if (active > total) {
+          return err('Active backlogs cannot exceed total backlogs.');
+        }
+      }
+      return ok();
+    }
 
     case FIELD_IDS.STUDENT_PASSING_YEAR:
       return checkIntRange(value, {
@@ -473,6 +511,17 @@ export function validateField(fieldId, value, ctx = {}) {
       return ok();
     }
 
+    case FIELD_IDS.COMMON_TITLE: {
+      const titleErr = validateTitle(value, {
+        required: ctx.required !== false,
+        label: ctx.label || 'Title',
+        minLength: ctx.minLength ?? 3,
+        maxLength: ctx.maxLength ?? MAX_TITLE_LENGTH,
+      });
+      if (titleErr) return err(titleErr);
+      return ok();
+    }
+
     default:
       return ok();
   }
@@ -512,4 +561,15 @@ export function validateSalaryPair(minVal, maxVal, fieldMinId, fieldMaxId) {
   const e2 = validateFieldOrError(fieldMaxId, maxVal, { salaryMin: minVal });
   if (e2) return e2;
   return null;
+}
+
+/** Active backlogs must not exceed total backlogs (history). */
+export function validateStudentBacklogPair(backlogsActive, backlogsHistory) {
+  const e1 = validateFieldOrError(FIELD_IDS.STUDENT_BACKLOGS_ACTIVE, backlogsActive, {
+    backlogsTotal: backlogsHistory,
+  });
+  if (e1) return e1;
+  return validateFieldOrError(FIELD_IDS.STUDENT_BACKLOGS_TOTAL, backlogsHistory, {
+    backlogsActive,
+  });
 }

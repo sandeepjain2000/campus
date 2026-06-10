@@ -3,32 +3,38 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { toDateOnlyString } from '@/lib/dateOnly';
-import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { placementDriveNotDeletedSql } from '@/lib/migrationReady';
+import {
+  buildPlatformErrorResponse,
+  PLATFORM_ERROR_CONTEXT,
+} from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+export async function GET(request) {
+  let session = null;
+  let employerId = null;
 
-
-
-export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const userId = session.user.id || session.user.sub;
     const empRes = await query(`SELECT id FROM employer_profiles WHERE user_id = $1::uuid`, [userId]);
-    const employerId = empRes.rows[0]?.id;
+    employerId = empRes.rows[0]?.id;
     if (!employerId) return NextResponse.json({ events: [] });
+
+    const driveDelSql = await placementDriveNotDeletedSql('d');
 
     const eventsRes = await query(
       `SELECT d.id, d.title, d.drive_date, d.drive_type, d.status, t.name AS college
        FROM placement_drives d
        LEFT JOIN tenants t ON t.id = d.tenant_id
-       WHERE d.employer_id = $1::uuid ${AND_DRIVE_NOT_DELETED}
-       ORDER BY d.drive_date DESC, d.created_at DESC
+       WHERE d.employer_id = $1::uuid ${driveDelSql}
+       ORDER BY d.drive_date DESC NULLS LAST, d.created_at DESC
        LIMIT 500`,
       [employerId],
     );
@@ -42,6 +48,8 @@ export async function GET() {
       mode: r.drive_type || 'on_campus',
       college: r.college || '',
     }));
+
+    const sessionUserId = session.user.id || session.user.sub;
 
     const approvals = await query(
       `SELECT tenant_id FROM employer_approvals
@@ -57,7 +65,7 @@ export async function GET() {
         ? tenant.settings.employerInterviewPlans
         : [];
       for (const p of plans) {
-        if (p.employerUserId !== session.user.id) continue;
+        if (p.employerUserId !== sessionUserId) continue;
         const date = toDateOnlyString(p.date);
         if (!date) continue;
         events.push({
@@ -77,6 +85,13 @@ export async function GET() {
     return NextResponse.json({ events });
   } catch (error) {
     console.error('GET /api/employer/calendar', error);
-    return NextResponse.json({ error: 'Failed to load calendar events' }, { status: 500 });
+    const { status, body: errBody } = await buildPlatformErrorResponse(error, {
+      context: PLATFORM_ERROR_CONTEXT.EMPLOYER_CALENDAR,
+      request,
+      sessionUser: session?.user,
+      employerId: employerId || null,
+      defaultMessage: 'Failed to load calendar events',
+    });
+    return NextResponse.json(errBody, { status });
   }
 }

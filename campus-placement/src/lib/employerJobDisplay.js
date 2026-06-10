@@ -39,3 +39,11 @@ export function parseEmployerMinCgpaForDb(minCgpa) {
 export function resolveEmployerJobMinCgpa(job) {
   return normalizeEmployerMinCgpa(job?.minCgpa ?? job?.cgpa);
 }
+
+/** Employer-facing label for job_postings.status (cancelled → Withdrawn). */
+export function formatJobPostingStatus(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'cancelled') return 'Withdrawn';
+  if (!s) return '';
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}

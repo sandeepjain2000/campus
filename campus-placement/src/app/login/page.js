@@ -100,6 +100,7 @@ function LoginPageInner() {
   const [registeredBanner, setRegisteredBanner] = useState('');
   const [showCredentials, setShowCredentials] = useState(false);
   const signingOut = useRef(false);
+  const loggingInRef = useRef(false);
   const loginFormRef = useRef(null);
   /** After the user types or picks a saved login, do not overwrite with ?email= from the URL. */
   const userChoseCredentials = useRef(false);
@@ -128,43 +129,32 @@ function LoginPageInner() {
   }, [uniqueDemoLogins]);
 
   /**
-   * Demo prefill (sessionStorage from /demo-accounts, or legacy ?email=).
-   * Strip ?email= from the URL so refresh does not keep resetting to admin@iitm.edu.
+   * Demo prefill (sessionStorage from /demo-accounts).
+   * URL based ?email= prefill has been removed to prevent sticking on admin credentials.
    */
   useEffect(() => {
     if (userChoseCredentials.current || urlPrefillApplied.current) return;
 
-    const emailFromUrl = searchParams.get('email')?.trim() || '';
     const emailFromStorage = consumeLoginPrefillEmail();
-    const email = emailFromStorage || emailFromUrl;
-    if (!email) return;
+    if (!emailFromStorage) return;
 
     urlPrefillApplied.current = true;
-
-    if (emailFromUrl) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('email');
-      const next = params.toString() ? `/login?${params}` : '/login';
-      router.replace(next, { scroll: false });
-    }
 
     const frame = window.requestAnimationFrame(() => {
       if (userChoseCredentials.current) return;
       const form = loginFormRef.current;
       if (!form) return;
       const current = readLoginFormValues(form).email;
-      if (current && current.toLowerCase() !== email.toLowerCase()) {
+      if (current && current.toLowerCase() !== emailFromStorage.toLowerCase()) {
         userChoseCredentials.current = true;
         return;
       }
       if (!current) {
-        const prefill = { email };
-        if (emailFromStorage) prefill.password = DEMO_SEED_PASSWORD;
-        writeLoginFormValues(form, prefill);
+        writeLoginFormValues(form, { email: emailFromStorage, password: DEMO_SEED_PASSWORD });
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [searchParams, router]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -225,6 +215,7 @@ function LoginPageInner() {
 
   useEffect(() => {
     if (forceLogin) return; // don't auto-redirect when force login
+    if (loggingInRef.current) return; // skip stale check if actively logging in
     if (status !== 'authenticated' || !session?.user?.role) return;
 
     let marker = null;
@@ -257,9 +248,10 @@ function LoginPageInner() {
         setError('Verification is still loading. Wait a moment, then try again.');
         return false;
       }
-      const finalAnswer = String(answer ?? '').trim() || '0';
+      const finalAnswer = String(answer ?? '').trim();
       setError('');
       setLoading(true);
+      loggingInRef.current = true;
       setCaptchaAnswer(finalAnswer);
       try {
         console.log('LoginPage: Invoking next-auth signIn with credentials...');
@@ -280,6 +272,7 @@ function LoginPageInner() {
 
         if (result?.error || result?.ok === false) {
           console.error(`LoginPage: signIn failed. error=${result?.error}`);
+          loggingInRef.current = false;
           let userMsg = result?.error;
           if (userMsg === 'CredentialsSignin') {
             userMsg = 'Incorrect email or password. Please try again.';
@@ -313,6 +306,7 @@ function LoginPageInner() {
       } catch (err) {
         console.error('LoginPage: submitCredentials exception caught:', err);
         setError('An unexpected error occurred during sign-in. Please try again.');
+        loggingInRef.current = false;
         // Pause for 2 seconds to let the user see the failure message
         await new Promise((resolve) => setTimeout(resolve, 2000));
         return false;

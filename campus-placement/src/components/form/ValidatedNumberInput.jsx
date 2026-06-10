@@ -14,6 +14,7 @@ import { validateField, validateFieldWithConfirm, FIELD_IDS } from '@/lib/inputC
  *   className?: string,
  *   confirmWarnings?: boolean,
  *   step?: string | number,
+ *   stepperStep?: number,
  *   placeholder?: string,
  *   disabled?: boolean,
  *   id?: string,
@@ -30,6 +31,7 @@ export default function ValidatedNumberInput({
   className = 'form-input',
   confirmWarnings = true,
   step,
+  stepperStep,
   placeholder,
   disabled = false,
   id,
@@ -84,19 +86,65 @@ export default function ValidatedNumberInput({
     }
   };
 
+  const adjustByStepper = (direction) => {
+    if (disabled || stepperStep == null || !Number.isFinite(Number(stepperStep))) return;
+    const delta = Number(stepperStep) * direction;
+    const raw = value === '' || value == null ? '' : String(value);
+    const current = raw === '' ? 0 : Number(raw);
+    if (!Number.isFinite(current)) return;
+    const next = Math.max(0, Math.floor(current + delta));
+    const nextValue = next === 0 && raw === '' ? '' : String(next);
+    onChange(nextValue);
+    if (nextValue === '') {
+      setError('');
+      return;
+    }
+    runValidation(nextValue, { confirm: false });
+  };
+
+  const input = (
+    <input
+      id={id}
+      type="number"
+      className={`${className}${error ? ' input-error' : ''}`}
+      value={value === '' || value == null ? '' : value}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      step={step ?? (stepperStep != null ? stepperStep : undefined)}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
+  );
+
   return (
     <div>
-      <input
-        id={id}
-        type="number"
-        className={`${className}${error ? ' input-error' : ''}`}
-        value={value === '' || value == null ? '' : value}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        step={step}
-        placeholder={placeholder}
-        disabled={disabled}
-      />
+      {stepperStep != null ? (
+        <div className={`number-stepper-field${disabled ? ' number-stepper-field--disabled' : ''}`}>
+          <div className="number-stepper-field__control">{input}</div>
+          <div className="number-stepper-field__actions" role="group" aria-label="Adjust value">
+            <button
+              type="button"
+              className="number-stepper-field__btn"
+              disabled={disabled}
+              aria-label="Decrease by one"
+              onClick={() => adjustByStepper(-1)}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="number-stepper-field__btn"
+              disabled={disabled}
+              aria-label="Increase by one"
+              onClick={() => adjustByStepper(1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      ) : (
+        input
+      )}
       {error ? (
         <p className="text-xs" style={{ color: 'var(--danger-600)', marginTop: '0.35rem' }}>
           {error}

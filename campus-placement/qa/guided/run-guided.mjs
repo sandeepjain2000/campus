@@ -93,7 +93,8 @@ COLLEGE APPROVAL
   Placement drives: /dashboard/college/drives — Awaiting Approval → Approve (GT-* marker)
 
 BEFORE INTERNSHIP TESTS (if no approved campuses)
-  npm run qa:ensure-partnership
+  npm run qa:ensure-partnership              # IIT Madras × all employers
+  npm run qa:ensure-techcorp-partnerships    # TechCorp × all active colleges
   Or: /data-entry → Campus tie-ups → Ensure IIT Madras tie-up
 
 ON SCREEN

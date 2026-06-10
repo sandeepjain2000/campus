@@ -85,11 +85,14 @@ export async function assertStudentMayApplyToInternship(studentId, jobId = null)
 }
 
 import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
+import { resolveInternshipDatesFromRow } from '@/lib/internshipPostingMeta';
 
 /** Map DB row to student opportunity list item (shared shape). */
 export function mapProgramOpportunityRow(r) {
   const jobType = r.job_type;
   const isAlumniJob = ALUMNI_JOB_TYPES.includes(String(jobType || ''));
+  const { startDate, endDate } =
+    jobType === 'internship' ? resolveInternshipDatesFromRow(r) : { startDate: null, endDate: null };
   return {
     id: r.id,
     title: r.title,
@@ -109,6 +112,8 @@ export function mapProgramOpportunityRow(r) {
     vacancies: r.vacancies,
     skillsRequired: r.skills_required || [],
     applicationDeadline: r.application_deadline,
+    startDate,
+    endDate,
     createdAt: r.created_at,
     employerId: r.employer_id,
     companyName: r.company_name,

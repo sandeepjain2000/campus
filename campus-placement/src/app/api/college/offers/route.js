@@ -6,7 +6,8 @@ import { queryCollegeOffersForTenant } from '@/lib/collegeOffersListQuery';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 import { toDateOnlyString, validateOfferDates } from '@/lib/dateOnly';
-import { validateCollegeOfferPayload } from '@/lib/apiInputValidation';
+import { validateCollegeOfferPayload, validateTitlePayload } from '@/lib/apiInputValidation';
+import { normalizeTitle } from '@/lib/validators';
 import { AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
@@ -88,7 +89,7 @@ export async function POST(request) {
     const rollNumber = String(body?.rollNumber || body?.roll_number || '').trim();
     const studentIdIn = String(body?.studentId || body?.student_id || '').trim();
     const reportedCompanyName = String(body?.reportedCompanyName || body?.company_name || '').trim();
-    const jobTitle = String(body?.jobTitle || body?.job_title || '').trim();
+    const jobTitle = normalizeTitle(body?.jobTitle || body?.job_title);
     const salary = Number(body?.salary ?? 0);
     const location = String(body?.location || '').trim() || null;
     const deadlineRaw = body?.deadline != null ? String(body.deadline).trim() : '';
@@ -115,8 +116,9 @@ export async function POST(request) {
     if (status === 'declined') status = 'rejected';
     if (!OFFER_STATUSES.has(status)) status = 'pending';
 
-    if (!jobTitle) {
-      return NextResponse.json({ error: 'jobTitle is required' }, { status: 400 });
+    const jobTitleErr = validateTitlePayload(jobTitle, { label: 'Job title' });
+    if (jobTitleErr) {
+      return NextResponse.json({ error: jobTitleErr }, { status: 400 });
     }
     if (!reportedCompanyName) {
       return NextResponse.json({ error: 'company name is required (employer name as text)' }, { status: 400 });
@@ -222,7 +224,12 @@ export async function PATCH(request) {
       push('reported_company_name =', v || null);
     }
     if (body.jobTitle != null || body.job_title != null) {
-      push('job_title =', String(body.jobTitle ?? body.job_title ?? '').trim());
+      const nextJobTitle = normalizeTitle(body.jobTitle ?? body.job_title);
+      const patchTitleErr = validateTitlePayload(nextJobTitle, { label: 'Job title' });
+      if (patchTitleErr) {
+        return NextResponse.json({ error: patchTitleErr }, { status: 400 });
+      }
+      push('job_title =', nextJobTitle);
     }
     if (body.salary != null) {
       const n = Number(body.salary);

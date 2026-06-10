@@ -18,13 +18,9 @@ describe('postingEligibilityCriteria', () => {
     expect(evaluateBatchYearEligibility(2025, 2024).eligible).toBe(false);
   });
 
-  it('blocks when branch not in list', () => {
-    const r = evaluateBranchEligibility(['CSE'], 'ECE', '');
-    expect(r.eligible).toBe(false);
-  });
-
-  it('allows all-branches sentinel', () => {
-    expect(evaluateBranchEligibility(['All'], 'ECE', '').eligible).toBe(true);
+  it('does not block on branch text while matching is disabled', () => {
+    expect(evaluateBranchEligibility(['CSE'], 'ECE', '').eligible).toBe(true);
+    expect(evaluateBranchEligibility(['Computer Science & Engineering'], 'CSE', '').eligible).toBe(true);
   });
 
   it('blocks after application deadline', () => {

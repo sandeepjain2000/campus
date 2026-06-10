@@ -13,6 +13,7 @@ import {
 } from '@/lib/collegeAcademicYearContext';
 import { mapCollegeDriveFromApi, isDriveStaffDirty } from '@/lib/collegeDrivesClient';
 import { fetchCollegeDrivesList } from '@/lib/collegeDrivesApi';
+import PageLoading from '@/components/PageLoading';
 import {
   Target, CheckCircle, XCircle, Download, Video, Building2,
   ChevronDown, ChevronUp, LayoutList, CalendarDays, X,
@@ -242,9 +243,13 @@ export default function DesktopDrives() {
       </div>
 
       {isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-          {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: i === 1 ? '12px 12px 0 0' : i === 3 ? '0 0 12px 12px' : 0 }} />)}
-        </div>
+        <PageLoading message="Loading placement drives…" inline>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }} aria-hidden="true">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton" style={{ height: 72, borderRadius: i === 1 ? '12px 12px 0 0' : i === 3 ? '0 0 12px 12px' : 0 }} />
+            ))}
+          </div>
+        </PageLoading>
       )}
 
       {!isLoading && view === 'calendar' && <EmployerCalendarGrid items={calItems} initialYear={2026} initialMonth={7} />}

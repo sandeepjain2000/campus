@@ -24,4 +24,16 @@ describe('jobTypesClauseForAssessmentKind', () => {
     expect(clause).toBe('');
     expect(params).toEqual([]);
   });
+
+  it('supports custom bind index for multi-placeholder queries', () => {
+    const { clause, params } = jobTypesClauseForAssessmentKind('internship', { paramIndex: 4 });
+    expect(clause).toContain('job_type = $4');
+    expect(params).toEqual(['internship']);
+  });
+
+  it('scopes alumni jobs tab to alumni employment types', () => {
+    const { clause, params } = jobTypesClauseForAssessmentKind('jobs', { alumniOnly: true, paramIndex: 4 });
+    expect(clause).toContain('ANY($4::text[])');
+    expect(params[0]).toEqual(expect.arrayContaining(['full_time', 'contract']));
+  });
 });

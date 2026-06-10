@@ -107,6 +107,8 @@ export default function StudentDrivesPage() {
   }, [drivesData]);
 
   const canApply = drivesData?.canApply !== false;
+  const placementLocked = drivesData?.placementLocked === true;
+  const applyBlockedReason = drivesData?.applyBlockedReason || '';
   const globalBlockedReason = globalApplyBlockedReason(canApply, applyBlockedReason);
   const canBrowseListings = drivesData?.canBrowseListings !== false;
   const browseGateProps = {
@@ -117,8 +119,6 @@ export default function StudentDrivesPage() {
     hasResume: drivesData?.hasResume !== false,
     profileMissingLabels: drivesData?.profileMissingLabels || [],
   };
-  const placementLocked = drivesData?.placementLocked === true;
-  const applyBlockedReason = drivesData?.applyBlockedReason || '';
   const currentStudent = buildStudentApplyContext(drivesData);
   const driveOpenStatuses = ['approved', 'scheduled'];
 
@@ -478,6 +478,23 @@ export default function StudentDrivesPage() {
                   </span>
                 ))}
               </div>
+              {drive.description ? (
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-default)' }}>
+                  <div className="text-xs text-secondary" style={{ marginBottom: '0.35rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Job description
+                  </div>
+                  <p className="text-sm text-secondary" style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                    {drive.description}
+                  </p>
+                </div>
+              ) : null}
+              {Array.isArray(drive.skillsRequired) && drive.skillsRequired.length > 0 ? (
+                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                  {drive.skillsRequired.map((skill) => (
+                    <span key={skill} className="badge badge-gray">{skill}</span>
+                  ))}
+                </div>
+              ) : null}
               {!activeApplication && !isExpired && !hasPriorApplication ? (
                 <div style={{ marginTop: '1rem' }}>
                   <PostingEligibilitySection

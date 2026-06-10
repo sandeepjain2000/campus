@@ -26,6 +26,10 @@ import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import { Menu, Mail, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
 import { writeActiveAcademicYearContext } from '@/lib/collegeAcademicYearContext';
+import {
+  readEmployerAcademicYearContext,
+  writeEmployerAcademicYearContext,
+} from '@/lib/employerAcademicYearContext';
 import { resolveBrandLogoUrl } from '@/lib/resolveBrandLogoUrl';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 
@@ -63,6 +67,8 @@ export default function DashboardLayout({ children }) {
     }
   }, [sidebarCollapsed]);
   const [employerCampusLabel, setEmployerCampusLabel] = useState(null);
+  const [employerActiveCampus, setEmployerActiveCampus] = useState(null);
+  const [employerAcademicYearOverride, setEmployerAcademicYearOverride] = useState(null);
   const [academicYearOverride, setAcademicYearOverride] = useState(null);
   const { data: collegeSettings, isLoading: collegeSettingsLoading } = useSWR(
     session?.user?.role === 'college_admin' ? '/api/college/settings' : null,
@@ -74,6 +80,12 @@ export default function DashboardLayout({ children }) {
   );
   const { data: academicYearsBundle } = useSWR(
     session?.user?.role === 'college_admin' ? '/api/college/academic-years' : null,
+    settingsFetcher,
+  );
+  const { data: employerAcademicYearsBundle } = useSWR(
+    session?.user?.role === 'employer' && employerActiveCampus?.id
+      ? `/api/employer/academic-years?campusId=${encodeURIComponent(employerActiveCampus.id)}`
+      : null,
     settingsFetcher,
   );
   const fallbackAcademicYearOptions = getAcademicYearOptions(getCurrentAcademicYear(), 3);
@@ -99,6 +111,60 @@ export default function DashboardLayout({ children }) {
     if (fromTenantCalendar) return fromTenantCalendar;
     return getCurrentAcademicYear();
   }, [academicYearsBundle?.current?.label]);
+
+  const employerAcademicYearOptions = useMemo(() => {
+    const fromTenant = Array.isArray(employerAcademicYearsBundle?.years)
+      ? employerAcademicYearsBundle.years.map((y) => y.label).filter(Boolean)
+      : [];
+    return fromTenant.length ? fromTenant : fallbackAcademicYearOptions;
+  }, [employerAcademicYearsBundle?.years, fallbackAcademicYearOptions]);
+
+  const employerDefaultAcademicYear = useMemo(() => {
+    const fromTenantCalendar = employerAcademicYearsBundle?.current?.label?.trim();
+    if (fromTenantCalendar) return fromTenantCalendar;
+    return getCurrentAcademicYear();
+  }, [employerAcademicYearsBundle?.current?.label]);
+
+  const employerAcademicYear = useMemo(() => {
+    if (employerAcademicYearOverride != null && employerAcademicYearOverride !== '') {
+      return employerAcademicYearOverride;
+    }
+    if (typeof window !== 'undefined' && employerActiveCampus?.id) {
+      try {
+        const stored = readEmployerAcademicYearContext(employerActiveCampus.id);
+        if (stored?.label && employerAcademicYearOptions.includes(stored.label)) {
+          return stored.label;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return employerDefaultAcademicYear;
+  }, [
+    employerAcademicYearOverride,
+    employerActiveCampus?.id,
+    employerAcademicYearOptions,
+    employerDefaultAcademicYear,
+  ]);
+
+  useEffect(() => {
+    if (session?.user?.role !== 'employer' || !employerActiveCampus?.id) return;
+    const match = employerAcademicYearsBundle?.years?.find((y) => y.label === employerAcademicYear);
+    writeEmployerAcademicYearContext(employerActiveCampus.id, {
+      id: match?.id || null,
+      label: employerAcademicYear,
+    });
+  }, [
+    session?.user?.role,
+    employerActiveCampus?.id,
+    employerAcademicYear,
+    employerAcademicYearsBundle?.years,
+  ]);
+
+  useEffect(() => {
+    if (session?.user?.role !== 'employer' || !employerActiveCampus?.id) return;
+    setEmployerAcademicYearOverride(null);
+  }, [employerActiveCampus?.id, session?.user?.role]);
 
   const academicYear = useMemo(() => {
     if (academicYearOverride != null && academicYearOverride !== '') return academicYearOverride;
@@ -131,8 +197,21 @@ export default function DashboardLayout({ children }) {
     const readCampus = () => {
       try {
         const raw = sessionStorage.getItem('activeCampus');
-        setEmployerCampusLabel(raw ? JSON.parse(raw).name : null);
+        if (!raw) {
+          setEmployerActiveCampus(null);
+          setEmployerCampusLabel(null);
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed?.id) {
+          setEmployerActiveCampus(parsed);
+          setEmployerCampusLabel(parsed.name || null);
+        } else {
+          setEmployerActiveCampus(null);
+          setEmployerCampusLabel(null);
+        }
       } catch {
+        setEmployerActiveCampus(null);
         setEmployerCampusLabel(null);
       }
     };
@@ -424,7 +503,7 @@ export default function DashboardLayout({ children }) {
                         background: 'var(--bg-secondary)',
                         border: '1px solid var(--border)',
                         fontSize: '0.875rem',
-                        color: employerCampusLabel ? 'var(--text-primary)' : 'var(--warning-700)',
+                        color: 'var(--text-primary)',
                         textDecoration: 'none',
                         fontWeight: 600,
                         maxWidth: '14rem',
@@ -432,11 +511,27 @@ export default function DashboardLayout({ children }) {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                       }}
-                      title={employerCampusLabel ? `Active campus: ${employerCampusLabel}` : 'Choose or switch campus'}
+                      title="View campus partnerships (all approved campuses are in scope)"
                     >
-                      {employerCampusLabel || 'Choose campus'}
+                      All campuses
                       <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)' }}>▼</span>
                     </Link>
+                  </div>
+                  <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
+                  <div className="topbar-academic-year-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', flexShrink: 0 }}>Academic Year:</span>
+                    <select
+                      className="form-input"
+                      aria-label="Academic Year"
+                      style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem', maxWidth: '9rem', opacity: 0.65 }}
+                      value={employerAcademicYear}
+                      disabled
+                      title="Not used for employer login — data includes all campuses and seasons"
+                    >
+                      {employerAcademicYearOptions.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}

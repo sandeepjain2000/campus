@@ -74,7 +74,10 @@ export async function GET(request) {
       });
     }
 
-    const { clause, params: typeParams } = jobTypesClauseForAssessmentKind(kind);
+    const alumniOnly = searchParams.get('alumniOnly') === '1' || searchParams.get('alumniOnly') === 'true';
+    const { clause, params: typeParams } = jobTypesClauseForAssessmentKind(kind, {
+      alumniOnly: alumniOnly && kind === 'jobs',
+    });
     const jobs = await query(
       `SELECT jp.id, jp.title, jp.job_type
        FROM job_postings jp

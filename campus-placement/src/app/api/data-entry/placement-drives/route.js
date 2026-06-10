@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
-import { validateDataEntryDrivePayload } from '@/lib/apiInputValidation';
+import { validateDataEntryDrivePayload, validateTitlePayload } from '@/lib/apiInputValidation';
+import { normalizeTitle } from '@/lib/validators';
 import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
 
 const ALLOWED_STATUS = new Set(['requested', 'approved', 'scheduled', 'in_progress', 'completed', 'cancelled']);
@@ -43,7 +44,7 @@ export async function POST(request) {
     const body = await request.json();
     const tenantId = tenantFromRequest(gate.session, request, body);
 
-    const title = String(body?.title || '').trim();
+    const title = normalizeTitle(body?.title);
     const description = String(body?.description || '').trim();
     const driveDate = body?.driveDate || null;
     const venue = String(body?.venue || '').trim();
@@ -55,8 +56,9 @@ export async function POST(request) {
     if (!tenantId) {
       return NextResponse.json({ error: 'Missing tenant context' }, { status: 400 });
     }
-    if (!title) {
-      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    const titleErr = validateTitlePayload(title, { label: 'Drive title' });
+    if (titleErr) {
+      return NextResponse.json({ error: titleErr }, { status: 400 });
     }
     const driveErr = validateDataEntryDrivePayload({ driveDate, maxStudents });
     if (driveErr) {
@@ -100,7 +102,7 @@ export async function PUT(request) {
     if (!tenantId) return NextResponse.json({ error: 'No tenant available for update' }, { status: 400 });
 
     const id = String(body?.id || '').trim();
-    const title = String(body?.title || '').trim();
+    const title = normalizeTitle(body?.title);
     const description = String(body?.description || '').trim();
     const status = String(body?.status || 'scheduled').trim();
     const driveDate = body?.driveDate || null;
@@ -109,6 +111,10 @@ export async function PUT(request) {
     const employerId = String(body?.employerId || '').trim() || null;
     if (!id || !title || !ALLOWED_STATUS.has(status)) {
       return NextResponse.json({ error: 'id, title and valid status are required' }, { status: 400 });
+    }
+    const putTitleErr = validateTitlePayload(title, { label: 'Drive title' });
+    if (putTitleErr) {
+      return NextResponse.json({ error: putTitleErr }, { status: 400 });
     }
     const updated = await query(
       `UPDATE placement_drives

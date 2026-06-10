@@ -1,7 +1,8 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
+import { formatInternshipPeriodLabel } from '@/lib/internshipPostingMeta';
 import { globalApplyBlockedReason, resolveApplyBlockReason } from '@/lib/getApplyBlockReason';
 import { programOpportunityFromRow } from '@/lib/studentApplyContext';
 import EntityLogo from '@/components/EntityLogo';
@@ -27,6 +28,7 @@ export default function StudentOpportunityDetailModal({
   kind = 'internship',
   onClose,
   onApply,
+  onDownload,
   applyingId,
   currentStudent,
   applyOptions = {},
@@ -112,12 +114,21 @@ export default function StudentOpportunityDetailModal({
               <div className="student-opportunity-detail-stat-label">Openings</div>
               <div className="student-opportunity-detail-stat-value">{row.vacancies ?? '—'}</div>
             </div>
-            <div>
-              <div className="student-opportunity-detail-stat-label">Deadline</div>
-              <div className="student-opportunity-detail-stat-value">
-                {row.applicationDeadline ? formatDate(row.applicationDeadline) : '—'}
+            {kind === 'internship' ? (
+              <div>
+                <div className="student-opportunity-detail-stat-label">Internship period</div>
+                <div className="student-opportunity-detail-stat-value">
+                  {formatInternshipPeriodLabel(row.startDate, row.endDate, formatDate) || '—'}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <div className="student-opportunity-detail-stat-label">Deadline</div>
+                <div className="student-opportunity-detail-stat-value">
+                  {row.applicationDeadline ? formatDate(row.applicationDeadline) : '—'}
+                </div>
+              </div>
+            )}
           </div>
 
           {row.skillsRequired?.length > 0 ? (
@@ -147,7 +158,20 @@ export default function StudentOpportunityDetailModal({
 
         {!row.hasApplied ? (
           <div className="modal-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {onDownload ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={onDownload}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <Download size={16} aria-hidden />
+                    Download job
+                  </button>
+                ) : null}
+              </div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
                 Close
               </button>
@@ -165,7 +189,20 @@ export default function StudentOpportunityDetailModal({
             />
           </div>
         ) : (
-          <div className="modal-footer">
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {onDownload ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={onDownload}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                <Download size={16} aria-hidden />
+                Download job
+              </button>
+            ) : (
+              <span />
+            )}
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Close
             </button>

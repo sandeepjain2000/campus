@@ -1,5 +1,15 @@
 /** Super-admin cross-platform listing labels and filters. */
 
+/** SQL expression: tenant name with city/state when available (disambiguates e.g. "bits" vs BITS Pilani). */
+export const CAMPUS_DISPLAY_NAME_SQL = `trim(both from t.name ||
+  CASE
+    WHEN nullif(trim(t.city), '') IS NOT NULL AND nullif(trim(t.state), '') IS NOT NULL
+      THEN ' (' || trim(t.city) || ', ' || trim(t.state) || ')'
+    WHEN nullif(trim(t.city), '') IS NOT NULL THEN ' (' || trim(t.city) || ')'
+    WHEN nullif(trim(t.state), '') IS NOT NULL THEN ' (' || trim(t.state) || ')'
+    ELSE ''
+  END)`;
+
 export const ADMIN_LISTING_TAB_OPTIONS = [
   { value: '', label: 'All types' },
   { value: 'job', label: 'Jobs' },

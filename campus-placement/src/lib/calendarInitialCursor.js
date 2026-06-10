@@ -1,6 +1,6 @@
 /**
  * Pick calendar month/year so the grid opens on data students care about.
- * `initialMonth` is 0-based (JavaScript Date month), matching EmployerCalendarGrid.
+ * `initialMonth` is 0-based (JavaScript Date month), matching CampusCalendarGrid.
  *
  * @param {readonly (string | null | undefined)[]} dateStrings ISO date prefixes YYYY-MM-DD
  * @returns {{ initialYear: number, initialMonth: number }}

@@ -4,10 +4,16 @@ import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/sessionP
 import { isPlacementApiPath } from '@/lib/placementReadRoute';
 import {
   ALUMNI_BROWSE_JOBS_PATH,
+  ALUMNI_GETTING_STARTED_PATH,
   ALUMNI_MY_JOBS_PATH,
   LEGACY_STUDENT_APPLICATIONS_JOBS_PATH,
+  LEGACY_STUDENT_GETTING_STARTED_PATH,
   LEGACY_STUDENT_JOBS_PATH,
 } from '@/lib/alumniRoutes';
+import {
+  EMPLOYER_ALUMNI_JOBS_PATH,
+  LEGACY_EMPLOYER_JOBS_PATH,
+} from '@/lib/employerAlumniRoutes';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -115,6 +121,28 @@ export default async function proxy(request) {
 
     const role = token.role;
     const ownedPrefix = ROLE_OWNED_PREFIX[role];
+
+    if (
+      role === 'student' &&
+      token.isAlumni &&
+      pathname === LEGACY_STUDENT_GETTING_STARTED_PATH
+    ) {
+      return appendLegacyCookieClearance(
+        NextResponse.redirect(new URL(ALUMNI_GETTING_STARTED_PATH, request.url)),
+      );
+    }
+
+    if (role === 'student' && token.isAlumni && pathname === '/dashboard/student/clarifications') {
+      return appendLegacyCookieClearance(
+        NextResponse.redirect(new URL(ALUMNI_BROWSE_JOBS_PATH, request.url)),
+      );
+    }
+
+    if (role === 'employer' && pathname === LEGACY_EMPLOYER_JOBS_PATH) {
+      return appendLegacyCookieClearance(
+        NextResponse.redirect(new URL(EMPLOYER_ALUMNI_JOBS_PATH, request.url)),
+      );
+    }
 
     // Allow shared routes for all authenticated users
     const isShared = SHARED_DASHBOARD_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'));

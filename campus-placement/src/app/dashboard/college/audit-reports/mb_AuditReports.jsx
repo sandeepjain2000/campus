@@ -6,6 +6,8 @@ import MobileHeader from '@/components/mobile/MobileHeader';
 import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import { auditReportsFetcher } from '@/lib/auditReportsFetcher';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 import { Mail, Download, History, ShieldAlert } from 'lucide-react';
 
 const swrQuiet = { shouldRetryOnError: false, revalidateOnFocus: false };
@@ -88,11 +90,23 @@ export default function mb_AuditReports() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
             <div>
               <label className="text-xs text-secondary mb-1 block">From Date</label>
-              <input className="form-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.DATE_RANGE_FROM}
+                context={{ dateTo: to, maxSpanYears: 10 }}
+                value={from}
+                onChange={setFrom}
+                aria-label="From date"
+              />
             </div>
             <div>
               <label className="text-xs text-secondary mb-1 block">To Date</label>
-              <input className="form-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.DATE_RANGE_TO}
+                context={{ dateFrom: from, maxSpanYears: 10 }}
+                value={to}
+                onChange={setTo}
+                aria-label="To date"
+              />
             </div>
           </div>
           

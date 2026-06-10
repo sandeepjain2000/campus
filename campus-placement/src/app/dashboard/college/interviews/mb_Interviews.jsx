@@ -9,6 +9,7 @@ import MobileHeader from '@/components/mobile/MobileHeader';
 import CompanyNameLink from '@/components/CompanyNameLink';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
+import { normalizeTimeHm, validateInterviewDateTimeOrError } from '@/lib/dateOnly';
 import { findDuplicateCollegeInterviewSlot } from '@/lib/interviewSlotDuplicate';
 import InterviewSlotActions from '@/components/interviews/InterviewSlotActions';
 
@@ -107,6 +108,18 @@ export default function mb_Interviews() {
     const dateErr = validateFieldOrError(FIELD_IDS.COLLEGE_INTERVIEW_DATE, form.date);
     if (dateErr) {
       addToast(dateErr, 'warning');
+      return;
+    }
+    const editingSlot = editingId ? slots.find((s) => s.id === editingId) : null;
+    const allowPastDatetime =
+      Boolean(editingSlot) &&
+      form.date === (editingSlot.date || '') &&
+      normalizeTimeHm(form.startTime) === normalizeTimeHm(editingSlot.startTime);
+    const dateTimeErr = validateInterviewDateTimeOrError(form.date, form.startTime, {
+      allowPast: allowPastDatetime,
+    });
+    if (dateTimeErr) {
+      addToast(dateTimeErr, 'warning');
       return;
     }
     const payload = {

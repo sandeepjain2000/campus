@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import {
+  CAMPUS_DISPLAY_NAME_SQL,
   mapDriveRow,
   mapJobPostingRow,
   matchesListingTab,
@@ -53,7 +54,7 @@ export async function GET(request) {
            ep.id AS employer_id,
            ep.company_name,
            COALESCE(
-             (SELECT string_agg(DISTINCT t.name, '; ' ORDER BY t.name)
+             (SELECT string_agg(DISTINCT ${CAMPUS_DISPLAY_NAME_SQL}, '; ' ORDER BY ${CAMPUS_DISPLAY_NAME_SQL})
               FROM job_posting_visibility jpv
               JOIN tenants t ON t.id = jpv.tenant_id
               WHERE jpv.job_id = jp.id),

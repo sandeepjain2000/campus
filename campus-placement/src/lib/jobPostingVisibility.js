@@ -1,4 +1,5 @@
 import { resolveIitmTenant } from '@/lib/employerIitmTieUp';
+import { filterTenantIdsForJobPosting } from '@/lib/employerPostingCampusConstraints';
 import { fetchCollegeAdminUserIds, notifyUsersOneAtATime } from '@/lib/notificationService';
 import { isAlumniJobType } from '@/lib/studentAlumni';
 
@@ -22,13 +23,14 @@ export async function filterApprovedTenantIds(client, employerId, tenantIds) {
 }
 
 /** Default to IIT Madras when publishing with no campuses selected (sandbox testing). */
-export async function resolvePublishTenantIds(client, employerId, tenantIds, { status } = {}) {
+export async function resolvePublishTenantIds(client, employerId, tenantIds, { status, jobType } = {}) {
   let ids = uniqueTenantIds(tenantIds);
   if (status === 'published' && ids.length === 0) {
     const iitm = await resolveIitmTenant(client);
     if (iitm) ids = [iitm.id];
   }
-  return filterApprovedTenantIds(client, employerId, ids);
+  const approved = await filterApprovedTenantIds(client, employerId, ids);
+  return filterTenantIdsForJobPosting(client, employerId, approved, jobType);
 }
 
 async function notifyCollegeAdmins(client, { tenantId, emp, jobType, jobTitle }) {

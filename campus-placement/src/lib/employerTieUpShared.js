@@ -5,6 +5,12 @@
 export const EMPLOYER_TIE_UP_ACTIVE = 'approved';
 export const EMPLOYER_TIE_UP_REVOKED = 'revoked';
 
+/** When false, revoke buttons stay visible but cannot be used (college + employer UIs). */
+export const TIE_UP_REVOKE_ENABLED = false;
+
+export const TIE_UP_REVOKE_DISABLED_TITLE =
+  'Tie-up cancellation is temporarily disabled. Contact your placement office if you need changes.';
+
 /** SQL fragment: alias must be the employer_approvals table alias (e.g. ea). */
 export function sqlEmployerTieUpIsActive(alias = 'ea') {
   return `${alias}.status = '${EMPLOYER_TIE_UP_ACTIVE}'`;

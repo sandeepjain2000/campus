@@ -118,9 +118,10 @@ function normalizeEducationDetails(value) {
     };
   };
   return {
-    tenth: normalizeRow(source.tenth),
-    twelfth: normalizeRow(source.twelfth),
+    graduation: normalizeRow(source.graduation),
     diploma: normalizeRow(source.diploma),
+    twelfth: normalizeRow(source.twelfth),
+    tenth: normalizeRow(source.tenth),
   };
 }
 

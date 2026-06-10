@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
+import { filterTenantIdsForJobPosting } from '@/lib/employerPostingCampusConstraints';
 import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { invalidateStudentOpportunityListCache } from '@/lib/jobPostingPublishState';
 
@@ -44,7 +45,7 @@ export async function POST(request) {
     const employerId = emp.rows[0].id;
 
     const jobRes = await query(
-      `SELECT id, status FROM job_postings jp WHERE jp.id = $1::uuid AND jp.employer_id = $2::uuid ${AND_JP_NOT_DELETED}`,
+      `SELECT id, status, job_type FROM job_postings jp WHERE jp.id = $1::uuid AND jp.employer_id = $2::uuid ${AND_JP_NOT_DELETED}`,
       [jobId, employerId],
     );
     if (!jobRes.rowCount) {
@@ -53,11 +54,19 @@ export async function POST(request) {
     if (jobRes.rows[0].status !== 'published') {
       return NextResponse.json({ error: 'Only published jobs can be synced to campuses' }, { status: 409 });
     }
+    const jobType = jobRes.rows[0].job_type;
 
     const summary = await transaction(async (client) => {
+      const allowedTenants = await filterTenantIdsForJobPosting(
+        client,
+        employerId,
+        uniqueTenants,
+        jobType,
+      );
       let inserted = 0;
       let skippedNotApproved = 0;
-      for (const tenantId of uniqueTenants) {
+      let skippedByConstraint = uniqueTenants.length - allowedTenants.length;
+      for (const tenantId of allowedTenants) {
         const appr = await client.query(
           `SELECT 1 FROM employer_approvals
            WHERE tenant_id = $1::uuid AND employer_id = $2::uuid AND status = 'approved'`,
@@ -75,7 +84,7 @@ export async function POST(request) {
         );
         if (ins.rows.length) inserted += 1;
       }
-      return { inserted, skippedNotApproved };
+      return { inserted, skippedNotApproved, skippedByConstraint };
     });
 
     invalidateStudentOpportunityListCache();

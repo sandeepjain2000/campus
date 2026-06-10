@@ -61,12 +61,12 @@ describe('getApplyBlockReason', () => {
     expect(reason).toMatch(/backlog/i);
   });
 
-  it('blocks when branch is not eligible', () => {
+  it('does not block when branch text differs from posting list (matching disabled)', () => {
     const reason = getApplyBlockReason(
       { eligibleBranches: ['ECE'], status: 'published' },
       { ...eligibleStudent, branch: 'CSE' },
     );
-    expect(reason).toMatch(/limited to/i);
+    expect(reason).toBeNull();
   });
 
   it('blocks when batch year mismatches', () => {

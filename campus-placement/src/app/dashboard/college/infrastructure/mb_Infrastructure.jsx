@@ -6,6 +6,8 @@ import { CalendarDays, MapPin, Trash2, Plus } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import ValidatedDateInput from '@/components/form/ValidatedDateInput';
+import { FIELD_IDS } from '@/lib/inputConstraints';
 
 export default function mb_Infrastructure() {
   const { addToast } = useToast();
@@ -145,7 +147,12 @@ export default function mb_Infrastructure() {
                 ))}
               </select>
               <input className="form-input" placeholder="Event / Company Name" value={company} onChange={(e) => setCompany(e.target.value)} />
-              <input className="form-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <ValidatedDateInput
+                fieldId={FIELD_IDS.COLLEGE_INFRA_DATE}
+                value={date}
+                onChange={setDate}
+                aria-label="Booking date"
+              />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
                   <label className="text-xs text-secondary mb-1 block">Start Time</label>

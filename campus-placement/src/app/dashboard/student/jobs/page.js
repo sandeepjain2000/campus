@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
@@ -10,7 +11,7 @@ import {
   opportunityFilterFn,
   opportunitySearchText,
 } from '@/lib/tableQueryPresets';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Mail } from 'lucide-react';
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import EntityLogo from '@/components/EntityLogo';
@@ -18,14 +19,18 @@ import CompanyNameLink from '@/components/CompanyNameLink';
 import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
 import StudentBrowsePrerequisitePanel from '@/components/student/StudentBrowsePrerequisitePanel';
 import StudentOpportunityDetailModal from '@/components/student/StudentOpportunityDetailModal';
-import StudentOpportunityApplyButton from '@/components/student/StudentOpportunityApplyButton';
+import StudentOpportunityRowActions from '@/components/student/StudentOpportunityRowActions';
 import PageLoading from '@/components/PageLoading';
-import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import {
   globalApplyBlockedReason,
   resolveApplyBlockReason,
 } from '@/lib/getApplyBlockReason';
 import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/studentApplyContext';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { buildStudentOpportunityCsvPayload, downloadStudentOpportunityCsv } from '@/lib/studentOpportunityCsvExport';
+import { useTableRowSelection, usePruneRowSelection } from '@/hooks/useTableRowSelection';
+import TableBulkActionBar from '@/components/table/TableBulkActionBar';
+import OpportunityEmailComposeModal from '@/components/student/OpportunityEmailComposeModal';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -38,8 +43,10 @@ async function fetcher(url) {
 }
 
 export default function StudentJobsPage() {
+  const { data: session } = useSession();
   const { addToast } = useToast();
   const [selectedRow, setSelectedRow] = useState(null);
+  const [emailComposeRows, setEmailComposeRows] = useState(null);
   const [applyingId, setApplyingId] = useState(null);
   const { data, error, isLoading, mutate } = useSWR('/api/student/program-opportunities?kind=job', fetcher, {
     revalidateOnFocus: true,
@@ -81,6 +88,9 @@ export default function StudentJobsPage() {
     defaultSort: 'company_asc',
   });
 
+  const selection = useTableRowSelection();
+  usePruneRowSelection(selection, displayItems);
+
   const apply = async (jobId, title) => {
     const row = items.find((i) => i.id === jobId);
     const blockReason = row
@@ -109,6 +119,33 @@ export default function StudentJobsPage() {
     }
   };
 
+  const buildCsvRows = (scope) => {
+    const dataset = scope === 'full' ? items : displayItems;
+    return buildStudentOpportunityCsvPayload(dataset, { kind: 'job' });
+  };
+
+  const downloadJob = (row) => {
+    downloadStudentOpportunityCsv(row, { kind: 'job' });
+  };
+
+  const userEmail = String(session?.user?.email || session?.user?.communicationEmail || '').trim();
+
+  const emailJobs = (rows) => {
+    const list = (rows || []).filter(Boolean);
+    if (!list.length) {
+      addToast('Select at least one job to email.', 'warning');
+      return;
+    }
+    setEmailComposeRows(list);
+  };
+
+  const emailFilteredJobs = () => emailJobs(displayItems);
+  const emailAllJobs = () => emailJobs(items);
+  const emailSelectedJobs = () => emailJobs(selection.selectedRows(displayItems));
+
+  const pageAllSelected = selection.allSelected(displayItems);
+  const pageSomeSelected = selection.someSelected(displayItems);
+
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
@@ -121,7 +158,40 @@ export default function StudentJobsPage() {
             Alumni job openings published for your college network. Apply directly from here.
           </p>
         </div>
-        <div className="page-header-actions">
+        <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          {canBrowseListings && totalCount > 0 ? (
+            <>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={emailFilteredJobs}
+                title="Open your email client with all jobs in the current view"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                <Mail size={15} aria-hidden />
+                Email view ({displayItems.length})
+              </button>
+              {displayItems.length !== items.length ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={emailAllJobs}
+                  title="Email every job on this campus list"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <Mail size={15} aria-hidden />
+                  Email all ({items.length})
+                </button>
+              ) : null}
+              <ExportCsvSplitButton
+                filenameBase="alumni_jobs"
+                currentCount={displayItems.length}
+                fullCount={items.length}
+                getRows={buildCsvRows}
+                size="sm"
+              />
+            </>
+          ) : null}
           {canBrowseListings ? (
             <span className="badge badge-blue" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
               {totalCount} job{totalCount !== 1 ? 's' : ''} available
@@ -176,6 +246,7 @@ export default function StudentJobsPage() {
       )}
 
       {canBrowseListings && totalCount > 0 && (
+        <>
         <DataTableToolbar
           search={search}
           onSearchChange={setSearch}
@@ -192,6 +263,13 @@ export default function StudentJobsPage() {
           hasActiveFilters={hasActiveFilters}
           onClear={clearFilters}
         />
+        <TableBulkActionBar
+          count={selection.count}
+          onEmail={emailSelectedJobs}
+          onClear={selection.clear}
+          emailLabel="Email selected jobs"
+        />
+        </>
       )}
 
       {/* ── Tabular list ── */}
@@ -200,6 +278,7 @@ export default function StudentJobsPage() {
           <div className="table-container">
           <table className="data-table student-opportunities-table">
             <colgroup>
+              <col className="student-opportunities-col-select" />
               <col className="student-opportunities-col-company" />
               <col className="student-opportunities-col-role" />
               <col className="student-opportunities-col-stipend" />
@@ -211,6 +290,17 @@ export default function StudentJobsPage() {
             </colgroup>
             <thead>
               <tr>
+                <th className="student-opportunities-col-select" style={{ paddingLeft: '0.75rem' }}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all jobs on this page"
+                    checked={pageAllSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = pageSomeSelected;
+                    }}
+                    onChange={() => selection.toggleAll(displayItems)}
+                  />
+                </th>
                 <th className="student-opportunities-col-company" style={{ paddingLeft: '1rem' }}>Company</th>
                 <th className="student-opportunities-col-role">Role</th>
                 <th className="student-opportunities-col-stipend">Salary</th>
@@ -224,7 +314,7 @@ export default function StudentJobsPage() {
             <tbody>
               {displayItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center text-secondary">
+                  <td colSpan={9} className="text-center text-secondary">
                     No jobs match your search or filters.
                   </td>
                 </tr>
@@ -239,7 +329,15 @@ export default function StudentJobsPage() {
                       } /mo`
                     : '—';
                 return (
-                <tr key={row.id}>
+                <tr key={row.id} className={selection.isSelected(row) ? 'is-row-selected' : undefined}>
+                  <td className="student-opportunities-col-select" style={{ paddingLeft: '0.75rem' }}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${row.title || 'job'} at ${row.companyName || 'company'}`}
+                      checked={selection.isSelected(row)}
+                      onChange={() => selection.toggle(row)}
+                    />
+                  </td>
                   <td className="student-opportunities-col-company" style={{ paddingLeft: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                       <EntityLogo name={row.companyName} size="sm" shape="rounded" />
@@ -274,20 +372,19 @@ export default function StudentJobsPage() {
                       <span className="badge badge-gray">Open</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right', paddingRight: '1rem', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                      <StandardTableIconAction action="view" showLabel={false} onClick={() => setSelectedRow(row)} />
-                      {!row.hasApplied && (
-                        <StudentOpportunityApplyButton
-                          row={row}
-                          currentStudent={currentStudent}
-                          globalBlockedReason={globalBlockedReason}
-                          applyingId={applyingId}
-                          onApply={apply}
-                          onShowEligibility={setSelectedRow}
-                        />
-                      )}
-                    </div>
+                  <td className="student-opportunities-col-actions" style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                    <StudentOpportunityRowActions
+                      row={row}
+                      kind="job"
+                      currentStudent={currentStudent}
+                      globalBlockedReason={globalBlockedReason}
+                      applyingId={applyingId}
+                      onView={setSelectedRow}
+                      onDownload={downloadJob}
+                      onEmail={(r) => emailJobs([r])}
+                      onApply={apply}
+                      onShowEligibility={setSelectedRow}
+                    />
                   </td>
                 </tr>
               );})}
@@ -307,6 +404,15 @@ export default function StudentJobsPage() {
           currentStudent={currentStudent}
           canApply={canApply}
           applyBlockedReason={applyBlockedReason}
+        />
+      ) : null}
+
+      {emailComposeRows ? (
+        <OpportunityEmailComposeModal
+          rows={emailComposeRows}
+          kind="job"
+          defaultTo={userEmail}
+          onClose={() => setEmailComposeRows(null)}
         />
       ) : null}
       </StudentBrowsePrerequisitePanel>

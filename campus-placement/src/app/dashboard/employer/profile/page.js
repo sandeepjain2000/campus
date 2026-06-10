@@ -322,19 +322,117 @@ export default function EmployerProfilePage() {
       </div>
 
       <div className="grid grid-2" style={{ gap: '1.5rem', alignItems: 'start' }}>
-        {/* About Section */}
-        <div className="card card-hover" style={{ gridColumn: '1 / -1' }}>
+        {/* Left column — row 1 */}
+        <div className="card card-hover">
           <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
             <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
               <FileText size={18} className="text-primary-600" /> About the Company
             </h3>
           </div>
-          <p className="text-secondary" style={{ lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
+          <p className="text-secondary" style={{ lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line', margin: 0 }}>
             {profile.description}
           </p>
         </div>
 
-        {/* Company Details */}
+        {/* Right column — row 1 */}
+        <div className="card card-hover">
+          <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+              <Phone size={18} className="text-primary-600" /> Primary Contact
+            </h3>
+          </div>
+          <div className="drive-info-grid" style={{ gap: '1.25rem' }}>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Person</div>
+              <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPerson}</div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</div>
+              <div className="drive-info-value" style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                {profile.contactEmail !== '—' && <Mail size={13} className="text-tertiary" />}
+                {profile.contactEmail}
+              </div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Login email</div>
+              <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem' }}>
+                {profile.accountEmail}
+              </div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Communication email</div>
+              <div
+                className="drive-info-value"
+                style={{
+                  fontWeight: 500,
+                  fontFamily: profile.communicationEmailRaw ? 'ui-monospace, monospace' : undefined,
+                  fontSize: '0.9rem',
+                  color: profile.communicationEmailRaw ? undefined : 'var(--text-secondary)',
+                }}
+              >
+                {profile.communicationEmailDisplay}
+              </div>
+              <p className="text-xs text-tertiary" style={{ margin: '0.35rem 0 0', lineHeight: 1.4 }}>
+                Used for platform mail (e.g. sponsorship thank-you and receipts). Leave blank in edit mode to use your login email.
+              </p>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</div>
+              <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPhone}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Left column — row 2 */}
+        <div className="card card-hover">
+          <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+              <FileText size={18} className="text-primary-600" /> Sponsorship receipts (legal / tax)
+            </h3>
+          </div>
+          {profile.billingLegalName || profile.billingPan || profile.billingGstNumber ? (
+            <div className="drive-info-grid" style={{ gap: '1rem' }}>
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legal name</div>
+                <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.billingLegalName || '—'}</div>
+              </div>
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAN</div>
+                <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace' }}>{profile.billingPan || '—'}</div>
+              </div>
+              <div className="drive-info-item">
+                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>GSTIN</div>
+                <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace' }}>{profile.billingGstNumber || '—'}</div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-secondary text-sm" style={{ margin: 0, lineHeight: 1.55 }}>
+              Not set yet. These appear on college-issued sponsorship acknowledgments. Add them when you sponsor a campus tier, or edit your company profile.
+            </p>
+          )}
+        </div>
+
+        {/* Right column — row 2 */}
+        <div className="card card-hover">
+          <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
+              <MapPin size={18} className="text-primary-600" /> Office Locations
+            </h3>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {profile.locations.length > 0 ? (
+              profile.locations.map((loc, i) => (
+                <span key={i} className="badge badge-blue" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', fontWeight: 500, border: '1px solid var(--blue-200)' }}>
+                  <MapPin size={12} style={{ marginRight: '0.25rem', opacity: 0.7 }} /> {loc}
+                </span>
+              ))
+            ) : (
+              <span className="text-secondary text-sm">No locations added.</span>
+            )}
+          </div>
+        </div>
+
+        {/* Left column — row 3 */}
         <div className="card card-hover">
           <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
             <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
@@ -360,104 +458,6 @@ export default function EmployerProfilePage() {
                 {profile.totalHires != null ? profile.totalHires : '—'}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Contact Info & Locations */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="card card-hover">
-            <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
-              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
-                <Phone size={18} className="text-primary-600" /> Primary Contact
-              </h3>
-            </div>
-            <div className="drive-info-grid" style={{ gap: '1.25rem' }}>
-              <div className="drive-info-item">
-                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Person</div>
-                <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPerson}</div>
-              </div>
-              <div className="drive-info-item">
-                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</div>
-                <div className="drive-info-value" style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  {profile.contactEmail !== '—' && <Mail size={13} className="text-tertiary" />}
-                  {profile.contactEmail}
-                </div>
-              </div>
-              <div className="drive-info-item">
-                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Login email</div>
-                <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem' }}>
-                  {profile.accountEmail}
-                </div>
-              </div>
-              <div className="drive-info-item">
-                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Communication email</div>
-                <div
-                  className="drive-info-value"
-                  style={{
-                    fontWeight: 500,
-                    fontFamily: profile.communicationEmailRaw ? 'ui-monospace, monospace' : undefined,
-                    fontSize: '0.9rem',
-                    color: profile.communicationEmailRaw ? undefined : 'var(--text-secondary)',
-                  }}
-                >
-                  {profile.communicationEmailDisplay}
-                </div>
-                <p className="text-xs text-tertiary" style={{ margin: '0.35rem 0 0', lineHeight: 1.4 }}>
-                  Used for platform mail (e.g. sponsorship thank-you and receipts). Leave blank in edit mode to use your login email.
-                </p>
-              </div>
-              <div className="drive-info-item">
-                <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</div>
-                <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.contactPhone}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card card-hover">
-            <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
-              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
-                <MapPin size={18} className="text-primary-600" /> Office Locations
-              </h3>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {profile.locations.length > 0 ? (
-                profile.locations.map((loc, i) => (
-                  <span key={i} className="badge badge-blue" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', fontWeight: 500, border: '1px solid var(--blue-200)' }}>
-                    <MapPin size={12} style={{ marginRight: '0.25rem', opacity: 0.7 }} /> {loc}
-                  </span>
-                ))
-              ) : (
-                <span className="text-secondary text-sm">No locations added.</span>
-              )}
-            </div>
-          </div>
-
-          <div className="card card-hover">
-            <div className="card-header" style={{ paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
-              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.125rem' }}>
-                <FileText size={18} className="text-primary-600" /> Sponsorship receipts (legal / tax)
-              </h3>
-            </div>
-            {profile.billingLegalName || profile.billingPan || profile.billingGstNumber ? (
-              <div className="drive-info-grid" style={{ gap: '1rem' }}>
-                <div className="drive-info-item">
-                  <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legal name</div>
-                  <div className="drive-info-value" style={{ fontWeight: 500 }}>{profile.billingLegalName || '—'}</div>
-                </div>
-                <div className="drive-info-item">
-                  <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAN</div>
-                  <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace' }}>{profile.billingPan || '—'}</div>
-                </div>
-                <div className="drive-info-item">
-                  <div className="drive-info-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>GSTIN</div>
-                  <div className="drive-info-value" style={{ fontWeight: 500, fontFamily: 'ui-monospace, monospace' }}>{profile.billingGstNumber || '—'}</div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-secondary text-sm" style={{ margin: 0, lineHeight: 1.55 }}>
-                Not set yet. These appear on college-issued sponsorship acknowledgments. Add them when you sponsor a campus tier, or edit your company profile.
-              </p>
-            )}
           </div>
         </div>
       </div>

@@ -29,8 +29,10 @@ export async function GET(request) {
         ep.industry,
         ep.total_hires,
         ep.is_verified,
-        ep.is_blacklisted
+        ep.is_blacklisted,
+        u.is_active AS account_active
       FROM employer_profiles ep
+      INNER JOIN users u ON u.id = ep.user_id
       ORDER BY ep.created_at DESC
       LIMIT $1 OFFSET $2`,
       [limit, offset]
@@ -46,6 +48,7 @@ export async function GET(request) {
         hires: Number(r.total_hires || 0),
         verified: Boolean(r.is_verified),
         blacklisted: Boolean(r.is_blacklisted),
+        active: Boolean(r.account_active),
       })),
       page,
       limit,

@@ -11,6 +11,8 @@ function norm(s) {
 export function employerInterviewSlotKey(slot) {
   return [
     norm(slot.campusId || slot.campus),
+    norm(slot.opportunityKind),
+    norm(slot.opportunityId),
     norm(slot.date),
     norm(slot.time),
     norm(slot.round),

@@ -4,10 +4,11 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
-import { Briefcase, Plus, DollarSign, Users, FileText, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List } from 'lucide-react';
+import { Briefcase, Plus, DollarSign, Users, FileText, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List, Undo2 } from 'lucide-react';
+import { formatJobPostingStatus } from '@/lib/employerJobDisplay';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
-import { FIELD_IDS } from '@/lib/inputConstraints';
+import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
 import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
 import {
   ALUMNI_EMPLOYMENT_TYPE_LABELS,
@@ -18,6 +19,7 @@ import {
   validateAlumniJobPostingPayload,
 } from '@/lib/alumniJobPosting';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
+import { useEmployerPostingCampuses } from '@/hooks/useEmployerPostingCampuses';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -59,13 +61,11 @@ export default function EmployerJobsPage() {
   const [selectedTenantIds, setSelectedTenantIds] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [closingJobId, setClosingJobId] = useState(null);
+  const [withdrawingJobId, setWithdrawingJobId] = useState(null);
   const [viewMode, setViewMode] = useState('card');
 
   const jobsList = Array.isArray(jobData?.jobs) ? jobData.jobs : [];
-  const approvedCampuses = useMemo(
-    () => (campusData?.colleges || []).filter((c) => c.approval_status === 'approved'),
-    [campusData],
-  );
+  const approvedCampuses = useEmployerPostingCampuses(campusData, 'alumni_jobs');
 
   const filtered = jobsList.filter((j) => !filter || j.status === filter);
 
@@ -75,6 +75,7 @@ export default function EmployerJobsPage() {
       published: jobsList.filter((j) => j.status === 'published').length,
       draft: jobsList.filter((j) => j.status === 'draft').length,
       closed: jobsList.filter((j) => j.status === 'closed').length,
+      withdrawn: jobsList.filter((j) => j.status === 'cancelled').length,
     }),
     [jobsList],
   );
@@ -164,8 +165,9 @@ export default function EmployerJobsPage() {
   }, []);
 
   const submitJob = async (asDraft) => {
-    if (!form.title.trim()) {
-      addToast('Job title is required', 'error');
+    const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, form.title, { label: 'Job title' });
+    if (titleErr) {
+      addToast(titleErr, 'error');
       return;
     }
     const tenantIds = Object.entries(selectedTenantIds)
@@ -267,6 +269,35 @@ export default function EmployerJobsPage() {
     }
   };
 
+  const withdrawPublishedJob = async (job) => {
+    if (!job?.id) return;
+    setWithdrawingJobId(job.id);
+    try {
+      const res = await fetch('/api/employer/jobs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'withdraw', id: job.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast(json.error || 'Could not withdraw job', 'error');
+        return;
+      }
+      const n = Number(json.applicationsWithdrawn) || 0;
+      addToast(
+        n > 0
+          ? `Job withdrawn. ${n} student application${n === 1 ? '' : 's'} moved to Withdrawn.`
+          : 'Job withdrawn. It no longer accepts applications.',
+        'success',
+      );
+      mutateJobs();
+    } catch {
+      addToast('Network error', 'error');
+    } finally {
+      setWithdrawingJobId(null);
+    }
+  };
+
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
       {/* High-Fidelity Glassmorphic Hero Banner */}
@@ -337,6 +368,7 @@ export default function EmployerJobsPage() {
             { id: 'published', label: `Published (${tabCounts.published})` },
             { id: 'draft', label: `Drafts (${tabCounts.draft})` },
             { id: 'closed', label: `Closed (${tabCounts.closed})` },
+            { id: 'cancelled', label: `Withdrawn (${tabCounts.withdrawn})` },
           ].map((t) => (
             <button
               key={t.id}
@@ -393,7 +425,7 @@ export default function EmployerJobsPage() {
                 <div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.35rem', letterSpacing: '-0.01em' }}>{job.title}</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span className={`badge badge-${getStatusColor(job.status)}`} style={{ padding: '0.2rem 0.5rem' }}>{formatStatus(job.status)}</span>
+                    <span className={`badge badge-${getStatusColor(job.status)}`} style={{ padding: '0.2rem 0.5rem' }}>{formatJobPostingStatus(job.status)}</span>
                     <span className="badge badge-gray" style={{ padding: '0.2rem 0.5rem' }}>{formatStatus(job.type)}</span>
                   </div>
                 </div>
@@ -434,9 +466,14 @@ export default function EmployerJobsPage() {
                   <a className="btn btn-primary" href={`/dashboard/employer/applications?tab=jobs&jobId=${job.id}`} style={{ flex: 1, padding: '0.6rem', textAlign: 'center' }}>View Pipeline</a>
                 </div>
                 {job.status === 'published' && (
-                  <button type="button" className="btn btn-ghost" style={{ width: '100%', padding: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--text-secondary)' }} disabled={closingJobId === job.id} onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}>
-                    <Ban size={16} aria-hidden />{closingJobId === job.id ? 'Closing…' : 'Close posting'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                    <button type="button" className="btn btn-ghost" style={{ flex: 1, padding: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--text-secondary)' }} disabled={closingJobId === job.id || withdrawingJobId === job.id} onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}>
+                      <Ban size={16} aria-hidden />{closingJobId === job.id ? 'Closing…' : 'Close'}
+                    </button>
+                    <button type="button" className="btn btn-ghost" style={{ flex: 1, padding: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--danger-600)' }} disabled={withdrawingJobId === job.id || closingJobId === job.id} onClick={(e) => { e.stopPropagation(); void withdrawPublishedJob(job); }} title="Withdraw job; students see applications under Withdrawn">
+                      <Undo2 size={16} aria-hidden />{withdrawingJobId === job.id ? 'Withdrawing…' : 'Withdraw'}
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="text-xs text-tertiary" style={{ textAlign: 'center', marginTop: '1rem' }}>Created {job.createdAt ? formatDate(job.createdAt) : '—'}</div>
@@ -496,7 +533,7 @@ export default function EmployerJobsPage() {
               <span className="badge badge-gray" style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{formatStatus(job.type)}</span>
 
               {/* Status */}
-              <span className={`badge badge-${getStatusColor(job.status)}`} style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{formatStatus(job.status)}</span>
+              <span className={`badge badge-${getStatusColor(job.status)}`} style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{formatJobPostingStatus(job.status)}</span>
 
               {/* Salary */}
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
@@ -535,16 +572,28 @@ export default function EmployerJobsPage() {
                   Pipeline <ArrowRight size={13} />
                 </a>
                 {job.status === 'published' && (
-                  <button
-                    type="button"
-                    title="Close posting"
-                    className="btn btn-ghost"
-                    style={{ padding: '0.35rem 0.5rem', color: 'var(--text-tertiary)' }}
-                    disabled={closingJobId === job.id}
-                    onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}
-                  >
-                    <Ban size={15} aria-hidden />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      title="Close posting"
+                      className="btn btn-ghost"
+                      style={{ padding: '0.35rem 0.5rem', color: 'var(--text-tertiary)' }}
+                      disabled={closingJobId === job.id || withdrawingJobId === job.id}
+                      onClick={(e) => { e.stopPropagation(); void closePublishedJob(job); }}
+                    >
+                      <Ban size={15} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      title="Withdraw posting"
+                      className="btn btn-ghost"
+                      style={{ padding: '0.35rem 0.5rem', color: 'var(--danger-600)' }}
+                      disabled={withdrawingJobId === job.id || closingJobId === job.id}
+                      onClick={(e) => { e.stopPropagation(); void withdrawPublishedJob(job); }}
+                    >
+                      <Undo2 size={15} aria-hidden />
+                    </button>
+                  </>
                 )}
               </div>
             </div>

@@ -24,9 +24,10 @@ export function defaultStudentProfile(sessionUser) {
     backlogsActive: 0,
     backlogsHistory: 0,
     educationDetails: {
-      tenth: { institution: '', board: '', year: '', notes: '' },
-      twelfth: { institution: '', board: '', year: '', notes: '' },
+      graduation: { institution: '', board: '', year: '', notes: '' },
       diploma: { institution: '', board: '', year: '', notes: '' },
+      twelfth: { institution: '', board: '', year: '', notes: '' },
+      tenth: { institution: '', board: '', year: '', notes: '' },
     },
     gender: '',
     collegeEmail: email,

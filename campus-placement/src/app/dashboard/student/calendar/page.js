@@ -2,18 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { List, CalendarDays, Calendar as CalendarIcon, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function parseEventYmd(raw) {
-  if (raw == null || raw === '') return null;
-  const s = String(raw).trim();
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (!iso) return null;
-  return { y: +iso[1], mo: +iso[2], d: +iso[3] };
-}
+import { List, CalendarDays, Calendar as CalendarIcon, LayoutGrid } from 'lucide-react';
+import { CampusCalendarGrid } from '@/components/calendar/CampusCalendarGrid';
+import { studentEventsToCalendarItems } from '@/lib/calendarItems';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -29,80 +20,8 @@ export default function StudentPlacementCalendarPage() {
   const { data, isLoading } = useSWR('/api/student/calendar', fetcher);
   const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
 
-  const goPrev = () => {
-    setCurrentDate((prev) => {
-      const d = new Date(prev);
-      if (viewMode === 'month') d.setMonth(d.getMonth() - 1);
-      else if (viewMode === 'week') d.setDate(d.getDate() - 7);
-      else if (viewMode === 'year') d.setFullYear(d.getFullYear() - 1);
-      return d;
-    });
-  };
-
-  const goNext = () => {
-    setCurrentDate((prev) => {
-      const d = new Date(prev);
-      if (viewMode === 'month') d.setMonth(d.getMonth() + 1);
-      else if (viewMode === 'week') d.setDate(d.getDate() + 7);
-      else if (viewMode === 'year') d.setFullYear(d.getFullYear() + 1);
-      return d;
-    });
-  };
-
-  const goToday = () => setCurrentDate(new Date());
-
-  // --- Date Math Helpers ---
-  const y = currentDate.getFullYear();
-  const m = currentDate.getMonth();
-
-  // For Month View
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const firstDayOfMonth = new Date(y, m, 1).getDay();
-  const monthCells = [];
-  for (let i = 0; i < firstDayOfMonth; i++) monthCells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) monthCells.push(d);
-
-  // For Week View
-  const startOfWeek = new Date(currentDate);
-  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-  const weekDays = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + i);
-    return d;
-  });
-
-  // Events filtered for Day
-  const getEventsForDate = (dateObj) => {
-    return events.filter((e) => {
-      const ymd = parseEventYmd(e.date);
-      if (!ymd) return false;
-      return ymd.y === dateObj.getFullYear() && ymd.mo === dateObj.getMonth() + 1 && ymd.d === dateObj.getDate();
-    });
-  };
-
   const today = new Date();
-  const isToday = (dateObj) =>
-    dateObj.getFullYear() === today.getFullYear() &&
-    dateObj.getMonth() === today.getMonth() &&
-    dateObj.getDate() === today.getDate();
-
-  // Title for current view
-  let viewTitle = '';
-  if (viewMode === 'month') {
-    viewTitle = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  } else if (viewMode === 'week') {
-    const endOfWeek = new Date(weekDays[6]);
-    viewTitle = `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-  } else if (viewMode === 'year') {
-    viewTitle = y.toString();
-  }
-
-  // Common styling for event pills
-  const renderEventPill = (ev, i) => (
-    <div key={i} className={`calendar-event ${ev.type === 'off_campus' ? 'drive' : ev.type || 'drive'}`} title={ev.title}>
-      {ev.title}
-    </div>
-  );
+  const calItems = useMemo(() => studentEventsToCalendarItems(events), [events]);
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -143,26 +62,7 @@ export default function StudentPlacementCalendarPage() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: '1.5rem' }}>
-        {/* Navigation Header */}
-        {viewMode !== 'list' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={goPrev} style={{ padding: '0.4rem' }}>
-                <ChevronLeft size={18} />
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={goNext} style={{ padding: '0.4rem' }}>
-                <ChevronRight size={18} />
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={goToday} style={{ marginLeft: '0.5rem', fontWeight: 600 }}>
-                Today
-              </button>
-            </div>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{viewTitle}</h3>
-            <div style={{ width: '100px' }}>{/* spacing balancer */}</div>
-          </div>
-        )}
-
+      <div className="card" style={{ padding: viewMode === 'list' ? '1.5rem' : 0, overflow: 'hidden' }}>
         {/* --- LIST VIEW --- */}
         {viewMode === 'list' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -209,98 +109,16 @@ export default function StudentPlacementCalendarPage() {
           </div>
         )}
 
-        {/* --- WEEK VIEW --- */}
-        {viewMode === 'week' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border-default)', border: '1px solid var(--border-default)', borderRadius: '8px', overflow: 'hidden' }}>
-            {weekDays.map((dateObj, i) => {
-              const dayEvents = getEventsForDate(dateObj);
-              const isCurDay = isToday(dateObj);
-              return (
-                <div key={i} style={{ background: isCurDay ? 'var(--primary-50)' : 'var(--bg-primary)', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-default)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{DAYS[dateObj.getDay()]}</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: isCurDay ? 700 : 500, color: isCurDay ? 'var(--primary-600)' : 'var(--text-primary)' }}>
-                      {dateObj.getDate()}
-                    </div>
-                  </div>
-                  <div style={{ padding: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    {dayEvents.map(renderEventPill)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* --- MONTH VIEW --- */}
-        {viewMode === 'month' && (
-          <div className="calendar-grid">
-            {DAYS.map((d) => (
-              <div key={d} className="calendar-header-cell">
-                {d}
-              </div>
-            ))}
-            {monthCells.map((day, i) => {
-              const curDateObj = day ? new Date(y, m, day) : null;
-              const dayEvents = curDateObj ? getEventsForDate(curDateObj) : [];
-              const isCurDay = curDateObj ? isToday(curDateObj) : false;
-              return (
-                <div key={i} className={`calendar-cell ${!day ? 'other-month' : ''} ${isCurDay ? 'today' : ''}`}>
-                  {day && (
-                    <>
-                      <div className="calendar-date">{day}</div>
-                      {dayEvents.map(renderEventPill)}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* --- YEAR VIEW --- */}
-        {viewMode === 'year' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-            {Array.from({ length: 12 }).map((_, moIndex) => {
-              const daysInThisMonth = new Date(y, moIndex + 1, 0).getDate();
-              const firstDayOfThisMonth = new Date(y, moIndex, 1).getDay();
-              const miniCells = [];
-              for (let i = 0; i < firstDayOfThisMonth; i++) miniCells.push(null);
-              for (let d = 1; d <= daysInThisMonth; d++) miniCells.push(d);
-
-              return (
-                <div key={moIndex} style={{ border: '1px solid var(--border-default)', borderRadius: '8px', padding: '1rem', background: 'var(--bg-secondary)' }}>
-                  <h4 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
-                    {MONTHS_SHORT[moIndex]}
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center' }}>
-                    {['S','M','T','W','T','F','S'].map((dl, i) => (
-                      <div key={i} style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: '0.25rem' }}>{dl}</div>
-                    ))}
-                    {miniCells.map((day, i) => {
-                      if (!day) return <div key={i} />;
-                      const curDateObj = new Date(y, moIndex, day);
-                      const hasEvent = getEventsForDate(curDateObj).length > 0;
-                      const isCurDay = isToday(curDateObj);
-                      return (
-                        <div key={i} style={{
-                          aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '0.75rem', fontWeight: isCurDay ? 700 : 500,
-                          borderRadius: '50%',
-                          background: isCurDay ? 'var(--primary-500)' : hasEvent ? 'var(--primary-100)' : 'transparent',
-                          color: isCurDay ? 'white' : hasEvent ? 'var(--primary-700)' : 'var(--text-secondary)',
-                          cursor: hasEvent ? 'pointer' : 'default',
-                        }} title={hasEvent ? `${getEventsForDate(curDateObj).length} event(s)` : ''}>
-                          {day}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {viewMode !== 'list' && !isLoading ? (
+          <CampusCalendarGrid
+            items={calItems}
+            initialYear={currentDate.getFullYear()}
+            initialMonth={currentDate.getMonth()}
+            viewMode={viewMode}
+            onCursorChange={(year, month) => setCurrentDate(new Date(year, month, 1))}
+            onChangeView={setViewMode}
+          />
+        ) : null}
       </div>
 
       <p className="text-sm text-secondary" style={{ marginTop: '1rem' }}>

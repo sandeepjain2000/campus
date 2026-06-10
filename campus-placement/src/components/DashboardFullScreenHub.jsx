@@ -12,6 +12,7 @@ import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
 import { getDashboardMenu, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
 import { isAlumniStudent } from '@/lib/studentAlumni';
 import { ALUMNI_BROWSE_JOBS_PATH, ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
+import { EMPLOYER_ALUMNI_JOBS_PATH } from '@/lib/employerAlumniRoutes';
 import { getDevScreenId } from '@/config/devScreenIds';
 import { getRoleDisplayName } from '@/lib/utils';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
@@ -37,7 +38,7 @@ function getQuickActions(role, employerHasCampus, isAlumni) {
         label: employerHasCampus ? 'Change campus' : 'Campus Partnerships',
         href: '/dashboard/employer/select-campus',
       },
-      { label: 'Alumni job postings', href: '/dashboard/employer/jobs' },
+      { label: 'Alumni job postings', href: EMPLOYER_ALUMNI_JOBS_PATH },
       { label: 'Placement drives', href: '/dashboard/employer/drives' },
       { label: 'Applications', href: '/dashboard/employer/applications' },
       { label: 'Alerts', href: '/dashboard/alerts' },

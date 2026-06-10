@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { CheckCircle2, ExternalLink, X } from 'lucide-react';
 import { formatStatus, getStatusColor } from '@/lib/utils';
+import StudentListAvatar from '@/components/student/StudentListAvatar';
 import StudentDegreeSpecializationCell from './StudentDegreeSpecializationCell';
 
 function Field({ label, value, children }) {
@@ -20,14 +21,6 @@ function Field({ label, value, children }) {
 
 export default function StudentQuickViewModal({ student, onClose, onVerify }) {
   if (!student) return null;
-
-  const initials = student.name
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 
   const commEmail =
     (student.communicationEmail && String(student.communicationEmail).trim()) || student.email;
@@ -60,31 +53,7 @@ export default function StudentQuickViewModal({ student, onClose, onVerify }) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
-            {student.photo ? (
-              <img
-                src={student.photo}
-                alt=""
-                width={48}
-                height={48}
-                style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.35)' }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  border: '2px solid rgba(255,255,255,0.35)',
-                }}
-              >
-                {initials || 'S'}
-              </div>
-            )}
+            <StudentListAvatar photo={student.photo} name={student.name} size={48} />
             <div style={{ minWidth: 0 }}>
               <h2 id="student-quick-view-title" style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>
                 {student.name}

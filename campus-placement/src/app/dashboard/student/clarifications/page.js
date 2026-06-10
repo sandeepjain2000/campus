@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { loadClarifications, publishClarificationBatch } from '@/lib/demoClarifications';
 import { useToast } from '@/components/ToastProvider';
 import {
@@ -94,9 +95,11 @@ function InlinePostForm({ company, onSuccess }) {
 }
 
 export default function StudentClarificationsPage() {
+  const searchParams = useSearchParams();
+  const companyFromUrl = String(searchParams.get('company') || '').trim();
   const [data, setData] = useState({ batches: [] });
   const [filtered, setFiltered] = useState([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(companyFromUrl);
   const [sortBy, setSortBy] = useState('date'); // 'date' | 'name'
   const [openBatchIds, setOpenBatchIds] = useState(new Set());
 
@@ -119,6 +122,20 @@ export default function StudentClarificationsPage() {
     const t = window.setTimeout(() => void refresh(), 0);
     return () => window.clearTimeout(t);
   }, [refresh]);
+
+  useEffect(() => {
+    if (companyFromUrl) setSearch(companyFromUrl);
+  }, [companyFromUrl]);
+
+  useEffect(() => {
+    if (!companyFromUrl || !data.batches.length) return;
+    const match = data.batches.find(
+      (b) => b.company.toLowerCase() === companyFromUrl.toLowerCase(),
+    );
+    if (match) {
+      setOpenBatchIds((prev) => new Set(prev).add(match.id));
+    }
+  }, [companyFromUrl, data.batches]);
 
   useEffect(() => {
     const q = search.trim().toLowerCase();
