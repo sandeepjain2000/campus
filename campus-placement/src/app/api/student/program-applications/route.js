@@ -49,7 +49,7 @@ async function persistProgramApplication(studentId, jobId, notes) {
     `SELECT ear.id, ear.hiring_result
      FROM employer_assessment_rows ear
      JOIN employer_assessment_uploads eau ON eau.id = ear.upload_id
-     WHERE ear.student_profile_id = $1::uuid
+     WHERE ear.student_profile_id = (SELECT id FROM student_profiles WHERE student_id = $1::uuid LIMIT 1)
        AND eau.job_id = $2::uuid
        AND COALESCE(eau.is_deleted, false) = false
      ORDER BY eau.created_at DESC, ear.created_at DESC
