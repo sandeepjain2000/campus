@@ -24,14 +24,11 @@ import {
 } from '@/lib/studentAlumni';
 import { ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
+import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
-
-
-
-
-
 
 const PROGRAM_TYPES = new Set([
   ...ALUMNI_JOB_TYPES,
@@ -48,6 +45,26 @@ async function persistProgramApplication(studentId, jobId, notes) {
     [studentId, jobId],
   );
 
+  const assessmentRes = await query(
+    `SELECT ear.id, ear.hiring_result
+     FROM employer_assessment_rows ear
+     JOIN employer_assessment_uploads eau ON eau.id = ear.upload_id
+     WHERE ear.student_profile_id = $1::uuid
+       AND eau.job_id = $2::uuid
+       AND COALESCE(eau.is_deleted, false) = false
+     ORDER BY eau.created_at DESC, ear.created_at DESC
+     LIMIT 1`,
+    [studentId, jobId]
+  );
+  const assessmentRow = assessmentRes.rows[0];
+  let initialStatus = 'applied';
+  if (assessmentRow?.hiring_result) {
+    const mapped = applicationStatusFromHiringResult(assessmentRow.hiring_result);
+    if (mapped) {
+      initialStatus = mapped;
+    }
+  }
+
   if (prior.rows.length) {
     const existing = prior.rows[0];
     if (isWithdrawnApplicationStatus(existing.status)) {
@@ -56,14 +73,14 @@ async function persistProgramApplication(studentId, jobId, notes) {
     if (hasDeletedCol && existing.is_deleted) {
       const revived = await query(
         `UPDATE program_applications
-         SET status = 'applied',
-             notes = COALESCE($3, notes),
+         SET status = $3,
+             notes = COALESCE($4, notes),
              is_deleted = false,
              updated_at = NOW(),
              applied_at = COALESCE(applied_at, NOW())
          WHERE student_id = $1::uuid AND job_id = $2::uuid
          RETURNING id, status`,
-        [studentId, jobId, notes || null],
+        [studentId, jobId, initialStatus, notes || null],
       );
       if (!revived.rowCount) {
         return { ok: false, status: 500, error: 'Could not submit application' };
@@ -75,14 +92,14 @@ async function persistProgramApplication(studentId, jobId, notes) {
 
   const inserted = await query(
     `INSERT INTO program_applications (student_id, job_id, status, notes)
-     VALUES ($1::uuid, $2::uuid, 'applied', $3)
+     VALUES ($1::uuid, $2::uuid, $3, $4)
      RETURNING id, status`,
-    [studentId, jobId, notes || null],
+    [studentId, jobId, initialStatus, notes || null],
   );
   return { ok: true, row: inserted.rows[0] };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -139,7 +156,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -313,3 +330,11 @@ export async function POST(req) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_student_program_applications' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

@@ -29,7 +29,6 @@ import {
 
 const KIND_TABS = [
   { id: 'internship', label: 'Internship', icon: GraduationCap },
-  { id: 'jobs', label: 'Alumni Jobs', icon: Briefcase },
   { id: 'drive', label: 'Drive', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderDot },
 ];
@@ -40,7 +39,7 @@ function EmployerAssessmentUploadsContent() {
 
   const kindFromUrl = searchParams.get('kind');
   const [kindTab, setKindTab] = useState(() =>
-    KIND_TABS.some((t) => t.id === kindFromUrl) ? kindFromUrl : 'drive',
+    KIND_TABS.some((t) => t.id === kindFromUrl) ? kindFromUrl : 'internship',
   );
   const [campusesLoading, setCampusesLoading] = useState(true);
   const [approvedCampuses, setApprovedCampuses] = useState([]);
@@ -472,6 +471,21 @@ function EmployerAssessmentUploadsContent() {
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
+        <p className="text-sm text-secondary" style={{ margin: '0 0 1rem' }}>
+          {selectedTargetId ? (
+            <>
+              Hiring results for the selection below:{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>
+                {isSubmitted ? 'Submitted — edits locked' : 'Open for edits'}
+              </strong>
+            </>
+          ) : (
+            <>
+              Choose campus and {kindTab === 'drive' ? 'drive' : 'job / posting'} below. Results stay editable until you
+              click <strong>Submit results</strong>.
+            </>
+          )}
+        </p>
         <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" htmlFor="assessment-upload-campus">
@@ -520,13 +534,6 @@ function EmployerAssessmentUploadsContent() {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="form-group" style={{ marginBottom: 0, alignSelf: 'end' }}>
-            <span className="text-sm text-secondary">
-              Status:{' '}
-              <strong style={{ textTransform: 'capitalize' }}>{submissionStatus}</strong>
-              {isSubmitted ? ' — edits locked' : ''}
-            </span>
           </div>
         </div>
       </div>
@@ -607,9 +614,16 @@ function EmployerAssessmentUploadsContent() {
         >
           <strong style={{ color: 'var(--text-primary)' }}>Drive / job selector vs CSV columns:</strong> Use the{' '}
           {kindTab === 'drive' ? 'Drive' : 'Job'} dropdown above to export a template — it pre-fills{' '}
-          <code>{kindTab === 'drive' ? 'placement_drive_id' : 'job_id'}</code> on every row. If those columns in your
-          file differ from the selected target, upload will fail with a row-level error. Keep them the same or leave the
-          column as exported.
+          <code>{kindTab === 'drive' ? 'placement_drive_id' : 'job_id'}</code> on every row.
+          {kindTab !== 'drive' ? (
+            <>
+              {' '}
+              Exports also pre-fill <code>placement_drive_id</code> with the same posting UUID so the placement ID
+              column is never blank.
+            </>
+          ) : null}{' '}
+          If those columns in your file differ from the selected target, upload will fail with a row-level error. Keep
+          them the same or leave the column as exported.
         </div>
         {kindTab === 'drive' && !selectedTargetId && !targetsLoading && targets.length > 0 ? (
           <p className="text-sm" style={{ marginBottom: '1rem', color: 'var(--warning-700, #b45309)' }}>
@@ -619,8 +633,15 @@ function EmployerAssessmentUploadsContent() {
         <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
           Select campus and {kindTab === 'drive' ? 'drive' : 'job'} above first. The exported CSV is pre-filled for the
           current academic year (not a blank template): every row includes{' '}
-          <code>{kindTab === 'drive' ? 'placement_drive_id' : 'job_id'}</code>, student identifiers, and empty hiring
-          columns for you to complete. Students who do not meet this {kindTab === 'drive' ? 'drive' : 'posting'}&apos;s
+          <code>placement_drive_id</code>
+          {kindTab !== 'drive' ? (
+            <>
+              {' '}
+              and <code>job_id</code> (same posting UUID)
+            </>
+          ) : null}
+          , student identifiers, and empty hiring columns for you to complete. Students who do not meet this{' '}
+          {kindTab === 'drive' ? 'drive' : 'posting'}&apos;s
           eligibility rules (CGPA, backlogs, branch, batch, CV, placement lock, and internship FCFS lock when applicable)
           are omitted. Allowed <code>hiring_result</code> values: Shortlist, Reject, Select, Decline, Withdraw (blank =
           no decision).

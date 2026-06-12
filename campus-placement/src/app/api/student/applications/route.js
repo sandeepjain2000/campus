@@ -11,15 +11,17 @@ import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
 import { getOrCreateStudentProfileId, isStudentProfileArchived } from '@/lib/studentServer';
 import { assertActiveEmployerTieUp } from '@/lib/employerTieUp';
 import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
-import { syncPlacementDriveRegisteredCount } from '@/lib/employerApplicationCounts';
+import { syncPlacementDriveRegisteredCount, syncPlacementDriveSelectedCount } from '@/lib/employerApplicationCounts';
+import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -75,7 +77,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -191,19 +193,39 @@ export async function POST(req) {
         return NextResponse.json({ error: WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE }, { status: 409 });
       }
 
+      const assessmentRes = await query(
+        `SELECT ear.id, ear.hiring_result
+         FROM employer_assessment_rows ear
+         JOIN employer_assessment_uploads eau ON eau.id = ear.upload_id
+         WHERE ear.student_profile_id = $1::uuid
+           AND eau.drive_id = $2::uuid
+           AND COALESCE(eau.is_deleted, false) = false
+         ORDER BY eau.created_at DESC, ear.created_at DESC
+         LIMIT 1`,
+        [studentId, drive_id]
+      );
+      const assessmentRow = assessmentRes.rows[0];
+      let initialStatus = 'applied';
+      if (assessmentRow?.hiring_result) {
+        const mapped = applicationStatusFromHiringResult(assessmentRow.hiring_result);
+        if (mapped) {
+          initialStatus = mapped;
+        }
+      }
+
       const ins = await query(
         `
         INSERT INTO applications (student_id, drive_id, job_id, status, notes)
-        VALUES ($1, $2, $3, 'applied', $4)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (student_id, drive_id)
         DO UPDATE SET
-          status = 'applied',
+          status = $4,
           notes = COALESCE(EXCLUDED.notes, applications.notes),
           updated_at = NOW()
         WHERE applications.status <> 'withdrawn'
         RETURNING id
       `,
-        [studentId, drive_id, null, notes],
+        [studentId, drive_id, null, initialStatus, notes],
       );
 
       if (ins.rowCount === 0) {
@@ -220,6 +242,18 @@ export async function POST(req) {
         return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
       }
 
+      if (assessmentRow && ins.rows[0]?.id) {
+        await query(
+          `UPDATE employer_assessment_rows
+           SET application_id = $1::uuid, is_unregistered_student = false
+           WHERE id = $2::uuid`,
+          [ins.rows[0].id, assessmentRow.id]
+        );
+        if (initialStatus === 'selected') {
+          await syncPlacementDriveSelectedCount(drive_id);
+        }
+      }
+
       await syncPlacementDriveRegisteredCount(drive_id);
 
       return NextResponse.json({ success: true, message: 'Application submitted successfully' });
@@ -232,3 +266,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_student_applications' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Briefcase, FolderDot, GraduationCap, Target } from 'lucide-react';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { useToast } from '@/components/ToastProvider';
 import { HIRING_RESULT_OPTIONS } from '@/lib/hiringResult';
 import {
@@ -19,16 +21,19 @@ import {
   pickDefaultAssessmentTargetId,
 } from '@/lib/employerAssessmentTargets';
 
-const KIND_TABS = [
-  { id: 'internship', label: 'Internship', icon: GraduationCap },
-  { id: 'jobs', label: 'Alumni Jobs', icon: Briefcase },
-  { id: 'drive', label: 'Drive', icon: Target },
-  { id: 'projects', label: 'Projects', icon: FolderDot },
-];
-
 export default function EmployerAssessmentUpdateOnlinePage() {
   const { addToast } = useToast();
-  const [kindTab, setKindTab] = useState('jobs');
+  const pathname = usePathname();
+  const isAlumni = pathname.includes('/alumni');
+  const kindTabs = isAlumni
+    ? [{ id: 'jobs', label: 'Alumni Jobs', icon: Briefcase }]
+    : [
+        { id: 'internship', label: 'Internship', icon: GraduationCap },
+        { id: 'drive', label: 'Drive', icon: Target },
+        { id: 'projects', label: 'Projects', icon: FolderDot },
+      ];
+
+  const [kindTab, setKindTab] = useState(isAlumni ? 'jobs' : 'internship');
   const [campusesLoading, setCampusesLoading] = useState(true);
   const [approvedCampuses, setApprovedCampuses] = useState([]);
   const [selectedTenantId, setSelectedTenantId] = useState('');
@@ -39,6 +44,7 @@ export default function EmployerAssessmentUpdateOnlinePage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submittingResults, setSubmittingResults] = useState(false);
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [rows, setRows] = useState([]);
   const [submissionStatus, setSubmissionStatus] = useState('draft');
   const [dirtyIds, setDirtyIds] = useState(() => new Set());
@@ -214,12 +220,15 @@ export default function EmployerAssessmentUpdateOnlinePage() {
     }
   };
 
-  const submitResults = async () => {
+  const requestSubmitResults = () => {
     if (!selectedTenantId || !selectedTargetId) {
       addToast('Select campus and target before submitting.', 'warning');
       return;
     }
-    if (!window.confirm('Submit results? You will not be able to edit after submission.')) return;
+    setSubmitConfirmOpen(true);
+  };
+
+  const submitResults = async () => {
     setSubmittingResults(true);
     try {
       const res = await fetch('/api/employer/assessments/submit', {
@@ -235,6 +244,7 @@ export default function EmployerAssessmentUpdateOnlinePage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Submit failed');
       setSubmissionStatus('submitted');
+      setSubmitConfirmOpen(false);
       addToast('Results submitted.', 'success');
     } catch (e) {
       addToast(e.message || 'Submit failed', 'error');
@@ -262,13 +272,33 @@ export default function EmployerAssessmentUpdateOnlinePage() {
           <button type="button" className="btn btn-secondary" disabled={saving || dirtyCount === 0 || isSubmitted} onClick={() => void saveChanges()}>
             {saving ? 'Saving…' : dirtyCount > 0 ? `Save changes (${dirtyCount})` : 'Save changes'}
           </button>
-          <button type="button" className="btn btn-primary" disabled={submittingResults || isSubmitted || !selectedTargetId} onClick={() => void submitResults()}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={submittingResults || isSubmitted || !selectedTargetId}
+            onClick={requestSubmitResults}
+          >
             {isSubmitted ? 'Submitted' : submittingResults ? 'Submitting…' : 'Submit results'}
           </button>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
+        <p className="text-sm text-secondary" style={{ margin: '0 0 1rem' }}>
+          {selectedTargetId ? (
+            <>
+              Hiring results for the selection below:{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>
+                {isSubmitted ? 'Submitted — edits locked' : 'Open for edits'}
+              </strong>
+            </>
+          ) : (
+            <>
+              Choose campus and {kindTab === 'drive' ? 'drive' : 'job / posting'} below. Results stay editable until you
+              click <strong>Submit results</strong>.
+            </>
+          )}
+        </p>
         <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" htmlFor="online-update-campus">
@@ -312,16 +342,11 @@ export default function EmployerAssessmentUpdateOnlinePage() {
               ))}
             </select>
           </div>
-          <div className="form-group" style={{ marginBottom: 0, alignSelf: 'end' }}>
-            <span className="text-sm text-secondary">
-              Status: <strong style={{ textTransform: 'capitalize' }}>{submissionStatus}</strong>
-            </span>
-          </div>
         </div>
       </div>
 
       <div role="tablist" aria-label="Opportunity type" style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {KIND_TABS.map((t) => {
+        {kindTabs.map((t) => {
           const Icon = t.icon;
           const active = kindTab === t.id;
           const n = targetCounts[t.id] ?? 0;
@@ -458,6 +483,24 @@ export default function EmployerAssessmentUpdateOnlinePage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={submitConfirmOpen}
+        title="Submit assessment results?"
+        message={
+          dirtyCount > 0
+            ? `You have ${dirtyCount} unsaved change${dirtyCount === 1 ? '' : 's'}. Save first if you want them included.\n\nAfter Submit, further edits will not be permitted for this campus and ${kindTab === 'drive' ? 'drive' : 'posting'}. Contact your campus partner if you need to reopen.`
+            : 'After Submit, further edits will not be permitted for this campus and posting. Contact your campus partner if you need to reopen.'
+        }
+        confirmLabel="Submit results"
+        cancelLabel="Cancel"
+        confirmTone="primary"
+        loading={submittingResults}
+        onCancel={() => {
+          if (!submittingResults) setSubmitConfirmOpen(false);
+        }}
+        onConfirm={() => void submitResults()}
+      />
     </div>
   );
 }

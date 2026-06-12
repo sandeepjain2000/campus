@@ -14,7 +14,6 @@ import { toCsvIsoDate } from '@/lib/csvExport';
 
 const KIND_TABS = [
   { id: 'internship', label: 'Internship', icon: GraduationCap },
-  { id: 'jobs', label: 'Alumni Jobs', icon: Briefcase },
   { id: 'drive', label: 'Drive', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderDot },
 ];
@@ -24,7 +23,7 @@ export default function EmployerHiringAssessmentPage() {
   const [campusesLoading, setCampusesLoading] = useState(true);
   const [approvedCampuses, setApprovedCampuses] = useState([]);
   const [selectedTenantId, setSelectedTenantId] = useState('');
-  const [kindTab, setKindTab] = useState('jobs');
+  const [kindTab, setKindTab] = useState('internship');
   const [loading, setLoading] = useState(false);
   const [payload, setPayload] = useState(null);
 

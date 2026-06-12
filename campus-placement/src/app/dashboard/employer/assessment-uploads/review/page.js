@@ -8,7 +8,6 @@ import { useToast } from '@/components/ToastProvider';
 
 const KIND_TABS = [
   { id: 'internship', label: 'Internship', icon: GraduationCap },
-  { id: 'jobs', label: 'Alumni Jobs', icon: Briefcase },
   { id: 'drive', label: 'Drive', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderDot },
 ];
@@ -17,11 +16,11 @@ function ReviewListContent() {
   const { addToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const kind = searchParams.get('kind') || 'jobs';
+  const kind = searchParams.get('kind') || 'internship';
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
 
-  const activeKind = KIND_TABS.some((t) => t.id === kind) ? kind : 'jobs';
+  const activeKind = KIND_TABS.some((t) => t.id === kind) ? kind : 'internship';
 
   const load = useCallback(async () => {
     setLoading(true);

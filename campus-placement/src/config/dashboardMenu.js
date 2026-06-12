@@ -191,18 +191,9 @@ export const menuConfig = {
         id: 'employer-programs',
         title: '🎓 Student Opportunities',
         items: [
-          { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/employer/internships', icon: GraduationCap },
+          { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Projects', href: '/dashboard/employer/projects', icon: FolderDot },
-        ],
-      },
-      {
-        id: 'employer-alumni',
-        title: '🎓 Alumni',
-        items: [
-          { label: 'Alumni Job Postings', href: EMPLOYER_ALUMNI_JOBS_PATH, icon: Briefcase },
-          { label: 'Alumni Applications', href: EMPLOYER_ALUMNI_APPLICATIONS_PATH, icon: ClipboardList },
-          { label: 'Alumni Interview Scheduling', href: EMPLOYER_ALUMNI_INTERVIEWS_PATH, icon: Calendar },
         ],
       },
       {
@@ -247,6 +238,13 @@ export const menuConfig = {
         items: [
           { label: 'Campus posting limits', href: '/dashboard/employer/settings', icon: Building2 },
           { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
+        ],
+      },
+      {
+        id: 'employer-alumni',
+        title: '🎓 Alumni',
+        items: [
+          { label: 'Alumni Job Assessment Online', href: '/dashboard/employer/alumni/assessment-online', icon: Table2 },
         ],
       },
     ],
