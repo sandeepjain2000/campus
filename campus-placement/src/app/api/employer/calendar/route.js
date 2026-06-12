@@ -10,9 +10,10 @@ import {
 } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
-export async function GET(request) {
+async function __platform_GET(request) {
   let session = null;
   let employerId = null;
 
@@ -95,3 +96,9 @@ export async function GET(request) {
     return NextResponse.json(errBody, { status });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_calendar' });
+export const GET = __platformApiHandlers.GET;

@@ -8,6 +8,7 @@ import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { AND_EAU_NOT_DELETED, AND_SP_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -32,7 +33,7 @@ async function assertOwnsUpload(employerId, uploadId) {
 }
 
 /** GET — upload metadata and accepted rows (for view/edit after CSV). */
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -87,7 +88,7 @@ function trimText(v, maxLen) {
 }
 
 /** PATCH — batch-update hiring_result / remarks / candidate_name for rows in this upload. */
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -205,3 +206,11 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to save assessment rows' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_assessments_id' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

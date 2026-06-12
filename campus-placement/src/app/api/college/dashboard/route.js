@@ -6,12 +6,13 @@ import { AND_DRIVE_PD_NOT_DELETED, AND_JP_NOT_DELETED, AND_OFFER_NOT_DELETED } f
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -109,3 +110,9 @@ export async function GET(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_dashboard' });
+export const GET = __platformApiHandlers.GET;

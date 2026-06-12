@@ -12,29 +12,20 @@ import {
   filterStudentsByAssessmentPostingEligibility,
   loadAssessmentPostingOpportunity,
 } from '@/lib/assessmentExportEligibility';
+import { loadAppliedStudentProfileIds } from '@/lib/assessmentApplicationStatus';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
 
-function assessmentLookupKey({ studentProfileId, driveId, jobId, tenantId }) {
-  return `${studentProfileId}|${driveId || ''}|${jobId || ''}|${tenantId || ''}`;
-}
-
-function buildAssessmentIndex(employerId) {
-  return fetchAssessmentRowsForView({ employerId }).then((rows) => {
-    const rep = pickRepresentativeAssessmentRows(rows);
-    const map = new Map();
-    for (const r of rep) {
-      map.set(
-        assessmentLookupKey({
-          studentProfileId: r.student_profile_id,
-          driveId: r.upload_drive_id,
-          jobId: r.upload_job_id,
-          tenantId: r.tenant_id,
-        }),
-        r,
-      );
-    }
-    return map;
-  });
+async function buildAssessmentIndex(employerId, { tenantId, driveId, jobId }) {
+  const rows = await fetchAssessmentRowsForView({ employerId, tenantId });
+  const rep = pickRepresentativeAssessmentRows(rows);
+  const map = new Map();
+  for (const r of rep) {
+    const matchesDrive = driveId && r.upload_drive_id === driveId;
+    const matchesJob = jobId && r.upload_job_id === jobId;
+    if (!matchesDrive && !matchesJob) continue;
+    map.set(r.student_profile_id, r);
+  }
+  return map;
 }
 
 /**
@@ -85,20 +76,24 @@ export async function buildAssessmentExportCsv(employerId, kind, context) {
       { jobId: defaultJobId || null },
     );
 
-  const assessmentIndex = await buildAssessmentIndex(employerId);
+  const assessmentIndex = await buildAssessmentIndex(employerId, {
+    tenantId,
+    driveId: defaultDriveId || null,
+    jobId: defaultJobId || null,
+  });
+  const profileIds = students.map((s) => s.student_profile_id).filter(Boolean);
+  const appliedProfileIds = await loadAppliedStudentProfileIds(profileIds, {
+    driveId: defaultDriveId || null,
+    jobId: defaultJobId || null,
+  });
 
   const csvRows = students.map((row) => {
-    const placementDriveId = kind === 'drive' ? defaultDriveId : '';
+    const placementDriveId = kind === 'drive' ? defaultDriveId : defaultJobId;
     const jobId = kind !== 'drive' ? defaultJobId : '';
-    const assessment = assessmentIndex.get(
-      assessmentLookupKey({
-        studentProfileId: row.student_profile_id,
-        driveId: placementDriveId || null,
-        jobId: jobId || null,
-        tenantId: row.tenant_id,
-      }),
-    );
-    const cells = defaultHiringResultCells(assessment);
+    const assessment = assessmentIndex.get(row.student_profile_id);
+    const cells = defaultHiringResultCells(assessment, {
+      hasApplied: appliedProfileIds.has(row.student_profile_id),
+    });
     return {
       system_id: formatStudentSystemId(row.short_code, row.roll_number),
       college_roll_no: row.roll_number,

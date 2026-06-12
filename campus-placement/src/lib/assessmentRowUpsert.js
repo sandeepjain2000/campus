@@ -1,5 +1,6 @@
 import { AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
 import { normalizeHiringResult } from '@/lib/hiringResult';
+import { syncApplicationStatusFromHiringResult } from '@/lib/syncApplicationFromHiringResult';
 
 /**
  * Upsert assessment row by student within employer + campus + drive/job context.
@@ -11,9 +12,11 @@ export async function findAssessmentRowInContext(client, {
   targetDriveId = null,
   targetJobId = null,
   studentProfileId,
-}) {
+}, tracer = null) {
+  const t = tracer || { log: () => {} };
+  t.log('findAssessmentRowInContext', 'query_start', { employerId, targetDriveId, targetJobId, studentProfileId });
   const res = await client.query(
-    `SELECT ear.id, ear.upload_id, ear.hiring_result, ear.remarks, ear.candidate_name
+    `SELECT ear.id, ear.upload_id, ear.application_id, ear.hiring_result, ear.remarks, ear.candidate_name
      FROM employer_assessment_rows ear
      JOIN employer_assessment_uploads eau ON eau.id = ear.upload_id
      WHERE eau.employer_id = $1::uuid
@@ -28,7 +31,9 @@ export async function findAssessmentRowInContext(client, {
      LIMIT 1`,
     [employerId, tenantId, targetDriveId, targetJobId, studentProfileId],
   );
-  return res.rows[0] || null;
+  const row = res.rows[0] || null;
+  t.log('findAssessmentRowInContext', 'query_result', { found: !!row, id: row?.id, hiring_result: row?.hiring_result });
+  return row;
 }
 
 export async function upsertAssessmentRowInContext(client, {
@@ -44,17 +49,21 @@ export async function upsertAssessmentRowInContext(client, {
   remarks = null,
   candidateName = null,
   isUnregisteredStudent = true,
-}) {
+}, tracer = null) {
+  const t = tracer || { log: () => {} };
   const normalizedResult = normalizeHiringResult(hiringResult);
+  t.log('upsertAssessmentRowInContext', 'normalise_hiring_result', { raw: hiringResult, normalised: normalizedResult });
+
   const existing = await findAssessmentRowInContext(client, {
     employerId,
     tenantId,
     targetDriveId,
     targetJobId,
     studentProfileId,
-  });
+  }, t);
 
   if (existing) {
+    t.log('upsertAssessmentRowInContext', 'updating_existing_row', { id: existing.id, newResult: normalizedResult });
     await client.query(
       `UPDATE employer_assessment_rows
        SET hiring_result = $1,
@@ -74,9 +83,20 @@ export async function upsertAssessmentRowInContext(client, {
         existing.id,
       ],
     );
+    const resolvedApplicationId = applicationId || existing.application_id;
+    t.log('upsertAssessmentRowInContext', 'calling_sync', { resolvedApplicationId, normalizedResult });
+    await syncApplicationStatusFromHiringResult(client, {
+      employerId,
+      applicationId: resolvedApplicationId,
+      hiringResult: normalizedResult,
+      targetDriveId,
+      targetJobId,
+    });
+    t.log('upsertAssessmentRowInContext', 'update_complete');
     return { uploadId: existing.upload_id, updated: true };
   }
 
+  t.log('upsertAssessmentRowInContext', 'inserting_new_row', { studentProfileId, applicationId, normalizedResult });
   await client.query(
     `INSERT INTO employer_assessment_rows
        (upload_id, student_profile_id, application_id, roll_number, is_unregistered_student,
@@ -101,5 +121,14 @@ export async function upsertAssessmentRowInContext(client, {
     ],
   );
 
+  t.log('upsertAssessmentRowInContext', 'calling_sync', { applicationId, normalizedResult });
+  await syncApplicationStatusFromHiringResult(client, {
+    employerId,
+    applicationId,
+    hiringResult: normalizedResult,
+    targetDriveId,
+    targetJobId,
+  });
+  t.log('upsertAssessmentRowInContext', 'insert_complete');
   return { uploadId, updated: false };
 }

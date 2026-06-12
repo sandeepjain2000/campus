@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import {
@@ -13,7 +14,7 @@ import { jsonPublicErrorLogged } from '@/lib/publicApiError';
  * POST { question, screenTag?, roleHint?, docBasePath? }
  * Full-corpus RAG — same accuracy model as pointing Cursor at docs/help.
  */
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
     const question = String(body.question || body.q || '').trim();
@@ -67,6 +68,12 @@ export async function POST(request) {
       strategy: 'full_corpus_rag',
     });
   } catch (e) {
-    return jsonPublicErrorLogged(e, 'POST /api/help/ask', 'Failed to answer help question', 500);
+    return await jsonPublicErrorLogged(e, 'POST /api/help/ask', 'Failed to answer help question', 500, { request });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_help_ask' });
+export const POST = __platformApiHandlers.POST;

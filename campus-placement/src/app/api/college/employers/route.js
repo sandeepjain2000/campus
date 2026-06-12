@@ -7,6 +7,7 @@ import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 import { displayEmployerTieUpStatus } from '@/lib/employerTieUp';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -24,7 +25,7 @@ async function resolveCollegeTenantId(session) {
 }
 
 /** GET — employers tied to this college (from employer_approvals + profile + stats). */
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -116,3 +117,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load employers' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_employers' });
+export const GET = __platformApiHandlers.GET;

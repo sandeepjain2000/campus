@@ -19,6 +19,7 @@ import { AND_APP_NOT_DELETED, AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -37,7 +38,7 @@ function trimText(v, maxLen) {
 /**
  * POST — optional manual row: same rules as CSV (student must exist on upload tenant; drive/job from upload).
  */
-export async function POST(request, { params }) {
+async function __platform_POST(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -204,3 +205,9 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: e.message || 'Failed to add row' }, { status: code });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_assessments_id_rows' });
+export const POST = __platformApiHandlers.POST;

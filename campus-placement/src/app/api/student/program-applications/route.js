@@ -25,6 +25,7 @@ import {
 import { ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
+import { createServerDebugTracer } from '@/lib/serverDebugTracer';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -35,8 +36,10 @@ const PROGRAM_TYPES = new Set([
   ...CAMPUS_PROGRAM_JOB_TYPES,
 ]);
 
-async function persistProgramApplication(studentId, jobId, notes) {
+async function persistProgramApplication(studentId, jobId, notes, tracer = null) {
+  const t = tracer || { log: () => {} };
   const hasDeletedCol = await hasColumn('program_applications', 'is_deleted');
+  t.log('persistProgramApplication', 'check_prior_application', { studentId, jobId });
   const prior = await query(
     `SELECT id, status${hasDeletedCol ? ', COALESCE(is_deleted, false) AS is_deleted' : ''}
      FROM program_applications
@@ -44,12 +47,17 @@ async function persistProgramApplication(studentId, jobId, notes) {
      LIMIT 1`,
     [studentId, jobId],
   );
+  t.log('persistProgramApplication', 'prior_application_result', {
+    found: prior.rows.length > 0,
+    existing: prior.rows[0] ? { id: prior.rows[0].id, status: prior.rows[0].status } : null,
+  });
 
+  t.log('persistProgramApplication', 'query_assessment_rows', { studentId, jobId });
   const assessmentRes = await query(
     `SELECT ear.id, ear.hiring_result
      FROM employer_assessment_rows ear
      JOIN employer_assessment_uploads eau ON eau.id = ear.upload_id
-     WHERE ear.student_profile_id = (SELECT id FROM student_profiles WHERE user_id = $1::uuid LIMIT 1)
+     WHERE ear.student_profile_id = $1::uuid
        AND eau.job_id = $2::uuid
        AND COALESCE(eau.is_deleted, false) = false
      ORDER BY eau.created_at DESC, ear.created_at DESC
@@ -57,20 +65,30 @@ async function persistProgramApplication(studentId, jobId, notes) {
     [studentId, jobId]
   );
   const assessmentRow = assessmentRes.rows[0];
+  t.log('persistProgramApplication', 'assessment_rows_result', {
+    found: !!assessmentRow,
+    hiring_result: assessmentRow?.hiring_result ?? null,
+  });
+
   let initialStatus = 'applied';
   if (assessmentRow?.hiring_result) {
     const mapped = applicationStatusFromHiringResult(assessmentRow.hiring_result);
-    if (mapped) {
-      initialStatus = mapped;
-    }
+    t.log('persistProgramApplication', 'hiring_result_mapped', {
+      raw: assessmentRow.hiring_result,
+      mapped,
+    });
+    if (mapped) initialStatus = mapped;
   }
+  t.log('persistProgramApplication', 'computed_initial_status', { initialStatus });
 
   if (prior.rows.length) {
     const existing = prior.rows[0];
     if (isWithdrawnApplicationStatus(existing.status)) {
+      t.log('persistProgramApplication', 'blocked_withdrawn', { existingStatus: existing.status });
       return { ok: false, status: 409, error: WITHDRAWAL_IS_FINAL_STUDENT_MESSAGE };
     }
     if (hasDeletedCol && existing.is_deleted) {
+      t.log('persistProgramApplication', 'reviving_deleted_application', { id: existing.id, newStatus: initialStatus });
       const revived = await query(
         `UPDATE program_applications
          SET status = $3,
@@ -83,19 +101,53 @@ async function persistProgramApplication(studentId, jobId, notes) {
         [studentId, jobId, initialStatus, notes || null],
       );
       if (!revived.rowCount) {
+        t.log('persistProgramApplication', 'revive_failed');
         return { ok: false, status: 500, error: 'Could not submit application' };
       }
+      const revivedId = revived.rows[0].id;
+      t.log('persistProgramApplication', 'revive_success', { id: revivedId, status: revived.rows[0].status });
+      if (assessmentRow) {
+        t.log('persistProgramApplication', 'linking_assessment_on_revive', { assessmentId: assessmentRow.id, applicationId: revivedId });
+        await query(
+          `UPDATE employer_assessment_rows
+           SET application_id = $1::uuid, is_unregistered_student = false
+           WHERE id = $2::uuid`,
+          [revivedId, assessmentRow.id]
+        );
+      }
       return { ok: true, row: revived.rows[0] };
+    }
+    t.log('persistProgramApplication', 'already_applied', { id: existing.id, status: existing.status });
+    if (assessmentRow) {
+      t.log('persistProgramApplication', 'linking_assessment_on_already_applied', { assessmentId: assessmentRow.id, applicationId: existing.id });
+      await query(
+        `UPDATE employer_assessment_rows
+         SET application_id = $1::uuid, is_unregistered_student = false
+         WHERE id = $2::uuid`,
+        [existing.id, assessmentRow.id]
+      );
     }
     return { ok: true, row: { id: existing.id, status: existing.status } };
   }
 
+  t.log('persistProgramApplication', 'inserting_application', { studentId, jobId, initialStatus });
   const inserted = await query(
     `INSERT INTO program_applications (student_id, job_id, status, notes)
      VALUES ($1::uuid, $2::uuid, $3, $4)
      RETURNING id, status`,
     [studentId, jobId, initialStatus, notes || null],
   );
+  const insertedId = inserted.rows[0]?.id;
+  t.log('persistProgramApplication', 'insert_success', { id: insertedId, status: inserted.rows[0]?.status });
+  if (assessmentRow && insertedId) {
+    t.log('persistProgramApplication', 'linking_assessment_on_insert', { assessmentId: assessmentRow.id, applicationId: insertedId });
+    await query(
+      `UPDATE employer_assessment_rows
+       SET application_id = $1::uuid, is_unregistered_student = false
+       WHERE id = $2::uuid`,
+      [insertedId, assessmentRow.id]
+    );
+  }
   return { ok: true, row: inserted.rows[0] };
 }
 
@@ -157,14 +209,18 @@ async function __platform_GET() {
 }
 
 async function __platform_POST(req) {
+  const tracer = createServerDebugTracer(req, 'student_program_application');
+  tracer.log('__platform_POST', 'request_received');
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id || session.user.sub;
+    userId = session.user.id || session.user.sub;
     const sessionTenant = session.user.tenantId || session.user.tenant_id;
+    tracer.log('__platform_POST', 'session_resolved', { userId, role: session.user.role, sessionTenant });
     const tenantIds = await resolveStudentPlacementTenantIds(userId, sessionTenant);
     if (!userId || !tenantIds.length) {
       return NextResponse.json({ error: 'Missing student context' }, { status: 400 });
@@ -184,8 +240,11 @@ async function __platform_POST(req) {
 
     const studentId = await getOrCreateStudentProfileId(userId);
     if (!studentId) {
+      tracer.log('__platform_POST', 'error_no_student_profile');
+      await tracer.flush(userId);
       return NextResponse.json({ error: 'Student profile not available' }, { status: 400 });
     }
+    tracer.log('__platform_POST', 'student_profile_resolved', { studentId });
 
     const isAlumni = await resolveAlumniStudentFlag(userId, session.user);
     if (isAlumni) {
@@ -292,10 +351,13 @@ async function __platform_POST(req) {
       return NextResponse.json({ error: blockReason }, { status: 400 });
     }
 
-    const saved = await persistProgramApplication(studentId, jobId, notes);
+    const saved = await persistProgramApplication(studentId, jobId, notes, tracer);
     if (!saved.ok) {
+      tracer.log('__platform_POST', 'persist_failed', { error: saved.error, status: saved.status });
+      await tracer.flush(userId);
       return NextResponse.json({ error: saved.error }, { status: saved.status });
     }
+    tracer.log('__platform_POST', 'persist_success', { id: saved.row.id, status: saved.row.status });
 
     try {
       await query(
@@ -312,12 +374,16 @@ async function __platform_POST(req) {
       console.error('Failed to create notification', err);
     }
 
+    tracer.log('__platform_POST', 'response_sent', { id: saved.row.id, status: saved.row.status });
+    await tracer.flush(userId);
     return NextResponse.json({
       success: true,
       id: saved.row.id,
       status: saved.row.status,
     });
   } catch (e) {
+    tracer.log('__platform_POST', 'unhandled_exception', { message: e?.message });
+    await tracer.flush(userId);
     console.error('POST /api/student/program-applications', e);
     const detail = String(e?.message || '').trim();
     const hint =

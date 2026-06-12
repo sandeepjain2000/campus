@@ -4,9 +4,9 @@
  */
 
 export const DEVELOPER_PAGE_META = {
-  title: 'Developer',
-  notesTitle: 'Developer notes',
-  subtitle: 'Guided Runner, partial automated testing, demo data, and cleanup — for when you return after a break.',
+  title: 'Developer Notes',
+  notesTitle: 'Guided Runner · Demo APIs · Cleanup',
+  subtitle: 'Guided Runner, partial automated testing, demo APIs, and cleanup — for when you return after a break.',
   repoPath: 'campus-placement',
   terminalHelp: 'npm run test:guided:help',
 };
@@ -22,8 +22,10 @@ export const DEVELOPER_PAGE_TOC = [
   { id: 'screen-tag', label: 'Screen tag states', hint: 'Armed, idle, running' },
   { id: 'marker', label: 'Session marker', hint: 'GT- titles link publish → apply' },
   { id: 'logins', label: 'Demo logins', hint: 'Employer, college, student' },
+  { id: 'demo-apis', label: 'Demo APIs & cleanup', hint: 'Seed data, purge, tie-ups' },
   { id: 'cleanup', label: 'Clean up & restore', hint: 'Full wipe + restore tie-ups' },
   { id: 'legacy', label: 'Legacy commands', hint: 'Sync routes, focus areas' },
+  { id: 'database-schema', label: 'Database schema', hint: 'Tables, FKs, domain map', href: '/developer/database-schema' },
   { id: 'related', label: 'Related files', hint: 'Markdown & SQL in repo' },
 ];
 
@@ -94,7 +96,7 @@ export const GUIDED_PLAYBOOKS = [
   },
   {
     goal: 'Restore all demo tie-ups (IITM + NITT + BITS × 5 demo employers)',
-    command: 'Landing → Demo APIs → Campus tie-ups → Restore all demo tie-ups',
+    command: 'Developer Notes → Demo APIs → Campus tie-ups → Restore all demo tie-ups',
     focus: 'SETUP after cleanup',
   },
   {
@@ -109,7 +111,7 @@ export const RUNNER_PANEL_STEPS = [
   'One blue screen-tag click per step when it pulses (Alt+Enter works). Read Observe in the terminal, then click.',
   'While automation runs, the tag fades and is not clickable — wait for the next pulse.',
   'See Screen tag states below for armed / idle / running.',
-  'Landing banner: Developer · Data links beside the YOPmail line.',
+  'Landing banner: Developer Notes link beside the YOPmail line.',
   'Disable globally: NEXT_PUBLIC_HIDE_GUIDED_RUNNER=true.',
 ];
 
@@ -180,8 +182,8 @@ export const RUNNER_CHANGE_ALERTS = [
     title: 'Cleanup & demo sandbox',
     items: [
       'Full reset: npm run db:clear-placement — removes all jobs, internships, drives (hard delete + cascades). Documented on /developer#cleanup.',
-      'After wipe: Demo APIs → Restore all demo tie-ups (IITM / NITT / BITS × 5 employers).',
-      'Landing panel: Demo APIs + Cleanup (purge) — no Demo Tools label.',
+      'After wipe: Developer Notes → Demo APIs → Restore all demo tie-ups (IITM / NITT / BITS × 5 employers).',
+      'Demo APIs and selective purge live on /developer#demo-apis (no separate landing panel).',
       'Test colleges: py -3 scripts/delete_test_college_tenants.py — keeps only seed campuses.',
       'Employer tie-up Revoke button disabled (visible but not clickable).',
     ],
@@ -226,15 +228,15 @@ export const CLEANUP_COMMANDS = [
   },
   {
     title: 'Soft-delete jobs & internships only (UI)',
-    command: 'Landing → Demo APIs → Jobs & internships → Delete all jobs & internships',
+    command: 'Developer Notes → Demo APIs → Jobs & internships → Delete all jobs & internships',
     alt: 'POST /api/demo/purge-all-jobs-internships',
     detail:
       'Marks job postings deleted in DB; may miss standalone drives. Prefer npm run db:clear-placement for a full reset.',
-    when: 'Quick partial cleanup from the landing panel.',
+    when: 'Quick partial cleanup from Developer Notes.',
   },
   {
     title: 'Selective purge (one entity at a time)',
-    command: 'Landing → Demo APIs → Cleanup (purge)',
+    command: 'Developer Notes → Demo APIs → Purge (soft delete)',
     alt: '/data-entry → Purge section',
     detail:
       'Soft-delete single sandbox rows: Data Tester API posts, GT-* titles, playbook Duration: N months. descriptions, seed ids d1000000-*.',
@@ -254,7 +256,7 @@ export const CLEANUP_COMMANDS = [
 export const RESTORE_AFTER_CLEANUP = [
   {
     title: 'Restore demo campus ↔ employer tie-ups',
-    command: 'Landing → Demo APIs → Campus tie-ups → Restore all demo tie-ups',
+    command: 'Developer Notes → Demo APIs → Campus tie-ups → Restore all demo tie-ups',
     alt: 'POST /api/demo/ensure-all-tieups  body: { "scope": "demo" }',
     detail: 'Approves IIT Madras, NITT Trichy, and BITS Pilani with TechCorp, GlobalSoft, Infosys, Innovent Labs, and FinEdge. Safe to re-run.',
   },
@@ -268,7 +270,7 @@ export const RESTORE_AFTER_CLEANUP = [
   },
   {
     title: 'Seed fresh postings (optional)',
-    command: 'Landing → Demo APIs → Create jobs / Create internships',
+    command: 'Developer Notes → Demo APIs → Create jobs / Create internships',
     alt: '/data-entry → Jobs & internships section',
     detail: 'Creates new published listings with campus visibility after tie-ups are restored.',
   },
@@ -284,8 +286,8 @@ export const RESTORE_AFTER_CLEANUP = [
 export const PURGE_NOTES = [
   CLEANUP_OVERVIEW,
   'Full wipe: npm run db:clear-placement (see Clean up & restore on /developer).',
-  'Then restore tie-ups: Demo APIs → Restore all demo tie-ups.',
-  'Selective purge: Demo APIs → Cleanup — GT-* and Data Tester rows one at a time.',
+  'Then restore tie-ups: Developer Notes → Demo APIs → Restore all demo tie-ups.',
+  'Selective purge: Developer Notes → Demo APIs → Purge — GT-* and Data Tester rows one at a time.',
 ];
 
 export const LEGACY_RUNNER_COMMANDS = [
@@ -302,7 +304,16 @@ export const LEGACY_RUNNER_COMMANDS = [
   { command: '..\\run-guided.ps1 (parent CampusPlacement folder)', use: 'Launcher if cwd is wrong' },
 ];
 
+export const DATABASE_SCHEMA_NOTES = {
+  href: '/developer/database-schema',
+  repoPath: 'docs/help/developer/database-schema.md',
+  overviewPath: 'docs/help/developer/database-relationships-overview.md',
+  regenerateCommand: 'npm run db:generate-docs',
+};
+
 export const RELATED_DOCS = [
+  { label: 'Database schema & relationships', path: 'docs/help/developer/database-schema.md', href: '/developer/database-schema' },
+  { label: 'Database relationships overview (source)', path: 'docs/help/developer/database-relationships-overview.md' },
   { label: 'Cleanup & restore (markdown)', path: 'docs/help/developer/purge.md' },
   { label: 'Clear placement SQL', path: 'db/scripts/clear_all_placement_data.sql' },
   { label: 'Help library for Cursor / Claude (markdown)', path: 'docs/help/', hint: 'Point AI tools here; sync: npm run qa:sync-help-knowledge' },

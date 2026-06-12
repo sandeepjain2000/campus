@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -28,7 +29,7 @@ async function loadReplies(feedbackId) {
   }
 }
 
-export async function GET(req, { params }) {
+async function __platform_GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     const userId = getSessionUserId(session);
@@ -85,7 +86,7 @@ export async function GET(req, { params }) {
   }
 }
 
-export async function PATCH(req, { params }) {
+async function __platform_PATCH(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     const userId = getSessionUserId(session);
@@ -121,7 +122,7 @@ export async function PATCH(req, { params }) {
   }
 }
 
-export async function POST(req, { params }) {
+async function __platform_POST(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     const authorUserId = getSessionUserId(session);
@@ -222,3 +223,13 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+}, { context: 'api_feedback_id' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;

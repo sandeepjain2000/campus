@@ -1,5 +1,4 @@
 import { isUuid } from '@/lib/tenantContext';
-import { INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED } from '@/lib/assessmentUploadDbError';
 import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED, AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export function sanitizeUuidInput(raw) {
@@ -20,6 +19,36 @@ export function targetGroupKey({ driveId, jobId, tenantId }) {
   if (driveId) return `drive:${driveId}`;
   if (jobId && tenantId) return `job:${jobId}:${tenantId}`;
   return '';
+}
+
+/**
+ * Map CSV placement_drive_id / job_id cells to a single upload target.
+ * Job/internship/project exports pre-fill both columns with the same posting UUID.
+ */
+export function resolveAssessmentTargetIds({ driveId = '', jobId = '' }) {
+  const d = sanitizeUuidInput(driveId);
+  const j = sanitizeUuidInput(jobId);
+
+  if (d && j) {
+    if (d === j) {
+      return { driveId: '', jobId: j, error: null };
+    }
+    return {
+      driveId: '',
+      jobId: '',
+      error:
+        'placement_drive_id and job_id both set but differ — re-export from Assessment uploads or leave one column empty',
+    };
+  }
+  if (!d && !j) {
+    return {
+      driveId: '',
+      jobId: '',
+      error:
+        'Missing placement_drive_id or job_id — select a drive/job above before export, or fill the matching column on this row',
+    };
+  }
+  return { driveId: d, jobId: j, error: null };
 }
 
 export async function resolveTarget(client, employerId, { driveId, jobId, tenantId }) {
@@ -49,9 +78,6 @@ export async function resolveTarget(client, employerId, { driveId, jobId, tenant
     [jobId, employerId],
   );
   if (!job.rows.length) return { error: 'Job not found' };
-  if (String(job.rows[0].job_type || '').toLowerCase() === 'internship') {
-    return { error: INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED };
-  }
 
   const approval = await client.query(
     `SELECT 1 FROM employer_approvals

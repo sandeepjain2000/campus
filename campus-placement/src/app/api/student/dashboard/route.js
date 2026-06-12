@@ -12,6 +12,7 @@ import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -50,7 +51,7 @@ function profileRowForCompletion(row) {
   };
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -243,3 +244,9 @@ export async function GET(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_dashboard' });
+export const GET = __platformApiHandlers.GET;

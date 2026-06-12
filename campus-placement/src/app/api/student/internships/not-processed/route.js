@@ -18,12 +18,13 @@ import { uuidInClause } from '@/lib/sqlPlaceholders';
 import { studentListedJobPostingSql } from '@/lib/studentOpportunityQuery';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 /**
  * Read-only list of internships the student could not apply to after FCFS internship selection.
  */
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -114,3 +115,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load not-processed internships' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_internships_not_processed' });
+export const GET = __platformApiHandlers.GET;

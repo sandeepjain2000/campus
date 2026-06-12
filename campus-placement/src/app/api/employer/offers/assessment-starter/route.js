@@ -14,6 +14,7 @@ import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -41,7 +42,7 @@ async function employerHasApprovedTenant(userId, tenantId) {
  * GET — offers-import CSV for all master-list students on approved campus(es).
  * Optional `tenantId` = one campus; omit = every approved campus (includes tenant_id per row).
  */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -111,3 +112,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to build starter CSV' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_offers_assessment_starter' });
+export const GET = __platformApiHandlers.GET;

@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import crypto from 'crypto';
@@ -11,7 +12,7 @@ function appOrigin() {
   return '';
 }
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const { email } = await req.json();
     if (!email) {
@@ -90,3 +91,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_auth_forgot_password' });
+export const POST = __platformApiHandlers.POST;

@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -5,7 +6,7 @@ import { buildScreenRegistry } from '@/config/screenRegistry';
 import { isLlmChatConfigured } from '@/lib/llmChatConfig';
 import { matchScreensWithOpenAI } from '@/lib/screenSearchOpenai';
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.role) {
@@ -39,3 +40,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'AI match failed' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_screens_ai_match' });
+export const POST = __platformApiHandlers.POST;

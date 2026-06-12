@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { loadPublicJobPosting } from '@/lib/publicJobPosting';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const jobId = params?.id;
     const job = await loadPublicJobPosting(jobId);
@@ -16,3 +17,9 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: 'Failed to load job' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_public_jobs_id' });
+export const GET = __platformApiHandlers.GET;

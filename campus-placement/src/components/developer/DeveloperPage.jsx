@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Terminal, Copy, Check } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import DemoDataTester from '@/components/demo/DemoDataTester';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
 import {
   DEVELOPER_PAGE_META,
@@ -23,6 +24,7 @@ import {
   CLEANUP_COMMANDS,
   RESTORE_AFTER_CLEANUP,
   LEGACY_RUNNER_COMMANDS,
+  DATABASE_SCHEMA_NOTES,
   RELATED_DOCS,
 } from '@/content/developerNotes';
 
@@ -58,7 +60,31 @@ function Section({ id, title, children }) {
   );
 }
 
+function resolveDemoFocusFromHash(hash) {
+  const id = String(hash || '').replace(/^#/, '');
+  if (id === 'demo-purge' || id === 'purge') return 'purge';
+  if (id === 'demo-apis') return 'apis';
+  return null;
+}
+
 export default function DeveloperPage() {
+  const [demoFocus, setDemoFocus] = useState('apis');
+
+  useEffect(() => {
+    const applyHash = () => {
+      const focus = resolveDemoFocusFromHash(window.location.hash);
+      if (focus) setDemoFocus(focus);
+      const id = window.location.hash.replace(/^#/, '');
+      if (id === 'demo-apis' || id === 'demo-purge' || id === 'purge') {
+        const targetId = id === 'demo-apis' ? 'demo-apis' : 'demo-purge';
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, []);
+
   return (
     <div className="dev-notes-page">
       <header className="dev-notes-header">
@@ -68,9 +94,9 @@ export default function DeveloperPage() {
           </Link>
           <div className="dev-notes-header-actions">
             <ThemeToggleButton />
-            <Link href="/data-entry" className="btn btn-secondary btn-sm">
-              Demo data
-            </Link>
+            <a href="#demo-apis" className="btn btn-secondary btn-sm">
+              Demo APIs
+            </a>
           </div>
         </div>
       </header>
@@ -81,6 +107,14 @@ export default function DeveloperPage() {
             <BookOpen size={28} strokeWidth={1.5} />
           </div>
           <h1>{DEVELOPER_PAGE_META.title}</h1>
+          
+          <div style={{ margin: '1.5rem 0', padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '0.5rem', textAlign: 'left' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991B1B', fontSize: '1rem' }}>Test Login Page</h3>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#7F1D1D' }}>
+              <Link href="/login" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>Current (Old) Login Page</Link> — Use this for internal testing.
+            </p>
+          </div>
+
           <p className="dev-notes-kicker">{DEVELOPER_PAGE_META.notesTitle}</p>
           <p className="dev-notes-lead">{DEVELOPER_PAGE_META.subtitle}</p>
           <p className="dev-notes-meta">
@@ -96,13 +130,23 @@ export default function DeveloperPage() {
           <ol className="dev-notes-toc-list">
             {DEVELOPER_PAGE_TOC.map((item, index) => (
               <li key={item.id}>
-                <a href={`#${item.id}`} className="dev-notes-toc-link">
-                  <span className="dev-notes-toc-num">{index + 1}</span>
-                  <span className="dev-notes-toc-text">
-                    <span className="dev-notes-toc-label">{item.label}</span>
-                    {item.hint ? <span className="dev-notes-toc-hint">{item.hint}</span> : null}
-                  </span>
-                </a>
+                {item.href ? (
+                  <Link href={item.href} className="dev-notes-toc-link">
+                    <span className="dev-notes-toc-num">{index + 1}</span>
+                    <span className="dev-notes-toc-text">
+                      <span className="dev-notes-toc-label">{item.label}</span>
+                      {item.hint ? <span className="dev-notes-toc-hint">{item.hint}</span> : null}
+                    </span>
+                  </Link>
+                ) : (
+                  <a href={`#${item.id}`} className="dev-notes-toc-link">
+                    <span className="dev-notes-toc-num">{index + 1}</span>
+                    <span className="dev-notes-toc-text">
+                      <span className="dev-notes-toc-label">{item.label}</span>
+                      {item.hint ? <span className="dev-notes-toc-hint">{item.hint}</span> : null}
+                    </span>
+                  </a>
+                )}
               </li>
             ))}
           </ol>
@@ -303,13 +347,24 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
-        {/* Legacy anchor #purge */}
+        <Section id="demo-apis" title="Demo APIs &amp; cleanup">
+          <p className="dev-notes-detail" style={{ marginTop: 0 }}>
+            Seed sandbox data, restore tie-ups, soft-delete test rows, or bulk-delete jobs and internships. Password{' '}
+            <code className="dev-notes-inline-code">Admin@123</code> · demo users{' '}
+            <code className="dev-notes-inline-code">@placementhub.test</code>. Full-page copy also at{' '}
+            <Link href="/data-entry">/data-entry</Link>.
+          </p>
+          <div className="dev-notes-demo-panel">
+            <DemoDataTester variant="embed" compactHeader hideHeader focusSection={demoFocus} />
+          </div>
+        </Section>
+
+        {/* Legacy anchors */}
         <span id="purge" className="dev-notes-anchor" aria-hidden />
         <Section id="cleanup" title="Clean up &amp; restore test data">
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
-            {CLEANUP_OVERVIEW} Open the landing{' '}
-            <Link href="/?demo=apis">Demo APIs</Link> or <Link href="/?demo=cleanup">Cleanup (purge)</Link> panels, or use
-            the commands below from the app folder.
+            {CLEANUP_OVERVIEW} Use the <a href="#demo-apis">Demo APIs</a> section above or the commands below from the app
+            folder.
           </p>
 
           <h3 className="dev-notes-subtitle">Wipe &amp; selective cleanup</h3>
@@ -385,7 +440,8 @@ export default function DeveloperPage() {
           </div>
 
           <p className="dev-notes-callout">
-            Also on <Link href="/data-entry">Demo data</Link> — same actions as the landing Demo APIs panel.
+            Interactive tools are in <a href="#demo-apis">Demo APIs &amp; cleanup</a> above. Same UI at{' '}
+            <Link href="/data-entry">/data-entry</Link>.
           </p>
         </Section>
 
@@ -412,11 +468,36 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
+        <Section id="database-schema" title="Database schema & relationships">
+          <p className="dev-notes-detail" style={{ marginTop: 0 }}>
+            Per-table columns and foreign keys from the live database, plus a domain relationship overview (two
+            application paths, campus tie-ups, assessment chain).
+          </p>
+          <p style={{ margin: '0 0 1rem' }}>
+            <Link href={DATABASE_SCHEMA_NOTES.href} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+              Open database schema
+            </Link>
+          </p>
+          <p className="dev-notes-muted" style={{ margin: 0, fontSize: '0.875rem' }}>
+            Repo: <code className="dev-notes-inline-code">{DATABASE_SCHEMA_NOTES.repoPath}</code> · Refresh:{' '}
+            <code className="dev-notes-inline-code">{DATABASE_SCHEMA_NOTES.regenerateCommand}</code>
+          </p>
+        </Section>
+
         <Section id="related" title="Related files in the repo">
           <ul className="dev-notes-bullets">
             {RELATED_DOCS.map((doc) => (
               <li key={doc.path}>
-                <strong>{doc.label}</strong> — <code className="dev-notes-inline-code">{doc.path}</code>
+                <strong>
+                  {doc.href ? (
+                    <Link href={doc.href} style={{ color: 'inherit' }}>
+                      {doc.label}
+                    </Link>
+                  ) : (
+                    doc.label
+                  )}
+                </strong>{' '}
+                — <code className="dev-notes-inline-code">{doc.path}</code>
                 {doc.hint ? <span className="dev-notes-muted"> ({doc.hint})</span> : null}
               </li>
             ))}
@@ -745,6 +826,17 @@ export default function DeveloperPage() {
         .dev-notes-ordered li,
         .dev-notes-bullets li {
           margin-bottom: 0.35rem;
+        }
+        .dev-notes-demo-panel {
+          margin-top: 1rem;
+          max-width: 100%;
+          overflow-x: auto;
+        }
+        .dev-notes-demo-panel .demo-tester-page--embed {
+          padding: 0;
+        }
+        .dev-notes-demo-panel .demo-tester-wrap {
+          max-width: none;
         }
         .dev-notes-callout {
           margin: 1rem 0 0;

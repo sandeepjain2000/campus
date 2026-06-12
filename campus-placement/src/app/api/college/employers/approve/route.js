@@ -4,12 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -47,3 +48,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_employers_approve' });
+export const POST = __platformApiHandlers.POST;

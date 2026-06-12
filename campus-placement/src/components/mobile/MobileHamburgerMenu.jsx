@@ -2,7 +2,7 @@
 
 import { X, Home, Users, Briefcase, Calendar, Settings, LogOut, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { signOut } from '@/lib/clientSignOut';
 import { getRoleDisplayName } from '@/lib/utils';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 import EntityLogo from '@/components/EntityLogo';
@@ -98,7 +98,7 @@ export default function MobileHamburgerMenu({ isOpen, onClose, session }) {
               <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getRoleDisplayName(role)}</div>
             </div>
           </div>
-          <button onClick={() => signOut({ callbackUrl: '/login' })} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem', padding: '0.75rem 1rem' }}>
+          <button onClick={() => signOut({ callbackUrl: '/login?force=1' })} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem', padding: '0.75rem 1rem' }}>
             <LogOut size={18} strokeWidth={2} /> Sign out
           </button>
         </div>

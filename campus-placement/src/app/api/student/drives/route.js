@@ -11,6 +11,7 @@ import { mapStudentDriveListRow } from '@/lib/placementDriveJobFields';
 import { DRIVE_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 const STUDENT_DRIVE_JOB_COLUMNS = `
@@ -24,7 +25,7 @@ const STUDENT_DRIVE_JOB_COLUMNS = `
         d.application_deadline,
         d.job_type`;
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -133,3 +134,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_drives' });
+export const GET = __platformApiHandlers.GET;

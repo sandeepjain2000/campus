@@ -8,7 +8,9 @@
  */
 
 const IS_PROD = process.env.NODE_ENV === 'production';
-const COOKIE_PREFIX = IS_PROD ? '__Secure-' : '';
+const IS_VERCEL = process.env.VERCEL === '1' || process.env.NEXT_PUBLIC_VERCEL === '1' || (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app'));
+const USE_SECURE = IS_PROD && (IS_VERCEL || (typeof window !== 'undefined' && window.location.protocol === 'https:'));
+const COOKIE_PREFIX = USE_SECURE ? '__Secure-' : '';
 
 /** Current session cookie (bump suffix when semantics change). */
 export const SESSION_COOKIE_NAME = `${COOKIE_PREFIX}placementhub.session.v2`;
@@ -38,7 +40,7 @@ export function sessionTokenCookieOptions() {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure: IS_PROD,
+    secure: USE_SECURE,
   };
 }
 
@@ -83,7 +85,7 @@ export function markBrowserSessionActive() {
 
 /** Set-Cookie headers that clear superseded auth cookie names. */
 export function legacySessionCookieClearanceLines() {
-  const secure = IS_PROD ? '; Secure' : '';
+  const secure = USE_SECURE ? '; Secure' : '';
   return LEGACY_SESSION_COOKIE_NAMES.map(
     (name) => `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure}`,
   );
@@ -106,32 +108,28 @@ export function applySessionCookiePolicy(response) {
         ? [headers.get('set-cookie')]
         : [];
 
-  if (setCookies.length === 0) {
-    const withLegacy = new Headers(headers);
-    for (const line of legacySessionCookieClearanceLines()) {
-      withLegacy.append('Set-Cookie', line);
-    }
-    if (withLegacy.get('Set-Cookie')) {
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: withLegacy,
-      });
-    }
-    return response;
-  }
-
+  // Remove the existing set-cookie header so we don't duplicate
   headers.delete('set-cookie');
-  for (const line of setCookies) {
-    headers.append('Set-Cookie', rewriteSessionSetCookieLine(line));
+
+  // Convert the remaining headers to an array of tuples
+  const headerTuples = [];
+  headers.forEach((value, key) => {
+    headerTuples.push([key, value]);
+  });
+
+  // Add the modified and legacy cookies as separate tuples
+  if (setCookies.length > 0) {
+    for (const line of setCookies) {
+      headerTuples.push(['Set-Cookie', rewriteSessionSetCookieLine(line)]);
+    }
   }
   for (const line of legacySessionCookieClearanceLines()) {
-    headers.append('Set-Cookie', line);
+    headerTuples.push(['Set-Cookie', line]);
   }
 
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers,
+    headers: headerTuples,
   });
 }

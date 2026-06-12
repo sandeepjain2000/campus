@@ -7,6 +7,7 @@ import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { invalidateStudentOpportunityListCache } from '@/lib/jobPostingPublishState';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -18,7 +19,7 @@ export const revalidate = 0;
  * POST — add campus visibility rows for an already-published job (repair / backfill).
  * Body: { jobId: uuid, tenantIds: uuid[] }
  */
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -94,3 +95,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to sync visibility' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_jobs_visibility' });
+export const POST = __platformApiHandlers.POST;

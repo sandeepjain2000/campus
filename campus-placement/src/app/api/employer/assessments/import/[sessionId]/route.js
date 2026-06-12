@@ -12,6 +12,7 @@ import {
 import { HIRING_RESULT_OPTIONS } from '@/lib/hiringResult';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -22,7 +23,7 @@ async function getEmployerProfileId(session) {
 }
 
 /** GET — load import review session */
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -54,7 +55,7 @@ export async function GET(_request, { params }) {
 }
 
 /** PATCH — fix a staging row */
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -79,7 +80,7 @@ export async function PATCH(request, { params }) {
     );
     if (!updated) return NextResponse.json({ error: 'Row not found or session closed' }, { status: 404 });
 
-    const loaded = await loadImportStagingSession(client, employerId, sessionId);
+    const loaded = await loadImportStagingSession(null, employerId, sessionId);
     const invalidCount = loaded?.rows.filter((r) => !r.is_valid).length ?? 0;
 
     return NextResponse.json({
@@ -94,7 +95,7 @@ export async function PATCH(request, { params }) {
 }
 
 /** POST — accept or reject import */
-export async function POST(request, { params }) {
+async function __platform_POST(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -153,3 +154,13 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: e.message || 'Failed to process import' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_assessments_import_id' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;

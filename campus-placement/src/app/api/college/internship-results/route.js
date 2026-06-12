@@ -9,6 +9,7 @@ import { AND_JP_NOT_DELETED, AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 const RESULTS_SQL = `
@@ -139,7 +140,7 @@ async function loadResults(tenantId, includeArchivedFilter) {
   };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -175,3 +176,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load internship results' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_internship_results' });
+export const GET = __platformApiHandlers.GET;

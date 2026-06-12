@@ -3,8 +3,9 @@ import { query } from '@/lib/db';
 import { loadPublicJobPosting, resolvePublicJobQuestionContext } from '@/lib/publicJobPosting';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 
-export async function POST(request, { params }) {
+async function __platform_POST(request, { params }) {
   try {
     const jobId = params?.id;
     const job = await loadPublicJobPosting(jobId);
@@ -59,3 +60,9 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Failed to submit question' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_public_jobs_id_questions' });
+export const POST = __platformApiHandlers.POST;

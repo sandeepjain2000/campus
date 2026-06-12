@@ -6,6 +6,7 @@ import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { createDownloadUrlForKey } from '@/lib/s3';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -21,7 +22,7 @@ function extractS3Key(fileUrl) {
   }
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -55,3 +56,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Could not open document' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_documents_view' });
+export const GET = __platformApiHandlers.GET;

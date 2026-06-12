@@ -7,8 +7,21 @@ export function isGuidedRunnerFeatureEnabled() {
   if (process.env.NEXT_PUBLIC_HIDE_GUIDED_RUNNER === 'true') return false;
   if (process.env.NEXT_PUBLIC_GUIDED_RUNNER === 'true') return true;
   if (process.env.NEXT_PUBLIC_GUIDED_RUNNER === 'false') return false;
+
+  // Disable if explicitly running on Vercel deployment
+  if (process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV) {
+    return false;
+  }
+
+  if (typeof window !== 'undefined') {
+    const hn = window.location.hostname;
+    if (hn.includes('vercel.app')) {
+      return false;
+    }
+  }
+
   if (process.env.NODE_ENV !== 'production') return true;
   if (process.env.NEXT_PUBLIC_HIDE_SANDBOX_BANNER === 'true') return false;
   if (process.env.NEXT_PUBLIC_SANDBOX_BANNER === 'false') return false;
-  return true;
+  return false;
 }

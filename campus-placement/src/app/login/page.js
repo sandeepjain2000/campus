@@ -114,6 +114,52 @@ function LoginPageInner() {
   const [emailReadOnly, setEmailReadOnly] = useState(true);
   const [passwordReadOnly, setPasswordReadOnly] = useState(true);
 
+  // --- Login debug logging (per-browser, localStorage flag) ---
+  const DEBUG_FLAG_KEY = 'placementhub_debug';
+  const [debugMode, setDebugMode] = useState(false);
+  const debugStepsRef = useRef([]);
+  const debugSessionId = useRef(`dbg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+
+  useEffect(() => {
+    try {
+      setDebugMode(localStorage.getItem(DEBUG_FLAG_KEY) === '1');
+    } catch { /* ignore */ }
+  }, []);
+
+  const toggleDebugMode = (val) => {
+    setDebugMode(val);
+    try {
+      if (val) localStorage.setItem(DEBUG_FLAG_KEY, '1');
+      else localStorage.removeItem(DEBUG_FLAG_KEY);
+    } catch { /* ignore */ }
+  };
+
+  const debugLog = useRef((event, data = null) => {
+    const step = { t: new Date().toISOString(), event, data };
+    debugStepsRef.current.push(step);
+    console.log('[login-debug]', step);
+  });
+
+  const flushDebugLog = useRef(async (email) => {
+    const steps = [...debugStepsRef.current];
+    debugStepsRef.current = [];
+    if (!steps.length) return;
+    try {
+      await fetch('/api/debug/login-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steps,
+          email,
+          userAgent: navigator.userAgent,
+          sessionId: debugSessionId.current,
+        }),
+      });
+    } catch (e) {
+      console.error('[login-debug] failed to flush log', e);
+    }
+  });
+
   const uniqueDemoLogins = useMemo(() => {
     const seen = new Set();
     const merged = [...DEMO_LOGINS, ...SEEDED_EMPLOYER_CREDENTIALS];
@@ -222,12 +268,24 @@ function LoginPageInner() {
   // If ?force=1, sign out existing session so the user can switch accounts
   // DO NOT MODIFY NEEDLESSLY. This is a fix for double login requirement.
   useEffect(() => {
+    if (loggingInRef.current) return; // skip force-signout if we are actively in the middle of logging in
     if (forceLogin && status === 'authenticated' && !signingOut.current) {
       signingOut.current = true;
       console.log('LoginPage: force login requested and user is authenticated. Performing full redirecting signout...');
       void signOut({ callbackUrl: '/login' });
     }
   }, [forceLogin, status]);
+
+  // If ?force=1 and we are already unauthenticated, clean up the query parameter so next logins don't inherit it.
+  useEffect(() => {
+    if (forceLogin && status === 'unauthenticated') {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('force');
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : '/login';
+      const next = params.toString() ? `${pathname}?${params}` : pathname;
+      router.replace(next, { scroll: false });
+    }
+  }, [forceLogin, status, searchParams, router]);
 
   // DO NOT MODIFY NEEDLESSLY. This is a fix for double login requirement.
   // We only redirect client-side if the session is fully active (marker === '1').
@@ -269,7 +327,9 @@ function LoginPageInner() {
       setLoading(true);
       loggingInRef.current = true;
       setCaptchaAnswer(finalAnswer);
+      debugLog.current('submit_start', { email, hasCaptchaToken: !!token, answer: finalAnswer || null });
       try {
+        debugLog.current('signing_in');
         console.log('LoginPage: Invoking next-auth signIn with credentials...');
         const result = await signIn('credentials', {
           email,
@@ -277,6 +337,7 @@ function LoginPageInner() {
           captchaToken: token,
           captchaAnswer: finalAnswer,
           redirect: false,
+          callbackUrl: '/login', // explicitly set callbackUrl to /login (no query params!)
         });
         
         console.log('LoginPage: next-auth signIn response:', {
@@ -285,6 +346,7 @@ function LoginPageInner() {
           error: result?.error,
           url: result?.url
         });
+        debugLog.current('signin_response', { ok: result?.ok, status: result?.status, error: result?.error || null });
 
         if (result?.error || result?.ok === false) {
           console.error(`LoginPage: signIn failed. error=${result?.error}`);
@@ -296,6 +358,8 @@ function LoginPageInner() {
             userMsg = 'Sign in failed. Please check your credentials and try again.';
           }
           setError(userMsg);
+          debugLog.current('signin_failed', { error: result?.error, userMsg });
+          await flushDebugLog.current(email);
           if (String(result?.error || '').toLowerCase().includes('verification')) {
             setCaptchaAnswer('');
             setCaptchaKey((k) => k + 1);
@@ -307,6 +371,8 @@ function LoginPageInner() {
 
         console.log('LoginPage: signIn succeeded. Marking browser session active and preparing redirection...');
         markBrowserSessionActive();
+        debugLog.current('signin_success', { url: result?.url || null });
+        await flushDebugLog.current(email);
         
         // Display success message and wait 2 seconds before redirecting
         setRegisteredBanner('Sign in successful! Redirecting in 2 seconds...');
@@ -321,6 +387,8 @@ function LoginPageInner() {
         return true;
       } catch (err) {
         console.error('LoginPage: submitCredentials exception caught:', err);
+        debugLog.current('signin_exception', { message: err?.message || String(err) });
+        await flushDebugLog.current(email);
         setError('An unexpected error occurred during sign-in. Please try again.');
         loggingInRef.current = false;
         // Pause for 2 seconds to let the user see the failure message
@@ -368,8 +436,8 @@ function LoginPageInner() {
     })();
   }, [guidedAutoLogin, guidedEmail, forceLogin, status]);
 
-  /** Only hide the form when already signed in (redirecting). Keep form mounted while session is "loading". */
-  if (!forceLogin && status === 'authenticated') {
+  /** Only hide the form when already signed in (redirecting), signing out, or loading session when forceLogin is true. */
+  if (status === 'authenticated' || signingOut.current || (forceLogin && status === 'loading')) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="skeleton" style={{ width: 220, height: 28 }} />
@@ -904,7 +972,32 @@ function LoginPageInner() {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
-          Build: 12 Jun 2026, 11:48 PM (v1.0.4)
+          Build: 13 Jun 2026, 02:37 AM (v1.0.11-debug)
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
+          <label
+            htmlFor="login-debug-toggle"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.72rem',
+              color: debugMode ? 'var(--warning-600, #d97706)' : 'var(--text-tertiary)',
+              cursor: 'pointer',
+              userSelect: 'none',
+              fontFamily: 'monospace',
+            }}
+          >
+            <input
+              id="login-debug-toggle"
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => toggleDebugMode(e.target.checked)}
+              style={{ accentColor: 'var(--warning-600, #d97706)', width: 12, height: 12 }}
+            />
+            {debugMode ? '🔴 Login debug logging ON — traces sent to Super Admin' : 'Enable login debug logging'}
+          </label>
         </div>
 
         <DocumentationHelpWidget fullDocHref="/help" />

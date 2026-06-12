@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -8,7 +9,7 @@ import { validateEmail } from '@/lib/validators';
  * Login email (`users.email`) is immutable here. Communication email is used for notifications,
  * exports, and template placeholders where applicable.
  */
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -33,7 +34,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -64,3 +65,11 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_user_communication_email' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

@@ -14,6 +14,7 @@ import {
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -27,7 +28,7 @@ function isS3Url(url) {
   }
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -83,3 +84,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Could not open resume' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_applications_resume' });
+export const GET = __platformApiHandlers.GET;

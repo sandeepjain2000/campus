@@ -13,6 +13,7 @@ import { normalizeInterviewOpportunityKind } from '@/lib/employerInterviewOpport
 import { validateEmployerInterviewOpportunity } from '@/lib/employerInterviewOpportunityValidation';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getTenant(tenantId) {
@@ -65,7 +66,7 @@ async function requireApprovedCampus(employerId, campusId) {
   return null;
 }
 
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -184,7 +185,7 @@ export async function PATCH(request, { params }) {
   }
 }
 
-export async function DELETE(request, { params }) {
+async function __platform_DELETE(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -227,3 +228,11 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Failed to delete interview slot' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  PATCH: __platform_PATCH,
+  DELETE: __platform_DELETE,
+}, { context: 'api_employer_interviews_id' });
+export const PATCH = __platformApiHandlers.PATCH;
+export const DELETE = __platformApiHandlers.DELETE;

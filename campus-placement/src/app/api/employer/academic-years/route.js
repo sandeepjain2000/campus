@@ -9,6 +9,7 @@ import {
 import { assertEmployerApprovedCampus } from '@/lib/employerAcademicYear';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function loadYearsBundle(tenantId) {
@@ -34,7 +35,7 @@ async function loadYearsBundle(tenantId) {
   return { years, current: currentMapped };
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -67,3 +68,9 @@ export async function GET(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_academic_years' });
+export const GET = __platformApiHandlers.GET;

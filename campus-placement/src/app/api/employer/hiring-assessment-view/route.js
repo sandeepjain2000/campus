@@ -10,6 +10,7 @@ import {
 import { listAssessmentContextStatuses } from '@/lib/assessmentContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -39,7 +40,7 @@ function contextKey(row) {
 }
 
 /** GET — hiring results dashboard (draft + submitted). */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -88,3 +89,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load assessment view' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_hiring_assessment_view' });
+export const GET = __platformApiHandlers.GET;

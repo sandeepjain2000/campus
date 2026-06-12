@@ -10,11 +10,12 @@ import {
 } from '@/lib/demoDataFactory';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
-export async function POST(request) {
+async function __platform_POST(request) {
   if (!isDemoDataApiEnabled()) return demoDataDisabledResponse();
   try {
     const body = await request.json().catch(() => ({}));
@@ -40,3 +41,9 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: e.message || 'Placement drive action failed' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_demo_placement_drive' });
+export const POST = __platformApiHandlers.POST;

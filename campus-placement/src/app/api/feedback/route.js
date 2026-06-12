@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -24,7 +25,7 @@ function mergeStatusCounts(rows) {
   return out;
 }
 
-export async function GET(req) {
+async function __platform_GET(req) {
   try {
     const session = await getServerSession(authOptions);
     const userId = getSessionUserId(session);
@@ -122,7 +123,7 @@ export async function GET(req) {
   }
 }
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     const userId = getSessionUserId(session);
@@ -168,3 +169,11 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_feedback' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

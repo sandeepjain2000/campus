@@ -6,6 +6,7 @@ import { isUuid } from '@/lib/tenantContext';
 import { AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -19,7 +20,7 @@ async function getEmployerProfileId(session) {
 }
 
 /** GET — activity / audit entries for one upload (employer must own it). */
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -63,3 +64,9 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: 'Failed to load audit log' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments_id_audit' });
+export const GET = __platformApiHandlers.GET;

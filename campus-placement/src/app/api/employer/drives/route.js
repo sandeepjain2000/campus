@@ -25,6 +25,7 @@ import {
 import { DRIVE_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerId(userId) {
@@ -306,7 +307,7 @@ async function queryEmployerDriveList(baseSelect, baseFrom, params, { driveDelSq
   throw lastErr || new Error('Failed to load drives');
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   let session = null;
   let emp = null;
   let campusId = null;
@@ -359,7 +360,7 @@ export async function GET(request) {
 }
 
 
-export async function POST(request) {
+async function __platform_POST(request) {
   let body = {};
   let session = null;
   let emp = null;
@@ -533,7 +534,7 @@ export async function POST(request) {
 
 const EMPLOYER_CANCELLABLE_STATUSES = new Set(['requested', 'approved', 'scheduled', 'in_progress']);
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   let session = null;
   let emp = null;
   let body = {};
@@ -627,3 +628,13 @@ export async function PATCH(request) {
     return NextResponse.json(errBody, { status });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_drives' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;

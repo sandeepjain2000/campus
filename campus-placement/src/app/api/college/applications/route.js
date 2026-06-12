@@ -6,6 +6,7 @@ import { isArchiveSchemaError, ARCHIVE_COLUMN_HINT } from '@/lib/collegeStudentA
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -106,7 +107,7 @@ async function loadApplications(tenantId, includeArchivedFilter) {
   };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -143,3 +144,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load applications' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_applications' });
+export const GET = __platformApiHandlers.GET;

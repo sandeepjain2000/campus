@@ -6,13 +6,14 @@ import {
 } from '@/lib/assessmentUploadStarterCsv';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 /** Sample structure — prefer /api/employer/assessments/export for real data. */
-export async function GET() {
+async function __platform_GET() {
   const sample = [
     {
-      system_id: 'CAMPUS-ROLL-001',
+      student_system_id: 'CAMPUS-ROLL-001',
       college_roll_no: 'ROLL-001',
       placement_drive_id: '',
       job_id: '',
@@ -30,3 +31,9 @@ export async function GET() {
     },
   });
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments_template' });
+export const GET = __platformApiHandlers.GET;

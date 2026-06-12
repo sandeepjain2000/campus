@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { signOut } from '@/lib/clientSignOut';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
 import { getInitials, getRoleDisplayName } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
@@ -25,7 +25,10 @@ import ScreenSearchBar from '@/components/ScreenSearchBar';
 import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import { Menu, Mail, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { getAcademicYearOptions, getCurrentAcademicYear } from '@/lib/academicYear';
-import { writeActiveAcademicYearContext } from '@/lib/collegeAcademicYearContext';
+import {
+  ACTIVE_ACADEMIC_YEAR_KEY,
+  writeActiveAcademicYearContext,
+} from '@/lib/collegeAcademicYearContext';
 import {
   readEmployerAcademicYearContext,
   writeEmployerAcademicYearContext,
@@ -178,6 +181,22 @@ export default function DashboardLayout({ children }) {
     }
     return systemDefaultAcademicYear;
   }, [academicYearOverride, academicYearOptions, systemDefaultAcademicYear]);
+
+  useEffect(() => {
+    if (session?.user?.role !== 'college_admin' || !session?.user?.id) return;
+    const storageKey = 'placementhub_college_admin_id';
+    try {
+      const prev = sessionStorage.getItem(storageKey);
+      if (prev && prev !== session.user.id) {
+        sessionStorage.removeItem(ACTIVE_ACADEMIC_YEAR_KEY);
+        sessionStorage.removeItem('activeAcademicYear');
+        setAcademicYearOverride(null);
+      }
+      sessionStorage.setItem(storageKey, session.user.id);
+    } catch {
+      /* ignore */
+    }
+  }, [session?.user?.id, session?.user?.role]);
 
   useEffect(() => {
     try {

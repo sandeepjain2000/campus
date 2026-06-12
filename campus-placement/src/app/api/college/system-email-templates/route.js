@@ -15,10 +15,11 @@ import {
 import { SYSTEM_EMAIL_TEMPLATE_META } from '@/lib/systemEmailTemplates';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -65,7 +66,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -128,3 +129,11 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'Failed to save template' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_college_system_email_templates' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

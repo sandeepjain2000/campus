@@ -12,18 +12,20 @@ import {
   formatEmailInUseMessage,
 } from '@/lib/userEmail';
 import { parseStudentFullName, resolveStudentRollNumber } from '@/lib/validators';
+import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || session.user.tenant_id;
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -284,3 +286,9 @@ export async function POST(req) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_students_bulk_upload' });
+export const POST = __platformApiHandlers.POST;

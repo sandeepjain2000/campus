@@ -6,8 +6,10 @@ import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import { extractS3Key, getLatestResumeForStudent } from '@/lib/employerApplicationAccess';
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -24,18 +26,14 @@ function isS3Url(url) {
   }
 }
 
-function getTenantId(session) {
-  return session.user.tenant_id ?? session.user.tenantId;
-}
-
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = getTenantId(session);
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -90,3 +88,9 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: 'Could not open resume' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_students_id_resume' });
+export const GET = __platformApiHandlers.GET;

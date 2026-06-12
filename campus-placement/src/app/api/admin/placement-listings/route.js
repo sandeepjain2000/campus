@@ -11,6 +11,7 @@ import {
 import { jobPostingNotDeletedSql, programApplicationNotDeletedSql, hasColumn } from '@/lib/migrationReady';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function driveNotDeletedSql(alias = 'pd') {
@@ -24,7 +25,7 @@ async function driveNotDeletedSql(alias = 'pd') {
  * GET — all job postings and placement drives across employers and colleges.
  * Query: kind = all | job | internship | drive | project | hackathon
  */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'super_admin') {
@@ -123,3 +124,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load placement listings' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_admin_placement_listings' });
+export const GET = __platformApiHandlers.GET;

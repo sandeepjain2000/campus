@@ -1,4 +1,4 @@
-import { stripInternalApiFields } from '@/lib/publicApiError';
+import { stripInternalApiFields } from '@/lib/publicApiErrorClient';
 
 function emptyPayloadForUrl(url) {
   const path = String(url || '');

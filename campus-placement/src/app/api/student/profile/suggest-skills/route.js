@@ -9,6 +9,7 @@ import { suggestSkillsWithOpenAI } from '@/lib/suggestSkillsFromResumeOpenai';
 import { loadStudentResumeSkillContext } from '@/lib/studentResumeSkillContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -31,7 +32,7 @@ function mergeSuggestions(existing, ...lists) {
   return out;
 }
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -216,3 +217,9 @@ export async function POST(req) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_student_profile_suggest_skills' });
+export const POST = __platformApiHandlers.POST;

@@ -8,7 +8,7 @@ import {
   sqlJobAcademicYearFilter,
 } from '@/lib/employerAcademicYear';
 import { hasColumn, jobPostingNotDeletedSql } from '@/lib/migrationReady';
-import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { respondPlatformError , withApiHandlers } from '@/lib/platformErrorRoute';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
@@ -208,7 +208,7 @@ async function queryUpcomingDrives(employerId, campusId, filters) {
   }
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   let session = null;
   let employerId = null;
   try {
@@ -266,3 +266,9 @@ export async function GET(request) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_dashboard' });
+export const GET = __platformApiHandlers.GET;

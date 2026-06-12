@@ -20,11 +20,12 @@ import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { resolveStudentPhotoDisplayUrl } from '@/lib/clientAssetUrl';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -197,3 +198,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load student profile' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_applications_student_profile' });
+export const GET = __platformApiHandlers.GET;

@@ -4,8 +4,10 @@ import DemoAccountLoginLink from '@/components/auth/DemoAccountLoginLink';
 import { ArrowLeft, GraduationCap, Building2, School, ShieldCheck, Award } from 'lucide-react';
 import { DEMO_SEED_PASSWORD } from '@/lib/demoLogins';
 import { demoAccountLine1, demoAccountRowStyles } from '@/lib/demoAccountDisplay';
+import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function DemoAccountRow({ user, isLast }) {
   const inactive = user.is_active === false;
@@ -72,6 +74,17 @@ function DemoAccountGroup({ group, users }) {
 }
 
 export default async function DemoAccountsPage() {
+  await writePlatformErrorLog({
+    context: 'demo_accounts_open',
+    severity: 'info',
+    statusCode: 200,
+    error: new Error('Demo accounts page render triggered'),
+    userMessage: 'Demo accounts page opened',
+    details: {
+      timestamp: new Date().toISOString(),
+    }
+  }).catch(() => {});
+
   const result = await query(`
     SELECT 
       u.id, u.email, u.role, u.is_active, u.first_name, u.last_name,

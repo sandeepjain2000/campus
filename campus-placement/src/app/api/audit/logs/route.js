@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -28,7 +29,7 @@ function formatAuditDetails(row) {
   return null;
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['super_admin', 'college_admin'].includes(session.user.role)) {
@@ -110,3 +111,9 @@ export async function GET(request) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_audit_logs' });
+export const GET = __platformApiHandlers.GET;

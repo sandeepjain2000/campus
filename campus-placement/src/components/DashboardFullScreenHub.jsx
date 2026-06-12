@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { signOut } from '@/lib/clientSignOut';
 import { Search } from 'lucide-react';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
@@ -246,7 +246,7 @@ export default function DashboardFullScreenHub({ role, session }) {
           </div>
           <NotificationDropdown />
           <ThemeToggleButton />
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut({ callbackUrl: '/login' })}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut({ callbackUrl: '/login?force=1' })}>
             Sign out
           </button>
         </div>

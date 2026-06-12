@@ -4,12 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'super_admin') {
@@ -36,3 +37,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load users' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_admin_users' });
+export const GET = __platformApiHandlers.GET;

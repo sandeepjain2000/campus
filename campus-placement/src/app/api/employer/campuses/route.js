@@ -10,7 +10,7 @@ import {
   mapInstitutionClassificationsFromRow,
 } from '@/lib/tenantInstitutionClassifications';
 import { loadEmployerPostingCampusConstraints } from '@/lib/employerPostingCampusConstraints';
-import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { respondPlatformError , withApiHandlers } from '@/lib/platformErrorRoute';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
@@ -136,7 +136,7 @@ async function fetchCollegesSimple(employerId) {
 }
 
 // GET /api/employer/campuses
-export async function GET() {
+async function __platform_GET() {
   let session = null;
   let employer = null;
   try {
@@ -183,7 +183,7 @@ export async function GET() {
 }
 
 // POST /api/employer/campuses
-export async function POST(req) {
+async function __platform_POST(req) {
   let session = null;
   let employer = null;
   let body = {};
@@ -271,3 +271,11 @@ export async function POST(req) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_employer_campuses' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

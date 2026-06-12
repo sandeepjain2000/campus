@@ -3,10 +3,11 @@ import { isGuidedRunnerFeatureEnabled } from '@/lib/guidedRunnerConfig';
 import { acknowledgeGuidedClickInDb, getGuidedState } from '@/lib/guidedRunnerDb';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
-export async function POST() {
+async function __platform_POST() {
   if (!isGuidedRunnerFeatureEnabled()) {
     return NextResponse.json({ error: 'Guided testing API disabled in this environment.' }, { status: 403 });
   }
@@ -24,3 +25,9 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: e.message || 'Failed to record click' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_guided_runner_click' });
+export const POST = __platformApiHandlers.POST;

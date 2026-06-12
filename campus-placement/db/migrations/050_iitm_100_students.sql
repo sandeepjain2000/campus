@@ -71,7 +71,7 @@ BEGIN
       cgpa, gender, category, placement_status, is_verified, verified_at
     ) VALUES (
       uid, tenant_id, roll_no, 'ENR-' || roll_no,
-      dept_names[dept_idx], branch_names[dept_idx], 2022, 2026,
+      dept_names[dept_idx], branch_names[dept_idx], 2026, 2026,
       cgpa_val, genders[1 + (i % 2)], 'General', 'unplaced', true, NOW()
     )
     ON CONFLICT (user_id) DO UPDATE SET

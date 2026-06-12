@@ -1,8 +1,9 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const { token, newPassword } = await req.json();
     if (!token || !newPassword) {
@@ -44,3 +45,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_auth_reset_password' });
+export const POST = __platformApiHandlers.POST;

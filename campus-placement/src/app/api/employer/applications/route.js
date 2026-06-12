@@ -27,7 +27,7 @@ import {
 } from '@/lib/campusFcfsSelection';
 import { sqlJobAcademicYearFilter } from '@/lib/employerAcademicYear';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
-import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { respondPlatformError , withApiHandlers } from '@/lib/platformErrorRoute';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 const JOB_POSTING_TYPES_SQL = `AND jp.job_type NOT IN ('internship', 'short_project', 'hackathon')`;
 
@@ -91,7 +91,7 @@ async function filterItemsByFcfs(items, tab, employerId) {
  * GET ?tab=drives|jobs|internships|projects
  * Drives = placement drive applications. Jobs / internships / projects = program_applications.
  */
-export async function GET(request) {
+async function __platform_GET(request) {
   let session = null;
   let employerId = null;
   try {
@@ -438,7 +438,7 @@ export async function GET(request) {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   let session = null;
   let employerId = null;
   let body = {};
@@ -595,3 +595,11 @@ export async function PATCH(request) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_applications' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

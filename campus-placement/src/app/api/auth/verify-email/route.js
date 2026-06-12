@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
@@ -9,7 +10,7 @@ function redirect(request, path) {
   return NextResponse.redirect(new URL(path, origin).toString(), 302);
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   const token = request.nextUrl.searchParams.get('token');
   if (!token || String(token).length < 32) {
     return redirect(request, '/login?verify=invalid');
@@ -48,3 +49,9 @@ export async function GET(request) {
     return redirect(request, '/login?verify=error');
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_auth_verify_email' });
+export const GET = __platformApiHandlers.GET;

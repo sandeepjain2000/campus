@@ -14,6 +14,7 @@ import { resolveRollFromCsvIdentifiers } from '@/lib/studentSystemId';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 import {
   findApplicationForStudent,
+  resolveAssessmentTargetIds,
   resolveTarget,
   sanitizeUuidInput,
   targetGroupKey,
@@ -161,8 +162,12 @@ export async function commitValidatedAssessmentRows(client, params) {
 
   const groups = new Map();
   for (const raw of stagingRows) {
-    const driveId = sanitizeUuidInput(raw.placement_drive_id);
-    const jobId = sanitizeUuidInput(raw.job_id);
+    const resolvedIds = resolveAssessmentTargetIds({
+      driveId: raw.placement_drive_id,
+      jobId: raw.job_id,
+    });
+    const driveId = resolvedIds.driveId;
+    const jobId = resolvedIds.jobId;
     const tenantId = sanitizeUuidInput(raw.tenant_id);
     const key = targetGroupKey({ driveId, jobId, tenantId: driveId ? '' : tenantId });
     if (!groups.has(key)) {

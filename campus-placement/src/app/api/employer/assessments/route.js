@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -17,7 +18,7 @@ async function getEmployerId(session) {
   return res.rows[0]?.id || null;
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -51,3 +52,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load assessment uploads' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments' });
+export const GET = __platformApiHandlers.GET;

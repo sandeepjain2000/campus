@@ -22,15 +22,23 @@ async function main() {
   if (!url) throw new Error('DATABASE_URL not set');
   const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
   await client.connect();
-  const col = await client.query(
-    `SELECT 1 FROM information_schema.columns
-     WHERE table_schema = 'public' AND table_name = 'employer_assessment_rows' AND column_name = 'hiring_result'`,
+  const checks = await client.query(
+    `SELECT
+       EXISTS (
+         SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'employer_assessment_rows' AND column_name = 'hiring_result'
+       ) AS hiring_result_col,
+       to_regclass('public.employer_assessment_contexts') IS NOT NULL AS contexts_table,
+       to_regclass('public.employer_assessment_import_sessions') IS NOT NULL AS import_sessions_table,
+       to_regclass('public.employer_assessment_import_staging_rows') IS NOT NULL AS import_staging_table`,
   );
-  const ctx = await client.query(`SELECT to_regclass('public.employer_assessment_contexts') AS name`);
   await client.end();
-  console.log('hiring_result column:', col.rows.length ? 'OK' : 'MISSING');
-  console.log('employer_assessment_contexts:', ctx.rows[0]?.name ? 'OK' : 'MISSING');
-  if (!col.rows.length) process.exit(1);
+  const row = checks.rows[0] || {};
+  console.log('hiring_result column:', row.hiring_result_col ? 'OK' : 'MISSING');
+  console.log('employer_assessment_contexts:', row.contexts_table ? 'OK' : 'MISSING');
+  console.log('employer_assessment_import_sessions:', row.import_sessions_table ? 'OK' : 'MISSING');
+  console.log('employer_assessment_import_staging_rows:', row.import_staging_table ? 'OK' : 'MISSING');
+  if (!row.hiring_result_col || !row.import_sessions_table || !row.import_staging_table) process.exit(1);
 }
 
 main().catch((e) => {

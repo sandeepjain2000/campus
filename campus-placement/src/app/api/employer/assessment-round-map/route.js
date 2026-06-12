@@ -10,6 +10,7 @@ import {
 } from '@/lib/assessmentRoundMapDb';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(userId) {
@@ -18,7 +19,7 @@ async function getEmployerProfileId(userId) {
 }
 
 /** GET — round display map for one kind or all kinds. */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -50,7 +51,7 @@ export async function GET(request) {
 }
 
 /** PUT — save five round labels for one opportunity kind. */
-export async function PUT(request) {
+async function __platform_PUT(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -80,3 +81,11 @@ export async function PUT(request) {
     return NextResponse.json({ error: 'Failed to save round map' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PUT: __platform_PUT,
+}, { context: 'api_employer_assessment_round_map' });
+export const GET = __platformApiHandlers.GET;
+export const PUT = __platformApiHandlers.PUT;

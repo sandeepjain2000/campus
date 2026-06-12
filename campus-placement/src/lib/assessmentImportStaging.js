@@ -9,10 +9,58 @@ import { resolveRollFromCsvIdentifiers } from '@/lib/studentSystemId';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 import { query } from '@/lib/db';
 import { commitValidatedAssessmentRows } from '@/lib/assessmentUploadCommit';
-import { resolveTarget, sanitizeUuidInput } from '@/lib/assessmentUploadProcessCore';
+import { isUuid } from '@/lib/tenantContext';
+import { resolveAssessmentTargetIds, resolveTarget, sanitizeUuidInput } from '@/lib/assessmentUploadProcessCore';
 
 function db(client) {
   return client || { query: (...args) => query(...args) };
+}
+
+async function resolveImportSessionCreatedBy(client, userId) {
+  if (!userId || !isUuid(String(userId))) return null;
+  const res = await client.query(`SELECT 1 FROM users WHERE id = $1::uuid LIMIT 1`, [userId]);
+  return res.rows.length ? String(userId) : null;
+}
+
+async function resolveImportSessionTarget(client, employerId, {
+  defaultTenantId = null,
+  defaultDriveId = null,
+  defaultJobId = null,
+  stagingRows = [],
+}) {
+  let tenantId = sanitizeUuidInput(defaultTenantId)
+    || sanitizeUuidInput(stagingRows.find((r) => r.tenant_id)?.tenant_id)
+    || null;
+  let driveId = sanitizeUuidInput(defaultDriveId)
+    || sanitizeUuidInput(stagingRows.find((r) => r.placement_drive_id)?.placement_drive_id)
+    || null;
+  let jobId = sanitizeUuidInput(defaultJobId)
+    || sanitizeUuidInput(stagingRows.find((r) => r.job_id)?.job_id)
+    || null;
+
+  if (driveId || jobId) {
+    const target = await resolveTarget(client, employerId, {
+      driveId: driveId || null,
+      jobId: jobId || null,
+      tenantId: tenantId || null,
+    });
+    if (target.error) {
+      const err = new Error(target.error);
+      err.statusCode = 400;
+      throw err;
+    }
+    tenantId = target.tenantId;
+    driveId = target.targetDriveId;
+    jobId = target.targetJobId;
+  }
+
+  if (!tenantId) {
+    const err = new Error('Campus (tenant) context is required to save import for review.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return { tenantId, driveId, jobId };
 }
 
 export async function createImportStagingSession(client, {
@@ -26,22 +74,20 @@ export async function createImportStagingSession(client, {
   defaultDriveId = null,
   defaultJobId = null,
 }) {
-  const tenantId = defaultTenantId || stagingRows.find((r) => r.tenant_id)?.tenant_id || null;
-  const driveId = defaultDriveId || stagingRows.find((r) => r.placement_drive_id)?.placement_drive_id || null;
-  const jobId = defaultJobId || stagingRows.find((r) => r.job_id)?.job_id || null;
-
-  if (!tenantId) {
-    const err = new Error('Campus (tenant) context is required to save import for review.');
-    err.statusCode = 400;
-    throw err;
-  }
+  const { tenantId, driveId, jobId } = await resolveImportSessionTarget(client, employerId, {
+    defaultTenantId,
+    defaultDriveId,
+    defaultJobId,
+    stagingRows,
+  });
+  const createdBy = await resolveImportSessionCreatedBy(client, userId);
 
   const session = await client.query(
     `INSERT INTO employer_assessment_import_sessions
        (employer_id, tenant_id, opportunity_kind, drive_id, job_id, status, original_file_name, s3_key, created_by)
      VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5::uuid, 'pending_review', $6, $7, $8::uuid)
      RETURNING id`,
-    [employerId, tenantId, opportunityKind, driveId || null, jobId || null, fileName, s3Key, userId || null],
+    [employerId, tenantId, opportunityKind, driveId || null, jobId || null, fileName, s3Key, createdBy],
   );
   const sessionId = session.rows[0].id;
 
@@ -149,17 +195,20 @@ export async function revalidateStagingRow(client, employerId, rowId, patch) {
   };
 
   const errors = [];
-  if (merged.placement_drive_id && merged.job_id) errors.push('Provide placement_drive_id or job_id, not both');
-  if (!merged.placement_drive_id && !merged.job_id) errors.push('Missing placement_drive_id or job_id');
-  if (merged.job_id && !merged.tenant_id) errors.push('tenant_id is required when job_id is set');
+  const resolvedTarget = resolveAssessmentTargetIds({
+    driveId: merged.placement_drive_id || '',
+    jobId: merged.job_id || '',
+  });
+  if (resolvedTarget.error) errors.push(resolvedTarget.error);
+  if (resolvedTarget.jobId && !merged.tenant_id) errors.push('tenant_id is required when job_id is set');
   if (merged.remarks.length > 4000) errors.push('remarks exceeds 4000 characters');
   const hiringErr = validateHiringResult(merged.hiring_result);
   if (hiringErr) errors.push(hiringErr);
 
   if (errors.length === 0) {
     const target = await resolveTarget(client, employerId, {
-      driveId: merged.placement_drive_id || null,
-      jobId: merged.job_id || null,
+      driveId: resolvedTarget.driveId || null,
+      jobId: resolvedTarget.jobId || null,
       tenantId: merged.tenant_id || null,
     });
     if (target.error) errors.push(target.error);
@@ -189,8 +238,8 @@ export async function revalidateStagingRow(client, employerId, rowId, patch) {
         } else if (isFcfsHiringSelect(merged.hiring_result)) {
           const track = fcfsTrackFromAssessmentTarget({
             opportunityKind: existing.opportunity_kind,
-            targetDriveId: merged.placement_drive_id || null,
-            targetJobId: merged.job_id || null,
+            targetDriveId: resolvedTarget.driveId || null,
+            targetJobId: resolvedTarget.jobId || null,
           });
           if (track) {
             const fcfs = await assertEmployerMayConfirmStudent(

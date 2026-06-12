@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireSuperAdmin } from '@/lib/adminAuth';
+import { enrichErrorLogRow } from '@/lib/platformErrorLogDisplay';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 function parseDate(value, fallback) {
@@ -12,7 +14,7 @@ function parseDate(value, fallback) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : fallback;
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const auth = await requireSuperAdmin();
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -21,6 +23,8 @@ export async function GET(request) {
     const from = parseDate(url.searchParams.get('from'), '1970-01-01');
     const to = parseDate(url.searchParams.get('to'), '2999-12-31');
     const context = String(url.searchParams.get('context') || '').trim();
+    const severity = String(url.searchParams.get('severity') || '').trim();
+    const search = String(url.searchParams.get('q') || '').trim();
     const limit = Math.min(500, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '200', 10)));
 
     const params = [from, to];
@@ -31,6 +35,25 @@ export async function GET(request) {
     if (context) {
       params.push(context);
       where.push(`pel.context = $${params.length}`);
+    }
+    if (severity) {
+      params.push(severity);
+      where.push(`pel.severity = $${params.length}`);
+    }
+    if (search) {
+      params.push(`%${search}%`);
+      const idx = params.length;
+      where.push(`(
+        pel.error_message ILIKE $${idx}
+        OR pel.user_message ILIKE $${idx}
+        OR pel.error_code ILIKE $${idx}
+        OR pel.context ILIKE $${idx}
+        OR pel.id::text ILIKE $${idx}
+        OR pel.details::text ILIKE $${idx}
+        OR u.email ILIKE $${idx}
+        OR ep.company_name ILIKE $${idx}
+        OR t.name ILIKE $${idx}
+      )`);
     }
     params.push(limit);
 
@@ -62,8 +85,9 @@ export async function GET(request) {
       );
 
       return NextResponse.json({
-        logs: res.rows,
+        logs: res.rows.map(enrichErrorLogRow),
         contexts: Object.values(PLATFORM_ERROR_CONTEXT),
+        filters: { from, to, context: context || null, q: search || null },
       });
     } catch (err) {
       if (err?.code === '42P01') {
@@ -81,3 +105,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load error logs' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_admin_error_logs' });
+export const GET = __platformApiHandlers.GET;

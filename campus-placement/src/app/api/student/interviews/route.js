@@ -7,12 +7,13 @@ import { AND_APP_NOT_DELETED, AND_DRIVE_PD_NOT_DELETED } from '@/lib/softDeleteS
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -71,3 +72,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load interviews' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_interviews' });
+export const GET = __platformApiHandlers.GET;

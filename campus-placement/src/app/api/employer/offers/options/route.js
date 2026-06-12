@@ -6,6 +6,7 @@ import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql'
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -21,7 +22,7 @@ async function getEmployerId(session) {
   return employerResult.rows[0]?.id || null;
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -69,3 +70,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load options' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_offers_options' });
+export const GET = __platformApiHandlers.GET;

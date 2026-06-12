@@ -1,10 +1,11 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import bcrypt from 'bcryptjs';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -47,3 +48,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_auth_change_password' });
+export const POST = __platformApiHandlers.POST;

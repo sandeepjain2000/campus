@@ -1,8 +1,9 @@
+import { resolveInitialHiringResult } from '@/lib/hiringResult';
 import { csvEscapeCell } from '@/lib/offersAssessmentStarterCsv';
 
 /** Columns accepted by POST /api/employer/assessments/upload */
 export const ASSESSMENT_UPLOAD_CSV_HEADERS = [
-  'system_id',
+  'student_system_id',
   'college_roll_no',
   'placement_drive_id',
   'job_id',
@@ -36,7 +37,7 @@ export function buildAssessmentUploadStarterCsv(rows) {
   for (const row of rows) {
     lines.push(
       [
-        csvEscapeCell(row.system_id ?? ''),
+        csvEscapeCell(row.student_system_id ?? ''),
         csvEscapeCell(row.college_roll_no ?? ''),
         csvEscapeCell(row.placement_drive_id ?? ''),
         csvEscapeCell(row.job_id ?? ''),
@@ -53,12 +54,10 @@ export function buildAssessmentUploadStarterCsv(rows) {
 /**
  * @param {Record<string, unknown> | null | undefined} assessmentRow
  */
-export function defaultHiringResultCells(assessmentRow) {
-  if (assessmentRow) {
-    return {
-      hiring_result: String(assessmentRow.hiring_result ?? '').trim(),
-      remarks: String(assessmentRow.remarks ?? '').trim(),
-    };
-  }
-  return { hiring_result: '', remarks: '' };
+export function defaultHiringResultCells(assessmentRow, { hasApplied = false } = {}) {
+  const remarks = String(assessmentRow?.remarks ?? '').trim();
+  return {
+    hiring_result: resolveInitialHiringResult(assessmentRow?.hiring_result, hasApplied),
+    remarks,
+  };
 }

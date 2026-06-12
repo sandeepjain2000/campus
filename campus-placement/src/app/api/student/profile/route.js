@@ -13,6 +13,7 @@ import {
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -45,7 +46,7 @@ async function hasAuxProfileColumn() {
   return res.rows.length > 0;
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== 'student') {
@@ -121,7 +122,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(request) {
+async function __platform_PUT(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== 'student') {
@@ -366,3 +367,11 @@ export async function PUT(request) {
     return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PUT: __platform_PUT,
+}, { context: 'api_student_profile' });
+export const GET = __platformApiHandlers.GET;
+export const PUT = __platformApiHandlers.PUT;

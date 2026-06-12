@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { getSessionTenantId } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -32,7 +33,7 @@ function mapRow(a) {
   };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const auth = await requireCollegeAdmin();
     if (auth.error) return auth.error;
@@ -58,7 +59,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const auth = await requireCollegeAdmin();
     if (auth.error) return auth.error;
@@ -89,7 +90,7 @@ export async function POST(request) {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const auth = await requireCollegeAdmin();
     if (auth.error) return auth.error;
@@ -146,7 +147,7 @@ export async function PATCH(request) {
   }
 }
 
-export async function DELETE(request) {
+async function __platform_DELETE(request) {
   try {
     const auth = await requireCollegeAdmin();
     if (auth.error) return auth.error;
@@ -172,3 +173,15 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Failed to delete resource' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+  DELETE: __platform_DELETE,
+}, { context: 'api_college_facilities' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;
+export const DELETE = __platformApiHandlers.DELETE;

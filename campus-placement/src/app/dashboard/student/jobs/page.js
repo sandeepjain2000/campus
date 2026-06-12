@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
+import { clientDebugLog, flushClientDebugLog, debugFetch } from '@/lib/clientDebugLog';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import {
@@ -96,26 +97,39 @@ export default function StudentJobsPage() {
     const blockReason = row
       ? resolveApplyBlockReason(programOpportunityFromRow(row), currentStudent, { globalBlockedReason })
       : null;
-    if (blockReason) return;
+
+    clientDebugLog('student_apply', 'apply_start', { jobId, title, blockReason });
+
+    if (blockReason) {
+      clientDebugLog('student_apply', 'apply_blocked', { blockReason });
+      await flushClientDebugLog('student_apply', session?.user?.email);
+      return;
+    }
 
     setApplyingId(jobId);
     try {
-      const res = await fetch('/api/student/program-applications', {
+      clientDebugLog('student_apply', 'sending_request', { jobId });
+      const res = await debugFetch('/api/student/program-applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId }),
       });
       const json = await res.json().catch(() => ({}));
+      clientDebugLog('student_apply', 'response_received', { status: res.status, json });
       if (!res.ok) {
         addToast(json.error || 'Could not apply', 'error');
+        clientDebugLog('student_apply', 'apply_failed', { error: json.error });
         return;
       }
       addToast(`Applied to ${title}`, 'success');
+      clientDebugLog('student_apply', 'apply_success', { jobId, title });
       mutate();
-    } catch {
+    } catch (err) {
       addToast('Network error', 'error');
+      clientDebugLog('student_apply', 'apply_exception', { message: err?.message || String(err) });
     } finally {
       setApplyingId(null);
+      await flushClientDebugLog('student_apply', session?.user?.email);
     }
   };
 

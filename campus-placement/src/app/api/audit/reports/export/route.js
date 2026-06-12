@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -14,7 +15,7 @@ function parseDate(value, fallback) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : fallback;
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['super_admin', 'college_admin'].includes(session.user.role)) {
@@ -149,3 +150,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to export audit report' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_audit_reports_export' });
+export const POST = __platformApiHandlers.POST;

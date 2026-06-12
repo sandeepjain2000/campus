@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getPlatformSettings } from '@/lib/platformSettings';
 import { deliverLoginSupportMessage } from '@/lib/loginSupportDelivery';
@@ -12,7 +13,7 @@ const MAX_MESSAGE = 4000;
  * Public pre-login support message → SMTP to system notification inbox (YOPmail in demo).
  * POST { replyEmail, subject, message }
  */
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const body = await request.json();
     const replyEmail = String(body.replyEmail || '').trim().toLowerCase();
@@ -60,3 +61,9 @@ export async function POST(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_public_support_message' });
+export const POST = __platformApiHandlers.POST;

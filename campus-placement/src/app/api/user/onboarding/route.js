@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -9,7 +10,7 @@ import { EMPLOYER_ALUMNI_JOBS_PATH } from '@/lib/employerAlumniRoutes';
 import { programApplicationNotDeletedSql } from '@/lib/migrationReady';
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -156,3 +157,9 @@ export async function GET() {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_user_onboarding' });
+export const GET = __platformApiHandlers.GET;

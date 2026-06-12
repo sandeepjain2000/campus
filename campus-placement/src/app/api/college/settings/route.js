@@ -17,6 +17,7 @@ import {
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -64,7 +65,7 @@ function fallbackInstitutionContact(tenant) {
   };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -179,7 +180,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -293,3 +294,11 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to save college settings' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_college_settings' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

@@ -9,9 +9,10 @@ import {
 import { TIE_UP_REVOKE_ENABLED } from '@/lib/employerTieUpShared';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -83,3 +84,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_employers_revoke' });
+export const POST = __platformApiHandlers.POST;

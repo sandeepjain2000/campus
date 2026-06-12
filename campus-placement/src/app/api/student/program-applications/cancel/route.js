@@ -6,12 +6,13 @@ import { AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -59,3 +60,9 @@ export async function POST(req) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_student_program_applications_cancel' });
+export const POST = __platformApiHandlers.POST;

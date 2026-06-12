@@ -3,9 +3,10 @@ import { isDemoDataApiEnabled, demoDataDisabledResponse } from '@/lib/demoDataAc
 import { ensureDemoIitmTieUps } from '@/lib/employerIitmTieUp';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
-export async function POST(request) {
+async function __platform_POST(request) {
   if (!isDemoDataApiEnabled()) return demoDataDisabledResponse();
   try {
     const body = await request.json().catch(() => ({}));
@@ -24,3 +25,9 @@ export async function POST(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_demo_ensure_iitm_tieup' });
+export const POST = __platformApiHandlers.POST;

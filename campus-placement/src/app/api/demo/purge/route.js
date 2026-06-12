@@ -7,6 +7,7 @@ import { getRequestClientIp } from '@/lib/auditLog';
 import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -14,7 +15,7 @@ export const revalidate = 0;
 
 
 
-export async function GET(request) {
+async function __platform_GET(request) {
   if (!isDemoDataApiEnabled()) return demoDataDisabledResponse();
   try {
     const { searchParams } = new URL(request.url);
@@ -36,7 +37,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   if (!isDemoDataApiEnabled()) return demoDataDisabledResponse();
   try {
     const body = await request.json().catch(() => ({}));
@@ -78,3 +79,11 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: e.message || 'Purge failed' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_demo_purge' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

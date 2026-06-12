@@ -7,12 +7,13 @@ import { syncProfileResumeAfterDocumentDelete } from '@/lib/completeStudentDocum
 import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -59,7 +60,7 @@ export async function GET() {
   }
 }
 
-export async function DELETE(req) {
+async function __platform_DELETE(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -104,3 +105,11 @@ export async function DELETE(req) {
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  DELETE: __platform_DELETE,
+}, { context: 'api_student_documents' });
+export const GET = __platformApiHandlers.GET;
+export const DELETE = __platformApiHandlers.DELETE;

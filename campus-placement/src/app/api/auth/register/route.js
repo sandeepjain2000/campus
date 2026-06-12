@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query, transaction } from '@/lib/db';
@@ -19,7 +20,7 @@ import { verifyLoginCaptcha } from '@/lib/simpleCaptcha';
 import { isDemoDataApiEnabled } from '@/lib/demoDataAccess';
 import { ensureIitmTieUpForEmployer } from '@/lib/employerIitmTieUp';
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const body = await request.json();
     const { role, firstName, lastName, password, phone, captchaToken, captchaAnswer } = body;
@@ -253,3 +254,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_auth_register' });
+export const POST = __platformApiHandlers.POST;

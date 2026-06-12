@@ -1,9 +1,10 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 
 /**
  * Student self-registration is disabled — profiles are provisioned by the college (CSV / add student).
  */
-export async function POST() {
+async function __platform_POST() {
   return NextResponse.json(
     {
       error:
@@ -12,3 +13,9 @@ export async function POST() {
     { status: 403 },
   );
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_auth_register_validate_student' });
+export const POST = __platformApiHandlers.POST;

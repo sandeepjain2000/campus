@@ -19,6 +19,7 @@ import {
 } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 const EDITABLE_STATUSES = new Set(['requested', 'approved', 'scheduled', 'in_progress']);
@@ -67,7 +68,7 @@ async function loadEmployerDrive(driveId, employerId) {
   throw lastErr || new Error('Failed to load drive');
 }
 
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   let session = null;
   let emp = null;
   let driveId = null;
@@ -102,7 +103,7 @@ export async function GET(_request, { params }) {
   }
 }
 
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   let session = null;
   let emp = null;
   let body = {};
@@ -374,3 +375,11 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(errBody, { status });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_drives_id' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

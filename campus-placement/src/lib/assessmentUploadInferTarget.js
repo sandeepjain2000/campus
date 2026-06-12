@@ -21,6 +21,11 @@ export function inferAssessmentUploadTargetFromCsv(parsed, headerIdx) {
     return { driveId: '', jobId: '', error: 'All CSV rows must use the same job_id' };
   }
   if (driveIds.size && jobIds.size) {
+    const driveId = [...driveIds][0];
+    const jobId = [...jobIds][0];
+    if (driveIds.size === 1 && jobIds.size === 1 && driveId === jobId) {
+      return { driveId: '', jobId };
+    }
     return {
       driveId: '',
       jobId: '',
@@ -43,6 +48,9 @@ export function resolveAssessmentUploadTarget({ kind, formDriveId, formJobId, in
   let jobId = formJobId || inferred?.jobId || '';
 
   if (driveId && jobId) {
+    if (driveId === jobId && kind !== 'drive') {
+      return { driveId: '', jobId };
+    }
     return { error: 'Provide either a placement drive or a job posting, not both' };
   }
 

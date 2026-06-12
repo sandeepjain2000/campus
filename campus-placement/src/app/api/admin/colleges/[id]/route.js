@@ -16,6 +16,7 @@ import {
 import { syncCollegeAdminUsersActive } from '@/lib/adminOrganizationActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -84,7 +85,7 @@ function mapCollege(row) {
   };
 }
 
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const auth = await requireSuperAdmin();
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -102,7 +103,7 @@ export async function GET(_request, { params }) {
   }
 }
 
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const auth = await requireSuperAdmin();
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -198,3 +199,11 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to update college' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_admin_colleges_id' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

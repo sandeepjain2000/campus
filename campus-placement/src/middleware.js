@@ -78,14 +78,15 @@ export default async function proxy(request) {
     return appendLegacyCookieClearance(NextResponse.next());
   }
 
-  // ── /login — bounce already-authenticated users (unless ?force=1) ──────────
-  if (pathname === '/login') {
+  // ── /login & /sign-in — bounce already-authenticated users (unless ?force=1) ──────────
+  if (pathname === '/login' || pathname === '/sign-in') {
     const force = request.nextUrl.searchParams.get('force');
     if (!force) {
       const token = await getToken({
         req: request,
         secret: process.env.NEXTAUTH_SECRET,
         cookieName: SESSION_COOKIE_NAME,
+        secureCookie: SESSION_COOKIE_NAME.startsWith('__Secure-'),
       });
       if (token?.role) {
         const dest = ROLE_HOME_PATHS[token.role] || '/dashboard';
@@ -112,6 +113,7 @@ export default async function proxy(request) {
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
       cookieName: SESSION_COOKIE_NAME,
+      secureCookie: SESSION_COOKIE_NAME.startsWith('__Secure-'),
     });
 
     // Unauthenticated → login
@@ -180,6 +182,7 @@ export const config = {
     '/api/user/data-export/:path*',
     '/api/hiring-assessment/:path*',
     '/login',
+    '/sign-in',
     '/data-entry',
     '/data-entry/:path*',
     '/dashboard/:path*',

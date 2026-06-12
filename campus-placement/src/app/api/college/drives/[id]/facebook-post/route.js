@@ -6,6 +6,7 @@ import { formatDriveFacebookMessage, isFacebookPageShareConfigured, postToFacebo
 import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -22,7 +23,7 @@ function normalizeWebsiteUrl(raw) {
 }
 
 /** POST — publish a placement-drive summary to the configured Facebook Page (Graph API). */
-export async function POST(_request, { params }) {
+async function __platform_POST(_request, { params }) {
   try {
     if (!isFacebookPageShareConfigured()) {
       return NextResponse.json(
@@ -105,3 +106,9 @@ export async function POST(_request, { params }) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_drives_id_facebook_post' });
+export const POST = __platformApiHandlers.POST;

@@ -1,8 +1,9 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { isRegistrationJobAidEnabled, sampleForCollegeSlug } from '@/lib/registrationJobAid';
 
-export async function GET() {
+async function __platform_GET() {
   if (!isRegistrationJobAidEnabled()) {
     return NextResponse.json({ error: 'Not available' }, { status: 404 });
   }
@@ -34,3 +35,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load job aid' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_public_registration_job_aid' });
+export const GET = __platformApiHandlers.GET;

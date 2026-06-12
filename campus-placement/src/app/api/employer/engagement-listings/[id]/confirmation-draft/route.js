@@ -13,10 +13,11 @@ import {
 } from '@/lib/campusGuestConfirmation';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
-export async function GET(_request, { params }) {
+async function __platform_GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -127,3 +128,9 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: 'Failed to build draft' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_engagement_listings_id_confirmation_draft' });
+export const GET = __platformApiHandlers.GET;

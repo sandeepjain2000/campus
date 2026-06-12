@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
 
-function readEnvLocal() {
-  const envPath = path.join(process.cwd(), '.env.local');
+function readEnvFile(filename) {
+  const envPath = path.join(process.cwd(), filename);
   if (!fs.existsSync(envPath)) return {};
   const out = {};
   const raw = fs.readFileSync(envPath, 'utf8');
@@ -19,15 +19,19 @@ function readEnvLocal() {
   return out;
 }
 
+function readEnvFiles() {
+  return { ...readEnvFile('.env'), ...readEnvFile('.env.local') };
+}
+
 function getDbConfig() {
-  const env = readEnvLocal();
+  const env = readEnvFiles();
   const rawUrl =
     process.env.DATABASE_URL ||
     process.env.SUPABASE_DATABASE_URL ||
     env.DATABASE_URL ||
     env.SUPABASE_DATABASE_URL;
   if (!rawUrl) {
-    throw new Error('DATABASE_URL or SUPABASE_DATABASE_URL is required (.env.local supported).');
+    throw new Error('DATABASE_URL or SUPABASE_DATABASE_URL is required (.env or .env.local).');
   }
   return { connectionString: rawUrl, ssl: { rejectUnauthorized: false } };
 }

@@ -6,12 +6,13 @@ import { validateTitlePayload } from '@/lib/apiInputValidation';
 import { normalizeTitle } from '@/lib/validators';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -87,3 +88,9 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to update listing' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  PATCH: __platform_PATCH,
+}, { context: 'api_college_engagement_listings_id' });
+export const PATCH = __platformApiHandlers.PATCH;

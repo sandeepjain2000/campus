@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -14,7 +15,7 @@ function getTenantId(session) {
 }
 
 /** PATCH — save coordination POC staff (college_admin users) for an employer tie-up. */
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -85,3 +86,9 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to save POC assignment' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  PATCH: __platform_PATCH,
+}, { context: 'api_college_employers_id_poc' });
+export const PATCH = __platformApiHandlers.PATCH;

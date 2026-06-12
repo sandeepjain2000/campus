@@ -14,6 +14,7 @@ import {
 import { isAuthoritativeResumeUrl, isPlaceholderResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -34,7 +35,7 @@ function isViewableDocumentUrl(url) {
   return isAuthoritativeResumeUrl(value) || !value.includes('dummy.pdf');
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -89,3 +90,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Could not open document' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_applications_documents_view' });
+export const GET = __platformApiHandlers.GET;

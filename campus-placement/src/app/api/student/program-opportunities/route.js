@@ -31,6 +31,7 @@ import {
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function queryStudentProgramOpportunities({
@@ -173,7 +174,7 @@ function opportunityErrorHint(error) {
  * Published program openings visible to the student's college.
  * ?kind=internship | job | project (short_project only) | hackathon
  */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -354,3 +355,9 @@ export async function GET(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_program_opportunities' });
+export const GET = __platformApiHandlers.GET;

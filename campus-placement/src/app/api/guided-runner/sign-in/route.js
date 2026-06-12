@@ -5,10 +5,11 @@ import { applySessionCookiePolicy } from '@/lib/sessionPolicy';
 import { SESSION_COOKIE_NAME, sessionTokenCookieOptions } from '@/lib/sessionPolicy';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
-export async function POST(request) {
+async function __platform_POST(request) {
   if (!isGuidedRunnerFeatureEnabled()) {
     return NextResponse.json({ ok: false, error: 'Guided testing API disabled in this environment.' }, { status: 403 });
   }
@@ -34,3 +35,9 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: e.message || 'Guided sign-in failed' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_guided_runner_sign_in' });
+export const POST = __platformApiHandlers.POST;

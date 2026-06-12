@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
@@ -14,7 +15,7 @@ function tenantFromRequest(gateSession, request, body) {
   return resolveDataEntryTenantId(gateSession, request.nextUrl.searchParams.get('tenantId'));
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const gate = await requireDataEntrySession();
     if (!gate.ok) return gate.response;
@@ -36,7 +37,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const gate = await requireDataEntrySession();
     if (!gate.ok) return gate.response;
@@ -92,7 +93,7 @@ export async function POST(request) {
   }
 }
 
-export async function PUT(request) {
+async function __platform_PUT(request) {
   try {
     const gate = await requireDataEntrySession();
     if (!gate.ok) return gate.response;
@@ -130,7 +131,7 @@ export async function PUT(request) {
   }
 }
 
-export async function DELETE(request) {
+async function __platform_DELETE(request) {
   try {
     const gate = await requireDataEntrySession();
     if (!gate.ok) return gate.response;
@@ -153,3 +154,15 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Failed to delete placement drive' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PUT: __platform_PUT,
+  DELETE: __platform_DELETE,
+}, { context: 'api_data_entry_placement_drives' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PUT = __platformApiHandlers.PUT;
+export const DELETE = __platformApiHandlers.DELETE;

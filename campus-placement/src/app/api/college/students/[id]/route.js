@@ -15,14 +15,11 @@ import {
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { displaySemesterForStudentList } from '@/lib/academicYearTenant';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
-
-
-function getTenantId(session) {
-  return session.user.tenant_id ?? session.user.tenantId;
-}
 
 async function loadStudentForTenant(tenantId, studentId, semesterDisplay) {
   const result = await query(
@@ -37,14 +34,14 @@ async function loadStudentForTenant(tenantId, studentId, semesterDisplay) {
   return mapCollegeStudentRow(result.rows[0], { semesterDisplay });
 }
 
-export async function GET(request, { params }) {
+async function __platform_GET(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = getTenantId(session);
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -80,14 +77,14 @@ export async function GET(request, { params }) {
 }
 
 /** Update non-primary fields (department, CGPA, skills, etc.). Name, email, and roll are locked. */
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = getTenantId(session);
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -151,14 +148,14 @@ export async function PATCH(request, { params }) {
 }
 
 /** Soft-archive (removes from active list; deactivates login). */
-export async function DELETE(_request, { params }) {
+async function __platform_DELETE(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = getTenantId(session);
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -184,3 +181,13 @@ export async function DELETE(_request, { params }) {
     return NextResponse.json({ error: 'Failed to archive student' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+  DELETE: __platform_DELETE,
+}, { context: 'api_college_students_id' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;
+export const DELETE = __platformApiHandlers.DELETE;

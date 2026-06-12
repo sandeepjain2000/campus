@@ -8,6 +8,7 @@ import { assessmentExportFilename } from '@/lib/assessmentUploadStarterCsv';
 import { isUuid } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -28,7 +29,7 @@ async function employerHasApprovedTenant(employerId, tenantId) {
 }
 
 /** GET — campus student CSV for import/export. Query: kind, tenantId, driveId?, jobId?, academicYearId? */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -84,3 +85,9 @@ export async function GET(request) {
     return NextResponse.json({ error: e.message || 'Failed to export assessment CSV' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments_export' });
+export const GET = __platformApiHandlers.GET;

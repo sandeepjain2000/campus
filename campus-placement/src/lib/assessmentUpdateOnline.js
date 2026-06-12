@@ -14,7 +14,12 @@ import {
   loadAssessmentPostingOpportunity,
 } from '@/lib/assessmentExportEligibility';
 import { upsertAssessmentRowInContext } from '@/lib/assessmentRowUpsert';
+import { findApplicationForStudent } from '@/lib/assessmentUploadProcessCore';
 import { writeEmployerAssessmentAudit } from '@/lib/employerAssessmentAudit';
+import {
+  loadAppliedStudentProfileIds,
+  resolveInitialHiringResult,
+} from '@/lib/assessmentApplicationStatus';
 import { normalizeHiringResult, validateHiringResult } from '@/lib/hiringResult';
 import {
   assertEmployerMayConfirmStudent,
@@ -111,6 +116,8 @@ export async function fetchAssessmentUpdateOnlineRows(employerId, kind, context)
   );
 
   const assessmentIndex = await buildAssessmentIndex(employerId, { tenantId, driveId, jobId });
+  const profileIds = students.map((s) => s.student_profile_id).filter(Boolean);
+  const appliedProfileIds = await loadAppliedStudentProfileIds(profileIds, { driveId, jobId });
 
   const ctx = await getOrCreateAssessmentContext(null, {
     employerId,
@@ -135,18 +142,20 @@ export async function fetchAssessmentUpdateOnlineRows(employerId, kind, context)
     const candidateFromAssessment = assessment?.candidate_name ? String(assessment.candidate_name).trim() : '';
     const fcfsBlockedBy = blockedMap.get(row.student_profile_id) || null;
     const fcfsBlocked = Boolean(fcfsBlockedBy);
+    const hasApplied = appliedProfileIds.has(row.student_profile_id);
     rows.push({
       student_profile_id: row.student_profile_id,
       assessment_row_id: assessment?.id || null,
       upload_id: assessment?.upload_id || null,
       system_id: formatStudentSystemId(row.short_code, row.roll_number),
       college_roll_no: row.roll_number,
-      placement_drive_id: driveId || '',
+      placement_drive_id: driveId || jobId || '',
       job_id: jobId || '',
       tenant_id: row.tenant_id || '',
       candidate_name: candidateFromAssessment || String(row.student_name || '').trim(),
-      hiring_result: assessment?.hiring_result ?? '',
+      hiring_result: resolveInitialHiringResult(assessment?.hiring_result, hasApplied),
       remarks: assessment?.remarks ?? '',
+      has_applied: hasApplied,
       campus_name: '',
       fcfs_blocked: fcfsBlocked,
       fcfs_blocked_by: fcfsBlockedBy,
@@ -250,6 +259,8 @@ export async function saveAssessmentUpdateOnlineRows(employerId, userId, kind, c
         candidate_name: trimText(input.candidate_name, 255) || null,
       };
 
+      const applicationId = await findApplicationForStudent(client, profileId, driveId, jobId);
+
       await upsertAssessmentRowInContext(client, {
         employerId,
         tenantId,
@@ -257,12 +268,12 @@ export async function saveAssessmentUpdateOnlineRows(employerId, userId, kind, c
         targetJobId: jobId,
         uploadId,
         studentProfileId: profileId,
-        applicationId: null,
+        applicationId,
         rollNumber: student.college_roll_no,
         hiringResult: next.hiring_result,
         remarks: next.remarks,
         candidateName: next.candidate_name,
-        isUnregisteredStudent: true,
+        isUnregisteredStudent: !applicationId,
       });
 
       await writeEmployerAssessmentAudit(client, {

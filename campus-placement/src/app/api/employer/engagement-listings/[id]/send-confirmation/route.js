@@ -5,6 +5,7 @@ import { query, transaction } from '@/lib/db';
 import { sendMail } from '@/lib/mailer';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -13,7 +14,7 @@ export const revalidate = 0;
 const SUBJECT_MAX = 500;
 const BODY_MAX = 50_000;
 
-export async function POST(request, { params }) {
+async function __platform_POST(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -123,3 +124,9 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: e.message || 'Failed to send email' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_engagement_listings_id_send_confirmation' });
+export const POST = __platformApiHandlers.POST;

@@ -14,15 +14,12 @@ import {
   resolveAssessmentUploadTarget,
 } from '@/lib/assessmentUploadInferTarget';
 import { formatAssessmentUploadErrors, validateAssessmentCsvUpload } from '@/lib/assessmentUploadValidate';
-import {
-  ASSESS_UPLOAD_DB_ERROR,
-  INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED,
-  isAssessUploadSqlExposure,
-} from '@/lib/assessmentUploadDbError';
-import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import { formatAssessImportApiError } from '@/lib/assessmentUploadDbError';
 import { isUuid } from '@/lib/tenantContext';
+import { respondPlatformError, writePlatformErrorLog } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerId(session) {
@@ -46,7 +43,7 @@ function buildReviewResponse(result) {
   );
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -84,15 +81,19 @@ export async function POST(request) {
     }
 
     const headers = parsed.headers.map((h) => String(h).trim().toLowerCase());
-    if (!headers.includes('college_roll_no') && !headers.includes('system_id')) {
+    // Accept both `student_system_id` (new) and `system_id` (legacy) column names
+    const hasStudentSystemId = headers.includes('student_system_id');
+    const hasSystemId = headers.includes('system_id');
+    if (!headers.includes('college_roll_no') && !hasStudentSystemId && !hasSystemId) {
       return NextResponse.json(
-        { error: 'CSV must include column system_id and/or college_roll_no' },
+        { error: 'CSV must include column student_system_id (or legacy system_id) and/or college_roll_no' },
         { status: 400 },
       );
     }
 
     const headerIdx = {
-      system_id: headers.indexOf('system_id'),
+      // Prefer student_system_id; fall back to system_id for legacy CSVs
+      system_id: hasStudentSystemId ? headers.indexOf('student_system_id') : headers.indexOf('system_id'),
       college_roll_no: headers.indexOf('college_roll_no'),
       placement_drive_id: headers.indexOf('placement_drive_id'),
       job_id: headers.indexOf('job_id'),
@@ -119,18 +120,6 @@ export async function POST(request) {
 
     const defaultDriveId = resolved.driveId;
     const defaultJobId = resolved.jobId;
-
-    if (defaultJobId) {
-      const jobTypeRes = await query(
-        `SELECT jp.job_type FROM job_postings jp
-         WHERE jp.id = $1::uuid AND jp.employer_id = $2::uuid ${AND_JP_NOT_DELETED}
-         LIMIT 1`,
-        [defaultJobId, employerId],
-      );
-      if (String(jobTypeRes.rows[0]?.job_type || '').toLowerCase() === 'internship') {
-        return NextResponse.json({ error: INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED }, { status: 422 });
-      }
-    }
 
     let s3Key = null;
     if (isS3Configured()) {
@@ -229,14 +218,39 @@ export async function POST(request) {
     });
 
     if (result.needsReview) {
+      // Log data-level validation errors to Super Admin so they can be investigated
+      writePlatformErrorLog({
+        context: 'api_employer_assessments_upload_post',
+        error: new Error(`CSV upload needs review: ${result.invalidCount} invalid row(s) out of ${result.totalRows}`),
+        statusCode: 422,
+        severity: 'warning',
+        employerId,
+        details: {
+          fileName,
+          totalRows: result.totalRows,
+          invalidCount: result.invalidCount,
+          errors: (result.errors || []).slice(0, 50),
+          source: 'csv_data_validation',
+        },
+      }).catch(() => {});
       return buildReviewResponse(result);
     }
 
     if (!result.ok) {
       const firstError = result.errors?.[0] || '';
-      if (firstError === INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED) {
-        return NextResponse.json({ error: INTERNSHIP_ASSESSMENT_UPLOAD_REJECTED }, { status: 422 });
-      }
+      // Log all failed-upload errors (empty CSV, commit failures) to Super Admin
+      writePlatformErrorLog({
+        context: 'api_employer_assessments_upload_post',
+        error: new Error(firstError || 'Upload failed'),
+        statusCode: 400,
+        severity: 'warning',
+        employerId,
+        details: {
+          fileName,
+          errors: (result.errors || []).slice(0, 50),
+          source: 'csv_upload_result',
+        },
+      }).catch(() => {});
       return NextResponse.json(
         {
           error: firstError || 'Upload failed — check your CSV and campus context.',
@@ -259,26 +273,29 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
+    console.error('POST /api/employer/assessments/upload failed:', error);
+    // Log ALL errors including data issues to Super Admin platform_error_logs
+    const { status, message } = formatAssessImportApiError(error, { upload: true });
+    // Fire-and-forget log so response is not blocked
+    writePlatformErrorLog({
+      context: 'api_employer_assessments_upload_post',
+      error,
+      statusCode: status,
+      userMessage: message,
+      severity: status >= 500 ? 'error' : 'warning',
+    }).catch(() => {});
     if (error?.statusCode === 409) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
     if (error?.statusCode === 400) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    console.error('POST /api/employer/assessments/upload failed:', error);
-    if (isAssessUploadSqlExposure(error)) {
-      return NextResponse.json({ error: ASSESS_UPLOAD_DB_ERROR }, { status: 500 });
-    }
-    const msg = String(error?.message || '');
-    if (msg.includes('employer_assessment_import')) {
-      return NextResponse.json(
-        {
-          error:
-            'Import review tables are missing. Run migration 071: npm run db:migrate:071',
-        },
-        { status: 503 },
-      );
-    }
-    return NextResponse.json({ error: 'Failed to upload results CSV' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_assessments_upload' });
+export const POST = __platformApiHandlers.POST;

@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { sendAutomatedSponsorshipPaymentEmails } from '@/lib/sponsorshipAutoEmails';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -77,7 +78,7 @@ function normalizeBilling(body) {
   return { legal: legalOut, pan: panOut, gst: gstOut };
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   let session = null;
   let opportunityId = null;
   let method = null;
@@ -290,3 +291,9 @@ export async function POST(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_sponsorships_payment' });
+export const POST = __platformApiHandlers.POST;

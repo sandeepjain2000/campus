@@ -7,6 +7,7 @@ import { submitAssessmentContext, getOrCreateAssessmentContext } from '@/lib/ass
 import { isUuid } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -17,7 +18,7 @@ async function getEmployerProfileId(session) {
 }
 
 /** POST — lock hiring results for a campus + opportunity target (draft → submitted). */
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -75,7 +76,7 @@ export async function POST(request) {
 }
 
 /** GET — submission status for a context */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -111,3 +112,11 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load submission status' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_employer_assessments_submit' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

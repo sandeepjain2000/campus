@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -29,7 +30,7 @@ function resolveTenantId(session, searchParams) {
   return searchParams.get('campusId');
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['college_admin', 'employer', 'super_admin', 'student'].includes(session.user.role)) {
@@ -52,7 +53,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['college_admin', 'employer', 'super_admin'].includes(session.user.role)) {
@@ -97,7 +98,7 @@ export async function POST(request) {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['college_admin', 'employer', 'super_admin'].includes(session.user.role)) {
@@ -139,3 +140,13 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'Failed to save reply' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+}, { context: 'api_discussions' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;

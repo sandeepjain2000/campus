@@ -35,3 +35,10 @@ export async function resolveCollegeAdminTenantId(userId, sessionFallbackTenantI
   const r = await query(`SELECT tenant_id FROM users WHERE id = $1::uuid AND role = 'college_admin'`, [userId]);
   return r.rows[0]?.tenant_id || sessionFallbackTenantId || null;
 }
+
+/** Resolve college admin tenant from a NextAuth session (preferred over JWT tenant_id alone). */
+export async function resolveCollegeAdminTenantFromSession(session) {
+  const userId = session?.user?.id || session?.user?.sub;
+  const sessionTenant = session?.user?.tenantId || session?.user?.tenant_id;
+  return (await resolveCollegeAdminTenantId(userId, sessionTenant)) || sessionTenant || null;
+}

@@ -5,7 +5,7 @@ import { query } from '@/lib/db';
 import { EMPLOYER_COMPANY_TYPE_OPTIONS } from '@/lib/employerCompanyTypeLabels';
 import { isBrowserLoadableAssetUrl } from '@/lib/clientAssetUrl';
 import { pickBrowserAssetUrl } from '@/lib/resolveBrandLogoUrl';
-import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { respondPlatformError , withApiHandlers } from '@/lib/platformErrorRoute';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
@@ -80,7 +80,7 @@ async function getEmployerByUser(userId) {
   return res.rows[0] || null;
 }
 
-export async function GET() {
+async function __platform_GET() {
   let session = null;
   try {
     session = await getServerSession(authOptions);
@@ -107,7 +107,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   let session = null;
   let body = {};
   let profile = null;
@@ -247,3 +247,11 @@ export async function PATCH(request) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_profile' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

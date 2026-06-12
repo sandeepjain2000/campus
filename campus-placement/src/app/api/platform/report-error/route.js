@@ -10,6 +10,7 @@ import {
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function resolveEmployerId(userId) {
@@ -22,7 +23,7 @@ async function resolveEmployerId(userId) {
  * Client-reported API/UI failures — backup when server route did not persist a log entry.
  * POST { context, route, statusCode?, message, details?, alreadyLogged? }
  */
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -64,3 +65,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to record error' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_platform_report_error' });
+export const POST = __platformApiHandlers.POST;

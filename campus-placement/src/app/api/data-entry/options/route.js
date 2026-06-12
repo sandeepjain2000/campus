@@ -1,10 +1,11 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireDataEntrySession, resolveDataEntryTenantId } from '@/lib/dataEntryAccess';
 import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const gate = await requireDataEntrySession();
     if (!gate.ok) return gate.response;
@@ -69,3 +70,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load options' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_data_entry_options' });
+export const GET = __platformApiHandlers.GET;

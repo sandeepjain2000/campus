@@ -35,6 +35,10 @@ describe('platformErrorLog CRUD failure logging', () => {
     expect(body.reference).toBe(formatErrorReference('11111111-2222-3333-4444-555555555555'));
     expect(body.userMessage).toMatch(/Failed to load placement drives/);
     expect(body.userMessage).toMatch(/migration/i);
+    const details = JSON.parse(query.mock.calls[0][1][9]);
+    expect(details.route).toBe('/api/employer/drives');
+    expect(details.requestMethod).toBe('GET');
+    expect(details.pgHint).toMatch(/column is missing/i);
   });
 
   it('writes a warning log for 403 client errors (except 401)', async () => {
@@ -52,7 +56,7 @@ describe('platformErrorLog CRUD failure logging', () => {
     expect(body.error).toMatch(/No approved partnership/);
   });
 
-  it('does not write a log for 401 unauthorized', async () => {
+  it('writes an info log for 401 unauthorized', async () => {
     const err = new Error('Unauthorized');
     err.statusCode = 401;
 
@@ -62,7 +66,8 @@ describe('platformErrorLog CRUD failure logging', () => {
     });
 
     expect(status).toBe(401);
-    expect(query).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0][1][0]).toBe('info');
   });
 
   it('covers employer CRUD context keys', () => {

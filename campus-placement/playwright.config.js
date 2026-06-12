@@ -19,7 +19,7 @@ module.exports = defineConfig({
   },
 
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: 'http://localhost:3000',
     headless: !isHeaded,
 
     // Give every navigation / action up to 30 s to complete (local Next.js dev is slow)
@@ -45,7 +45,7 @@ module.exports = defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://127.0.0.1:3000',
+    url: 'http://localhost:3000',
     reuseExistingServer: true,    // always reuse if already running
     timeout: 120_000,
   },

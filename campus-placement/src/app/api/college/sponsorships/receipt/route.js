@@ -12,6 +12,7 @@ import {
 import { SPONSORSHIP_DONATION_RECEIPT_TEMPLATE_KEY } from '@/lib/systemEmailTemplates';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -31,7 +32,7 @@ function formatInr(n) {
   return new Intl.NumberFormat('en-IN').format(Number(n || 0));
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -226,3 +227,9 @@ export async function POST(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_sponsorships_receipt' });
+export const POST = __platformApiHandlers.POST;

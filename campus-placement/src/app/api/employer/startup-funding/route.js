@@ -4,13 +4,14 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 function formatInr(value) {
   return new Intl.NumberFormat('en-IN').format(value);
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -92,3 +93,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load startup funding options' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_startup_funding' });
+export const GET = __platformApiHandlers.GET;

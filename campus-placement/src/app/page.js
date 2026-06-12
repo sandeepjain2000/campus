@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Rocket,
   GraduationCap,
@@ -14,9 +15,8 @@ import {
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
 import DevScreenTag from '@/components/DevScreenTag';
-import LandingDemoToolsDock from '@/components/demo/LandingDemoToolsDock';
-
 export default function LandingPage() {
+  const router = useRouter();
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '?';
   const buildTimeIso = process.env.NEXT_PUBLIC_BUILD_TIME || '';
   const gitSha = process.env.NEXT_PUBLIC_APP_GIT_SHA || '';
@@ -35,6 +35,13 @@ export default function LandingPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const demo = params.get('demo');
+    if (demo === 'apis') router.replace('/developer#demo-apis');
+    else if (demo === 'cleanup' || demo === 'purge') router.replace('/developer#demo-purge');
+  }, [router]);
 
   useEffect(() => {
     appendClientDebugLog({
@@ -74,12 +81,8 @@ export default function LandingPage() {
         <strong>Demo Emails:</strong> All System emails can be checked on this disposable mail id: <strong>placementhub@yopmail.com</strong> at{' '}
         <a href="https://yopmail.com/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--primary-900)' }}>https://yopmail.com/</a>
         {' · '}
-        <Link href="/developer" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Developer</Link>
-        {' · '}
-        <Link href="/?demo=apis" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Demo APIs</Link>
+        <Link href="/developer" prefetch={false} style={{ fontWeight: 700, color: 'var(--primary-900)', textDecoration: 'underline' }}>Developer Notes</Link>
       </div>
-
-      <LandingDemoToolsDock />
 
       {/* Top Navbar */}
       <header style={{ borderBottom: '1px solid var(--border-default)', backgroundColor: 'var(--bg-primary)', position: 'sticky', top: 0, zIndex: 40 }}>
@@ -104,7 +107,7 @@ export default function LandingPage() {
               <Link href="/register" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
                 Register
               </Link>
-              <Link href="/login" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
+              <Link href="/sign-in" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
                 Sign In
               </Link>
             </div>
@@ -237,8 +240,8 @@ export default function LandingPage() {
               <MarketingNavLink internalHref="/about" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>About</MarketingNavLink>
               <MarketingNavLink internalHref="/contact" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact</MarketingNavLink>
               <Link href="/register" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Register</Link>
-              <Link href="/login" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Sign in</Link>
-              <Link href="/developer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Developer</Link>
+              <Link href="/login" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Sign in (Testing)</Link>
+              <Link href="/developer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Developer Notes</Link>
             </nav>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center', margin: 0 }}>© 2026 PlacementHub. All rights reserved.</p>
         </div>

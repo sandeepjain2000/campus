@@ -7,6 +7,7 @@ import { fetchAssessmentRowsForView, pickRepresentativeAssessmentRows } from '@/
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -16,7 +17,7 @@ function getTenantId(session) {
   return session?.user?.tenantId || session?.user?.tenant_id || null;
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -107,3 +108,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load upload context' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_offers_upload_meta' });
+export const GET = __platformApiHandlers.GET;

@@ -5,6 +5,7 @@ import { sendMail } from '@/lib/mailer';
 import { normalizeEmailRecipients } from '@/lib/adminPlacementListingEmail';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 const MAX_RECIPIENTS = 10;
 const MAX_SUBJECT = 300;
@@ -21,7 +22,7 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'super_admin') {
@@ -94,3 +95,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_admin_placement_listings_email' });
+export const POST = __platformApiHandlers.POST;

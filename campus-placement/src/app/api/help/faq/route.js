@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { rankFaqIdsWithOpenAI } from '@/lib/helpFaqOpenai';
@@ -21,7 +22,7 @@ function ilikePattern(q) {
  * GET ?screen=S-1&q=keyword — search: screen first, then GLOBAL, then any active row.
  */
 /** Public read — used on /login and /help without a session. */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const url = new URL(request.url);
     const screenTag = normalizeScreenTag(url.searchParams.get('screen'));
@@ -138,13 +139,20 @@ export async function GET(request) {
     });
   } catch (e) {
     if (e.message && e.message.includes('documentation_faq')) {
-      return jsonPublicErrorLogged(
+      return await jsonPublicErrorLogged(
         e,
         'GET /api/help/faq (documentation_faq missing)',
         'Help content is not available right now.',
         503,
+        { request },
       );
     }
-    return jsonPublicErrorLogged(e, 'GET /api/help/faq', 'Failed to load help', 500);
+    return await jsonPublicErrorLogged(e, 'GET /api/help/faq', 'Failed to load help', 500, { request });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_help_faq' });
+export const GET = __platformApiHandlers.GET;

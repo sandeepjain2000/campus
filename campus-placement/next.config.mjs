@@ -38,7 +38,7 @@ const nextConfig = {
   allowedDevOrigins: ['127.0.0.1', '192.168.1.102'],
   // Helps dev/SSR reliably resolve `next-auth` subpath exports (`next-auth/react`).
   transpilePackages: ['next-auth'],
-  serverExternalPackages: ['pdf-parse', 'mammoth'],
+  serverExternalPackages: ['pdf-parse', 'mammoth', 'pg', 'pg-connection-string'],
   async headers() {
     return [
       {

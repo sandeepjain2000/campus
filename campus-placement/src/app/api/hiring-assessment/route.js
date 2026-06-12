@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { getSessionTenantId, isUuid } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -75,7 +76,7 @@ async function resolveHiringTenantId(session, requestedTenantId) {
   return fromSession;
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !HIRING_ROLES.includes(session.user.role)) {
@@ -107,7 +108,7 @@ export async function GET(request) {
   }
 }
 
-export async function PUT(request) {
+async function __platform_PUT(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !HIRING_ROLES.includes(session.user.role)) {
@@ -155,3 +156,11 @@ export async function PUT(request) {
     return NextResponse.json({ error: 'Failed to save hiring assessment rows' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PUT: __platform_PUT,
+}, { context: 'api_hiring_assessment' });
+export const GET = __platformApiHandlers.GET;
+export const PUT = __platformApiHandlers.PUT;

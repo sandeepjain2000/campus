@@ -35,7 +35,7 @@ function publishedJobRow(overrides = {}) {
     min_cgpa: 7,
     vacancies: 3,
     skills_required: ['Python'],
-    additional_info: null,
+    additional_info: JSON.stringify({ startDate: '2026-06-15', endDate: '2026-09-15' }),
     ...overrides,
   };
 }
@@ -99,6 +99,8 @@ describe('PATCH /api/employer/jobs publish visibility', () => {
         jobType: 'internship',
         status: 'draft',
         keywords: 'Python',
+        startDate: '2026-06-15',
+        endDate: '2026-09-15',
       }),
     );
     const body = await res.json();
@@ -146,6 +148,8 @@ describe('PATCH /api/employer/jobs publish visibility', () => {
         status: 'published',
         keywords: 'Python',
         tenantIds: ['a1000000-0000-0000-0000-000000000001'],
+        startDate: '2026-06-15',
+        endDate: '2026-09-15',
       }),
     );
 

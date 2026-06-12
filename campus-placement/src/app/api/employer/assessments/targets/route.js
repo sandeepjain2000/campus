@@ -8,6 +8,7 @@ import { AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { isUuid } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerId(userId) {
@@ -23,7 +24,7 @@ function formatDriveLabel(row) {
   return `${title} · ${dateLabel}`;
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -104,3 +105,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load targets' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments_targets' });
+export const GET = __platformApiHandlers.GET;

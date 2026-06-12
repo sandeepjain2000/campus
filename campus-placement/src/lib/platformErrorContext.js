@@ -17,4 +17,27 @@ export const PLATFORM_ERROR_CONTEXT = {
   EMPLOYER_APPLICATION_LIST: 'employer_application_list',
   EMPLOYER_APPLICATION_UPDATE: 'employer_application_update',
   CLIENT_API_FAILURE: 'client_api_failure',
+  LOGIN_DEBUG: 'login_debug',
+};
+
+/** Human-readable labels for super-admin Error logs filters and detail panel. */
+export const PLATFORM_ERROR_CONTEXT_LABELS = {
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_CREATE]: 'Employer — create placement drive',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_LIST]: 'Employer — list placement drives',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_GET]: 'Employer — view placement drive',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_UPDATE]: 'Employer — update placement drive',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_DRIVE_CANCEL]: 'Employer — cancel placement drive',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_CALENDAR]: 'Employer — calendar',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_PROFILE_READ]: 'Employer — read profile',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_PROFILE_UPDATE]: 'Employer — update profile',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_JOB_LIST]: 'Employer — list job postings',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_JOB_CREATE]: 'Employer — create job posting',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_JOB_UPDATE]: 'Employer — update job posting',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_CAMPUS_LIST]: 'Employer — list campuses',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_CAMPUS_REQUEST]: 'Employer — request campus tie-up',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_DASHBOARD]: 'Employer — dashboard',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_APPLICATION_LIST]: 'Employer — applications list',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_APPLICATION_UPDATE]: 'Employer — update application status',
+  [PLATFORM_ERROR_CONTEXT.CLIENT_API_FAILURE]: 'Client — API failure (browser report)',
+  [PLATFORM_ERROR_CONTEXT.LOGIN_DEBUG]: 'Login — debug trace (browser)',
 };

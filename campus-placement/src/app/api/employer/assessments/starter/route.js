@@ -9,8 +9,9 @@ import {
   buildAssessmentUploadStarterCsv,
   defaultHiringResultCells,
 } from '@/lib/assessmentUploadStarterCsv';
-import { formatStudentSystemId } from '@/lib/studentSystemId';
+import { formatStudentSystemIdForCollege } from '@/lib/studentSystemId';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { loadAppliedStudentProfileIds } from '@/lib/assessmentApplicationStatus';
 import {
   filterStudentsByAssessmentPostingEligibility,
   loadAssessmentPostingOpportunity,
@@ -18,6 +19,7 @@ import {
 import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -104,10 +106,10 @@ async function listStarterStudents({ tenantId, driveId, scope }) {
 
 /**
  * GET — assessment upload CSV pre-filled with real campus students (and existing hiring_result when any).
- * Query: driveId (placement drive) OR jobId + tenantId (job upload — no placement_drive_id column values).
+ * Query: driveId (placement drive) OR jobId + tenantId (job/internship — both placement_drive_id and job_id pre-filled with jobId).
  * Optional: scope=applicants (drive only — prefer drive applicants, else all campus students).
  */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -157,7 +159,7 @@ export async function GET(request) {
       else if (jobType === 'short_project' || jobType === 'hackathon') assessmentKind = 'projects';
       else assessmentKind = 'jobs';
       tenantId = tenantParam;
-      placementDriveId = '';
+      placementDriveId = jobId;
       resolvedJobId = jobId;
     } else {
       return NextResponse.json(
@@ -170,8 +172,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Employer is not approved for this campus' }, { status: 403 });
     }
 
-    const tenantRes = await query(`SELECT short_code FROM tenants WHERE id = $1::uuid LIMIT 1`, [tenantId]);
-    const shortCode = tenantRes.rows[0]?.short_code || '';
+    const tenantRes = await query(`SELECT short_code, name FROM tenants WHERE id = $1::uuid LIMIT 1`, [tenantId]);
+    const tenant = tenantRes.rows[0] || {};
 
     let studentRows = await listStarterStudents({
       tenantId,
@@ -210,14 +212,27 @@ export async function GET(request) {
 
     const assessRows = await fetchAssessmentRowsForView({ employerId, tenantId });
     const rep = pickRepresentativeAssessmentRows(assessRows);
-    const byProfile = new Map(rep.map((r) => [r.student_profile_id, r]));
+    const byProfile = new Map();
+    for (const r of rep) {
+      const matchesDrive = placementDriveId && r.upload_drive_id === placementDriveId;
+      const matchesJob = resolvedJobId && r.upload_job_id === resolvedJobId;
+      if (!matchesDrive && !matchesJob) continue;
+      byProfile.set(r.student_profile_id, r);
+    }
+    const profileIds = studentRows.map((s) => s.student_profile_id).filter(Boolean);
+    const appliedProfileIds = await loadAppliedStudentProfileIds(profileIds, {
+      driveId: placementDriveId || null,
+      jobId: resolvedJobId || null,
+    });
 
     const csvRows = studentRows.map((s) => {
       const assessment = byProfile.get(s.student_profile_id);
-      const cells = defaultHiringResultCells(assessment);
+      const cells = defaultHiringResultCells(assessment, {
+        hasApplied: appliedProfileIds.has(s.student_profile_id),
+      });
       const name = String(s.candidate_name || '').trim();
       return {
-        system_id: formatStudentSystemId(shortCode, s.roll_number),
+        student_system_id: formatStudentSystemIdForCollege(tenant, s.roll_number),
         college_roll_no: s.roll_number,
         placement_drive_id: placementDriveId,
         job_id: resolvedJobId,
@@ -241,3 +256,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to build assessment starter CSV' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments_starter' });
+export const GET = __platformApiHandlers.GET;

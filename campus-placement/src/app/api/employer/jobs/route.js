@@ -31,7 +31,7 @@ import {
   validateAlumniJobPostingPayload,
 } from '@/lib/alumniJobPosting';
 import { sqlJobAcademicYearFilter } from '@/lib/employerAcademicYear';
-import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { respondPlatformError , withApiHandlers } from '@/lib/platformErrorRoute';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 import {
   buildInternshipAdditionalInfo,
@@ -630,7 +630,7 @@ async function updateInternshipJobPosting(client, values) {
   throw lastErr || new Error('Could not update job_postings row');
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   let session = null;
   let emp = null;
   try {
@@ -666,7 +666,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   let session = null;
   let emp = null;
   let body = {};
@@ -884,7 +884,7 @@ export async function POST(request) {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   let session = null;
   let emp = null;
   let body = {};
@@ -1201,3 +1201,13 @@ export async function PATCH(request) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_jobs' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -28,7 +29,7 @@ function mailboxWhereClause(mailbox) {
   return 'deleted_at IS NULL';
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -83,7 +84,7 @@ export async function GET(request) {
   }
 }
 
-export async function PATCH(req) {
+async function __platform_PATCH(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -157,7 +158,7 @@ export async function PATCH(req) {
   }
 }
 
-export async function DELETE(req) {
+async function __platform_DELETE(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -189,3 +190,13 @@ export async function DELETE(req) {
     return NextResponse.json({ error: 'Failed to delete notifications' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+  DELETE: __platform_DELETE,
+}, { context: 'api_notifications' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;
+export const DELETE = __platformApiHandlers.DELETE;

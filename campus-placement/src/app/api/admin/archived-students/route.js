@@ -5,12 +5,13 @@ import { query } from '@/lib/db';
 import { ARCHIVE_COLUMN_HINT } from '@/lib/collegeStudentArchive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'super_admin') {
@@ -77,3 +78,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load archived students' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_admin_archived_students' });
+export const GET = __platformApiHandlers.GET;

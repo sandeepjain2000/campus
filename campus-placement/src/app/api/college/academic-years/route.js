@@ -10,14 +10,11 @@ import {
   validateAcademicYearsPayload,
   parseAcademicYearLabel,
 } from '@/lib/academicYearTenant';
+import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
-
-
-function getTenantId(session) {
-  return session?.user?.tenant_id ?? session?.user?.tenantId ?? null;
-}
 
 async function loadYearsBundle(tenantId) {
   const yearsRes = await query(
@@ -42,13 +39,13 @@ async function loadYearsBundle(tenantId) {
   return { years, current: currentMapped };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
     const bundle = await loadYearsBundle(tenantId);
@@ -59,13 +56,13 @@ export async function GET() {
   }
 }
 
-export async function PUT(request) {
+async function __platform_PUT(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = getTenantId(session);
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
     const body = await request.json();
@@ -140,3 +137,11 @@ export async function PUT(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PUT: __platform_PUT,
+}, { context: 'api_college_academic_years' });
+export const GET = __platformApiHandlers.GET;
+export const PUT = __platformApiHandlers.PUT;

@@ -4,12 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { restoreCollegeStudentProfile } from '@/lib/collegeStudentArchive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function POST(_request, { params }) {
+async function __platform_POST(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'super_admin') {
@@ -39,3 +40,9 @@ export async function POST(_request, { params }) {
     return NextResponse.json({ error: 'Failed to restore student' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_admin_archived_students_id_restore' });
+export const POST = __platformApiHandlers.POST;

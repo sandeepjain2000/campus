@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildPlatformErrorResponse, inferApiErrorContext } from '@/lib/platformErrorLog';
 
 /** Safe user-facing message when the server must not leak internals. */
 export const GENERIC_API_ERROR = 'Something went wrong. Please try again.';
@@ -15,15 +16,36 @@ export function jsonPublicError(message, status = 500) {
 }
 
 /**
- * Log full detail server-side; return a safe body to the browser.
+ * Log full detail to platform_error_logs; return a safe body to the browser.
  * @param {unknown} err
  * @param {string} logLabel
  * @param {string} [publicMessage]
  * @param {number} [status]
+ * @param {{ request?: Request; context?: string }} [opts]
  */
-export function jsonPublicErrorLogged(err, logLabel, publicMessage = GENERIC_API_ERROR, status = 500) {
+export async function jsonPublicErrorLogged(
+  err,
+  logLabel,
+  publicMessage = GENERIC_API_ERROR,
+  status = 500,
+  opts = {},
+) {
   console.error(logLabel, err);
-  return jsonPublicError(publicMessage, status);
+  const wrapped = err instanceof Error ? err : new Error(String(err || publicMessage));
+  if (!wrapped.statusCode) wrapped.statusCode = status;
+
+  const context =
+    opts.context
+    || (opts.request ? inferApiErrorContext(new URL(opts.request.url).pathname, opts.request.method) : null)
+    || logLabel.replace(/[^\w]+/g, '_').slice(0, 80);
+
+  const { status: resolvedStatus, body } = await buildPlatformErrorResponse(wrapped, {
+    context,
+    request: opts.request,
+    defaultMessage: publicMessage,
+  });
+
+  return NextResponse.json(body, { status: resolvedStatus || status });
 }
 
 /**

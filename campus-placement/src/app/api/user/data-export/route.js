@@ -7,12 +7,13 @@ import { buildUserDataExportPayload, summarizeExportSections } from '@/lib/userD
 import { buildExportFile, EXPORT_FORMAT } from '@/lib/userDataExport/toCsv';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -34,7 +35,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+async function __platform_POST() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -132,3 +133,11 @@ export async function POST() {
     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_user_data_export' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;

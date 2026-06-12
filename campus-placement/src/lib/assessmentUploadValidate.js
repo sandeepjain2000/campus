@@ -5,7 +5,7 @@ import {
 import { normalizeHiringResult, validateHiringResult } from '@/lib/hiringResult';
 import { resolveRollFromCsvIdentifiers } from '@/lib/studentSystemId';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
-import { getCell, resolveTarget, sanitizeUuidInput } from '@/lib/assessmentUploadProcessCore';
+import { getCell, resolveAssessmentTargetIds, resolveTarget, sanitizeUuidInput } from '@/lib/assessmentUploadProcessCore';
 import {
   assertEmployerMayConfirmStudent,
   EMPLOYER_FCFS_CSV_REJECT_MESSAGE,
@@ -70,20 +70,16 @@ export async function validateAssessmentCsvUpload(client, params) {
     const rowJobId = sanitizeUuidInput(getCell(r, headerIdx.job_id));
     const rowTenantId = sanitizeUuidInput(getCell(r, headerIdx.tenant_id));
 
-    const driveId = rowDriveId || defaultDriveId || '';
-    const jobId = rowJobId || defaultJobId || '';
+    const resolvedTarget = resolveAssessmentTargetIds({
+      driveId: rowDriveId || defaultDriveId || '',
+      jobId: rowJobId || defaultJobId || '',
+    });
+    const driveId = resolvedTarget.driveId;
+    const jobId = resolvedTarget.jobId;
     let tenantId = rowTenantId || defaultTenantId || '';
 
     const errors = [];
-
-    if (driveId && jobId) {
-      errors.push('Provide placement_drive_id or job_id, not both (leave the other column empty)');
-    }
-    if (!driveId && !jobId) {
-      errors.push(
-        'Missing placement_drive_id or job_id — select a drive/job above before export, or fill the matching column on this row',
-      );
-    }
+    if (resolvedTarget.error) errors.push(resolvedTarget.error);
     if (jobId && !tenantId) {
       errors.push('tenant_id is required when job_id is set (fill tenant_id on this row)');
     }
@@ -169,8 +165,8 @@ export async function validateAssessmentCsvUpload(client, params) {
       rowNum,
       system_id: resolvedSystemId || getCell(r, headerIdx.system_id),
       college_roll_no: resolvedRoll || getCell(r, headerIdx.college_roll_no),
-      placement_drive_id: driveId,
-      job_id: jobId,
+      placement_drive_id: rowDriveId || driveId,
+      job_id: rowJobId || jobId,
       tenant_id: tenantId,
       candidate_name: getCell(r, headerIdx.candidate_name),
       hiring_result: normalizeHiringResult(hiringRaw),

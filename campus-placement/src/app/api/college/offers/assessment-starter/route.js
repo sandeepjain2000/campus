@@ -13,11 +13,12 @@ import {
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 /** GET — offers-import CSV: every campus master-list student; company prefilled from newest assessment row when any. */
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -55,3 +56,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to build starter CSV' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_offers_assessment_starter' });
+export const GET = __platformApiHandlers.GET;

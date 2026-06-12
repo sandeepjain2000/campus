@@ -6,9 +6,10 @@ import { isFacebookPageShareConfigured } from '@/lib/facebookPageShare';
 import { emailPlacementDriveApproved } from '@/lib/placementDriveEmail';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
-import { DRIVE_APPLICANT_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
+import { DRIVE_APPLICANT_COUNT_SUBQUERY, DRIVE_SELECTED_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 function getTenantId(session) {
@@ -47,7 +48,7 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
         d.drive_type AS type,
         d.status,
         ${DRIVE_APPLICANT_COUNT_SUBQUERY} AS registered,
-        d.selected_count AS selected,
+        ${DRIVE_SELECTED_COUNT_SUBQUERY} AS selected,
         d.venue,
         d.min_cgpa,
         d.description`;
@@ -122,7 +123,7 @@ async function loadDrivesForTenant(tenantId, academicYearId = null) {
   throw lastErr || new Error('Could not load placement drives');
 }
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -178,7 +179,7 @@ export async function GET(request) {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -259,3 +260,11 @@ export async function PATCH(request) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_college_drives' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

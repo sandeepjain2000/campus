@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
@@ -141,12 +142,129 @@ export function formatErrorReference(id) {
   return String(id).replace(/-/g, '').slice(0, 8).toUpperCase();
 }
 
+const API_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+
+/**
+ * Stable context key from an API route path, e.g. /api/employer/drives → api_employer_drives.
+ * @param {string} pathname
+ * @param {string} [method]
+ */
+export function inferApiErrorContext(pathname, method = '') {
+  const path = String(pathname || '').split('?')[0].replace(/\/+$/, '') || '/';
+  if (!path.startsWith('/api/')) return 'api_unknown';
+  let slug = path
+    .slice('/api/'.length)
+    .replace(/\[[^\]]+\]/g, 'id')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+  if (!slug) slug = 'root';
+  const m = String(method || '').toUpperCase();
+  const withMethod = m && API_HTTP_METHODS.has(m) ? `${slug}_${m.toLowerCase()}` : slug;
+  const key = `api_${withMethod}`;
+  return key.length <= 80 ? key : key.slice(0, 80);
+}
+
+/**
+ * Log an HTTP error response that did not already persist a platform_error_logs row.
+ * Optionally attaches a reference id to 5xx JSON bodies for user support.
+ * @param {Request} request
+ * @param {Response} response
+ * @param {{ context?: string; sessionUser?: object }} [opts]
+ * @returns {Promise<Response>}
+ */
+export async function logApiResponseIfFailure(request, response, opts = {}) {
+  if (!response || response.status < 400) return response;
+
+  let body = {};
+  try {
+    body = await response.clone().json();
+  } catch {
+    body = {};
+  }
+
+  if (
+    body.referenceId ||
+    body.reference ||
+    (typeof body.error === 'string' && body.error.includes('[Ref:')) ||
+    (typeof body.userMessage === 'string' && body.userMessage.includes('[Ref:'))
+  ) {
+    return response;
+  }
+
+  let requestUrl = null;
+  try {
+    requestUrl = new URL(request.url);
+  } catch {
+    requestUrl = null;
+  }
+
+  const context =
+    opts.context
+    || inferApiErrorContext(requestUrl?.pathname || '', request.method);
+  const statusCode = response.status;
+  const message =
+    (typeof body.error === 'string' && body.error)
+    || (typeof body.userMessage === 'string' && body.userMessage)
+    || `HTTP ${statusCode}`;
+
+  const err = new Error(message);
+  err.statusCode = statusCode;
+
+  const referenceId = await writePlatformErrorLog({
+    context,
+    error: err,
+    statusCode,
+    severity: statusCode >= 500 ? 'error' : statusCode === 401 ? 'info' : 'warning',
+    userId: opts.sessionUser?.id || opts.sessionUser?.sub || null,
+    tenantId: opts.tenantId || null,
+    employerId: opts.employerId || null,
+    userMessage: message,
+    ipAddress: getRequestIp(request),
+    details: {
+      source: 'api_response',
+      route: requestUrl?.pathname || null,
+      requestMethod: request?.method || null,
+      requestQuery: requestUrl?.search || null,
+      userAgent: (request && request.headers && typeof request.headers.get === 'function')
+        ? truncate(request.headers.get('user-agent'), 300)
+        : null,
+      responseBody: sanitizePayloadForLog(body),
+    },
+  });
+
+  if (!referenceId || statusCode < 500) return response;
+
+  const ref = formatErrorReference(referenceId);
+  const headers = new Headers(response.headers);
+  if (!headers.get('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
+
+  return NextResponse.json(
+    {
+      ...body,
+      referenceId,
+      reference: ref,
+      userMessage: body.userMessage || body.error || message,
+    },
+    { status: statusCode, headers },
+  );
+}
+
 /** @param {Request} request */
 export function getRequestIp(request) {
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0].trim().slice(0, 45);
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp.trim().slice(0, 45);
+  if (!request || !request.headers || typeof request.headers.get !== 'function') {
+    return null;
+  }
+  try {
+    const xff = request.headers.get('x-forwarded-for');
+    if (xff) return xff.split(',')[0].trim().slice(0, 45);
+    const realIp = request.headers.get('x-real-ip');
+    if (realIp) return realIp.trim().slice(0, 45);
+  } catch (e) {
+    // ignore
+  }
   return null;
 }
 
@@ -204,19 +322,34 @@ export async function buildPlatformErrorResponse(error, opts) {
 
   const userId = opts.sessionUser?.id || opts.sessionUser?.sub || null;
   const ipAddress = opts.request ? getRequestIp(opts.request) : null;
+  let requestUrl = null;
+  if (opts.request) {
+    try {
+      requestUrl = new URL(opts.request.url);
+    } catch {
+      requestUrl = null;
+    }
+  }
+
   const logDetails = {
+    source: 'server',
     actorEmail: opts.sessionUser?.email || null,
     requestBody: sanitizePayloadForLog(opts.requestBody),
-    route: opts.request ? new URL(opts.request.url).pathname : null,
+    route: requestUrl?.pathname || null,
+    requestMethod: opts.request?.method || null,
+    requestQuery: requestUrl?.search || null,
+    userAgent: (opts.request && opts.request.headers && typeof opts.request.headers.get === 'function')
+      ? truncate(opts.request.headers.get('user-agent'), 300)
+      : null,
+    pgHint: hint,
   };
 
   let referenceId = null;
-  if (statusCode !== 401) {
-    referenceId = await writePlatformErrorLog({
+  referenceId = await writePlatformErrorLog({
       context: opts.context,
       error,
       statusCode,
-      severity: statusCode >= 500 ? 'error' : 'warning',
+      severity: statusCode >= 500 ? 'error' : statusCode === 401 ? 'info' : 'warning',
       userId,
       tenantId: opts.tenantId || null,
       employerId: opts.employerId || null,
@@ -224,7 +357,6 @@ export async function buildPlatformErrorResponse(error, opts) {
       ipAddress,
       details: logDetails,
     });
-  }
 
   return {
     status: statusCode,

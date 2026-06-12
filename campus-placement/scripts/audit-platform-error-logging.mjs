@@ -1,5 +1,5 @@
 /**
- * Audit employer API routes for buildPlatformErrorResponse / respondPlatformError in catch blocks.
+ * Audit API routes for withApiHandlers platform error logging.
  * Usage: node scripts/audit-platform-error-logging.mjs
  */
 import fs from 'fs';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
-const apiRoot = path.join(root, 'src', 'app', 'api', 'employer');
+const apiRoot = path.join(root, 'src', 'app', 'api');
 
 function walk(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -23,21 +23,44 @@ function walk(dir) {
 
 const routes = walk(apiRoot);
 const wired = [];
+const aliases = [];
+const optedOut = [];
 const missing = [];
 
 for (const file of routes) {
   const rel = path.relative(root, file).replace(/\\/g, '/');
   const src = fs.readFileSync(file, 'utf8');
-  const hasHandlerCatch = /export async function (GET|POST|PATCH|PUT|DELETE)[\s\S]*?catch\s*\(/m.test(src);
-  const hasLogging =
-    src.includes('buildPlatformErrorResponse') || src.includes('respondPlatformError');
-  if (hasHandlerCatch && !hasLogging) missing.push(rel);
-  else if (hasLogging) wired.push(rel);
+
+  if (src.includes('@no-platform-error-wrap')) {
+    optedOut.push(rel);
+    continue;
+  }
+
+  if (src.includes('withApiHandlers') || src.includes('__platformApiHandlers')) {
+    wired.push(rel);
+    continue;
+  }
+
+  // Re-export from a wrapped sibling route (e.g. college/overview → college/dashboard).
+  if (/export\s*\{[^}]*\}\s*from\s+['"]/.test(src) && !/export\s+async\s+function/.test(src)) {
+    aliases.push(rel);
+    continue;
+  }
+
+  missing.push(rel);
 }
 
-console.log('Platform error logging audit (employer API)\n');
-console.log(`Wired (${wired.length}):`);
+console.log('Platform error logging audit (all API routes)\n');
+console.log(`Wrapped (${wired.length}):`);
 for (const r of wired.sort()) console.log(`  ✓ ${r}`);
-console.log(`\nMissing handler-level logging (${missing.length}):`);
+if (aliases.length) {
+  console.log(`\nRe-exports wrapped handler (${aliases.length}):`);
+  for (const r of aliases.sort()) console.log(`  ↪ ${r}`);
+}
+if (optedOut.length) {
+  console.log(`\nOpted out (${optedOut.length}):`);
+  for (const r of optedOut.sort()) console.log(`  ⊘ ${r}`);
+}
+console.log(`\nMissing wrapper (${missing.length}):`);
 for (const r of missing.sort()) console.log(`  ✗ ${r}`);
 process.exit(missing.length > 0 ? 1 : 0);

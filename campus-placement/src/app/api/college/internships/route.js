@@ -7,13 +7,14 @@ import { AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { patchCollegeJobListingApproval } from '@/lib/collegeJobListingApproval';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 /**
  * Internship & program listings visible to this college (all campus approval states).
  * Students only see rows where job_posting_visibility.college_status = 'approved'.
  */
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -70,7 +71,7 @@ export async function GET() {
 }
 
 /** PATCH { jobId, action: 'approve' | 'reject', rejectionReason? } */
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -119,3 +120,11 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'Failed to update listing approval' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_college_internships' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

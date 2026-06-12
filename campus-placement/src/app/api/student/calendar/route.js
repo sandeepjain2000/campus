@@ -8,6 +8,7 @@ import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -27,7 +28,7 @@ function rowDateToYmd(v) {
   return `${y}-${mo}-${day}`;
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -68,3 +69,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load student calendar' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_calendar' });
+export const GET = __platformApiHandlers.GET;

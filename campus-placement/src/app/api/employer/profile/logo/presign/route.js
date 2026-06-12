@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { createEmployerLogoPresign, isS3Configured } from '@/lib/s3';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -12,7 +13,7 @@ export const revalidate = 0;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']);
 const MAX_BYTES = 2 * 1024 * 1024;
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -44,3 +45,9 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Presign failed' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_profile_logo_presign' });
+export const POST = __platformApiHandlers.POST;

@@ -7,6 +7,7 @@ import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -22,7 +23,7 @@ function extractS3Key(fileUrl) {
   }
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'student') {
@@ -82,3 +83,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Could not open résumé' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_student_resume_view' });
+export const GET = __platformApiHandlers.GET;

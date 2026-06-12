@@ -7,6 +7,7 @@ import { fetchAssessmentUpdateOnlineRows, saveAssessmentUpdateOnlineRows } from 
 import { isUuid } from '@/lib/tenantContext';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -24,7 +25,7 @@ function parseContext(url) {
 }
 
 /** GET — campus students with hiring_result for online editing. */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -56,7 +57,7 @@ export async function GET(request) {
 }
 
 /** PATCH — save hiring_result / remarks for student rows. */
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -93,3 +94,11 @@ export async function PATCH(request) {
     return NextResponse.json({ error: e.message || 'Failed to save' }, { status });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_assessment_update_online' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

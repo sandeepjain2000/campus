@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { X, Sparkles, MessageCircleQuestion, ExternalLink } from 'lucide-react';
 import { getDevScreenId } from '@/config/devScreenIds';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
-import { clientSafeMessageFromBody, stripInternalApiFields } from '@/lib/publicApiError';
+import { clientSafeMessageFromBody, stripInternalApiFields } from '@/lib/publicApiErrorClient';
 
 const GLOBAL_TAG = 'GLOBAL';
 

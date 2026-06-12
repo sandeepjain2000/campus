@@ -4,8 +4,10 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isAssessmentRoundKind } from '@/lib/assessmentRoundMap';
 import { listPendingImportSessions } from '@/lib/assessmentImportStaging';
+import { formatAssessImportApiError } from '@/lib/assessmentUploadDbError';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 async function getEmployerProfileId(session) {
@@ -16,7 +18,7 @@ async function getEmployerProfileId(session) {
 }
 
 /** GET — list pending CSV import review sessions. Query: kind=internship|jobs|drive|projects (optional) */
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -49,13 +51,16 @@ export async function GET(request) {
     });
   } catch (e) {
     console.error('GET /api/employer/assessments/import', e);
-    const msg = String(e?.message || '');
-    if (msg.includes('employer_assessment_import')) {
-      return NextResponse.json(
-        { error: 'Import review tables missing. Run npm run db:migrate:071', sessions: [], counts: {} },
-        { status: 503 },
-      );
-    }
-    return NextResponse.json({ error: 'Failed to list import sessions' }, { status: 500 });
+    const { status, message } = formatAssessImportApiError(e, { upload: false });
+    return NextResponse.json(
+      { error: message, sessions: [], counts: {} },
+      { status },
+    );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_employer_assessments_import' });
+export const GET = __platformApiHandlers.GET;

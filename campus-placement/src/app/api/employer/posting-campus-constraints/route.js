@@ -7,7 +7,7 @@ import {
   POSTING_CAMPUS_CONSTRAINT_CATEGORIES,
   validateCategoryConstraintInput,
 } from '@/lib/employerPostingCampusConstraints';
-import { respondPlatformError } from '@/lib/platformErrorRoute';
+import { respondPlatformError , withApiHandlers } from '@/lib/platformErrorRoute';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,7 @@ async function readConstraints(employerId) {
   }
 }
 
-export async function GET() {
+async function __platform_GET() {
   let session = null;
   try {
     session = await getServerSession(authOptions);
@@ -70,7 +70,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   let session = null;
   let body = {};
   try {
@@ -139,3 +139,11 @@ export async function PATCH(request) {
     });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  PATCH: __platform_PATCH,
+}, { context: 'api_employer_posting_campus_constraints' });
+export const GET = __platformApiHandlers.GET;
+export const PATCH = __platformApiHandlers.PATCH;

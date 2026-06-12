@@ -12,10 +12,11 @@ import {
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
-export async function GET(req, { params }) {
+async function __platform_GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -99,3 +100,9 @@ export async function GET(req, { params }) {
     );
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_drives_id_report' });
+export const GET = __platformApiHandlers.GET;

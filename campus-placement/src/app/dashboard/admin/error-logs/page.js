@@ -79,7 +79,7 @@ function ErrorLogDetailPanel({ row }) {
           <DetailField label="Severity">
             <span className={`badge ${severityBadgeClass(row.severity)}`}>{row.severity || 'error'}</span>
           </DetailField>
-          <DetailField label="Context">
+          <DetailField label="Functionality">
             {contextLabel(row.context)}
             <span className="text-xs text-tertiary" style={{ display: 'block' }}>{row.context}</span>
           </DetailField>
@@ -230,6 +230,7 @@ function ErrorLogDetailPanel({ row }) {
 export default function AdminErrorLogsPage() {
   const { addToast } = useToast();
   const [contextFilter, setContextFilter] = useState('');
+  const [severityFilter, setSeverityFilter] = useState('');
   const [searchQ, setSearchQ] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [fromDate, setFromDate] = useState('');
@@ -238,12 +239,13 @@ export default function AdminErrorLogsPage() {
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     if (contextFilter) p.set('context', contextFilter);
+    if (severityFilter) p.set('severity', severityFilter);
     if (searchQ) p.set('q', searchQ);
     if (fromDate) p.set('from', fromDate);
     if (toDate) p.set('to', toDate);
     const s = p.toString();
     return s ? `?${s}` : '';
-  }, [contextFilter, searchQ, fromDate, toDate]);
+  }, [contextFilter, severityFilter, searchQ, fromDate, toDate]);
 
   const { data, error, isLoading } = useSWR(`/api/admin/error-logs${queryString}`, fetcher, {
     revalidateOnFocus: false,
@@ -340,9 +342,18 @@ export default function AdminErrorLogsPage() {
           <input className="form-input" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
         </div>
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Context</label>
+          <label className="form-label">Severity</label>
+          <select className="form-select" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
+            <option value="">All severities</option>
+            <option value="error">Error</option>
+            <option value="warning">Warning</option>
+            <option value="info">Info / Debug</option>
+          </select>
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Functionality</label>
           <select className="form-select" value={contextFilter} onChange={(e) => setContextFilter(e.target.value)}>
-            <option value="">All contexts</option>
+            <option value="">All functionalities</option>
             {contextOptions.map((c) => (
               <option key={c} value={c}>
                 {contextLabel(c)}
@@ -374,7 +385,8 @@ export default function AdminErrorLogsPage() {
                 <tr>
                   <th>When</th>
                   <th>Ref</th>
-                  <th>Context</th>
+                  <th>Severity</th>
+                  <th>Functionality</th>
                   <th>Route</th>
                   <th>User</th>
                   <th>Status</th>
@@ -387,6 +399,11 @@ export default function AdminErrorLogsPage() {
                   <tr key={row.id}>
                     <td className="text-sm" style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.created_at)}</td>
                     <td className="font-mono text-xs">{row.reference || formatLogReference(row.id)}</td>
+                    <td className="text-sm">
+                      <span className={`badge ${severityBadgeClass(row.severity)}`}>
+                        {(row.severity || 'error').toUpperCase()}
+                      </span>
+                    </td>
                     <td className="text-sm" style={{ minWidth: 140 }}>
                       {contextLabel(row.context)}
                     </td>

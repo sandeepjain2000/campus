@@ -23,9 +23,14 @@ const flattenPurgeCandidates = flattenDemoPurgeCandidates;
 const formatRunForDownload = formatDemoRunForDownload;
 
 /**
- * @param {{ variant?: 'page' | 'embed', focusSection?: 'apis' | 'purge' | null, compactHeader?: boolean }} props
+ * @param {{ variant?: 'page' | 'embed', focusSection?: 'apis' | 'purge' | null, compactHeader?: boolean, hideHeader?: boolean }} props
  */
-export default function DemoDataTester({ variant = 'page', focusSection = null, compactHeader = false }) {
+export default function DemoDataTester({
+  variant = 'page',
+  focusSection = null,
+  compactHeader = false,
+  hideHeader = false,
+}) {
   const purgeSectionRef = useRef(null);
   const [colleges, setColleges] = useState([]);
   const [collegesLoading, setCollegesLoading] = useState(true);
@@ -278,26 +283,31 @@ export default function DemoDataTester({ variant = 'page', focusSection = null, 
   return (
     <div className={`demo-tester-page${isEmbed ? ' demo-tester-page--embed' : ''}`}>
       <div className="demo-tester-wrap">
-        <header className="demo-tester-header">
-          <h1>
-            <Database size={20} aria-hidden /> {compactHeader ? 'Demo APIs & cleanup' : 'Demo Data Tester'}
-          </h1>
-          {!compactHeader ? (
-          <p>
-            Live API seeding for QA. Password <code>{SANDBOX_DEFAULT_PASSWORD}</code> · emails{' '}
-            <code>@placementhub.test</code>. Download JSON from results for handoff notes.
-            Use it to seed and reset sandbox-only data so college, employer, and student screens can be exercised end-to-end before a demo or regression pass.
-          </p>
-          ) : (
-          <p>
-            Seed demo data or purge test records. Password <code>{SANDBOX_DEFAULT_PASSWORD}</code> ·{' '}
-            <code>@placementhub.test</code>
-          </p>
-          )}
-          {apiDisabled ? (
-            <p className="demo-tester-warn">Demo APIs disabled — set DEMO_DATA_API_ENABLED=true on the server.</p>
-          ) : null}
-        </header>
+        {!hideHeader ? (
+          <header className="demo-tester-header">
+            <h1>
+              <Database size={20} aria-hidden /> {compactHeader ? 'Demo APIs & cleanup' : 'Demo Data Tester'}
+            </h1>
+            {!compactHeader ? (
+              <p>
+                Live API seeding for QA. Password <code>{SANDBOX_DEFAULT_PASSWORD}</code> · emails{' '}
+                <code>@placementhub.test</code>. Download JSON from results for handoff notes. Use it to seed and reset
+                sandbox-only data so college, employer, and student screens can be exercised end-to-end before a demo or
+                regression pass.
+              </p>
+            ) : (
+              <p>
+                Seed demo data or purge test records. Password <code>{SANDBOX_DEFAULT_PASSWORD}</code> ·{' '}
+                <code>@placementhub.test</code>
+              </p>
+            )}
+            {apiDisabled ? (
+              <p className="demo-tester-warn">Demo APIs disabled — set DEMO_DATA_API_ENABLED=true on the server.</p>
+            ) : null}
+          </header>
+        ) : apiDisabled ? (
+          <p className="demo-tester-warn">Demo APIs disabled — set DEMO_DATA_API_ENABLED=true on the server.</p>
+        ) : null}
 
         <div className="demo-tester-toolbar">
           <label className="demo-tester-campus">
@@ -399,7 +409,7 @@ export default function DemoDataTester({ variant = 'page', focusSection = null, 
           ))}
         </div>
 
-        <section className="demo-tester-purge" ref={purgeSectionRef}>
+        <section id="demo-purge" className="demo-tester-purge" ref={purgeSectionRef}>
           <div className="demo-tester-purge-head">
             <div>
               <h2>Purge (soft delete)</h2>
@@ -573,7 +583,7 @@ export default function DemoDataTester({ variant = 'page', focusSection = null, 
 
         {!isEmbed ? (
         <p className="demo-tester-footer">
-          <Link href="/">Landing</Link> · <Link href="/developer">Developer</Link> · <Link href="/login">Login</Link>
+          <Link href="/">Landing</Link> · <Link href="/developer">Developer Notes</Link> · <Link href="/login">Login</Link>
           {' · '}
           <Link href="/data-entry">Full page</Link>
         </p>

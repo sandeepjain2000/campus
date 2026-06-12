@@ -1,9 +1,10 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { buildScreenRegistry, filterScreensForRole } from '@/config/screenRegistry';
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.role) {
@@ -22,3 +23,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Failed to load screens' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_screens_registry' });
+export const GET = __platformApiHandlers.GET;

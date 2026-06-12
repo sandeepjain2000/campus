@@ -11,6 +11,7 @@ import {
 import { toDateOnlyString } from '@/lib/dateOnly';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 const MAX_RECIPIENTS_PER_RUN = 200;
 
@@ -27,7 +28,7 @@ async function getTenant(tenantId) {
   return res.rows[0] || null;
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -154,3 +155,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to email applicants' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_employer_interviews_notify' });
+export const POST = __platformApiHandlers.POST;

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -34,7 +35,7 @@ async function validateStaffUserIds(tenantId, staffUserIds) {
 }
 
 /** PATCH — update drive fields for this tenant (social share flags, attached staff). */
-export async function PATCH(request, { params }) {
+async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -141,3 +142,9 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to update drive' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  PATCH: __platform_PATCH,
+}, { context: 'api_college_drives_id' });
+export const PATCH = __platformApiHandlers.PATCH;

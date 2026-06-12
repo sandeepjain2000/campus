@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -69,7 +70,7 @@ async function loadPayload(tenantId) {
   return { batches: Array.from(companiesMap.values()) };
 }
 
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -87,7 +88,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['college_admin', 'super_admin', 'student'].includes(session.user.role)) {
@@ -139,7 +140,7 @@ export async function POST(request) {
   }
 }
 
-export async function PATCH(request) {
+async function __platform_PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !['employer', 'super_admin', 'college_admin'].includes(session.user.role)) {
@@ -208,3 +209,13 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'Failed to save clarification answer' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+  PATCH: __platform_PATCH,
+}, { context: 'api_clarifications' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
+export const PATCH = __platformApiHandlers.PATCH;

@@ -17,6 +17,7 @@ import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -24,7 +25,7 @@ function getTenantId(session) {
   return session.user.tenantId || session.user.tenant_id;
 }
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -122,3 +123,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to import CSV' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_offers_upload' });
+export const POST = __platformApiHandlers.POST;

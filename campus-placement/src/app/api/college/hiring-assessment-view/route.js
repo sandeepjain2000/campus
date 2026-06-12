@@ -5,10 +5,11 @@ import { getSessionTenantId } from '@/lib/tenantContext';
 import { buildAssessmentSummary, fetchAssessmentRowsForView } from '@/lib/assessmentHiringView';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 /** GET — read-only: all assessment upload rows for this college tenant. */
-export async function GET() {
+async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
@@ -32,3 +33,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to load assessment view' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+}, { context: 'api_college_hiring_assessment_view' });
+export const GET = __platformApiHandlers.GET;

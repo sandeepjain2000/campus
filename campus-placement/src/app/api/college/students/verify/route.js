@@ -3,21 +3,23 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
 
 
-export async function POST(request) {
+async function __platform_POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenant_id ?? session.user.tenantId;
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -65,3 +67,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to update student' }, { status: 500 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  POST: __platform_POST,
+}, { context: 'api_college_students_verify' });
+export const POST = __platformApiHandlers.POST;

@@ -21,19 +21,21 @@ import {
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { displaySemesterForStudentList } from '@/lib/academicYearTenant';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
 
 export const dynamic = 'force-dynamic';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
-export async function GET(request) {
+async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenant_id ?? session.user.tenantId;
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -99,14 +101,14 @@ export async function GET(request) {
   }
 }
 
-export async function POST(req) {
+async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'college_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || session.user.tenant_id;
+    const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -257,3 +259,11 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+
+
+const __platformApiHandlers = withApiHandlers({
+  GET: __platform_GET,
+  POST: __platform_POST,
+}, { context: 'api_college_students' });
+export const GET = __platformApiHandlers.GET;
+export const POST = __platformApiHandlers.POST;
