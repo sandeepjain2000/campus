@@ -86,6 +86,11 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('placementhub_login_source', '/login');
+    } catch (e) {}
+  }, []);
   const forceLogin = searchParams.get('force') === '1';
   const guidedAutoLogin = searchParams.get('guided') === '1';
   const guidedEmail = searchParams.get('email')?.trim() || '';
@@ -129,32 +134,42 @@ function LoginPageInner() {
   }, [uniqueDemoLogins]);
 
   /**
-   * Demo prefill (sessionStorage from /demo-accounts).
-   * URL based ?email= prefill has been removed to prevent sticking on admin credentials.
+   * Demo prefill (sessionStorage from /demo-accounts, or URL ?email= param).
+   * DO NOT MODIFY NEEDLESSLY. This is a fix for double login requirement and test prefill.
    */
   useEffect(() => {
     if (userChoseCredentials.current || urlPrefillApplied.current) return;
 
     const emailFromStorage = consumeLoginPrefillEmail();
-    if (!emailFromStorage) return;
+    const emailFromUrl = searchParams.get('email')?.trim() || '';
+    const email = emailFromStorage || emailFromUrl;
+    if (!email) return;
 
     urlPrefillApplied.current = true;
+
+    // Clean up query param so page refreshes don't stick to it
+    if (emailFromUrl) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('email');
+      const next = params.toString() ? `/login?${params}` : '/login';
+      router.replace(next, { scroll: false });
+    }
 
     const frame = window.requestAnimationFrame(() => {
       if (userChoseCredentials.current) return;
       const form = loginFormRef.current;
       if (!form) return;
       const current = readLoginFormValues(form).email;
-      if (current && current.toLowerCase() !== emailFromStorage.toLowerCase()) {
+      if (current && current.toLowerCase() !== email.toLowerCase()) {
         userChoseCredentials.current = true;
         return;
       }
       if (!current) {
-        writeLoginFormValues(form, { email: emailFromStorage, password: DEMO_SEED_PASSWORD });
+        writeLoginFormValues(form, { email, password: DEMO_SEED_PASSWORD });
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, []);
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -205,6 +220,7 @@ function LoginPageInner() {
   }, []);
 
   // If ?force=1, sign out existing session so the user can switch accounts
+  // DO NOT MODIFY NEEDLESSLY. This is a fix for double login requirement.
   useEffect(() => {
     if (forceLogin && status === 'authenticated' && !signingOut.current) {
       signingOut.current = true;
@@ -213,6 +229,11 @@ function LoginPageInner() {
     }
   }, [forceLogin, status]);
 
+  // DO NOT MODIFY NEEDLESSLY. This is a fix for double login requirement.
+  // We only redirect client-side if the session is fully active (marker === '1').
+  // If the marker is missing (e.g. stale session or just logged out), we do NOT trigger
+  // a client-side signOut on the login page itself to avoid redirect loops and double signouts.
+  // Instead, the stale session check is handled when they try to access protected pages.
   useEffect(() => {
     if (forceLogin) return; // don't auto-redirect when force login
     if (loggingInRef.current) return; // skip stale check if actively logging in
@@ -225,14 +246,9 @@ function LoginPageInner() {
       /* ignore */
     }
 
-    if (marker !== '1') {
-      // Stale session: clear it immediately on the login page without redirecting
-      console.warn('LoginPage: Stale session detected (no sessionStorage marker). Clearing session cookie...');
-      void signOut({ callbackUrl: '/login?error=stale' });
-      return;
+    if (marker === '1') {
+      router.replace(getDashboardPath(session.user.role));
     }
-
-    router.replace(getDashboardPath(session.user.role));
   }, [status, session, router, forceLogin]);
 
   const submitCredentials = useCallback(
@@ -885,6 +901,10 @@ function LoginPageInner() {
           <span className="text-secondary" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.8125rem' }}>
             Students are added by their college — use the login email from your welcome message.
           </span>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
+          Build: 12 Jun 2026, 11:48 PM (v1.0.4)
         </div>
 
         <DocumentationHelpWidget fullDocHref="/help" />
