@@ -15,6 +15,8 @@ export const DEVELOPER_PAGE_META = {
 export const DEVELOPER_PAGE_TOC = [
   { id: 'quick-start', label: 'Quick start', hint: 'npm run dev + guided help' },
   { id: 'playbooks', label: 'Guided playbooks', hint: 'Partial E2E flows by scenario' },
+  { id: 'use-cases', label: 'Use cases', hint: '5 E2E flows, step by step' },
+  { id: 'use-cases-more', label: 'More use cases', hint: '5 additional flows', href: '/developer/use-cases-more' },
   { id: 'runner-alerts', label: 'Runner alerts', hint: 'Recent UI / menu changes' },
   { id: 'email-demo', label: 'Email & demo mail', hint: 'YOPmail, workflows preview' },
   { id: 'e2e-roles', label: 'Internship E2E roles', hint: 'Who does what in full cycle' },
@@ -105,6 +107,145 @@ export const GUIDED_PLAYBOOKS = [
     focus: 'SETUP',
   },
 ];
+
+/** End-to-end use cases — one row each, up to 7 steps (columns). */
+export const USE_CASE_FLOWS = [
+  {
+    name: 'Placement drive (full cycle)',
+    steps: [
+      'Employer: request campus tie-up (Campus Partnerships)',
+      'College: approve employer partnership',
+      'Employer: submit placement drive for campus',
+      'College: approve drive (Awaiting Approval → Approved)',
+      'Student: apply from Placement Drives',
+      'Employer: shortlist / select on Applications → Drives',
+      'Student: track outcome in My Applications',
+    ],
+  },
+  {
+    name: 'Internship publish → hire',
+    steps: [
+      'Employer: publish internship with GT- marker title',
+      'College: approve listing on Internships & Programs',
+      'Student: browse internships and apply',
+      'Employer: review Applications → Internships',
+      'Employer: mark applicant Shortlist or Select',
+      'Student: confirm Selected status in My Applications',
+      'Employer: optional Submit results after Assessment Update',
+    ],
+  },
+  {
+    name: 'Student verified → first application',
+    steps: [
+      'College: add student to master list (email + roll on record)',
+      'Student: log in with email + temp password from welcome mail',
+      'Student: change password after first login',
+      'Student: complete profile and upload resume',
+      'College: verify student (Students screen)',
+      'Student: browse eligible drives/internships and apply',
+      'Student: check Alerts; respond in My Offers if selected',
+    ],
+  },
+  {
+    name: 'Assessment results (CSV)',
+    steps: [
+      'Employer: select campus + drive or job on Assessment uploads',
+      'Employer: export CSV template (eligible students pre-filled)',
+      'Employer: fill hiring_result column and upload CSV',
+      'Employer: fix rejected rows via correction screen if needed',
+      'Employer: Submit results (locks further edits)',
+      'Employer: review Hiring Results Dashboard',
+      'College: read-only view on Hiring Assessment',
+    ],
+  },
+  {
+    name: 'Campus partnership → visible posting',
+    steps: [
+      'Employer: complete Company Profile',
+      'Employer: request tie-up with target college',
+      'College: approve partnership',
+      'Employer: set Active campus in header',
+      'Employer: create job, internship, or drive for that campus',
+      'College: approve job/internship visibility if required',
+      'Student: sees posting after tie-up + approval + eligibility',
+    ],
+  },
+];
+
+/** Additional use cases — shown on /developer/use-cases-more */
+export const USE_CASE_FLOWS_MORE = [
+  {
+    name: 'Offer → accept → placement lock',
+    steps: [
+      'Employer: record offer from Applications or Offers page',
+      'Student: open My Offers and review terms',
+      'Student: accept or decline before deadline',
+      'College: monitor Offers and placement rules (max offers)',
+      'Student: placement lock blocks new drive/program applies',
+      'College: Reports reflect accepted offer',
+      'Employer: sees accepted status on pipeline views',
+    ],
+  },
+  {
+    name: 'Assessment Update Online',
+    steps: [
+      'Employer: select campus + drive or job tab',
+      'Employer: open Assessment Update Online',
+      'Employer: edit hiring_result inline per student row',
+      'Employer: Save changes (dirty row count)',
+      'Employer: Submit results when complete',
+      'Employer: verify Hiring Results Dashboard',
+      'College: read-only Hiring Assessment mirror',
+    ],
+  },
+  {
+    name: 'Clarifications (official Q&A)',
+    steps: [
+      'College: create Clarifications batch for a company',
+      'College: publish questions from students or TPO',
+      'Employer: view batch (via college process / discussions)',
+      'College: post official answers in batch',
+      'Student: read answered clarifications before applying',
+      'Student: uses Discussions only where college enables',
+      '—',
+    ],
+  },
+  {
+    name: 'Interview scheduling',
+    steps: [
+      'Employer / college: define drive or program interview rounds',
+      'College: coordinate slots on Calendar / Interview Scheduling',
+      'Student: receives Alert for scheduled slot',
+      'Student: opens My Interviews for date, venue, mode',
+      'Employer: updates application status after round',
+      'Employer: records assessment round results if applicable',
+      'Student: tracks progress in My Applications',
+    ],
+  },
+  {
+    name: 'Full-time job (no placement drive)',
+    steps: [
+      'Employer: publish full_time job with campus visibility',
+      'College: approve job on Internships & Programs / Jobs list',
+      'Student: browse Jobs and check eligibility',
+      'Student: apply via program application path',
+      'Employer: review Applications → Jobs',
+      'Employer: update status or record offer',
+      'Student: offer flow same as drive-selected candidate',
+    ],
+  },
+];
+
+export const USE_CASES_MORE_NOTES = {
+  href: '/developer/use-cases-more',
+  label: 'More use cases (5 additional flows)',
+};
+
+/** Old login has Demo accounts picker; production-style login is /sign-in */
+export const LOGIN_PAGE_LINKS = {
+  oldWithDemoAccounts: '/login',
+  newSignIn: '/sign-in',
+};
 
 export const RUNNER_PANEL_STEPS = [
   'One browser window — step instructions print in the terminal running npm run test:guided:playbook-e2e.',
@@ -312,6 +453,7 @@ export const DATABASE_SCHEMA_NOTES = {
 };
 
 export const RELATED_DOCS = [
+  { label: 'More use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_MORE)', href: '/developer/use-cases-more' },
   { label: 'Database schema & relationships', path: 'docs/help/developer/database-schema.md', href: '/developer/database-schema' },
   { label: 'Database relationships overview (source)', path: 'docs/help/developer/database-relationships-overview.md' },
   { label: 'Cleanup & restore (markdown)', path: 'docs/help/developer/purge.md' },

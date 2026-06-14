@@ -3,6 +3,7 @@ import { assertAssessmentContextEditable } from '@/lib/assessmentContext';
 import { upsertAssessmentRowInContext } from '@/lib/assessmentRowUpsert';
 import { WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE, isStudentWithdrawnFromTarget } from '@/lib/applicationWithdrawal';
 import { normalizeHiringResult } from '@/lib/hiringResult';
+import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 import {
   assertEmployerMayConfirmStudent,
   EMPLOYER_FCFS_CSV_REJECT_MESSAGE,
@@ -30,7 +31,10 @@ async function insertUploadBatch(client, {
   fileName,
   s3Key,
   preparedRows,
-}) {
+}, tracer = null) {
+  const t = tracer || { log: () => {} };
+  t.log('insertUploadBatch', 'start', { employerId, userId, tenantId, targetDriveId, targetJobId, opportunityKind, rowCount: preparedRows.length });
+
   await assertAssessmentContextEditable(client, {
     employerId,
     tenantId,
@@ -56,6 +60,7 @@ async function insertUploadBatch(client, {
     ],
   );
   const uploadId = up.rows[0].id;
+  t.log('insertUploadBatch', 'upload_created', { uploadId });
 
   let accepted = 0;
   const errors = [];
@@ -70,7 +75,9 @@ async function insertUploadBatch(client, {
       [tenantId, row.roll],
     );
     if (!studentRes.rows.length) {
-      errors.push(`Student ${row.roll}: not found in master student list`);
+      const errMsg = `Student ${row.roll}: not found in master student list`;
+      errors.push(errMsg);
+      t.log('insertUploadBatch', 'student_not_found', { roll: row.roll, error: errMsg });
       continue;
     }
     const studentId = studentRes.rows[0].id;
@@ -79,7 +86,9 @@ async function insertUploadBatch(client, {
       jobId: targetJobId,
     });
     if (withdrawn) {
-      errors.push(`Student ${row.roll}: ${WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE}`);
+      const errMsg = `Student ${row.roll}: ${WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE}`;
+      errors.push(errMsg);
+      t.log('insertUploadBatch', 'student_withdrawn', { roll: row.roll, studentId, error: errMsg });
       continue;
     }
     if (isFcfsHiringSelect(row.hiring_result)) {
@@ -100,13 +109,17 @@ async function insertUploadBatch(client, {
           client,
         );
         if (!fcfs.ok) {
-          errors.push(`Student ${row.roll}: ${EMPLOYER_FCFS_CSV_REJECT_MESSAGE}`);
+          const errMsg = `Student ${row.roll}: ${EMPLOYER_FCFS_CSV_REJECT_MESSAGE}`;
+          errors.push(errMsg);
+          t.log('insertUploadBatch', 'fcfs_blocked', { roll: row.roll, studentId, details: fcfs });
           continue;
         }
       }
     }
     const storedRoll = studentRes.rows[0].roll_number || row.roll;
     const applicationId = await findApplicationForStudent(client, studentId, targetDriveId, targetJobId);
+
+    t.log('insertUploadBatch', 'upserting_row', { roll: row.roll, studentId, applicationId, hiringResult: row.hiring_result });
 
     await upsertAssessmentRowInContext(client, {
       employerId,
@@ -121,8 +134,9 @@ async function insertUploadBatch(client, {
       remarks: row.remarks,
       candidateName: row.candidateName || null,
       isUnregisteredStudent: !applicationId,
-    });
+    }, t);
     accepted += 1;
+    t.log('insertUploadBatch', 'upsert_row_success', { roll: row.roll });
   }
 
   await client.query(
@@ -146,6 +160,7 @@ async function insertUploadBatch(client, {
     },
   });
 
+  t.log('insertUploadBatch', 'complete', { accepted, rejected: preparedRows.length - accepted });
   return { uploadId, accepted, errors, rejected: preparedRows.length - accepted };
 }
 
@@ -159,6 +174,26 @@ export async function commitValidatedAssessmentRows(client, params) {
     s3Key,
     stagingRows,
   } = params;
+
+  const steps = [];
+  const t = {
+    log: (fn, label, payload) => {
+      steps.push({
+        timestamp: new Date().toISOString(),
+        fn,
+        label,
+        payload: payload ? JSON.parse(JSON.stringify(payload)) : {},
+      });
+    }
+  };
+
+  t.log('commitValidatedAssessmentRows', 'start', {
+    employerId,
+    userId,
+    opportunityKind,
+    fileName,
+    stagingRowCount: stagingRows?.length,
+  });
 
   const groups = new Map();
   for (const raw of stagingRows) {
@@ -182,73 +217,127 @@ export async function commitValidatedAssessmentRows(client, params) {
   const errors = [];
   let firstUpload = true;
 
-  for (const [, group] of groups) {
-    const target = await resolveTarget(client, employerId, group);
-    if (target.error) {
-      errors.push(`${group.driveId || group.jobId}: ${target.error}`);
-      rejectedRows += group.rawRows.length;
-      continue;
-    }
-
-    const tenantMeta = await client.query(`SELECT short_code FROM tenants WHERE id = $1::uuid LIMIT 1`, [target.tenantId]);
-    const shortCode = tenantMeta.rows[0]?.short_code || '';
-
-    const preparedRows = [];
-    const dedupe = new Set();
-    for (const raw of group.rawRows) {
-      const resolved = resolveRollFromCsvIdentifiers({
-        systemIdCell: raw.system_id,
-        rollCell: raw.college_roll_no,
-        shortCode,
-      });
-      if (resolved.error) {
-        errors.push(`Row ${raw.rowNum}: ${resolved.error}`);
+  try {
+    for (const [, group] of groups) {
+      const target = await resolveTarget(client, employerId, group);
+      if (target.error) {
+        const errMsg = `${group.driveId || group.jobId}: ${target.error}`;
+        errors.push(errMsg);
+        rejectedRows += group.rawRows.length;
+        t.log('commitValidatedAssessmentRows', 'resolve_target_error', { group, error: errMsg });
         continue;
       }
-      const dedupeKey = resolved.systemId || resolved.rollNumber;
-      if (dedupe.has(dedupeKey)) {
-        errors.push(`Row ${raw.rowNum}: duplicate student identifier (${dedupeKey})`);
+
+      const tenantMeta = await client.query(`SELECT short_code FROM tenants WHERE id = $1::uuid LIMIT 1`, [target.tenantId]);
+      const shortCode = tenantMeta.rows[0]?.short_code || '';
+
+      const preparedRows = [];
+      const dedupe = new Set();
+      for (const raw of group.rawRows) {
+        const resolved = resolveRollFromCsvIdentifiers({
+          systemIdCell: raw.system_id,
+          rollCell: raw.college_roll_no,
+          shortCode,
+        });
+        if (resolved.error) {
+          const errMsg = `Row ${raw.rowNum}: ${resolved.error}`;
+          errors.push(errMsg);
+          t.log('commitValidatedAssessmentRows', 'identifier_error', { rowNum: raw.rowNum, error: errMsg });
+          continue;
+        }
+        const dedupeKey = resolved.systemId || resolved.rollNumber;
+        if (dedupe.has(dedupeKey)) {
+          const errMsg = `Row ${raw.rowNum}: duplicate student identifier (${dedupeKey})`;
+          errors.push(errMsg);
+          t.log('commitValidatedAssessmentRows', 'duplicate_identifier', { rowNum: raw.rowNum, dedupeKey, error: errMsg });
+          continue;
+        }
+        dedupe.add(dedupeKey);
+        preparedRows.push({
+          roll: resolved.rollNumber,
+          candidateName: raw.candidate_name,
+          remarks: raw.remarks || null,
+          hiring_result: normalizeHiringResult(raw.hiring_result),
+        });
+      }
+
+      if (!preparedRows.length) {
+        rejectedRows += group.rawRows.length;
+        t.log('commitValidatedAssessmentRows', 'no_rows_prepared_for_group', { group });
         continue;
       }
-      dedupe.add(dedupeKey);
-      preparedRows.push({
-        roll: resolved.rollNumber,
-        candidateName: raw.candidate_name,
-        remarks: raw.remarks || null,
-        hiring_result: normalizeHiringResult(raw.hiring_result),
-      });
+
+      t.log('commitValidatedAssessmentRows', 'insert_batch_start', { tenantId: target.tenantId, preparedRowsCount: preparedRows.length });
+      const result = await insertUploadBatch(client, {
+        employerId,
+        userId,
+        tenantId: target.tenantId,
+        targetDriveId: target.targetDriveId,
+        targetJobId: target.targetJobId,
+        opportunityKind,
+        fileName,
+        s3Key: firstUpload ? s3Key : null,
+        preparedRows,
+      }, t);
+      firstUpload = false;
+      uploadIds.push(result.uploadId);
+      acceptedRows += result.accepted;
+      rejectedRows += result.rejected + (group.rawRows.length - preparedRows.length);
+      errors.push(...result.errors);
     }
 
-    if (!preparedRows.length) {
-      rejectedRows += group.rawRows.length;
-      continue;
-    }
-
-    const result = await insertUploadBatch(client, {
-      employerId,
+    t.log('commitValidatedAssessmentRows', 'complete', { acceptedRows, rejectedRows, errorCount: errors.length });
+    const severity = errors.length > 0 ? 'warning' : 'info';
+    await writePlatformErrorLog({
+      context: 'employer_assessment_csv_commit',
+      error: errors.length > 0 ? new Error(`CSV commit completed with ${errors.length} errors/skips`) : 'CSV commit success',
+      statusCode: 200,
+      severity,
       userId,
-      tenantId: target.tenantId,
-      targetDriveId: target.targetDriveId,
-      targetJobId: target.targetJobId,
-      opportunityKind,
-      fileName,
-      s3Key: firstUpload ? s3Key : null,
-      preparedRows,
+      employerId,
+      userMessage: `CSV assessment commit: ${acceptedRows} accepted, ${rejectedRows} rejected, ${errors.length} errors/skips.`,
+      details: {
+        opportunityKind,
+        fileName,
+        s3Key,
+        steps,
+        totalRows: stagingRows.length,
+        acceptedRows,
+        rejectedRows,
+        errors,
+      }
     });
-    firstUpload = false;
-    uploadIds.push(result.uploadId);
-    acceptedRows += result.accepted;
-    rejectedRows += result.rejected + (group.rawRows.length - preparedRows.length);
-    errors.push(...result.errors);
-  }
 
-  return {
-    ok: uploadIds.length > 0,
-    uploadId: uploadIds[0] || null,
-    uploadIds,
-    totalRows: stagingRows.length,
-    acceptedRows,
-    rejectedRows,
-    errors,
-  };
+    return {
+      ok: uploadIds.length > 0,
+      uploadId: uploadIds[0] || null,
+      uploadIds,
+      totalRows: stagingRows.length,
+      acceptedRows,
+      rejectedRows,
+      errors,
+    };
+  } catch (err) {
+    t.log('commitValidatedAssessmentRows', 'failed', { message: err?.message, stack: err?.stack });
+    await writePlatformErrorLog({
+      context: 'employer_assessment_csv_commit',
+      error: err,
+      statusCode: 500,
+      severity: 'error',
+      userId,
+      employerId,
+      userMessage: 'Failed to commit CSV assessment upload.',
+      details: {
+        opportunityKind,
+        fileName,
+        s3Key,
+        steps,
+        totalRows: stagingRows.length,
+        acceptedRows,
+        rejectedRows,
+        errors,
+      }
+    });
+    throw err;
+  }
 }

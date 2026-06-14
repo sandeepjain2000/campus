@@ -15,6 +15,10 @@ export function organizationNameKey(name) {
 const NAME_KEY_SQL = `LOWER(REGEXP_REPLACE(TRIM(name), '\\s+', ' ', 'g'))`;
 const COMPANY_KEY_SQL = `LOWER(REGEXP_REPLACE(TRIM(company_name), '\\s+', ' ', 'g'))`;
 
+function getQueryExecutor(client) {
+  return typeof client === 'function' ? client : client.query.bind(client);
+}
+
 export async function assertCollegeNameAvailable(client, name, options = {}) {
   const { excludeTenantId } = options;
   const normalized = normalizeOrganizationName(name);
@@ -24,7 +28,8 @@ export async function assertCollegeNameAvailable(client, name, options = {}) {
   }
 
   const key = organizationNameKey(normalized);
-  const res = await client.query(
+  const q = getQueryExecutor(client);
+  const res = await q(
     `SELECT id, name
      FROM tenants
      WHERE type = 'college'
@@ -50,7 +55,8 @@ export async function assertEmployerNameAvailable(client, name, options = {}) {
   }
 
   const key = organizationNameKey(normalized);
-  const res = await client.query(
+  const q = getQueryExecutor(client);
+  const res = await q(
     `SELECT id, company_name
      FROM employer_profiles
      WHERE ${COMPANY_KEY_SQL} = $1

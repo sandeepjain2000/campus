@@ -30,7 +30,7 @@ async function __platform_GET() {
     }
 
     const master = await query(
-      `SELECT sp.id AS student_profile_id, sp.roll_number
+      `SELECT sp.id AS student_profile_id, sp.roll_number, sp.tenant_id
        FROM student_profiles sp
        WHERE sp.tenant_id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
          AND sp.roll_number IS NOT NULL

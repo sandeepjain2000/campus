@@ -94,12 +94,16 @@ export async function buildAssessmentExportCsv(employerId, kind, context) {
     const cells = defaultHiringResultCells(assessment, {
       hasApplied: appliedProfileIds.has(row.student_profile_id),
     });
+    const systemIdVal = formatStudentSystemId(row.short_code, row.roll_number);
     return {
-      system_id: formatStudentSystemId(row.short_code, row.roll_number),
+      system_id: systemIdVal,
+      student_system_id: systemIdVal,
       college_roll_no: row.roll_number,
       placement_drive_id: placementDriveId,
       job_id: jobId,
       tenant_id: row.tenant_id || '',
+      college_id: row.tenant_id || '',
+      employer_id: employerId || '',
       candidate_name: String(assessment?.candidate_name || row.student_name || '').trim(),
       ...cells,
     };

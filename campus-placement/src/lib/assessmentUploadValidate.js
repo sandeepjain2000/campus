@@ -20,7 +20,10 @@ function columnizeValidationError(message) {
   if (m.includes('placement_drive_id') || m.includes('job_id') || m.includes('not both')) {
     return `Column placement_drive_id / job_id: ${m}`;
   }
-  if (m.startsWith('tenant_id')) return `Column tenant_id: ${m.replace(/^tenant_id\s*/i, '')}`.trim();
+  if (m.startsWith('tenant_id') || m.startsWith('college_id')) {
+    const clean = m.replace(/^(tenant_id|college_id)\s*/i, '');
+    return `Column college_id / tenant_id: ${clean}`.trim();
+  }
   if (m.includes('remarks')) return `Column remarks: ${m}`;
   if (m.includes('hiring_result') || m.includes('Shortlist') || m.includes('Reject') || m.includes('Select')) {
     return `Column hiring_result: ${m}`;
@@ -30,6 +33,9 @@ function columnizeValidationError(message) {
   }
   if (m.includes('Student') && m.includes('not found')) {
     return `Columns system_id / college_roll_no: ${m}`;
+  }
+  if (m.includes('employer_id')) {
+    return `Column employer_id: ${m}`;
   }
   return m;
 }
@@ -81,7 +87,14 @@ export async function validateAssessmentCsvUpload(client, params) {
     const errors = [];
     if (resolvedTarget.error) errors.push(resolvedTarget.error);
     if (jobId && !tenantId) {
-      errors.push('tenant_id is required when job_id is set (fill tenant_id on this row)');
+      errors.push('college_id / tenant_id is required when job_id is set (fill college_id on this row)');
+    }
+
+    if (headerIdx.employer_id !== undefined && headerIdx.employer_id >= 0) {
+      const rowEmployerId = sanitizeUuidInput(getCell(r, headerIdx.employer_id));
+      if (rowEmployerId && rowEmployerId.toLowerCase() !== employerId.toLowerCase()) {
+        errors.push('employer_id in CSV does not match the authenticated employer profile ID');
+      }
     }
 
     const remarks = getCell(r, headerIdx.remarks);

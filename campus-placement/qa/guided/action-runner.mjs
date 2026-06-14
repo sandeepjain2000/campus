@@ -17,6 +17,44 @@ async function fillReactField(page, selector, value) {
   await field.pressSequentially(String(value), { delay: 40 });
 }
 
+/** DD/MM/YYYY segmented fields (internship dates, drive date). */
+async function fillSegmentedDateField(page, action, ctx) {
+  const raw = resolveTemplate(action.value, ctx);
+  const match = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) throw new Error(`fillSegmentedDate expects YYYY-MM-DD, got "${raw}"`);
+  const [, year, month, day] = match;
+
+  let group;
+  if (action.nearLabel) {
+    const labelText = resolveTemplate(action.nearLabel, ctx);
+    group = page
+      .locator('.form-group')
+      .filter({ hasText: labelText })
+      .locator('[role="group"]')
+      .first();
+  } else if (action.ariaLabel) {
+    group = page.getByRole('group', { name: resolveTemplate(action.ariaLabel, ctx) }).first();
+  } else if (action.selector) {
+    group = page.locator(action.selector).first();
+  } else {
+    throw new Error('fillSegmentedDate requires nearLabel, ariaLabel, or selector');
+  }
+
+  await group.waitFor({ state: 'visible', timeout: 15_000 });
+  await group.scrollIntoViewIfNeeded().catch(() => {});
+
+  const fillSegment = async (segLabel, segValue) => {
+    const input = group.getByRole('textbox', { name: segLabel });
+    await input.click({ timeout: 10_000 });
+    await input.fill('');
+    await input.pressSequentially(segValue, { delay: 40 });
+  };
+
+  await fillSegment('Day', day);
+  await fillSegment('Month', month);
+  await fillSegment('Year', year);
+}
+
 export async function executeAction(page, baseUrl, accounts, action, ctx) {
   if (!action?.type) return;
 
@@ -92,6 +130,7 @@ export async function executeAction(page, baseUrl, accounts, action, ctx) {
       locator = page.locator(action.selector);
     }
     if (locator) {
+      await locator.scrollIntoViewIfNeeded().catch(() => {});
       await locator.click({ timeout: 10_000 }).catch(() => {});
       if (type === 'type') {
         await locator.press('Control+a').catch(() => locator.press('Meta+a').catch(() => {}));
@@ -139,6 +178,12 @@ export async function executeAction(page, baseUrl, accounts, action, ctx) {
     } else {
       await locator.selectOption(value, { timeout: 10_000 });
     }
+    await page.waitForTimeout(250);
+    return;
+  }
+
+  if (type === 'fillSegmentedDate') {
+    await fillSegmentedDateField(page, action, ctx);
     await page.waitForTimeout(250);
     return;
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
+import { isGuidedRunnerLoggingEnabled } from '@/lib/guidedRunnerConfig';
 
 export { PLATFORM_ERROR_CONTEXT };
 
@@ -92,6 +93,14 @@ function logPlatformFailureFallback(payload, dbErr) {
  * }} payload
  */
 export async function writePlatformErrorLog(payload) {
+  const contextStr = String(payload.context || '');
+  if (contextStr.startsWith('api_guided_runner') && !isGuidedRunnerLoggingEnabled()) {
+    return null;
+  }
+  if (contextStr.startsWith('api_demo')) {
+    return null;
+  }
+
   const err = payload.error;
   const errorMessage = truncate(errorMessageFromUnknown(err));
   const errorCode =

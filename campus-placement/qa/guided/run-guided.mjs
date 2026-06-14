@@ -92,6 +92,10 @@ COLLEGE APPROVAL
   Internships: /dashboard/college/internships — Pending review → Approve (GT-* marker)
   Placement drives: /dashboard/college/drives — Awaiting Approval → Approve (GT-* marker)
 
+FORM FIELDS (2026-06)
+  Internships: Start date + End date (not duration dropdown); batch year 2026; eligible branches All
+  Drives: full request form includes role/eligibility/compensation; batch year 2026; drive date via segmented fields
+
 BEFORE INTERNSHIP TESTS (if no approved campuses)
   npm run qa:ensure-partnership              # IIT Madras × all employers
   npm run qa:ensure-techcorp-partnerships    # TechCorp × all active colleges

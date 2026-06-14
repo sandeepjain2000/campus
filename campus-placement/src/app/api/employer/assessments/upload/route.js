@@ -91,13 +91,15 @@ async function __platform_POST(request) {
       );
     }
 
+    const hasCollegeId = headers.includes('college_id');
     const headerIdx = {
       // Prefer student_system_id; fall back to system_id for legacy CSVs
       system_id: hasStudentSystemId ? headers.indexOf('student_system_id') : headers.indexOf('system_id'),
       college_roll_no: headers.indexOf('college_roll_no'),
       placement_drive_id: headers.indexOf('placement_drive_id'),
       job_id: headers.indexOf('job_id'),
-      tenant_id: headers.indexOf('tenant_id'),
+      tenant_id: hasCollegeId ? headers.indexOf('college_id') : headers.indexOf('tenant_id'),
+      employer_id: headers.indexOf('employer_id'),
       candidate_name: headers.indexOf('candidate_name'),
       remarks: headers.indexOf('remarks'),
       hiring_result: headers.indexOf('hiring_result'),

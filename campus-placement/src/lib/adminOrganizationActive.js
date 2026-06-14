@@ -2,13 +2,18 @@
  * Super-admin activate / deactivate for employer accounts and college tenants.
  */
 
+function getQueryExecutor(client) {
+  return typeof client === 'function' ? client : client.query.bind(client);
+}
+
 /**
  * @param {import('pg').PoolClient | { query: Function }} client
  * @param {string} employerUserId
  * @param {boolean} active
  */
 export async function setEmployerUserActive(client, employerUserId, active) {
-  await client.query(
+  const q = getQueryExecutor(client);
+  await q(
     `UPDATE users
      SET is_active = $2::boolean, updated_at = NOW()
      WHERE id = $1::uuid AND role = 'employer'`,
@@ -25,8 +30,9 @@ export async function setEmployerUserActive(client, employerUserId, active) {
  * @param {boolean} active
  */
 export async function syncCollegeAdminUsersActive(client, tenantId, active) {
+  const q = getQueryExecutor(client);
   if (active) {
-    await client.query(
+    await q(
       `UPDATE users
        SET is_active = true, updated_at = NOW()
        WHERE tenant_id = $1::uuid
@@ -38,7 +44,7 @@ export async function syncCollegeAdminUsersActive(client, tenantId, active) {
     return;
   }
 
-  await client.query(
+  await q(
     `UPDATE users
      SET is_active = false, updated_at = NOW()
      WHERE tenant_id = $1::uuid AND role = 'college_admin'`,

@@ -678,7 +678,7 @@ export default function EmployerInternshipsPage() {
               min="2000"
               max="2100"
               step="1"
-              placeholder="e.g. 2025"
+              placeholder="e.g. 2026"
               value={batchYear}
               onChange={(e) => setBatchYear(e.target.value)}
             />

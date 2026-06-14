@@ -12,7 +12,7 @@ import { validateAdminEmployerForm } from '@/lib/adminEmployerForm';
 import { setEmployerUserActive } from '@/lib/adminOrganizationActive';
 
 export const dynamic = 'force-dynamic';
-import { withApiHandlers } from '@/lib/platformErrorRoute';
+import { withApiHandlers, respondPlatformError } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
 
 
@@ -68,7 +68,7 @@ function mapEmployer(row) {
   };
 }
 
-async function __platform_GET(_request, { params }) {
+async function __platform_GET(request, { params }) {
   try {
     const auth = await requireSuperAdmin();
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -81,8 +81,11 @@ async function __platform_GET(_request, { params }) {
 
     return NextResponse.json({ employer: mapEmployer(row) });
   } catch (error) {
-    console.error('GET /api/admin/employers/[id]', error);
-    return NextResponse.json({ error: 'Failed to load employer' }, { status: 500 });
+    return respondPlatformError(error, {
+      context: 'api_admin_employers_id',
+      request,
+      defaultMessage: 'Failed to load employer',
+    });
   }
 }
 
@@ -203,8 +206,11 @@ async function __platform_PATCH(request, { params }) {
     const row = await loadEmployer(id);
     return NextResponse.json({ employer: mapEmployer(row) });
   } catch (error) {
-    console.error('PATCH /api/admin/employers/[id]', error);
-    return NextResponse.json({ error: 'Failed to update employer' }, { status: 500 });
+    return respondPlatformError(error, {
+      context: 'api_admin_employers_id',
+      request,
+      defaultMessage: 'Failed to update employer',
+    });
   }
 }
 

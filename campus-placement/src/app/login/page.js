@@ -628,6 +628,13 @@ function LoginPageInner() {
       >
       <div style={{ width: '100%', maxWidth: showCredentials && showDemoLogins ? 'min(960px, 100%)' : '420px', transition: 'max-width 0.2s ease' }}>
 
+        {/* Back to Landing Link */}
+        <div style={{ marginBottom: '1.25rem', textAlign: 'left' }}>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--primary-600)', fontSize: '0.875rem', textDecoration: 'none', fontWeight: 500 }}>
+            <span>&larr;</span> Back to landing page
+          </Link>
+        </div>
+
         {/* Modern Centered Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', marginBottom: '1.5rem' }}>

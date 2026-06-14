@@ -94,6 +94,7 @@ async function __platform_GET(request) {
           roll_number: s.roll_number,
           tenant_id: tid,
           upload_drive_id: a?.upload_drive_id ?? null,
+          employer_id: employerId,
         });
       }
     }

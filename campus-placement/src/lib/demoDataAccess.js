@@ -8,6 +8,15 @@ import { showSandboxLoginBanner } from '@/lib/sandboxBanner';
 export function isDemoDataApiEnabled() {
   if (process.env.DEMO_DATA_API_ENABLED === 'true') return true;
   if (process.env.DEMO_DATA_API_ENABLED === 'false') return false;
+
+  // Disable on production server/deployments unless explicitly forced true
+  if (process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV) {
+    return false;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+
   if (showSandboxLoginBanner()) return true;
   return process.env.NODE_ENV !== 'production';
 }

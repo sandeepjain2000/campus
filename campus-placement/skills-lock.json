@@ -403,6 +403,12 @@
       "skillPath": "skills/social-content/SKILL.md",
       "computedHash": "c141cd0a4cbd8ce1b9ead79ada85ea349d794119c3cb730c3def3f689022bfb1"
     },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
+      "computedHash": "7246fdd3a795fc3daff0af72044ca99bf836e4e6a46844742858786fdfb86488"
+    },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",

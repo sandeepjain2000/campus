@@ -90,9 +90,15 @@
     },
     {
       "phase": "EI-02",
-      "label": "Select duration — 3 months",
-      "observe": "Duration dropdown shows 3 Months.",
-      "action": { "type": "select", "nearLabel": "Duration", "value": "3" }
+      "label": "Set internship start date",
+      "observe": "Start date shows 01 Jun 2026.",
+      "action": { "type": "fillSegmentedDate", "nearLabel": "Start date", "value": "2026-06-01" }
+    },
+    {
+      "phase": "EI-02",
+      "label": "Set internship end date",
+      "observe": "End date shows 31 Aug 2026 (~3 months).",
+      "action": { "type": "fillSegmentedDate", "nearLabel": "End date", "value": "2026-08-31" }
     },
     {
       "phase": "EI-02",
@@ -117,6 +123,18 @@
       "label": "Type minimum CGPA",
       "observe": "Min CGPA field shows 7.5.",
       "action": { "type": "type", "nearLabel": "Min CGPA", "value": "7.5" }
+    },
+    {
+      "phase": "EI-02",
+      "label": "Type eligible branches",
+      "observe": "Eligible branches shows All (every branch).",
+      "action": { "type": "type", "nearLabel": "Eligible branches", "value": "All" }
+    },
+    {
+      "phase": "EI-02",
+      "label": "Type batch year (2026 — matches seeded students)",
+      "observe": "Batch year field shows 2026.",
+      "action": { "type": "type", "nearLabel": "Batch year", "value": "2026" }
     },
     {
       "phase": "EI-02",

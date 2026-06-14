@@ -42,7 +42,7 @@ export async function syncApplicationStatusFromHiringResult(client, {
     );
     t.log('syncApplicationStatusFromHiringResult', 'drive_update_result', { rowCount: updated.rows.length, nextStatus });
     if (updated.rows.length) {
-      await syncPlacementDriveSelectedCount(client, targetDriveId);
+      await syncPlacementDriveSelectedCount(targetDriveId, client);
       return { synced: true, status: nextStatus };
     }
     return { synced: false };

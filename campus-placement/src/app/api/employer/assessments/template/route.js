@@ -18,6 +18,8 @@ async function __platform_GET() {
       placement_drive_id: '',
       job_id: '',
       tenant_id: '',
+      college_id: '',
+      employer_id: '',
       candidate_name: 'Example Student',
       ...defaultHiringResultCells(null),
     },

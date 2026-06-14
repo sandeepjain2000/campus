@@ -67,6 +67,27 @@ async function __platform_POST(request) {
         continue;
       }
 
+      const csvCollegeId = pickCell(row, ['college_id', 'tenant_id', 'campus_id', 'college_tenant_id']);
+      if (csvCollegeId && String(csvCollegeId).trim() !== '') {
+        if (csvCollegeId.trim().toLowerCase() !== tenantId.toLowerCase()) {
+          errors.push({
+            line: lineNo,
+            message: `college_id / tenant_id in CSV does not match the college admin's campus ID`,
+          });
+          continue;
+        }
+      }
+
+      const csvEmployerId = pickCell(row, ['employer_id', 'employerId', 'company_id']);
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let finalEmployerId = null;
+      if (csvEmployerId && String(csvEmployerId).trim() !== '') {
+        const trimmedEmployerId = String(csvEmployerId).trim();
+        if (UUID_RE.test(trimmedEmployerId)) {
+          finalEmployerId = trimmedEmployerId;
+        }
+      }
+
       const sr = await query(
         `SELECT id FROM student_profiles
          WHERE tenant_id = $1::uuid AND TRIM(roll_number) = $2 AND ${STUDENT_PROFILE_ACTIVE_CLAUSE}
@@ -97,8 +118,8 @@ async function __platform_POST(request) {
              student_id, employer_id, job_title, salary, location, status,
              joining_date, deadline, salary_currency, reported_company_name,
              accepted_at, rejected_at
-           ) VALUES ($1, NULL, $2, $3, $4, $5, NULL, $6, 'INR', $7, $8, $9)`,
-          [studentId, jobTitle, salary, location, status, deadline, company, acceptedAt, rejectedAt],
+           ) VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, 'INR', $8, $9, $10)`,
+          [studentId, finalEmployerId, jobTitle, salary, location, status, deadline, company, acceptedAt, rejectedAt],
         );
         accepted += 1;
         await refreshOfferLatestFlagsForStudent(studentId);

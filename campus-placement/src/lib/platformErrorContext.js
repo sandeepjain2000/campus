@@ -18,6 +18,8 @@ export const PLATFORM_ERROR_CONTEXT = {
   EMPLOYER_APPLICATION_UPDATE: 'employer_application_update',
   CLIENT_API_FAILURE: 'client_api_failure',
   LOGIN_DEBUG: 'login_debug',
+  EMPLOYER_ASSESSMENT_ONLINE_UPDATE: 'employer_assessment_online_update',
+  EMPLOYER_ASSESSMENT_CSV_COMMIT: 'employer_assessment_csv_commit',
 };
 
 /** Human-readable labels for super-admin Error logs filters and detail panel. */
@@ -40,4 +42,6 @@ export const PLATFORM_ERROR_CONTEXT_LABELS = {
   [PLATFORM_ERROR_CONTEXT.EMPLOYER_APPLICATION_UPDATE]: 'Employer — update application status',
   [PLATFORM_ERROR_CONTEXT.CLIENT_API_FAILURE]: 'Client — API failure (browser report)',
   [PLATFORM_ERROR_CONTEXT.LOGIN_DEBUG]: 'Login — debug trace (browser)',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_ASSESSMENT_ONLINE_UPDATE]: 'Employer — online grades update',
+  [PLATFORM_ERROR_CONTEXT.EMPLOYER_ASSESSMENT_CSV_COMMIT]: 'Employer — CSV assessment upload commit',
 };

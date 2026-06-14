@@ -15,14 +15,17 @@ export function csvEscapeCell(v) {
  * @param {Map<string, Record<string, unknown>>} assessmentByProfileId from pickRepresentativeAssessmentRows
  */
 export function buildCollegeOffersAllStudentsCsv(masterRows, assessmentByProfileId) {
-  const header = 'roll_number,company_name,job_title,salary,location,deadline,status';
+  const header = 'roll_number,college_id,employer_id,company_name,job_title,salary,location,deadline,status';
   const lines = [header];
   for (const s of masterRows) {
     const a = assessmentByProfileId.get(s.student_profile_id);
     const company = a?.employer_company ?? '';
+    const employerId = a?.employer_id ?? '';
     lines.push(
       [
         csvEscapeCell(s.roll_number ?? ''),
+        csvEscapeCell(s.tenant_id ?? ''),
+        csvEscapeCell(employerId),
         csvEscapeCell(company),
         '',
         '',
@@ -36,10 +39,10 @@ export function buildCollegeOffersAllStudentsCsv(masterRows, assessmentByProfile
 }
 
 /**
- * @param {Array<{ roll_number: string, tenant_id: string, upload_drive_id?: string | null }>} flatRows
+ * @param {Array<{ roll_number: string, tenant_id: string, upload_drive_id?: string | null, employer_id?: string | null }>} flatRows
  */
 export function buildEmployerOffersAllStudentsCsv(flatRows) {
-  const header = 'system_id,roll_number,tenant_id,job_title,salary,location,joining_date,deadline,drive_id,status';
+  const header = 'system_id,roll_number,tenant_id,college_id,employer_id,job_title,salary,location,joining_date,deadline,drive_id,status';
   const lines = [header];
   for (const r of flatRows) {
     const driveId = r.upload_drive_id ? String(r.upload_drive_id) : '';
@@ -48,6 +51,8 @@ export function buildEmployerOffersAllStudentsCsv(flatRows) {
         csvEscapeCell(r.system_id ?? ''),
         csvEscapeCell(r.roll_number ?? ''),
         csvEscapeCell(r.tenant_id ?? ''),
+        csvEscapeCell(r.tenant_id ?? ''),
+        csvEscapeCell(r.employer_id ?? ''),
         '',
         '',
         '',

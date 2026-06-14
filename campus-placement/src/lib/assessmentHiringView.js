@@ -48,7 +48,8 @@ export async function fetchAssessmentRowsForView(filter) {
        eau.created_at AS upload_created_at,
        eau.tenant_id,
        t.name AS tenant_name,
-       ep.company_name AS employer_company
+       ep.company_name AS employer_company,
+       eau.employer_id AS employer_id
      FROM employer_assessment_rows ear
      JOIN employer_assessment_uploads eau ON eau.id = ear.upload_id
      JOIN employer_profiles ep ON ep.id = eau.employer_id

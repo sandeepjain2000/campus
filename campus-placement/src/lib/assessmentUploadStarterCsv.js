@@ -8,6 +8,8 @@ export const ASSESSMENT_UPLOAD_CSV_HEADERS = [
   'placement_drive_id',
   'job_id',
   'tenant_id',
+  'college_id',
+  'employer_id',
   'candidate_name',
   'hiring_result',
   'remarks',
@@ -23,10 +25,13 @@ export function assessmentExportFilename(kind) {
 /**
  * @param {Array<{
  *   system_id?: string;
+ *   student_system_id?: string;
  *   college_roll_no: string;
  *   placement_drive_id?: string;
  *   job_id?: string;
  *   tenant_id?: string;
+ *   college_id?: string;
+ *   employer_id?: string;
  *   candidate_name?: string;
  *   hiring_result?: string;
  *   remarks?: string;
@@ -37,11 +42,13 @@ export function buildAssessmentUploadStarterCsv(rows) {
   for (const row of rows) {
     lines.push(
       [
-        csvEscapeCell(row.student_system_id ?? ''),
+        csvEscapeCell(row.student_system_id ?? row.system_id ?? ''),
         csvEscapeCell(row.college_roll_no ?? ''),
         csvEscapeCell(row.placement_drive_id ?? ''),
         csvEscapeCell(row.job_id ?? ''),
         csvEscapeCell(row.tenant_id ?? ''),
+        csvEscapeCell(row.college_id ?? row.tenant_id ?? ''),
+        csvEscapeCell(row.employer_id ?? ''),
         csvEscapeCell(row.candidate_name ?? ''),
         csvEscapeCell(row.hiring_result ?? ''),
         csvEscapeCell(row.remarks ?? ''),

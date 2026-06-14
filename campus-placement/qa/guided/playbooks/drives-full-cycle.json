@@ -106,8 +106,8 @@
     {
       "phase": "EMPLOYER",
       "label": "Set drive date (future)",
-      "observe": "Drive Date field shows 2026-12-15.",
-      "action": { "type": "type", "nearLabel": "Drive Date", "value": "2026-12-15" }
+      "observe": "Drive Date field shows 15 Dec 2026.",
+      "action": { "type": "fillSegmentedDate", "nearLabel": "Drive Date", "value": "2026-12-15" }
     },
     {
       "phase": "EMPLOYER",
@@ -124,6 +124,58 @@
         "nearLabel": "Notes for placement office",
         "value": "Guided test {{marker}} — on-campus SDE hiring."
       }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type openings for the role",
+      "observe": "Openings field shows 10.",
+      "action": { "type": "type", "nearLabel": "Openings", "value": "10" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type skills for the role",
+      "observe": "Skills: Java, DSA, SQL.",
+      "action": { "type": "type", "nearLabel": "Skills (comma-separated)", "value": "Java, DSA, SQL" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type job description",
+      "observe": "Description includes guided test marker.",
+      "action": {
+        "type": "type",
+        "nearLabel": "Job description",
+        "value": "SDE campus role for {{marker}} guided test. Strong CS fundamentals required."
+      }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type minimum CGPA",
+      "observe": "Min CGPA field shows 7.5.",
+      "action": { "type": "type", "nearLabel": "Minimum CGPA", "value": "7.5" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type eligible branches",
+      "observe": "Eligible branches shows All.",
+      "action": { "type": "type", "nearLabel": "Eligible branches", "value": "All" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type batch year (2026 — matches seeded students)",
+      "observe": "Batch year field shows 2026.",
+      "action": { "type": "type", "nearLabel": "Batch year", "value": "2026" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type min CTC (annual INR)",
+      "observe": "Min CTC shows 800000.",
+      "action": { "type": "type", "nearLabel": "Min CTC (annual INR)", "value": "800000" }
+    },
+    {
+      "phase": "EMPLOYER",
+      "label": "Type max CTC (annual INR)",
+      "observe": "Max CTC shows 1200000.",
+      "action": { "type": "type", "nearLabel": "Max CTC (annual INR)", "value": "1200000" }
     },
     {
       "phase": "EMPLOYER",

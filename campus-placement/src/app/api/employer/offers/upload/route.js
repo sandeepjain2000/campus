@@ -68,7 +68,7 @@ async function __platform_POST(request) {
     }
 
     const headerCells = parseCsvLine(lines[0]).map(normalizeHeader);
-    const headerHasTenantId = headerCells.includes('tenant_id') || headerCells.includes('campus_id') || headerCells.includes('college_tenant_id');
+    const headerHasTenantId = headerCells.includes('tenant_id') || headerCells.includes('college_id') || headerCells.includes('campus_id') || headerCells.includes('college_tenant_id');
     const errors = [];
     let accepted = 0;
     const shortCodeByTenant = new Map();
@@ -91,22 +91,28 @@ async function __platform_POST(request) {
         continue;
       }
 
+      const employerIdCell = pickCell(row, ['employer_id', 'employerId']);
+      if (employerIdCell && String(employerIdCell).trim() !== '' && String(employerIdCell).trim().toLowerCase() !== employerId.toLowerCase()) {
+        errors.push({ line: lineNo, message: 'employer_id in CSV does not match the authenticated employer profile ID' });
+        continue;
+      }
+
       let resolvedTenantId = null;
       if (headerHasTenantId) {
-        const tenantCell = pickCell(row, ['tenant_id', 'campus_id', 'college_tenant_id']);
+        const tenantCell = pickCell(row, ['tenant_id', 'college_id', 'campus_id', 'college_tenant_id']);
         resolvedTenantId = tenantCell && UUID_RE.test(tenantCell) ? tenantCell : null;
         if (!resolvedTenantId) {
           if (!singleTenantFallback) {
             errors.push({
               line: lineNo,
               message:
-                'Add tenant_id (campus UUID), or partner with exactly one approved campus so the campus can be inferred.',
+                'Add college_id / tenant_id (campus UUID), or partner with exactly one approved campus so the campus can be inferred.',
             });
             continue;
           }
           resolvedTenantId = singleTenantFallback;
         } else if (!approvedSet.has(resolvedTenantId)) {
-          errors.push({ line: lineNo, message: 'tenant_id is not an approved campus for your company' });
+          errors.push({ line: lineNo, message: 'college_id / tenant_id is not an approved campus for your company' });
           continue;
         }
       } else if (singleTenantFallback) {

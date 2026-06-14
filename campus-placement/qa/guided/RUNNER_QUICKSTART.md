@@ -86,6 +86,14 @@ The browser reads/writes the same DB through `/api/guided-runner` (dev/sandbox o
 
 ---
 
+## Employer form fields (2026-06)
+
+**Internships** (`Post Internship`): use **Start date** + **End date** (segmented DD/MM/YYYY), not a duration dropdown. Set **Batch year** to **2026** (matches seeded students). **Eligible branches**: `All` unless testing branch filters.
+
+**Placement drives** (`Request placement drive`): drive date uses segmented fields; fill **Role & openings**, **Job description**, **Eligibility** (min CGPA, batch **2026**), and **Compensation** before submit. Playbooks automate these steps.
+
+---
+
 ## College approval (required before students browse)
 
 **Internships:** After employer publish, listings appear on **College → Internships & Programs** with **Campus = Pending review**. Approve before students see them (migration `067`).
@@ -134,7 +142,7 @@ Assessment round updates (CSV or **Assessment Update Online**) do **not** send e
 
 **Landing → Data** (`/data-entry`) → **Purge** section → Refresh → filter **Internships & programs** → purge `GT-*` and other sandbox rows.
 
-Eligible: Data Tester API posts, `GT-*` titles, UI `Duration: N months.` descriptions, seed ids `d1000000-*`.
+Eligible: Data Tester API posts, `GT-*` titles, guided sandbox rows, seed ids `d1000000-*`.
 
 ---
 

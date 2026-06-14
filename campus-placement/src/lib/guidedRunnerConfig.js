@@ -25,3 +25,10 @@ export function isGuidedRunnerFeatureEnabled() {
   if (process.env.NEXT_PUBLIC_SANDBOX_BANNER === 'false') return false;
   return false;
 }
+
+export function isGuidedRunnerLoggingEnabled() {
+  if (process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV) {
+    return false;
+  }
+  return process.env.LOG_GUIDED_RUNNER === 'true';
+}

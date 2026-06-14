@@ -91,7 +91,7 @@ export async function upsertAssessmentRowInContext(client, {
       hiringResult: normalizedResult,
       targetDriveId,
       targetJobId,
-    });
+    }, t);
     t.log('upsertAssessmentRowInContext', 'update_complete');
     return { uploadId: existing.upload_id, updated: true };
   }
@@ -128,7 +128,7 @@ export async function upsertAssessmentRowInContext(client, {
     hiringResult: normalizedResult,
     targetDriveId,
     targetJobId,
-  });
+  }, t);
   t.log('upsertAssessmentRowInContext', 'insert_complete');
   return { uploadId, updated: false };
 }

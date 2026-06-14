@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { isAssessmentRoundKind } from '@/lib/assessmentRoundMap';
 import { fetchAssessmentUpdateOnlineRows, saveAssessmentUpdateOnlineRows } from '@/lib/assessmentUpdateOnline';
 import { isUuid } from '@/lib/tenantContext';
+import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -86,6 +87,26 @@ async function __platform_PATCH(request) {
       { tenantId, driveId, jobId },
       Array.isArray(body?.rows) ? body.rows : [],
     );
+
+    if (result.errors && result.errors.length > 0) {
+      writePlatformErrorLog({
+        context: 'api_employer_assessment_update_online_patch',
+        error: new Error(`Online assessment update completed with ${result.errors.length} errors/skips`),
+        statusCode: 200,
+        severity: 'warning',
+        userId: session.user.id || null,
+        employerId,
+        userMessage: `Online assessment update: partial errors/skips occurred`,
+        details: {
+          kind,
+          tenantId,
+          driveId,
+          jobId,
+          savedCount: result.saved,
+          errors: result.errors,
+        },
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ ok: true, saved: result.saved, errors: result.errors });
   } catch (e) {

@@ -17,19 +17,23 @@ function showDevScreenTag(pathname, sessionActive) {
   if (process.env.NODE_ENV !== 'production') return true;
   const p = pathname || '';
   if (p === '/' && sessionActive) return true;
-  if (p === '/login' && sessionActive) return true;
+  if ((p === '/login' || p === '/sign-in') && sessionActive) return true;
+  if (p.startsWith('/developer')) return true;
   return p.startsWith('/dashboard') || p.startsWith('/data-entry');
 }
 
 function resolveScreenId(pathname) {
   if (pathname === '/') return 'LANDING';
   if (pathname === '/login') return 'LOGIN';
+  if (pathname === '/sign-in') return 'SIGN_IN';
+  if (pathname === '/developer') return 'DEV_NOTES';
+  if (pathname === '/developer/use-cases-more') return 'DEV_USE_CASES_MORE';
   return getDevScreenId(pathname);
 }
 
-export default function DevScreenTag() {
+export default function DevScreenTag({ screenId } = {}) {
   const pathname = usePathname();
-  const id = resolveScreenId(pathname);
+  const id = screenId || resolveScreenId(pathname);
   const [sessionActive, setSessionActive] = useState(false);
   const [armed, setArmed] = useState(false);
   const [running, setRunning] = useState(false);

@@ -3,13 +3,18 @@
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Terminal, Copy, Check } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import DevScreenTag from '@/components/DevScreenTag';
 import DemoDataTester from '@/components/demo/DemoDataTester';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
+import UseCasesTable from '@/components/developer/UseCasesTable';
 import {
   DEVELOPER_PAGE_META,
   DEVELOPER_PAGE_TOC,
   QUICK_START_STEPS,
   GUIDED_PLAYBOOKS,
+  USE_CASE_FLOWS,
+  USE_CASES_MORE_NOTES,
+  LOGIN_PAGE_LINKS,
   RUNNER_PANEL_STEPS,
   SCREEN_TAG_STATES,
   SCREEN_TAG_ARMED_CLICKS,
@@ -87,6 +92,9 @@ export default function DeveloperPage() {
 
   return (
     <div className="dev-notes-page">
+      <div style={{ position: 'fixed', top: '0.65rem', right: '0.75rem', zIndex: 100000 }}>
+        <DevScreenTag />
+      </div>
       <header className="dev-notes-header">
         <div className="dev-notes-header-inner">
           <Link href="/" className="dev-notes-back">
@@ -111,7 +119,9 @@ export default function DeveloperPage() {
           <div style={{ margin: '1.5rem 0', padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '0.5rem', textAlign: 'left' }}>
             <h3 style={{ margin: '0 0 0.5rem 0', color: '#991B1B', fontSize: '1rem' }}>Test Login Page</h3>
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#7F1D1D' }}>
-              <Link href="/login" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>Current (Old) Login Page</Link> — Use this for internal testing.
+              <Link href="/login" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>Old Login Page (Demo Accounts)</Link> — Use this for internal testing.
+              {' · '}
+              <Link href="/sign-in" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>New Sign In Page</Link>
             </p>
           </div>
 
@@ -189,6 +199,26 @@ export default function DeveloperPage() {
               </tbody>
             </table>
           </div>
+        </Section>
+
+        <Section id="use-cases" title="Use cases (step-by-step)">
+          <UseCasesTable
+            flows={USE_CASE_FLOWS}
+            intro="Five end-to-end flows across employer, college, and student roles. Match these to guided playbooks and manual QA."
+          />
+          <p style={{ margin: '1.25rem 0 0' }}>
+            <Link href={USE_CASES_MORE_NOTES.href} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+              {USE_CASES_MORE_NOTES.label}
+            </Link>
+          </p>
+          <p className="dev-notes-muted" style={{ margin: '1rem 0 0', fontSize: '0.875rem' }}>
+            QA login:{' '}
+            <Link href={LOGIN_PAGE_LINKS.oldWithDemoAccounts} style={{ fontWeight: 600 }}>
+              Old Login Page (Demo accounts)
+            </Link>
+            {' · '}
+            <Link href={LOGIN_PAGE_LINKS.newSignIn} style={{ fontWeight: 600 }}>New Sign In Page</Link>
+          </p>
         </Section>
 
         <Section id="runner-alerts" title="Runner alerts (recent UI changes)">
@@ -782,6 +812,23 @@ export default function DeveloperPage() {
           overflow-x: auto;
           border: 1px solid var(--border-default);
           border-radius: var(--radius-lg);
+        }
+        .dev-notes-table-wrap--wide {
+          margin-top: 0.5rem;
+        }
+        .dev-notes-table--use-cases th[scope='row'] {
+          min-width: 11rem;
+          font-weight: 700;
+          font-size: 0.875rem;
+          text-transform: none;
+          letter-spacing: normal;
+          color: var(--text-primary);
+          background: var(--bg-primary);
+        }
+        .dev-notes-table--use-cases td {
+          min-width: 9.5rem;
+          font-size: 0.8125rem;
+          line-height: 1.45;
         }
         .dev-notes-table {
           width: 100%;

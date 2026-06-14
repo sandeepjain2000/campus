@@ -30,6 +30,7 @@ import {
 } from '@/lib/campusFcfsSelection';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { AND_EAU_NOT_DELETED } from '@/lib/softDeleteSql';
+import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 
 const ONLINE_UPLOAD_LABEL = 'Online update';
 
@@ -204,90 +205,159 @@ export async function saveAssessmentUpdateOnlineRows(employerId, userId, kind, c
   let saved = 0;
   const errors = [];
 
-  await transaction(async (client) => {
-    await assertAssessmentContextEditable(client, {
-      employerId,
-      tenantId,
-      opportunityKind: kind,
-      driveId,
-      jobId,
-    });
+  const steps = [];
+  const t = {
+    log: (fn, label, payload) => {
+      steps.push({
+        timestamp: new Date().toISOString(),
+        fn,
+        label,
+        payload: payload ? JSON.parse(JSON.stringify(payload)) : {},
+      });
+    }
+  };
 
-    const uploadId = await ensureUpload(client, employerId, userId, { tenantId, driveId, jobId });
+  t.log('saveAssessmentUpdateOnlineRows', 'start', { employerId, userId, kind, context, rowCount: rowsIn?.length });
 
-    for (const input of rowsIn) {
-      const profileId = String(input?.student_profile_id || '').trim();
-      const student = studentById.get(profileId);
-      if (!student) {
-        errors.push(`Student ${profileId}: not found for this campus`);
-        continue;
-      }
-
-      const withdrawn = await isStudentWithdrawnFromTarget(client, profileId, { driveId, jobId });
-      if (withdrawn) {
-        errors.push(`Roll ${student.college_roll_no}: ${WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE}`);
-        continue;
-      }
-
-      const hiringRaw = input.hiring_result ?? input.hiring_result_result ?? '';
-      const hiringErr = validateHiringResult(hiringRaw);
-      if (hiringErr) {
-        errors.push(`Roll ${student.college_roll_no}: ${hiringErr}`);
-        continue;
-      }
-
-      const track = fcfsTrackFromAssessmentKind(kind);
-      if (track && isFcfsHiringSelect(hiringRaw)) {
-        const fcfs = await assertEmployerMayConfirmStudent(
-          {
-            tenantId,
-            studentProfileId: profileId,
-            track,
-            employerId,
-          },
-          client,
-        );
-        if (!fcfs.ok) {
-          errors.push(`Roll ${student.college_roll_no}: ${EMPLOYER_FCFS_BLOCKED_MESSAGE}`);
-          continue;
-        }
-      }
-
-      const next = {
-        hiring_result: normalizeHiringResult(hiringRaw),
-        remarks: trimText(input.remarks, 4000) || null,
-        candidate_name: trimText(input.candidate_name, 255) || null,
-      };
-
-      const applicationId = await findApplicationForStudent(client, profileId, driveId, jobId);
-
-      await upsertAssessmentRowInContext(client, {
+  try {
+    await transaction(async (client) => {
+      await assertAssessmentContextEditable(client, {
         employerId,
         tenantId,
-        targetDriveId: driveId,
-        targetJobId: jobId,
-        uploadId,
-        studentProfileId: profileId,
-        applicationId,
-        rollNumber: student.college_roll_no,
-        hiringResult: next.hiring_result,
-        remarks: next.remarks,
-        candidateName: next.candidate_name,
-        isUnregisteredStudent: !applicationId,
+        opportunityKind: kind,
+        driveId,
+        jobId,
       });
 
-      await writeEmployerAssessmentAudit(client, {
-        tenantId,
-        userId: userId || null,
-        uploadId,
-        kind: 'rows_save',
-        summary: `Online update: saved hiring result for roll ${student.college_roll_no}`,
-        details: { student_profile_id: profileId, source: 'assessment_update_online' },
-      });
+      const uploadId = await ensureUpload(client, employerId, userId, { tenantId, driveId, jobId });
+      t.log('saveAssessmentUpdateOnlineRows', 'upload_ensured', { uploadId });
 
-      saved += 1;
-    }
-  });
+      for (const input of rowsIn) {
+        const profileId = String(input?.student_profile_id || '').trim();
+        const student = studentById.get(profileId);
+        if (!student) {
+          const errMsg = `Student ${profileId}: not found for this campus`;
+          errors.push(errMsg);
+          t.log('saveAssessmentUpdateOnlineRows', 'student_not_found', { profileId, error: errMsg });
+          continue;
+        }
+
+        const withdrawn = await isStudentWithdrawnFromTarget(client, profileId, { driveId, jobId });
+        if (withdrawn) {
+          const errMsg = `Roll ${student.college_roll_no}: ${WITHDRAWAL_ASSESSMENT_REJECT_MESSAGE}`;
+          errors.push(errMsg);
+          t.log('saveAssessmentUpdateOnlineRows', 'student_withdrawn', { profileId, rollNumber: student.college_roll_no, error: errMsg });
+          continue;
+        }
+
+        const hiringRaw = input.hiring_result ?? input.hiring_result_result ?? '';
+        const hiringErr = validateHiringResult(hiringRaw);
+        if (hiringErr) {
+          const errMsg = `Roll ${student.college_roll_no}: ${hiringErr}`;
+          errors.push(errMsg);
+          t.log('saveAssessmentUpdateOnlineRows', 'validation_failed', { rollNumber: student.college_roll_no, hiringRaw, error: errMsg });
+          continue;
+        }
+
+        const track = fcfsTrackFromAssessmentKind(kind);
+        if (track && isFcfsHiringSelect(hiringRaw)) {
+          const fcfs = await assertEmployerMayConfirmStudent(
+            {
+              tenantId,
+              studentProfileId: profileId,
+              track,
+              employerId,
+            },
+            client,
+          );
+          if (!fcfs.ok) {
+            const errMsg = `Roll ${student.college_roll_no}: ${EMPLOYER_FCFS_BLOCKED_MESSAGE}`;
+            errors.push(errMsg);
+            t.log('saveAssessmentUpdateOnlineRows', 'fcfs_blocked', { rollNumber: student.college_roll_no, profileId, details: fcfs });
+            continue;
+          }
+        }
+
+        const next = {
+          hiring_result: normalizeHiringResult(hiringRaw),
+          remarks: trimText(input.remarks, 4000) || null,
+          candidate_name: trimText(input.candidate_name, 255) || null,
+        };
+
+        const applicationId = await findApplicationForStudent(client, profileId, driveId, jobId);
+
+        t.log('saveAssessmentUpdateOnlineRows', 'upserting_row', { rollNumber: student.college_roll_no, profileId, applicationId, next });
+
+        await upsertAssessmentRowInContext(client, {
+          employerId,
+          tenantId,
+          targetDriveId: driveId,
+          targetJobId: jobId,
+          uploadId,
+          studentProfileId: profileId,
+          applicationId,
+          rollNumber: student.college_roll_no,
+          hiringResult: next.hiring_result,
+          remarks: next.remarks,
+          candidateName: next.candidate_name,
+          isUnregisteredStudent: !applicationId,
+        }, t);
+
+        await writeEmployerAssessmentAudit(client, {
+          tenantId,
+          userId: userId || null,
+          uploadId,
+          kind: 'rows_save',
+          summary: `Online update: saved hiring result for roll ${student.college_roll_no}`,
+          details: { student_profile_id: profileId, source: 'assessment_update_online' },
+        });
+
+        saved += 1;
+        t.log('saveAssessmentUpdateOnlineRows', 'upsert_row_success', { rollNumber: student.college_roll_no });
+      }
+    });
+
+    t.log('saveAssessmentUpdateOnlineRows', 'transaction_success', { saved, errorCount: errors.length });
+    const severity = errors.length > 0 ? 'warning' : 'info';
+    await writePlatformErrorLog({
+      context: 'employer_assessment_online_update',
+      error: errors.length > 0 ? new Error(`Online update completed with ${errors.length} errors/skips`) : 'Online update success',
+      statusCode: 200,
+      severity,
+      userId,
+      tenantId,
+      employerId,
+      userMessage: `Online assessment update: ${saved} saved, ${errors.length} errors/skips.`,
+      details: {
+        kind,
+        context,
+        steps,
+        savedCount: saved,
+        errors,
+      }
+    });
+
+  } catch (err) {
+    t.log('saveAssessmentUpdateOnlineRows', 'transaction_failed', { message: err?.message, stack: err?.stack });
+    await writePlatformErrorLog({
+      context: 'employer_assessment_online_update',
+      error: err,
+      statusCode: 500,
+      severity: 'error',
+      userId,
+      tenantId,
+      employerId,
+      userMessage: 'Failed to save online assessment updates.',
+      details: {
+        kind,
+        context,
+        steps,
+        savedCount: saved,
+        errors,
+      }
+    });
+    throw err;
+  }
 
   return { saved, errors };
 }
