@@ -326,6 +326,7 @@ export const RUNNER_CHANGE_ALERTS = [
       'After wipe: Developer Notes → Demo APIs → Restore all demo tie-ups (IITM / NITT / BITS × 5 employers).',
       'Demo APIs and selective purge live on /developer#demo-apis (no separate landing panel).',
       'Test colleges: py -3 scripts/delete_test_college_tenants.py — keeps only seed campuses.',
+      'Test employers: py -3 scripts/delete_test_employers.py — keeps 5 demo logins (TechCorp, GlobalSoft, Infosys, Innovent Labs, FinEdge); removes QA companies and cascades jobs, drives, CSV assessment uploads.',
       'Employer tie-up Revoke button disabled (visible but not clickable).',
     ],
   },
@@ -391,6 +392,14 @@ export const CLEANUP_COMMANDS = [
       'Deletes colleges created during registration tests (MIT WPU, COEP, duplicate IITM, etc.). Keeps iit-madras, nit-trichy, bits-pilani only. Cascades users, visibility, and drives for those tenants.',
     when: 'College admin list is cluttered with test campuses.',
   },
+  {
+    title: 'Remove test employers (keep 5 demo logins)',
+    command: 'py -3 scripts/delete_test_employers.py --dry-run',
+    alt: 'py -3 scripts/delete_test_employers.py  |  npm run db:delete-test-employers',
+    detail:
+      'Deletes every employer profile except hr@techcorp.com, hr@globalsoft.com, hr@infosys.com, talent@innoventlabs.ai, and careers@finedge.io. Cascades jobs, drives, tie-ups, offers, assessment CSV upload history (uploads, rows, import sessions), and Assessment Update Online contexts. Also removes orphan employer users from registration QA. Run without --dry-run to apply.',
+    when: 'Employer list is cluttered with test companies not on /demo-accounts.',
+  },
 ];
 
 /** Run after a full wipe so employers can publish again. */
@@ -429,6 +438,8 @@ export const PURGE_NOTES = [
   'Full wipe: npm run db:clear-placement (see Clean up & restore on /developer).',
   'Then restore tie-ups: Developer Notes → Demo APIs → Restore all demo tie-ups.',
   'Selective purge: Developer Notes → Demo APIs → Purge — GT-* and Data Tester rows one at a time.',
+  'Test colleges: py -3 scripts/delete_test_college_tenants.py (--dry-run first).',
+  'Test employers: py -3 scripts/delete_test_employers.py (--dry-run first) — keeps 5 demo employer logins only.',
 ];
 
 export const LEGACY_RUNNER_COMMANDS = [
@@ -457,6 +468,8 @@ export const RELATED_DOCS = [
   { label: 'Database schema & relationships', path: 'docs/help/developer/database-schema.md', href: '/developer/database-schema' },
   { label: 'Database relationships overview (source)', path: 'docs/help/developer/database-relationships-overview.md' },
   { label: 'Cleanup & restore (markdown)', path: 'docs/help/developer/purge.md' },
+  { label: 'Delete test employers script', path: 'scripts/delete_test_employers.py' },
+  { label: 'Delete test college tenants script', path: 'scripts/delete_test_college_tenants.py' },
   { label: 'Clear placement SQL', path: 'db/scripts/clear_all_placement_data.sql' },
   { label: 'Help library for Cursor / Claude (markdown)', path: 'docs/help/', hint: 'Point AI tools here; sync: npm run qa:sync-help-knowledge' },
   { label: 'Manual test playbook (CSV, cross-view)', path: 'qa/MANUAL_TEST_PLAYBOOK.md' },

@@ -56,11 +56,11 @@ function CopyBlock({ text }) {
   );
 }
 
-function Section({ id, title, children }) {
+function Section({ id, title, tone = 'primary', wide = false, children }) {
   return (
-    <section id={id} className="dev-notes-section">
+    <section id={id} className={`dev-notes-section dev-notes-section--${tone}${wide ? ' dev-notes-section--wide' : ''}`}>
       <h2 className="dev-notes-section-title">{title}</h2>
-      {children}
+      <div className="dev-notes-section-body">{children}</div>
     </section>
   );
 }
@@ -116,12 +116,17 @@ export default function DeveloperPage() {
           </div>
           <h1>{DEVELOPER_PAGE_META.title}</h1>
           
-          <div style={{ margin: '1.5rem 0', padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '0.5rem', textAlign: 'left' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991B1B', fontSize: '1rem' }}>Test Login Page</h3>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#7F1D1D' }}>
-              <Link href="/login" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>Old Login Page (Demo Accounts)</Link> — Use this for internal testing.
+          <div className="dev-notes-login-banner">
+            <h3 className="dev-notes-login-banner-title">Test Login Page</h3>
+            <p className="dev-notes-login-banner-text">
+              <Link href="/login" className="dev-notes-login-banner-link">
+                Old Login Page (Demo Accounts)
+              </Link>{' '}
+              — Use this for internal testing.
               {' · '}
-              <Link href="/sign-in" style={{ fontWeight: 'bold', textDecoration: 'underline' }}>New Sign In Page</Link>
+              <Link href="/sign-in" className="dev-notes-login-banner-link">
+                New Sign In Page
+              </Link>
             </p>
           </div>
 
@@ -162,7 +167,7 @@ export default function DeveloperPage() {
           </ol>
         </nav>
 
-        <Section id="quick-start" title="Three commands">
+        <Section id="quick-start" title="Three commands" tone="primary">
           <ol className="dev-notes-steps">
             {QUICK_START_STEPS.map((row) => (
               <li key={row.step}>
@@ -176,9 +181,14 @@ export default function DeveloperPage() {
           </ol>
         </Section>
 
-        <Section id="playbooks" title="Guided playbooks (partial flows)">
+        <Section id="playbooks" title="Guided playbooks (partial flows)" tone="info" wide>
           <div className="dev-notes-table-wrap">
-            <table className="dev-notes-table">
+            <table className="dev-notes-table dev-notes-table--commands">
+              <colgroup>
+                <col className="dev-notes-col-task" />
+                <col className="dev-notes-col-command" />
+                <col className="dev-notes-col-when" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>When you want to test…</th>
@@ -201,7 +211,7 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
-        <Section id="use-cases" title="Use cases (step-by-step)">
+        <Section id="use-cases" title="Use cases (step-by-step)" tone="success" wide>
           <UseCasesTable
             flows={USE_CASE_FLOWS}
             intro="Five end-to-end flows across employer, college, and student roles. Match these to guided playbooks and manual QA."
@@ -221,13 +231,13 @@ export default function DeveloperPage() {
           </p>
         </Section>
 
-        <Section id="runner-alerts" title="Runner alerts (recent UI changes)">
+        <Section id="runner-alerts" title="Runner alerts (recent UI changes)" tone="warning">
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             Update guided focus-area steps and manual tests when these change. Rebuild routes after menu edits:{' '}
             <code className="dev-notes-inline-code">npm run qa:sync-routes</code>
           </p>
           {RUNNER_CHANGE_ALERTS.map((block) => (
-            <div key={block.date} className="dev-notes-callout" style={{ marginBottom: '1rem' }}>
+            <div key={block.date} className="dev-notes-callout dev-notes-callout--warning dev-notes-callout--stacked">
               <p style={{ margin: '0 0 0.5rem', fontWeight: 700 }}>
                 {block.date}
                 {block.title ? ` — ${block.title}` : ''}
@@ -241,7 +251,7 @@ export default function DeveloperPage() {
           ))}
         </Section>
 
-        <Section id="email-demo" title="Email &amp; demo mail">
+        <Section id="email-demo" title="Email &amp; demo mail" tone="info">
           <ul className="dev-notes-bullets">
             {EMAIL_DEMO_NOTES.map((line) => (
               <li key={line}>{line}</li>
@@ -249,7 +259,7 @@ export default function DeveloperPage() {
           </ul>
         </Section>
 
-        <Section id="e2e-roles" title="Internship full cycle (by role)">
+        <Section id="e2e-roles" title="Internship full cycle (by role)" tone="primary" wide>
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             One command runs all roles in order: <code className="dev-notes-inline-code">npm run test:guided:playbook-e2e</code>
             . Password for every account: <code className="dev-notes-inline-code">{DEMO_PASSWORD}</code>.
@@ -280,20 +290,20 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
-        <Section id="panel" title="How the Next button works">
+        <Section id="panel" title="How the Next button works" tone="warning">
           <ol className="dev-notes-ordered">
             {RUNNER_PANEL_STEPS.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ol>
-          <p className="dev-notes-callout">
-            <Terminal size={16} style={{ verticalAlign: 'text-bottom', marginRight: '0.35rem' }} />
+          <p className="dev-notes-callout dev-notes-callout--info">
+            <Terminal size={16} className="dev-notes-callout-icon" aria-hidden />
             Steps do <strong>not</strong> auto-run. Read each step in the <strong>terminal</strong>, then click{' '}
             <strong>S-xx</strong> — screen tag top-right turns blue when a test step is ready; click it (or Alt+Enter).
           </p>
         </Section>
 
-        <Section id="screen-tag" title="Screen tag states">
+        <Section id="screen-tag" title="Screen tag states" tone="primary">
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             The screen tag (S-xx, LANDING, or LOGIN) in the top-right is your <strong>Next</strong> control during guided
             tests — not a normal app button. When it is blinking/pulsing, it is armed and waiting for you.
@@ -343,7 +353,7 @@ export default function DeveloperPage() {
           </ul>
         </Section>
 
-        <Section id="marker" title="Session marker (links publish → apply)">
+        <Section id="marker" title="Session marker (links publish → apply)" tone="info">
           <ul className="dev-notes-bullets">
             {SESSION_MARKER_NOTES.map((line) => (
               <li key={line}>{line}</li>
@@ -351,7 +361,7 @@ export default function DeveloperPage() {
           </ul>
         </Section>
 
-        <Section id="logins" title="Demo logins">
+        <Section id="logins" title="Demo logins" tone="success">
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             Password for all: <code className="dev-notes-inline-code">{DEMO_PASSWORD}</code>
           </p>
@@ -377,7 +387,7 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
-        <Section id="demo-apis" title="Demo APIs &amp; cleanup">
+        <Section id="demo-apis" title="Demo APIs &amp; cleanup" tone="danger" wide>
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             Seed sandbox data, restore tie-ups, soft-delete test rows, or bulk-delete jobs and internships. Password{' '}
             <code className="dev-notes-inline-code">Admin@123</code> · demo users{' '}
@@ -391,7 +401,7 @@ export default function DeveloperPage() {
 
         {/* Legacy anchors */}
         <span id="purge" className="dev-notes-anchor" aria-hidden />
-        <Section id="cleanup" title="Clean up &amp; restore test data">
+        <Section id="cleanup" title="Clean up &amp; restore test data" tone="danger" wide>
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             {CLEANUP_OVERVIEW} Use the <a href="#demo-apis">Demo APIs</a> section above or the commands below from the app
             folder.
@@ -399,7 +409,12 @@ export default function DeveloperPage() {
 
           <h3 className="dev-notes-subtitle">Wipe &amp; selective cleanup</h3>
           <div className="dev-notes-table-wrap">
-            <table className="dev-notes-table">
+            <table className="dev-notes-table dev-notes-table--commands">
+              <colgroup>
+                <col className="dev-notes-col-task" />
+                <col className="dev-notes-col-command" />
+                <col className="dev-notes-col-when" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Task</th>
@@ -439,7 +454,11 @@ export default function DeveloperPage() {
             publish again.
           </p>
           <div className="dev-notes-table-wrap">
-            <table className="dev-notes-table">
+            <table className="dev-notes-table dev-notes-table--commands dev-notes-table--two-col">
+              <colgroup>
+                <col className="dev-notes-col-task" />
+                <col className="dev-notes-col-command" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Step</th>
@@ -469,15 +488,19 @@ export default function DeveloperPage() {
             </table>
           </div>
 
-          <p className="dev-notes-callout">
+          <p className="dev-notes-callout dev-notes-callout--success">
             Interactive tools are in <a href="#demo-apis">Demo APIs &amp; cleanup</a> above. Same UI at{' '}
             <Link href="/data-entry">/data-entry</Link>.
           </p>
         </Section>
 
-        <Section id="legacy" title="Legacy runner modes">
+        <Section id="legacy" title="Legacy runner modes" tone="neutral" wide>
           <div className="dev-notes-table-wrap">
-            <table className="dev-notes-table">
+            <table className="dev-notes-table dev-notes-table--commands dev-notes-table--two-col">
+              <colgroup>
+                <col className="dev-notes-col-command" />
+                <col className="dev-notes-col-when" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Command</th>
@@ -498,7 +521,7 @@ export default function DeveloperPage() {
           </div>
         </Section>
 
-        <Section id="database-schema" title="Database schema & relationships">
+        <Section id="database-schema" title="Database schema & relationships" tone="info">
           <p className="dev-notes-detail" style={{ marginTop: 0 }}>
             Per-table columns and foreign keys from the live database, plus a domain relationship overview (two
             application paths, campus tie-ups, assessment chain).
@@ -514,7 +537,7 @@ export default function DeveloperPage() {
           </p>
         </Section>
 
-        <Section id="related" title="Related files in the repo">
+        <Section id="related" title="Related files in the repo" tone="neutral">
           <ul className="dev-notes-bullets">
             {RELATED_DOCS.map((doc) => (
               <li key={doc.path}>
@@ -549,7 +572,7 @@ export default function DeveloperPage() {
           background: var(--bg-primary);
         }
         .dev-notes-header-inner {
-          max-width: 52rem;
+          max-width: 72rem;
           margin: 0 auto;
           padding: 0.85rem 1.25rem;
           display: flex;
@@ -575,9 +598,15 @@ export default function DeveloperPage() {
           gap: 0.5rem;
         }
         .dev-notes-main {
-          max-width: 52rem;
+          max-width: 72rem;
           margin: 0 auto;
           padding: 2rem 1.25rem 4rem;
+        }
+        .dev-notes-hero,
+        .dev-notes-toc-card {
+          max-width: 52rem;
+          margin-left: auto;
+          margin-right: auto;
         }
         .dev-notes-hero {
           margin-bottom: 1.25rem;
@@ -588,8 +617,8 @@ export default function DeveloperPage() {
           width: 3rem;
           height: 3rem;
           border-radius: var(--radius-lg);
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-default);
+          background: var(--primary-50);
+          border: 1px solid var(--primary-200);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -621,11 +650,42 @@ export default function DeveloperPage() {
           color: var(--text-tertiary);
           margin: 0;
         }
+        .dev-notes-login-banner {
+          margin: 1.5rem 0;
+          padding: 1rem 1.15rem;
+          text-align: left;
+          background: var(--danger-50);
+          border: 1px solid rgba(244, 63, 94, 0.28);
+          border-left: 4px solid var(--danger-500);
+          border-radius: var(--radius-md);
+        }
+        .dev-notes-login-banner-title {
+          margin: 0 0 0.5rem;
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--danger-600);
+        }
+        .dev-notes-login-banner-text {
+          margin: 0;
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+        .dev-notes-login-banner-link {
+          font-weight: 700;
+          color: var(--danger-600);
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .dev-notes-login-banner-link:hover {
+          color: var(--danger-500);
+        }
         .dev-notes-toc-card {
           margin-bottom: 2rem;
           padding: 1.1rem 1.25rem 1.25rem;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-default);
+          background: var(--primary-50);
+          border: 1px solid var(--primary-200);
+          border-left: 4px solid var(--primary-500);
           border-radius: var(--radius-lg);
         }
         .dev-notes-toc-title {
@@ -634,7 +694,7 @@ export default function DeveloperPage() {
           font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          color: var(--text-tertiary);
+          color: var(--primary-700);
         }
         .dev-notes-toc-list {
           list-style: none;
@@ -710,17 +770,77 @@ export default function DeveloperPage() {
         }
         .dev-notes-section {
           margin-bottom: 2.25rem;
+          scroll-margin-top: 5rem;
+          max-width: 52rem;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .dev-notes-section--wide {
+          max-width: none;
+          margin-left: 0;
+          margin-right: 0;
+        }
+        .dev-notes-section--primary {
+          --section-accent: var(--primary-500);
+          --section-surface: var(--primary-50);
+          --section-border: var(--primary-200);
+        }
+        .dev-notes-section--info {
+          --section-accent: var(--info-500);
+          --section-surface: var(--info-50);
+          --section-border: rgba(14, 165, 233, 0.28);
+        }
+        .dev-notes-section--success {
+          --section-accent: var(--success-500);
+          --section-surface: var(--success-50);
+          --section-border: rgba(16, 185, 129, 0.28);
+        }
+        .dev-notes-section--warning {
+          --section-accent: var(--warning-500);
+          --section-surface: var(--warning-50);
+          --section-border: rgba(245, 158, 11, 0.32);
+        }
+        .dev-notes-section--danger {
+          --section-accent: var(--danger-500);
+          --section-surface: var(--danger-50);
+          --section-border: rgba(244, 63, 94, 0.28);
+        }
+        .dev-notes-section--neutral {
+          --section-accent: var(--gray-400);
+          --section-surface: var(--bg-secondary);
+          --section-border: var(--border-default);
+        }
+        .dev-notes-section-body {
+          padding: 1rem 1.15rem 1.15rem;
+          background: var(--section-surface, var(--bg-secondary));
+          border: 1px solid var(--section-border, var(--border-default));
+          border-left: 4px solid var(--section-accent, var(--primary-500));
+          border-radius: var(--radius-lg);
         }
         .dev-notes-section-title {
+          display: flex;
+          align-items: center;
+          gap: 0.55rem;
           font-size: 1.125rem;
           font-weight: 800;
-          margin: 0 0 1rem;
+          margin: 0 0 0.75rem;
           letter-spacing: -0.01em;
+          color: var(--text-primary);
+        }
+        .dev-notes-section-title::before {
+          content: '';
+          flex-shrink: 0;
+          width: 0.35rem;
+          height: 1.25rem;
+          border-radius: 999px;
+          background: var(--section-accent, var(--primary-500));
         }
         .dev-notes-subtitle {
           font-size: 0.9375rem;
           font-weight: 700;
           margin: 1.35rem 0 0.5rem;
+          padding-left: 0.65rem;
+          border-left: 3px solid var(--section-accent, var(--primary-400));
           color: var(--text-primary);
         }
         .dev-notes-tag-preview {
@@ -784,14 +904,16 @@ export default function DeveloperPage() {
           gap: 0.5rem;
           flex-wrap: wrap;
           padding: 0.65rem 0.85rem;
-          background: var(--bg-secondary);
+          background: var(--bg-primary);
           border: 1px solid var(--border-default);
+          border-left: 3px solid var(--primary-500);
           border-radius: var(--radius-md);
+          box-shadow: var(--shadow-sm);
         }
         .dev-notes-code {
           font-family: var(--font-mono, ui-monospace, monospace);
           font-size: 0.8125rem;
-          color: var(--text-primary);
+          color: var(--primary-700);
           flex: 1;
           min-width: 0;
           word-break: break-all;
@@ -812,6 +934,7 @@ export default function DeveloperPage() {
           overflow-x: auto;
           border: 1px solid var(--border-default);
           border-radius: var(--radius-lg);
+          background: var(--bg-primary);
         }
         .dev-notes-table-wrap--wide {
           margin-top: 0.5rem;
@@ -835,6 +958,45 @@ export default function DeveloperPage() {
           border-collapse: collapse;
           font-size: 0.875rem;
         }
+        .dev-notes-table--commands {
+          table-layout: fixed;
+        }
+        .dev-notes-col-task {
+          width: 38%;
+        }
+        .dev-notes-col-command {
+          width: 34%;
+        }
+        .dev-notes-col-when {
+          width: 28%;
+        }
+        .dev-notes-table--two-col .dev-notes-col-task {
+          width: 48%;
+        }
+        .dev-notes-table--two-col .dev-notes-col-command {
+          width: 52%;
+        }
+        .dev-notes-table--commands td:nth-child(2) .dev-notes-code-wrap {
+          flex-wrap: nowrap;
+        }
+        .dev-notes-table--commands td:nth-child(2) .dev-notes-code {
+          white-space: nowrap;
+          word-break: normal;
+          overflow-x: auto;
+        }
+        .dev-notes-table--commands td:nth-child(2) .dev-notes-inline-code {
+          display: inline-block;
+          max-width: 100%;
+          white-space: nowrap;
+          overflow-x: auto;
+        }
+        .dev-notes-table--commands td:first-child .dev-notes-code-wrap {
+          flex-wrap: nowrap;
+        }
+        .dev-notes-table--commands td:first-child .dev-notes-code {
+          white-space: nowrap;
+          word-break: normal;
+        }
         .dev-notes-table th,
         .dev-notes-table td {
           padding: 0.65rem 0.85rem;
@@ -843,12 +1005,19 @@ export default function DeveloperPage() {
           vertical-align: top;
         }
         .dev-notes-table th {
-          background: var(--bg-secondary);
+          background: var(--section-surface, var(--bg-secondary));
           font-weight: 700;
           font-size: 0.75rem;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          color: var(--text-tertiary);
+          color: var(--text-secondary);
+          border-bottom: 2px solid var(--section-accent, var(--primary-300));
+        }
+        .dev-notes-table tbody tr:nth-child(even) td {
+          background: rgba(0, 0, 0, 0.02);
+        }
+        [data-theme='dark'] .dev-notes-table tbody tr:nth-child(even) td {
+          background: rgba(255, 255, 255, 0.03);
         }
         .dev-notes-table tr:last-child td {
           border-bottom: none;
@@ -856,9 +1025,24 @@ export default function DeveloperPage() {
         .dev-notes-inline-code {
           font-family: var(--font-mono, ui-monospace, monospace);
           font-size: 0.8125rem;
-          background: var(--bg-secondary);
-          padding: 0.1rem 0.35rem;
+          color: var(--primary-700);
+          background: var(--primary-50);
+          border: 1px solid var(--primary-200);
+          padding: 0.12rem 0.4rem;
           border-radius: 4px;
+        }
+        [data-theme='dark'] .dev-notes-inline-code {
+          color: var(--primary-300);
+        }
+        [data-theme='dark'] .dev-notes-code {
+          color: var(--primary-300);
+        }
+        [data-theme='dark'] .dev-notes-login-banner-title,
+        [data-theme='dark'] .dev-notes-login-banner-link {
+          color: #fb7185;
+        }
+        [data-theme='dark'] .dev-notes-callout--info .dev-notes-callout-icon {
+          color: #38bdf8;
         }
         .dev-notes-muted {
           color: var(--text-secondary);
@@ -894,6 +1078,46 @@ export default function DeveloperPage() {
           font-size: 0.875rem;
           line-height: 1.55;
           color: var(--text-secondary);
+        }
+        .dev-notes-callout--stacked {
+          margin-bottom: 1rem;
+        }
+        .dev-notes-callout--stacked:last-child {
+          margin-bottom: 0;
+        }
+        .dev-notes-callout--info {
+          background: var(--info-50);
+          border-color: rgba(14, 165, 233, 0.28);
+          border-left: 4px solid var(--info-500);
+          color: var(--text-secondary);
+        }
+        .dev-notes-callout--warning {
+          background: var(--warning-50);
+          border-color: rgba(245, 158, 11, 0.32);
+          border-left: 4px solid var(--warning-500);
+        }
+        .dev-notes-callout--warning p:first-child {
+          color: var(--warning-600);
+        }
+        [data-theme='dark'] .dev-notes-callout--warning p:first-child {
+          color: var(--warning-700);
+        }
+        .dev-notes-callout--success {
+          background: var(--success-50);
+          border-color: rgba(16, 185, 129, 0.28);
+          border-left: 4px solid var(--success-500);
+        }
+        .dev-notes-callout-icon {
+          vertical-align: text-bottom;
+          margin-right: 0.35rem;
+          color: var(--info-500);
+        }
+        .dev-notes-section-body a:not(.btn) {
+          color: var(--text-link);
+          font-weight: 600;
+        }
+        .dev-notes-section-body a:not(.btn):hover {
+          text-decoration: underline;
         }
       `}</style>
     </div>

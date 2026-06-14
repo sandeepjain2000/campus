@@ -45,6 +45,31 @@ py -3 scripts/delete_test_college_tenants.py
 
 Deletes colleges created during registration tests (MIT WPU, COEP, duplicate IITM, etc.). Keeps `iit-madras`, `nit-trichy`, `bits-pilani` only.
 
+## Remove test employers (keep 5 demo accounts)
+
+```bash
+py -3 scripts/delete_test_employers.py --dry-run
+py -3 scripts/delete_test_employers.py
+```
+
+Hard-deletes every **employer profile** whose login email is **not** one of the core demo employers below. Cascades jobs, drives, campus tie-ups, offers, and assessment data for those companies. Also removes orphan `employer` users with no profile (registration QA).
+
+**Kept (same as `/demo-accounts` → Employers):**
+
+| Company | Login |
+|---------|--------|
+| TechCorp Solutions | `hr@techcorp.com` |
+| GlobalSoft Technologies | `hr@globalsoft.com` |
+| Infosys Limited | `hr@infosys.com` |
+| Innovent Labs | `talent@innoventlabs.ai` |
+| FinEdge Systems | `careers@finedge.io` |
+
+Other seeded employers (e.g. GreenVolt, DataQuotient, NITT academic, BITS alumni) are **removed** unless you add their emails to the protect list in `scripts/delete_test_employers.py`.
+
+**When:** Employer list on `/demo-accounts` or Super Admin → Manage Employers is cluttered with registration / QA companies.
+
+**After:** Run **Restore all demo tie-ups** if you removed employers that had approved campus partnerships you still need for demos.
+
 ## Related
 
 - SQL: `db/scripts/clear_all_placement_data.sql`

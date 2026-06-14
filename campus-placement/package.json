@@ -51,6 +51,8 @@
     "db:migrate:086": "node scripts/db_exec_sql_file.js db/migrations/086_startup_seed_funding.sql",
     "db:migrate:087": "node scripts/db_exec_sql_file.js db/migrations/087_student_batch_2026_eligibility.sql",
     "db:clear-placement": "node scripts/clear_all_placement_data.js",
+    "db:delete-test-employers": "py -3 scripts/delete_test_employers.py",
+    "db:delete-test-employers:dry-run": "py -3 scripts/delete_test_employers.py --dry-run",
     "db:upsert-college-showcase": "node scripts/upsert_college_showcase_data.js",
     "seed:all-scenarios": "node scripts/db_exec_sql_file.js db/seeds/99_all_scenarios_extension.sql",
     "seed:college-applications-demo": "node scripts/seed_college_applications_demo.js",
