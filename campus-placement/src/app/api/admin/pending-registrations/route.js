@@ -3,11 +3,10 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import {
-
-
   notifyCollegeEnrollmentKey,
   notifyRegistrationResolved,
 } from '@/lib/registrationNotify';
+import { newEmailVerificationToken, sendSignupVerificationEmail } from '@/lib/emailVerification';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -78,8 +77,8 @@ async function __platform_POST(request) {
     const action = body.action;
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
 
-    if (!userId || !['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ error: 'userId and action (approve|reject) required' }, { status: 400 });
+    if (!userId || !['approve', 'reject', 'resend_verification'].includes(action)) {
+      return NextResponse.json({ error: 'userId and action (approve|reject|resend_verification) required' }, { status: 400 });
     }
 
     const row = await query(
@@ -97,6 +96,38 @@ async function __platform_POST(request) {
     }
 
     const u = row.rows[0];
+
+    if (action === 'resend_verification') {
+      if (u.email_verified_at) {
+        return NextResponse.json({ error: 'This user has already verified their email.' }, { status: 400 });
+      }
+
+      const verifyToken = newEmailVerificationToken();
+      const verifyExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+      await query(
+        `UPDATE users
+         SET email_verification_token = $2,
+             email_verification_expires_at = $3,
+             updated_at = NOW()
+         WHERE id = $1::uuid`,
+        [userId, verifyToken, verifyExpires]
+      );
+
+      try {
+        await sendSignupVerificationEmail({
+          to: u.email,
+          firstName: u.first_name,
+          token: verifyToken,
+          role: u.role,
+        });
+      } catch (mailErr) {
+        console.error('Failed to resend verification email:', mailErr);
+        return NextResponse.json({ error: 'Verification token generated, but failed to send email. Check SMTP configuration.' }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true, message: 'Verification email resent successfully.' });
+    }
 
     if (action === 'approve') {
       if (!u.email_verified_at) {

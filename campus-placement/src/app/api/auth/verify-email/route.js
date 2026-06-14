@@ -35,6 +35,7 @@ async function __platform_GET(request) {
     await query(
       `UPDATE users
        SET email_verified_at = NOW(),
+           is_verified = true,
            email_verification_token = NULL,
            email_verification_expires_at = NULL,
            is_active = CASE WHEN role = 'student' THEN true ELSE is_active END,

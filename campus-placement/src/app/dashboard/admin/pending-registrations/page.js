@@ -78,6 +78,24 @@ export default function AdminPendingRegistrationsPage() {
     }
   };
 
+  const handleResendVerification = async (userId) => {
+    setProcessing(userId + 'resend');
+    try {
+      const res = await fetch('/api/admin/pending-registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'resend_verification' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to resend');
+      addToast(json?.message || 'Verification email resent.', 'success');
+    } catch (e) {
+      addToast(e.message || 'Failed to resend verification', 'error');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const getExportRows = () => {
     const headers = ['Party', 'Contact Name', 'Email', 'Email verified', 'Role', 'Requested Date'];
     const rowsList = rows.map(r => [
@@ -169,9 +187,22 @@ export default function AdminPendingRegistrationsPage() {
                   </span>
                 </td>
                 <td>
-                  <span className={`badge badge-${r.emailVerified ? 'green' : 'amber'}`} style={{ fontSize: '0.75rem' }}>
-                    {r.emailVerified ? 'Yes' : 'Pending'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className={`badge badge-${r.emailVerified ? 'green' : 'amber'}`} style={{ fontSize: '0.75rem' }}>
+                      {r.emailVerified ? 'Yes' : 'Pending'}
+                    </span>
+                    {!r.emailVerified && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                        disabled={processing === r.id + 'resend'}
+                        onClick={() => handleResendVerification(r.id)}
+                      >
+                        Resend
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="text-sm text-secondary">
                   {r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}

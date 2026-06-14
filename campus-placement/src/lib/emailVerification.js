@@ -22,33 +22,46 @@ export async function sendSignupVerificationEmail({ to, firstName, token, role }
 
   const roleLine =
     role === 'student'
-      ? 'Once verified, you can sign in and complete your placement profile.'
-      : 'Once verified, your registration will remain with our team until your account is approved.';
+      ? 'After verification, you will be able to sign in and set up your placement profile.'
+      : 'After verification, our team will review and approve your registration details.';
 
   const html = `
-      <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-        <div style="background-color: #eef2ff; padding: 20px; border-bottom: 1px solid #e5e7eb;">
-          <h2 style="margin: 0; color: #312e81;">Verify your email</h2>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="background-color: #f8fafc; padding: 24px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+          <h2 style="margin: 0; color: #1e3a8a; font-size: 20px; font-weight: 700; letter-spacing: -0.025em;">Verify your registration</h2>
         </div>
-        <div style="padding: 20px;">
-          <p>Hi ${firstName || 'there'},</p>
-          <p>Thanks for registering on PlacementHub. Please confirm your email address to activate your account.</p>
-          <p style="font-size: 14px; color: #4b5563;">${roleLine}</p>
+        <div style="padding: 24px; line-height: 1.5;">
+          <p style="margin-top: 0; font-size: 16px;">Hello ${firstName || 'there'},</p>
+          <p style="font-size: 15px; color: #374151;">Thank you for starting your registration on PlacementHub. To complete the setup process and confirm your email address, please click the link below:</p>
+          
           ${
             link
-              ? `<p style="margin-top: 24px;"><a href="${link}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 22px; text-decoration: none; border-radius: 8px; font-weight: 700;">Verify email</a></p>
-                 <p style="font-size: 12px; color: #6b7280; margin-top: 16px;">This link expires in 48 hours. If the button does not work, paste this URL into your browser:<br/><span style="word-break: break-all;">${link}</span></p>`
-              : '<p><strong>Note:</strong> Email verification link could not be built (missing NEXTAUTH_URL / VERCEL_URL). Ask your administrator to set NEXTAUTH_URL.</p>'
+              ? `<div style="margin: 28px 0; text-align: center;">
+                   <a href="${link}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">Confirm Email Address</a>
+                 </div>
+                 <p style="font-size: 13px; color: #4b5563;">${roleLine}</p>
+                 <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                   This link is valid for 48 hours. If the button above does not work, copy and paste this URL into your browser:
+                   <br/>
+                   <span style="word-break: break-all; color: #2563eb;">${link}</span>
+                 </p>`
+              : '<p style="color: #dc2626;"><strong>Note:</strong> Email verification link could not be built (missing NEXTAUTH_URL / VERCEL_URL). Please contact your administrator.</p>'
           }
-          <p style="margin-top: 24px; font-size: 13px; color: #6b7280;">If you did not create an account, you can ignore this message.</p>
+          
+          <div style="margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 11px; color: #9ca3af; line-height: 1.45;">
+            This is an automated transactional message regarding your PlacementHub registration request. 
+            If you did not request this, please disregard this email or contact support.
+            <br/>
+            © PlacementHub. All rights reserved.
+          </div>
         </div>
       </div>
     `;
 
   await sendMail({
     to,
-    subject: '[PlacementHub] Verify your email address',
-    text: `Hi ${firstName || 'there'},\n\nVerify your PlacementHub account by opening this link (expires in 48 hours):\n\n${link || '(link unavailable — set NEXTAUTH_URL)'}\n\n${roleLine}\n\nIf you did not sign up, ignore this email.`,
+    subject: `Confirm your registration on PlacementHub`,
+    text: `Hello ${firstName || 'there'},\n\nThank you for starting your registration on PlacementHub. To complete the setup process and confirm your email address, please visit the verification link below (expires in 48 hours):\n\n${link || '(link unavailable — set NEXTAUTH_URL)'}\n\n${roleLine}\n\nIf you did not initiate this request, you can safely ignore this email.\n\nBest regards,\nPlacementHub Team`,
     html,
   });
 }

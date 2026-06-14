@@ -33,7 +33,7 @@ export function StandardTableIconAction({
   onClick,
   disabled,
   variant = 'secondary',
-  showLabel = true,
+  showLabel = false,
   className = '',
   style,
   tooltip,

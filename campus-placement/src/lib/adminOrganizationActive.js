@@ -1,9 +1,23 @@
+import { query as dbQuery } from './db';
+
 /**
  * Super-admin activate / deactivate for employer accounts and college tenants.
  */
 
 function getQueryExecutor(client) {
-  return typeof client === 'function' ? client : client.query.bind(client);
+  if (typeof client === 'function') {
+    return client;
+  }
+  if (client && typeof client.query === 'function') {
+    return client.query.bind(client);
+  }
+  if (client && typeof client.default === 'function') {
+    return client.default;
+  }
+  if (client && typeof client.default?.query === 'function') {
+    return client.default.query.bind(client.default);
+  }
+  return dbQuery;
 }
 
 /**
