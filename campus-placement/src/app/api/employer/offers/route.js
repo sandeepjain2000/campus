@@ -72,6 +72,7 @@ async function __platform_POST(request) {
     const location = String(body?.location || '').trim() || null;
     const joiningDate = String(body?.joiningDate || '').trim() || null;
     const deadlineAt = String(body?.deadlineAt || '').trim() || null;
+    const offerLetterUrl = String(body?.offerLetterUrl || '').trim() || null;
 
     if (!studentId) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
@@ -99,16 +100,18 @@ async function __platform_POST(request) {
       location,
       joiningDate,
       deadlineAt,
+      offerLetterUrl,
     ];
     let created;
     try {
       created = await query(
         `INSERT INTO offers (
          student_id, drive_id, employer_id, job_title, salary, location, status, joining_date, deadline, salary_currency,
-         reported_company_name
+         reported_company_name, offer_letter_url
        ) VALUES (
          $1, $2, $3, $4, $5, $6, 'pending', $7, $8, 'INR',
-         (SELECT company_name FROM employer_profiles WHERE id = $3::uuid LIMIT 1)
+         (SELECT company_name FROM employer_profiles WHERE id = $3::uuid LIMIT 1),
+         $9
        )
        RETURNING id`,
         insertParams,
@@ -117,8 +120,9 @@ async function __platform_POST(request) {
       if (!isMissingReportedCompanyColumnError(e)) throw e;
       created = await query(
         `INSERT INTO offers (
-         student_id, drive_id, employer_id, job_title, salary, location, status, joining_date, deadline, salary_currency
-       ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, 'INR')
+         student_id, drive_id, employer_id, job_title, salary, location, status, joining_date, deadline, salary_currency,
+         offer_letter_url
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, 'INR', $9)
        RETURNING id`,
         insertParams,
       );
@@ -201,6 +205,10 @@ async function __platform_PATCH(request) {
     }
     if (body.location !== undefined) {
       push('location =', body.location ? String(body.location).trim() : null);
+    }
+    if (body.offerLetterUrl !== undefined || body.offer_letter_url !== undefined) {
+      const u = body.offerLetterUrl ?? body.offer_letter_url;
+      push('offer_letter_url =', u ? String(u).trim() : null);
     }
     if (body.joiningDate !== undefined || body.joining_date !== undefined) {
       const j = body.joiningDate ?? body.joining_date;

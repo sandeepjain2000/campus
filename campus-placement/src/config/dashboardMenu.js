@@ -384,6 +384,7 @@ export const menuConfig = {
           { label: 'Onboard colleges & employers', href: '/dashboard/admin/pending-registrations', icon: Inbox },
           { label: 'Feedback inbox', href: '/dashboard/admin/feedback', icon: Inbox },
           { label: 'Error logs', href: '/dashboard/admin/error-logs', icon: AlertTriangle },
+          { label: 'Email logs', href: '/dashboard/admin/email-logs', icon: Mail },
           { label: 'Audit reports', href: '/dashboard/admin/audit-reports', icon: FileText },
           { label: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
         ],

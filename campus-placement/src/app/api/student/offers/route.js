@@ -45,7 +45,8 @@ function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField
            o.job_title as role,
            o.salary, o.salary_currency as currency, o.location, o.joining_date as "joiningDate",
            o.status, o.deadline, o.drive_id as "driveId", o.application_id as "applicationId",
-           o.created_at as "createdAt", o.accepted_at as "acceptedAt", o.rejected_at as "rejectedAt"
+           o.created_at as "createdAt", o.accepted_at as "acceptedAt", o.rejected_at as "rejectedAt",
+           o.offer_letter_url AS "offerLetterUrl"
            ${latestSel}
     FROM offers o
     LEFT JOIN employer_profiles ep ON o.employer_id = ep.id

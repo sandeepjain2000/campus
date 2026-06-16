@@ -24,6 +24,7 @@ const emptyOfferForm = {
   location: '',
   joiningDate: '',
   deadlineAt: '',
+  offerLetterUrl: '',
 };
 
 const fetcher = async (url) => {
@@ -101,6 +102,7 @@ export default function EmployerOffersPage() {
           ...form,
           salary: Number(form.salary || 0),
           deadlineAt: form.deadlineAt ? new Date(`${form.deadlineAt}T23:59:59`).toISOString() : null,
+          offerLetterUrl: form.offerLetterUrl.trim() || null,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -162,6 +164,7 @@ export default function EmployerOffersPage() {
       location: offer.location || '',
       joiningDate: offer.joining_date ? String(offer.joining_date).slice(0, 10) : '',
       deadlineAt: offer.deadline_at ? String(offer.deadline_at).slice(0, 10) : '',
+      offerLetterUrl: offer.offer_letter_url || '',
     });
   };
 
@@ -189,6 +192,7 @@ export default function EmployerOffersPage() {
           location: editForm.location.trim() || null,
           joiningDate: editForm.joiningDate || null,
           deadlineAt: editForm.deadlineAt ? new Date(`${editForm.deadlineAt}T23:59:59`).toISOString() : null,
+          offerLetterUrl: editForm.offerLetterUrl.trim() || null,
           syncReportedCompanyFromProfile: true,
         }),
       });
@@ -331,6 +335,10 @@ export default function EmployerOffersPage() {
             <label className="form-label">Response deadline</label>
             <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={form.deadlineAt} onChange={(v) => setForm((p) => ({ ...p, deadlineAt: v }))} />
           </div>
+          <div className="form-group">
+            <label className="form-label">Offer letter URL (optional)</label>
+            <input className="form-input" placeholder="https://..." value={form.offerLetterUrl} onChange={(e) => setForm((p) => ({ ...p, offerLetterUrl: e.target.value }))} />
+          </div>
         </div>
       </EmployerListFormLayout>
     );
@@ -382,6 +390,10 @@ export default function EmployerOffersPage() {
           <div className="form-group">
             <label className="form-label">Response deadline</label>
             <ValidatedDateInput fieldId={FIELD_IDS.EMPLOYER_OFFER_DEADLINE} value={editForm.deadlineAt} onChange={(v) => setEditForm((p) => ({ ...p, deadlineAt: v }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Offer letter URL (optional)</label>
+            <input className="form-input" placeholder="https://..." value={editForm.offerLetterUrl} onChange={(e) => setEditForm((p) => ({ ...p, offerLetterUrl: e.target.value }))} />
           </div>
         </div>
       </EmployerListFormLayout>
@@ -590,6 +602,14 @@ export default function EmployerOffersPage() {
             <div><strong>Joining:</strong> {viewRow.joining_date ? formatDate(viewRow.joining_date) : '—'}</div>
             <div><strong>Deadline:</strong> {viewRow.deadline_at ? formatDate(viewRow.deadline_at) : '—'}</div>
             <div><strong>Status:</strong> {formatStatus(viewRow.status)}</div>
+            {viewRow.offer_letter_url && (
+              <div>
+                <strong>Offer Letter URL:</strong>{' '}
+                <a href={viewRow.offer_letter_url} target="_blank" rel="noopener noreferrer" className="link-inline">
+                  View Document
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -5,6 +5,8 @@ import { query } from '@/lib/db';
 import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
 import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
+import { notifyStudentSelection } from '@/lib/studentSelectionNotify';
+import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import {
 
 
@@ -498,37 +500,44 @@ async function __platform_PATCH(request) {
       return NextResponse.json({ error: mayUpdate.error }, { status: 409 });
     }
 
+    let metaResultRow = null;
+    let studentProfileId = null;
     if (nextStatus === 'selected') {
       let track = 'placement';
       let tenantId = null;
-      let studentProfileId = null;
 
       if (sourceKind === 'drive') {
         const meta = await query(
-          `SELECT sp.tenant_id, sp.id AS student_id
+          `SELECT sp.tenant_id, sp.id AS student_id, d.id AS drive_id, d.title AS drive_title, d.employer_id, ep.company_name, u.first_name, COALESCE(u.communication_email, u.email) AS email, u.id AS student_user_id
            FROM applications a
            INNER JOIN student_profiles sp ON sp.id = a.student_id
+           INNER JOIN users u ON u.id = sp.user_id
            INNER JOIN placement_drives d ON d.id = a.drive_id
+           INNER JOIN employer_profiles ep ON ep.id = d.employer_id
            WHERE a.id = $1::uuid AND d.employer_id = $2::uuid
            LIMIT 1`,
           [applicationId, employerId],
         );
-        tenantId = meta.rows[0]?.tenant_id;
-        studentProfileId = meta.rows[0]?.student_id;
+        metaResultRow = meta.rows[0];
+        tenantId = metaResultRow?.tenant_id;
+        studentProfileId = metaResultRow?.student_id;
         track = 'placement';
       } else {
         const meta = await query(
-          `SELECT sp.tenant_id, sp.id AS student_id, jp.job_type
+          `SELECT sp.tenant_id, sp.id AS student_id, jp.job_type, jp.id AS job_id, jp.title AS job_title, jp.employer_id, ep.company_name, u.first_name, COALESCE(u.communication_email, u.email) AS email, u.id AS student_user_id, jp.salary_max, jp.locations
            FROM program_applications pa
            INNER JOIN student_profiles sp ON sp.id = pa.student_id
+           INNER JOIN users u ON u.id = sp.user_id
            INNER JOIN job_postings jp ON jp.id = pa.job_id
+           INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
            WHERE pa.id = $1::uuid AND jp.employer_id = $2::uuid
            LIMIT 1`,
           [applicationId, employerId],
         );
-        tenantId = meta.rows[0]?.tenant_id;
-        studentProfileId = meta.rows[0]?.student_id;
-        const jt = String(meta.rows[0]?.job_type || '').toLowerCase();
+        metaResultRow = meta.rows[0];
+        tenantId = metaResultRow?.tenant_id;
+        studentProfileId = metaResultRow?.student_id;
+        const jt = String(metaResultRow?.job_type || '').toLowerCase();
         track = jt === 'internship' ? 'internship' : 'jobs';
       }
 
@@ -545,8 +554,9 @@ async function __platform_PATCH(request) {
       }
     }
 
+    let updatedRes;
     if (sourceKind === 'drive') {
-      const updated = await query(
+      updatedRes = await query(
         `UPDATE applications a
          SET status = $1, updated_at = NOW()
          FROM placement_drives d
@@ -557,30 +567,103 @@ async function __platform_PATCH(request) {
          RETURNING a.id, a.status`,
         [nextStatus, applicationId, employerId],
       );
-      if (!updated.rows[0]) {
-        return NextResponse.json({ error: 'Application not found' }, { status: 404 });
-      }
-      return NextResponse.json({ application: updated.rows[0] });
+    } else {
+      updatedRes = await query(
+        `UPDATE program_applications pa
+         SET status = $1, updated_at = NOW()
+         FROM job_postings jp
+         WHERE pa.id = $2::uuid
+           AND jp.id = pa.job_id
+           AND jp.employer_id = $3::uuid
+           ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
+         RETURNING pa.id, pa.status, pa.job_id`,
+        [nextStatus, applicationId, employerId],
+      );
     }
 
-    const updated = await query(
-      `UPDATE program_applications pa
-       SET status = $1, updated_at = NOW()
-       FROM job_postings jp
-       WHERE pa.id = $2::uuid
-         AND jp.id = pa.job_id
-         AND jp.employer_id = $3::uuid
-         ${AND_PA_NOT_DELETED} ${AND_JP_NOT_DELETED}
-       RETURNING pa.id, pa.status, pa.job_id`,
-      [nextStatus, applicationId, employerId],
-    );
-    if (!updated.rows[0]) {
+    if (!updatedRes.rows[0]) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    }
+
+    const updatedRow = updatedRes.rows[0];
+
+    if (nextStatus === 'selected' && metaResultRow) {
+      const studentUserId = metaResultRow.student_user_id;
+      const email = metaResultRow.email;
+      const firstName = metaResultRow.first_name;
+      const companyName = metaResultRow.company_name;
+      const roleTitle = sourceKind === 'drive' ? metaResultRow.drive_title : metaResultRow.job_title;
+
+      // 1. Notify student of selection (email + in-app)
+      await notifyStudentSelection({
+        studentUserId,
+        email,
+        firstName,
+        companyName,
+        roleTitle,
+        sourceKind,
+      });
+
+      // 2. Auto-generate pending offer in offers table if not exists
+      try {
+        let existingOffer;
+        if (sourceKind === 'drive') {
+          existingOffer = await query(
+            `SELECT id FROM offers WHERE application_id = $1::uuid`,
+            [applicationId]
+          );
+        } else {
+          existingOffer = await query(
+            `SELECT id FROM offers WHERE student_id = $1::uuid AND employer_id = $2::uuid AND job_title = $3 AND drive_id IS NULL`,
+            [studentProfileId, employerId, roleTitle]
+          );
+        }
+
+        if (existingOffer.rows.length === 0) {
+          const driveIdVal = sourceKind === 'drive' ? metaResultRow.drive_id : null;
+          const salaryVal = sourceKind === 'drive' ? 0 : (metaResultRow.salary_max ? Number(metaResultRow.salary_max) : 0);
+          const locationVal = sourceKind === 'drive' ? 'As per company policy' : (metaResultRow.locations || 'As per company policy');
+          const appIdVal = sourceKind === 'drive' ? applicationId : null;
+
+          let insertRes;
+          try {
+            insertRes = await query(
+              `INSERT INTO offers (
+                student_id, drive_id, employer_id, job_title, salary, location, status, salary_currency, reported_company_name, application_id
+              ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'INR', $7, $8)
+              RETURNING id`,
+              [studentProfileId, driveIdVal, employerId, roleTitle, salaryVal, locationVal, companyName, appIdVal]
+            );
+          } catch (insertErr) {
+            if (insertErr?.code === '42703' && String(insertErr?.message || '').includes('reported_company_name')) {
+              insertRes = await query(
+                `INSERT INTO offers (
+                  student_id, drive_id, employer_id, job_title, salary, location, status, salary_currency, application_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'INR', $7)
+                RETURNING id`,
+                [studentProfileId, driveIdVal, employerId, roleTitle, salaryVal, locationVal, appIdVal]
+              );
+            } else {
+              throw insertErr;
+            }
+          }
+          if (insertRes && insertRes.rows.length > 0) {
+            console.log(`Auto-created pending offer with ID: ${insertRes.rows[0].id} for student ${studentProfileId}`);
+            await refreshOfferLatestFlagsForStudent(studentProfileId);
+          }
+        }
+      } catch (offerErr) {
+        console.error('Failed to auto-create offer for selected student:', offerErr);
+      }
+    }
+
+    if (sourceKind === 'drive') {
+      return NextResponse.json({ application: updatedRow });
     }
     return NextResponse.json({
       application: {
-        ...updated.rows[0],
-        status: normalizeEmployerApplicationStatus(updated.rows[0].status),
+        ...updatedRow,
+        status: normalizeEmployerApplicationStatus(updatedRow.status),
       },
     });
   } catch (e) {

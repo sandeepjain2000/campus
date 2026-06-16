@@ -133,6 +133,20 @@ export default function StudentOffersPage() {
                 </div>
               </div>
 
+              {offer.offerLetterUrl && (
+                <div style={{ margin: '0 0 1.25rem' }}>
+                  <a
+                    href={offer.offerLetterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    📄 Open Offer Letter
+                  </a>
+                </div>
+              )}
+
               {canRespond ? (
                 <StudentOfferRespondActions offer={offer} onUpdated={() => mutate()} />
               ) : null}

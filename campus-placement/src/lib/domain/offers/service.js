@@ -28,7 +28,8 @@ export class OfferService {
          o.deadline AS deadline_at,
          o.status,
          o.created_at,
-         o.is_latest AS is_latest
+         o.is_latest AS is_latest,
+         o.offer_letter_url AS offer_letter_url
        FROM offers o
        LEFT JOIN student_profiles sp ON sp.id = o.student_id
        LEFT JOIN users u ON u.id = sp.user_id
@@ -55,7 +56,8 @@ export class OfferService {
              o.drive_id,
              o.deadline AS deadline_at,
              o.status,
-             o.created_at
+             o.created_at,
+             o.offer_letter_url AS offer_letter_url
            FROM offers o
            LEFT JOIN student_profiles sp ON sp.id = o.student_id
            LEFT JOIN users u ON u.id = sp.user_id
