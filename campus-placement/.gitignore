@@ -20,6 +20,9 @@
 # Logs
 *.log
 qa/guided/.last-guided-marker.txt
+qa/guided/voice/audio/
+qa/guided/voice/transcripts/
+qa/guided/voice/voice_manifest.jsonl
 db/sqlite/guided_testing.sqlite
 db/sqlite/*.sqlite
 npm-debug.log*

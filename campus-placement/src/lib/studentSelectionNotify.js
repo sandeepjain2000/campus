@@ -60,6 +60,8 @@ export async function notifyStudentSelection({ studentUserId, email, firstName, 
       subject: `[PlacementHub] Selection Update: Selected by ${companyName}`,
       text: `Hi ${firstName || 'there'},\n\nCongratulations! You have been selected by ${companyName} for the position of ${roleTitle}.\n\nPlease log in to your dashboard to view your offers:\n\n${link}`,
       html,
+      context: 'student_selection',
+      recipientUserId: studentUserId,
     });
   } catch (err) {
     console.error('Failed to send student selection email:', err);

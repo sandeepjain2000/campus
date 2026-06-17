@@ -14,6 +14,7 @@ import {
   GUIDED_PLAYBOOKS,
   USE_CASE_FLOWS,
   USE_CASES_MORE_NOTES,
+  USE_CASES_USER_TESTING_NOTES,
   LOGIN_PAGE_LINKS,
   RUNNER_PANEL_STEPS,
   SCREEN_TAG_STATES,
@@ -214,11 +215,14 @@ export default function DeveloperPage() {
         <Section id="use-cases" title="Use cases (step-by-step)" tone="success" wide>
           <UseCasesTable
             flows={USE_CASE_FLOWS}
-            intro="Five end-to-end flows across employer, college, and student roles. Match these to guided playbooks and manual QA."
+            intro="Five end-to-end flows across employer, college, and student roles. Each row lists the voice runner commands (npm + .bat) — not the Guided playbooks table above."
           />
-          <p style={{ margin: '1.25rem 0 0' }}>
+          <p style={{ margin: '1.25rem 0 0', display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
             <Link href={USE_CASES_MORE_NOTES.href} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
               {USE_CASES_MORE_NOTES.label}
+            </Link>
+            <Link href={USE_CASES_USER_TESTING_NOTES.href} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+              {USE_CASES_USER_TESTING_NOTES.label}
             </Link>
           </p>
           <p className="dev-notes-muted" style={{ margin: '1rem 0 0', fontSize: '0.875rem' }}>
@@ -940,13 +944,30 @@ export default function DeveloperPage() {
           margin-top: 0.5rem;
         }
         .dev-notes-table--use-cases th[scope='row'] {
-          min-width: 11rem;
+          min-width: 13rem;
+          max-width: 18rem;
           font-weight: 700;
           font-size: 0.875rem;
           text-transform: none;
           letter-spacing: normal;
           color: var(--text-primary);
           background: var(--bg-primary);
+        }
+        .dev-notes-runner-col {
+          min-width: 14rem;
+          font-size: 0.75rem;
+        }
+        .dev-notes-runner-slug {
+          display: inline-block;
+          margin-bottom: 0.35rem;
+          padding: 0.1rem 0.4rem;
+          font-size: 0.6875rem;
+          font-weight: 700;
+          font-family: var(--font-mono, ui-monospace, monospace);
+          color: var(--success-600);
+          background: var(--success-50);
+          border: 1px solid rgba(16, 185, 129, 0.28);
+          border-radius: 4px;
         }
         .dev-notes-table--use-cases td {
           min-width: 9.5rem;

@@ -841,15 +841,23 @@ CREATE TABLE mail_delivery_logs (
     status VARCHAR(20) NOT NULL CHECK (status IN ('sent', 'skipped', 'failed')),
     skip_reason VARCHAR(80),
     original_to TEXT,
+    after_communication_to TEXT,
     resolved_to TEXT,
     subject_truncated VARCHAR(500),
     error_message TEXT,
     error_code VARCHAR(100),
     message_id TEXT,
     smtp_response TEXT,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    recipient_login_email VARCHAR(255),
+    recipient_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    recipient_role VARCHAR(20),
+    recipient_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
+    recipient_name VARCHAR(255)
 );
 
 CREATE INDEX idx_mail_delivery_logs_created ON mail_delivery_logs (created_at DESC);
 CREATE INDEX idx_mail_delivery_logs_status ON mail_delivery_logs (status);
 CREATE INDEX idx_mail_delivery_logs_context ON mail_delivery_logs (context);
+CREATE INDEX idx_mail_delivery_logs_recipient_user ON mail_delivery_logs (recipient_user_id);
+CREATE INDEX idx_mail_delivery_logs_recipient_login ON mail_delivery_logs (LOWER(recipient_login_email));

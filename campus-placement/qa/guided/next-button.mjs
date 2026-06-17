@@ -5,6 +5,7 @@
 
 import {
   GUIDED_TESTING_DB_PATH,
+  acknowledgeGuidedClickInDb,
   armGuidedStep,
   clearGuidedStepState,
   endGuidedSession,
@@ -84,6 +85,32 @@ export async function waitForNextClick(_page, { stepIndex, stepTotal, label = 'N
 
   while (!pollGuidedClickAck(gen)) {
     await sleep(80);
+  }
+}
+
+/** Auto mode — arm step, brief pause, programmatic ack (no blue-tag click). */
+export async function waitForAutoAdvance(_page, { stepIndex, stepTotal, label = 'N', phase, observe }, { pauseMs = 1500 } = {}) {
+  waitGen += 1;
+  const gen = waitGen;
+
+  armGuidedStep({
+    stepIndex,
+    stepTotal,
+    stepLabel: label,
+    phase,
+    observe,
+    waitGen: gen,
+  });
+
+  await _page.bringToFront().catch(() => {});
+  await _page.locator(`#${ROOT_ID}-btn`).waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+  if (pauseMs > 0) await sleep(pauseMs);
+
+  acknowledgeGuidedClickInDb();
+
+  const deadline = Date.now() + 5000;
+  while (!pollGuidedClickAck(gen) && Date.now() < deadline) {
+    await sleep(50);
   }
 }
 

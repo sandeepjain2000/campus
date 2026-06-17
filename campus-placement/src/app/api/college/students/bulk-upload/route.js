@@ -260,6 +260,9 @@ async function __platform_POST(req) {
         to: adminEmail,
         subject: emailSubject,
         text: emailText,
+        context: 'college_student_bulk_import',
+        userId: session.user.id,
+        recipientUserId: session.user.id,
       });
     } catch (notifyError) {
       console.error('Notification/Audit error after bulk upload:', notifyError);

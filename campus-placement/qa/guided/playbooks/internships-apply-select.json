@@ -35,12 +35,18 @@
     },
     {
       "phase": "CI-01",
+      "label": "Switch to list view",
+      "observe": "Table rows with Actions column — approve icon is easier to target in list view.",
+      "action": { "type": "click", "role": "button", "name": "List view" }
+    },
+    {
+      "phase": "CI-01",
       "label": "Approve guided internship for campus",
-      "observe": "Row with {{marker}} — click Approve (skipped if already Approved from a prior run).",
+      "observe": "Row with {{marker}} — click Approve for campus (green check icon; skipped if already Approved).",
       "action": {
         "type": "clickInRow",
         "rowText": "{{marker}}",
-        "buttonName": "Approve",
+        "buttonName": "Approve for campus",
         "skipIfMissing": true
       }
     },

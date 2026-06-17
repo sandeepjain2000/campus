@@ -12,7 +12,7 @@ async function __platform_GET() {
     const s = await getPlatformSettings();
     const marketingWebsiteUrl = normalizeMarketingWebsiteUrl(s.marketingWebsiteUrl);
     return NextResponse.json(
-      { marketingWebsiteUrl, ...buildPublicSupportConfig(s) },
+      { marketingWebsiteUrl, sessionAdsEnabled: Boolean(s.sessionAdsEnabled), ...buildPublicSupportConfig(s) },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',

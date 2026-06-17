@@ -45,6 +45,7 @@ export default function AdminSettingsPage() {
   const [systemNotificationSenderName, setSystemNotificationSenderName] = useState('');
   const [storageProvider, setStorageProvider] = useState('');
   const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5);
+  const [sessionAdsEnabled, setSessionAdsEnabled] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordMessage, setPasswordMessage] = useState('');
 
@@ -91,6 +92,7 @@ export default function AdminSettingsPage() {
         setSystemNotificationSenderName(json.systemNotificationSenderName ?? '');
         setStorageProvider(json.storageProvider ?? '');
         setMaxUploadSizeMb(Number(json.maxUploadSizeMb ?? 5));
+        setSessionAdsEnabled(Boolean(json.sessionAdsEnabled));
       } catch (e) {
         addToast(e.message || 'Failed to load settings', 'error');
       } finally {
@@ -134,6 +136,7 @@ export default function AdminSettingsPage() {
         systemNotificationSenderName,
         storageProvider,
         maxUploadSizeMb,
+        sessionAdsEnabled,
       };
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
@@ -171,6 +174,7 @@ export default function AdminSettingsPage() {
       systemNotificationSenderName,
       storageProvider,
       maxUploadSizeMb,
+      sessionAdsEnabled,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -279,6 +283,19 @@ export default function AdminSettingsPage() {
                 <option key={tz} value={tz}>{tz}</option>
               ))}
             </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                checked={sessionAdsEnabled}
+                onChange={(e) => setSessionAdsEnabled(e.target.checked)}
+              />
+              Show sponsored banner in dashboard
+            </label>
+            <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
+              Rotating sponsored message at the top of signed-in dashboards. Off by default.
+            </p>
           </div>
         </div>
         <div className="card">

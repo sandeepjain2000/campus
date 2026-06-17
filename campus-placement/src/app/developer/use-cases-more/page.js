@@ -7,7 +7,7 @@ import DevScreenTag from '@/components/DevScreenTag';
 
 export const metadata = {
   title: 'More use cases — Developer Notes',
-  description: 'Additional PlacementHub end-to-end use cases for QA and onboarding.',
+  description: 'Additional PlacementHub end-to-end use cases for QA and onboarding (10 flows).',
 };
 
 export default function DeveloperUseCasesMorePage() {
@@ -32,11 +32,13 @@ export default function DeveloperUseCasesMorePage() {
           </div>
           <h1>More use cases</h1>
           <p className="dev-notes-lead">
-            Five additional end-to-end flows — offers, online assessment updates, clarifications, interviews, and
-            full-time jobs without a drive.
+            Ten additional end-to-end flows — offers, online assessment updates, clarifications, interviews,
+            full-time jobs, registration, password reset, bulk import, sponsorship receipts, and interview notify.
           </p>
           <p className="dev-notes-meta">
             <Link href="/developer#use-cases">← Back to first 5 use cases</Link>
+            {' · '}
+            <Link href="/developer/use-cases-user-testing">User testing use cases</Link>
           </p>
           <div
             style={{

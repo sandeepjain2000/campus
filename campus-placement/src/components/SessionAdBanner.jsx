@@ -3,15 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import useSWR from 'swr';
 
 const DISMISS_KEY = 'placementhub_session_ad_dismissed';
 const ROTATION_MS = 15 * 60 * 1000;
 
-function showSessionAds() {
-  return (
-    process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_SHOW_SESSION_ADS === 'true'
-  );
-}
+const siteConfigFetcher = (url) => fetch(url).then((r) => r.json());
 
 const ADS = [
   {
@@ -110,6 +107,13 @@ function SessionAdBannerInner() {
 }
 
 export default function SessionAdBanner() {
-  if (!showSessionAds()) return null;
+  const { data } = useSWR('/api/public/site-config', siteConfigFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
+
+  const enabled = data?.sessionAdsEnabled === true;
+  if (!enabled) return null;
+
   return <SessionAdBannerInner />;
 }

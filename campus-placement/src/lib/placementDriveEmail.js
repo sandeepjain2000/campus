@@ -55,6 +55,7 @@ export async function emailPlacementDriveRequested({
     subject: `[PlacementHub] Drive requested — ${driveTitle}`,
     text: `A new placement drive request was submitted by ${companyName}.\n\nDrive: ${driveTitle}\nDate: ${driveDateLabel}\n\nReview here: ${abs}`,
     html,
+    context: 'placement_drive_requested',
   });
 }
 
@@ -103,5 +104,6 @@ export async function emailPlacementDriveApproved({
     subject: `[PlacementHub] Drive approved — ${driveTitle}`,
     text: `Your placement drive at ${collegeName} has been approved.\n\nDrive: ${driveTitle}\nDate: ${driveDateLabel}\n\nView here: ${abs}`,
     html,
+    context: 'placement_drive_approved',
   });
 }

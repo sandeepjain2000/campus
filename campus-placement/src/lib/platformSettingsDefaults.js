@@ -19,6 +19,8 @@ export const PLATFORM_SETTINGS_DEFAULTS = {
   fromEmail: '',
   storageProvider: 'Local Filesystem',
   maxUploadSizeMb: 5,
+  /** Dashboard sponsored banner (super admin → Platform Settings). */
+  sessionAdsEnabled: false,
 };
 
 /** Max CSV upload size in bytes (client-side guard; server enforces separately). */

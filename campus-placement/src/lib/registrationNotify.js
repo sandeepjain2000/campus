@@ -74,6 +74,7 @@ export async function notifyRegistrationSubmitted({ role, email, firstName, tena
       subject: `[PlacementHub] New ${role === 'college_admin' ? 'college' : 'employer'} registration pending review`,
       text: `A new ${role} account is awaiting platform approval.\n\nRegistrant: ${firstName} <${email}>\n${label}\n\nReview pending registrations: ${abs}`,
       html,
+      context: 'registration_pending_superadmin',
     });
   }
 
@@ -97,6 +98,7 @@ export async function notifyRegistrationSubmitted({ role, email, firstName, tena
       subject: '[PlacementHub] We received your registration',
       text: `Hi ${firstName},\n\nThanks for registering on PlacementHub. Your account is pending approval by the platform team.\nVerify your email using the separate message we sent, then wait for activation.\nYou will receive another email when your account is activated.\n\nIf you did not sign up, you can ignore this message.`,
       html,
+      context: 'registration_received',
     });
   }
 }
@@ -141,6 +143,7 @@ export async function notifyRegistrationResolved({ email, firstName, approved, r
       ? `Hi ${firstName},\n\nYour PlacementHub account has been approved. You can sign in with the email and password you chose at registration.\n\nRole: ${role}\nLogin here: ${abs}`
       : `Hi ${firstName},\n\nYour PlacementHub registration was not approved for this workspace.\n${reason ? `Note: ${reason}` : ''}\n\nIf you believe this is a mistake, contact your placement office or platform support.`,
     html: approved ? approvedHtml : rejectedHtml,
+    context: approved ? 'registration_approved' : 'registration_rejected',
   });
 }
 
@@ -167,6 +170,7 @@ export async function notifyStudentRegistered({ studentEmail, firstName, tenantI
     subject: '[PlacementHub] Registration received',
     text: `Hi ${firstName},\n\nYour student account was created for ${collegeName || 'your institution'}.\n\nVerify your email using the link we sent you, then sign in with your password.\nYour placement office may still need to verify you before all placement features unlock.\n`,
     html,
+    context: 'student_registration_received',
   });
 
   const admins = await collegeAdminEmails(tenantId);
@@ -193,6 +197,7 @@ export async function notifyStudentRegistered({ studentEmail, firstName, tenantI
       subject: `[PlacementHub] New student signup: ${firstName}`,
       text: `A student completed self-registration for your campus.\n\nName: ${firstName}\nEmail: ${studentEmail}\n\nReview and verify the student from the Students screen when ready: ${adminAbs}`,
       html: adminHtml,
+      context: 'student_registration_college_admin',
     });
   }
 }
@@ -223,5 +228,6 @@ export async function notifyCollegeEnrollmentKey({ collegeAdminEmail, firstName,
     subject: '[PlacementHub] Campus enrollment key (share with students)',
     text: `Hi ${firstName},\n\nYour institution "${collegeName}" is approved on PlacementHub.\n\nStudents must enter this enrollment key when they register:\n${surfaceToken}\n\nYou can also copy it anytime from College Administration → Enrollment key.\n\nTreat this like a password: only share it through official channels.`,
     html,
+    context: 'college_enrollment_key',
   });
 }

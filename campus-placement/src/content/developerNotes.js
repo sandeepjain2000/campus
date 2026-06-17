@@ -15,8 +15,9 @@ export const DEVELOPER_PAGE_META = {
 export const DEVELOPER_PAGE_TOC = [
   { id: 'quick-start', label: 'Quick start', hint: 'npm run dev + guided help' },
   { id: 'playbooks', label: 'Guided playbooks', hint: 'Partial E2E flows by scenario' },
-  { id: 'use-cases', label: 'Use cases', hint: '5 E2E flows, step by step' },
-  { id: 'use-cases-more', label: 'More use cases', hint: '5 additional flows', href: '/developer/use-cases-more' },
+  { id: 'use-cases', label: 'Use cases', hint: '5 flows + voice runner per row' },
+  { id: 'use-cases-more', label: 'More use cases', hint: '10 additional flows', href: '/developer/use-cases-more' },
+  { id: 'use-cases-user-testing', label: 'User testing', hint: 'Email, admin, platform QA', href: '/developer/use-cases-user-testing' },
   { id: 'runner-alerts', label: 'Runner alerts', hint: 'Recent UI / menu changes' },
   { id: 'email-demo', label: 'Email & demo mail', hint: 'YOPmail, workflows preview' },
   { id: 'e2e-roles', label: 'Internship E2E roles', hint: 'Who does what in full cycle' },
@@ -41,6 +42,21 @@ export const QUICK_START_STEPS = [
 ];
 
 export const GUIDED_PLAYBOOKS = [
+  {
+    goal: 'Full internship E2E — auto + voice for OBS recording (no blue-tag clicks)',
+    command: 'run_internship_e2e_auto_voice.bat',
+    focus: 'npm run test:guided:playbook-e2e-auto-voice · pip install -r qa/guided/requirements-voice.txt once',
+  },
+  {
+    goal: 'Employer publish + college approve — auto + voice',
+    command: 'run_internship_publish_auto_voice.bat',
+    focus: 'npm run test:guided:playbook-auto',
+  },
+  {
+    goal: 'Student apply + employer select — auto + voice',
+    command: 'run_internship_apply_auto_voice.bat',
+    focus: 'npm run test:guided:playbook-apply-auto',
+  },
   {
     goal: 'Full placement drive cycle — Employer → College → Student → Employer',
     command: 'npm run test:guided:playbook-drives-e2e',
@@ -108,10 +124,20 @@ export const GUIDED_PLAYBOOKS = [
   },
 ];
 
+/** npm / bat command for auto + voice guided tour by use-case slug */
+export function useCaseRunnerCommand(slug) {
+  return `npm run test:guided:voice -- ${slug}`;
+}
+
+export function useCaseRunnerBat(slug) {
+  return `run_use_case_auto_voice.bat ${slug}`;
+}
+
 /** End-to-end use cases — one row each, up to 7 steps (columns). */
 export const USE_CASE_FLOWS = [
   {
     name: 'Placement drive (full cycle)',
+    runnerSlug: 'placement-drive-full',
     steps: [
       'Employer: request campus tie-up (Campus Partnerships)',
       'College: approve employer partnership',
@@ -124,6 +150,7 @@ export const USE_CASE_FLOWS = [
   },
   {
     name: 'Internship publish → hire',
+    runnerSlug: 'internship-publish-hire',
     steps: [
       'Employer: publish internship with GT- marker title',
       'College: approve listing on Internships & Programs',
@@ -136,6 +163,7 @@ export const USE_CASE_FLOWS = [
   },
   {
     name: 'Student verified → first application',
+    runnerSlug: 'student-verified-first-app',
     steps: [
       'College: add student to master list (email + roll on record)',
       'Student: log in with email + temp password from welcome mail',
@@ -148,6 +176,7 @@ export const USE_CASE_FLOWS = [
   },
   {
     name: 'Assessment results (CSV)',
+    runnerSlug: 'assessment-csv',
     steps: [
       'Employer: select campus + drive or job on Assessment uploads',
       'Employer: export CSV template (eligible students pre-filled)',
@@ -160,6 +189,7 @@ export const USE_CASE_FLOWS = [
   },
   {
     name: 'Campus partnership → visible posting',
+    runnerSlug: 'campus-partnership-posting',
     steps: [
       'Employer: complete Company Profile',
       'Employer: request tie-up with target college',
@@ -176,6 +206,7 @@ export const USE_CASE_FLOWS = [
 export const USE_CASE_FLOWS_MORE = [
   {
     name: 'Offer → accept → placement lock',
+    runnerSlug: 'offer-accept-lock',
     steps: [
       'Employer: record offer from Applications or Offers page',
       'Student: open My Offers and review terms',
@@ -188,6 +219,7 @@ export const USE_CASE_FLOWS_MORE = [
   },
   {
     name: 'Assessment Update Online',
+    runnerSlug: 'assessment-update-online',
     steps: [
       'Employer: select campus + drive or job tab',
       'Employer: open Assessment Update Online',
@@ -200,6 +232,7 @@ export const USE_CASE_FLOWS_MORE = [
   },
   {
     name: 'Clarifications (official Q&A)',
+    runnerSlug: 'clarifications',
     steps: [
       'College: create Clarifications batch for a company',
       'College: publish questions from students or TPO',
@@ -212,6 +245,7 @@ export const USE_CASE_FLOWS_MORE = [
   },
   {
     name: 'Interview scheduling',
+    runnerSlug: 'interview-scheduling',
     steps: [
       'Employer / college: define drive or program interview rounds',
       'College: coordinate slots on Calendar / Interview Scheduling',
@@ -224,6 +258,7 @@ export const USE_CASE_FLOWS_MORE = [
   },
   {
     name: 'Full-time job (no placement drive)',
+    runnerSlug: 'full-time-job',
     steps: [
       'Employer: publish full_time job with campus visibility',
       'College: approve job on Internships & Programs / Jobs list',
@@ -234,11 +269,189 @@ export const USE_CASE_FLOWS_MORE = [
       'Student: offer flow same as drive-selected candidate',
     ],
   },
+  {
+    name: 'New employer registration → approval',
+    runnerSlug: 'employer-registration',
+    steps: [
+      'Employer: register on Sign In → Create account (company + admin details)',
+      'Employer: open Verify your email link (context: email_verification in logs)',
+      'Super admin: Pending Registrations → review and Approve',
+      'Employer: receives approval mail (context: registration_approved)',
+      'Employer: sign in with chosen password',
+      'Employer: complete Company Profile and request campus tie-up',
+      'Super admin: Email delivery logs — search employer login email',
+    ],
+  },
+  {
+    name: 'Password reset',
+    runnerSlug: 'password-reset',
+    steps: [
+      'User: Sign In → Forgot password → enter login email',
+      'User: open reset link from inbox (context: password_reset; 1-hour expiry)',
+      'User: choose new password on Reset Password screen',
+      'User: sign in with new password',
+      'Super admin: Email logs — confirm recipient_login_email matches account',
+      'Repeat with wrong email — same success message (no enumeration)',
+      '—',
+    ],
+  },
+  {
+    name: 'Bulk student import (CSV)',
+    runnerSlug: 'bulk-student-import',
+    steps: [
+      'College: Students → Bulk upload — valid CSV (email, roll, name)',
+      'System: welcome email to each login address (context: student_welcome)',
+      'College: receives import summary mail (context: college_student_bulk_import)',
+      'Student: sign in with temp password from welcome mail',
+      'Student: optional password change; complete profile + resume',
+      'College: verify student on Students list',
+      'Student: apply to eligible internship or drive',
+    ],
+  },
+  {
+    name: 'Sponsorship donation receipt',
+    runnerSlug: 'sponsorship-receipt',
+    steps: [
+      'College: Sponsorships → record donation (sponsor name + email)',
+      'College: Send receipt — enter or confirm sponsor email',
+      'Sponsor inbox: receipt mail (context: sponsorship_donation_receipt)',
+      'Super admin: Email logs — search sponsor email or context',
+      'College: thank-you auto-mail may follow (context: sponsorship_college_thanks_sponsor)',
+      'College: Reports reflect sponsorship totals',
+      '—',
+    ],
+  },
+  {
+    name: 'Employer interview slot notify',
+    runnerSlug: 'interview-slot-notify',
+    steps: [
+      'Employer: Campus Partnerships approved for target college',
+      'Employer: Interview Scheduling — link slot to job/internship/drive',
+      'Employer: Notify applicants — picks eligible students with email',
+      'Students: receive slot mail (context: employer_interview_slot)',
+      'Student: My Interviews shows date, mode, venue',
+      'Employer: update application status after the round',
+      'Super admin: Email logs — filter by context employer_interview_slot',
+    ],
+  },
 ];
 
 export const USE_CASES_MORE_NOTES = {
   href: '/developer/use-cases-more',
-  label: 'More use cases (5 additional flows)',
+  label: 'More use cases (10 additional flows)',
+};
+
+/** Platform, email, and admin QA flows — /developer/use-cases-user-testing */
+export const USE_CASE_FLOWS_USER_TESTING = [
+  {
+    name: 'Email delivery audit (super admin)',
+    runnerSlug: 'email-delivery-audit',
+    steps: [
+      'Trigger outbound mail (e.g. employer Select → student_selection context)',
+      'Super admin: Platform → Email delivery logs',
+      'Search recipient login email (survives deleted QA accounts)',
+      'Row shows Context, Recipient (login), Original → Final',
+      'Open detail: Original, After communication routing, Final SMTP',
+      'Confirm recipient_login_email, role, name when user still exists',
+      'Copy raw log JSON for ticket / regression notes',
+    ],
+  },
+  {
+    name: 'Communication email routing',
+    runnerSlug: 'communication-email-routing',
+    steps: [
+      'Super admin or DB: set user communication_email ≠ login email',
+      'Trigger mail to login address (selection, welcome, reset, etc.)',
+      'Email logs: original_to = login; after_communication_to = communication inbox',
+      'Final resolved_to follows platform override (YOPmail / OUTBOUND_EMAIL_OVERRIDE)',
+      'Student still signs in with login email only',
+      'Verify in logs: recipient_login_email always stores login address',
+      '—',
+    ],
+  },
+  {
+    name: 'Session ads banner toggle',
+    runnerSlug: 'session-ads-toggle',
+    steps: [
+      'Super admin: Platform Settings → Show sponsored banner (default off)',
+      'Student or employer: refresh dashboard — no SessionAdBanner',
+      'Super admin: enable checkbox → Save',
+      'Any role: refresh — sponsored banner visible on dashboard',
+      'Super admin: disable again — banner disappears after refresh',
+      'No mail sent — UI-only regression',
+      '—',
+    ],
+  },
+  {
+    name: 'Audit report export email',
+    runnerSlug: 'audit-report-export',
+    steps: [
+      'College admin or super admin: Audit Reports',
+      'Pick date range + scope (campus or platform-wide)',
+      'Enter delivery email → Export',
+      'Inbox: download link mail (context: audit_report_export)',
+      'Open time-limited link — CSV downloads',
+      'Email logs: confirm context + requested email as recipient',
+      '—',
+    ],
+  },
+  {
+    name: 'Login support & feedback reply',
+    runnerSlug: 'login-support-feedback',
+    steps: [
+      'User: Login page → Need help signing in → submit message',
+      'Platform inbox: mail with context login_support (replyTo = user email)',
+      'User: Feedback → submit thread as student/employer/college',
+      'Super admin: reply on Feedback admin screen',
+      'User: in-app Alert + email (context: feedback_reply)',
+      'Email logs: search submitter login email',
+      '—',
+    ],
+  },
+  {
+    name: 'Personal data export notice',
+    runnerSlug: 'data-export-notice',
+    steps: [
+      'Any role: Profile or Privacy → Export my data',
+      'Browser downloads CSV attachment',
+      'Communication inbox: notice mail (context: user_data_export)',
+      'Email logs: acting user = recipient; recipientUserId set',
+      'Re-run export — new log row with fresh timestamp',
+      'Super admin: confirm no password or token in mail body',
+      '—',
+    ],
+  },
+  {
+    name: 'Guest engagement confirmation',
+    runnerSlug: 'guest-engagement',
+    steps: [
+      'Employer: Engagement listings → open listing with guest registrants',
+      'Send confirmation to guest email on a row',
+      'Guest inbox: confirmation mail (context: guest_confirmation)',
+      'Employer: resend blocked or idempotent per product rules',
+      'Email logs: original guest address + employer as acting user',
+      'College: read-only view if listing is campus-scoped',
+      '—',
+    ],
+  },
+  {
+    name: 'College internship approve (list view)',
+    runnerSlug: 'college-internship-approve',
+    steps: [
+      'Employer: publish internship with GT- marker (see guided playbook)',
+      'College: Internships & Programs — default Card view shows title',
+      'College: switch to List view — Title column must not be blank',
+      'College: Approve for campus (green check icon on row)',
+      'Student: internship visible after approval',
+      'Guided runner: run_internship_publish_auto_voice.bat for OBS demo',
+      'Email logs if selection follows: student_selection context',
+    ],
+  },
+];
+
+export const USE_CASES_USER_TESTING_NOTES = {
+  href: '/developer/use-cases-user-testing',
+  label: 'User testing use cases (email, admin, platform)',
 };
 
 /** Old login has Demo accounts picker; production-style login is /sign-in */
@@ -301,8 +514,8 @@ export const SESSION_MARKER_NOTES = [
 ];
 
 export const INTERNSHIP_E2E_ROLES = [
-  { role: 'Employer', steps: 'Partnership (if needed), publish internship with GT- marker', account: 'hr@techcorp.com' },
-  { role: 'College', steps: 'Approve tie-up (if needed), verify posting on campus list', account: 'admin@iitm.edu' },
+  { role: 'Employer', steps: 'Partnership (if needed), publish internship with GT- marker (start 1 Jul 2026, end 31 Dec 2026)', account: 'hr@techcorp.com' },
+  { role: 'College', steps: 'Approve tie-up (if needed), Approve for campus on Internships list (green check icon)', account: 'admin@iitm.edu' },
   { role: 'Student', steps: 'Browse internships, apply to GT- posting', account: 'arjun.verma@iitm.edu' },
   { role: 'Employer', steps: 'Shortlist and Select applicant on Applications → Internships', account: 'hr@techcorp.com' },
   { role: 'Closure', steps: 'Student confirms Selected on My Applications', account: 'arjun.verma@iitm.edu' },
@@ -318,6 +531,28 @@ export const DEMO_PASSWORD = 'Admin@123';
 
 /** Shown on /developer and in npm run test:guided:help — keep current after UI/menu changes. */
 export const RUNNER_CHANGE_ALERTS = [
+  {
+    date: '2026-06-16',
+    title: 'Use-case voice runners (all 23 flows)',
+    items: [
+      'Every Developer Notes use case has an auto + voice runner: npm run test:guided:voice -- <slug>',
+      'Windows: run_use_case_auto_voice.bat <slug> · List slugs: npm run test:guided:voice-list',
+      'Full E2E (internship, placement drive) reuse existing playbooks; others are navigation tours with manual pauses.',
+      'Regenerate tour JSON: npm run test:guided:build-uc-playbooks after editing qa/guided/use-case-tours.json',
+      'Legacy internship bats still work: run_internship_e2e_auto_voice.bat = slug internship-publish-hire',
+    ],
+  },
+  {
+    date: '2026-06-16',
+    title: 'Internship guided runner — college approve + dates + email audit',
+    items: [
+      'College Internships defaults to card view — runner now switches to List view and clicks Approve for campus (icon button).',
+      'Playbook internship dates: start 1 Jul 2026, end 31 Dec 2026.',
+      'OBS screen recordings: run_internship_e2e_auto_voice.bat (or npm run test:guided:playbook-e2e-auto-voice).',
+      'Dashboard ads: Super Admin → Platform Settings → Show sponsored banner (off by default).',
+      'Email delivery logs: recipient_login_email, context on all sends, three-step routing trail — Developer Notes → User testing use cases.',
+    ],
+  },
   {
     date: '2026-06-09',
     title: 'Cleanup & demo sandbox',
@@ -351,6 +586,9 @@ export const EMAIL_DEMO_NOTES = [
   'Disposable inbox for system mail in demos: placementhub@yopmail.com — check at https://yopmail.com/',
   'Data Tester seeded users use @placementhub.test (not YOPmail); password Admin@123.',
   'Email workflows preview (no mail sent): Landing → Demo Tools → Email workflows, or /email-notifications.',
+  'Super admin → Email delivery logs: search by recipient login email, context, or subject. Each row stores original → communication routing → final SMTP.',
+  'Mail contexts for QA: student_selection, registration_approved, student_welcome, password_reset, email_verification, audit_report_export, feedback_reply, login_support — see User testing use cases.',
+  'CLI: node scripts/query_mail_logs.js <email-or-context> from repo root (reads .env.local DATABASE_URL).',
   'Assessment round updates from CSV or Assessment Update Online appear on Hiring Results Dashboard (employer) and college Hiring Assessment (read-only).',
   'College Audit Reports → Export CSV can email a download link when SMTP is configured.',
 ];
@@ -464,7 +702,11 @@ export const DATABASE_SCHEMA_NOTES = {
 };
 
 export const RELATED_DOCS = [
+  { label: 'Use-case runner manifest', path: 'qa/guided/use-case-runners.json' },
+  { label: 'Use-case tour steps (source)', path: 'qa/guided/use-case-tours.json' },
+  { label: 'Build tour playbooks', path: 'npm run test:guided:build-uc-playbooks' },
   { label: 'More use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_MORE)', href: '/developer/use-cases-more' },
+  { label: 'User testing use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_USER_TESTING)', href: '/developer/use-cases-user-testing' },
   { label: 'Database schema & relationships', path: 'docs/help/developer/database-schema.md', href: '/developer/database-schema' },
   { label: 'Database relationships overview (source)', path: 'docs/help/developer/database-relationships-overview.md' },
   { label: 'Cleanup & restore (markdown)', path: 'docs/help/developer/purge.md' },

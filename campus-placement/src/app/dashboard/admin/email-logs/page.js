@@ -67,8 +67,24 @@ function EmailLogDetailPanel({ row }) {
         </h3>
         <div style={{ display: 'grid', gap: '0.65rem' }}>
           <DetailField label="Original Recipient" mono>{row.original_to || '—'}</DetailField>
-          <DetailField label="Resolved Recipient (Communication Email)" mono>{row.resolved_to || '—'}</DetailField>
-          <DetailField label="Sender User ID" mono>{row.user_id || '—'}</DetailField>
+          <DetailField label="After Communication Routing" mono>{row.after_communication_to || '—'}</DetailField>
+          <DetailField label="Final SMTP Recipient" mono>{row.resolved_to || '—'}</DetailField>
+          <DetailField label="Recipient Login Email (audit)" mono>{row.recipient_login_email || '—'}</DetailField>
+          <DetailField label="Recipient Name">{row.recipient_name || '—'}</DetailField>
+          <DetailField label="Recipient Role">{row.recipient_role || '—'}</DetailField>
+          <DetailField label="Recipient User ID" mono>{row.recipient_user_id || '—'}</DetailField>
+          <DetailField label="Recipient Tenant ID" mono>{row.recipient_tenant_id || '—'}</DetailField>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-sm" style={{ margin: '0 0 0.5rem', fontWeight: 700 }}>
+          Triggered By
+        </h3>
+        <div style={{ display: 'grid', gap: '0.65rem' }}>
+          <DetailField label="Acting User ID" mono>{row.user_id || '—'}</DetailField>
+          <DetailField label="Acting User">{row.acting_user_name?.trim() || '—'}</DetailField>
+          <DetailField label="Acting User Email" mono>{row.acting_user_email || '—'}</DetailField>
         </div>
       </section>
 
@@ -138,8 +154,8 @@ export default function AdminEmailLogsPage() {
           Platform email delivery logs
         </h1>
         <p className="text-secondary text-sm" style={{ margin: '0.35rem 0 0', maxWidth: '48rem', lineHeight: 1.55 }}>
-          Outbound email history. Tracks contexts (selections, drive requests, signups), target addresses, redirection status,
-          and SMTP delivery results.
+          Outbound email history with a three-step recipient trail: original address, after communication-email
+          routing, and final SMTP destination. Recipient login email is stored even if the account is later deleted.
         </p>
       </div>
 
@@ -161,7 +177,7 @@ export default function AdminEmailLogsPage() {
             <input
               id="email-log-search"
               className="form-input"
-              placeholder="Recipient email, subject, context..."
+              placeholder="Login email, recipient, subject, context..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
@@ -198,8 +214,8 @@ export default function AdminEmailLogsPage() {
                 <tr>
                   <th>When</th>
                   <th>Context</th>
-                  <th>Original Recipient</th>
-                  <th>Resolved Recipient</th>
+                  <th>Recipient (login)</th>
+                  <th>Original → Final</th>
                   <th>Subject</th>
                   <th>Status</th>
                   <th style={{ width: 56 }} />
@@ -210,8 +226,19 @@ export default function AdminEmailLogsPage() {
                   <tr key={row.id}>
                     <td className="text-sm" style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.created_at)}</td>
                     <td className="text-sm font-semibold">{row.context || '—'}</td>
-                    <td className="text-sm font-mono">{row.original_to || '—'}</td>
-                    <td className="text-sm font-mono">{row.resolved_to || '—'}</td>
+                    <td className="text-sm font-mono">
+                      {row.recipient_login_email || row.original_to || '—'}
+                      {row.recipient_name ? (
+                        <div className="text-xs text-tertiary" style={{ fontFamily: 'inherit' }}>
+                          {row.recipient_name}
+                          {row.recipient_role ? ` · ${row.recipient_role}` : ''}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="text-sm font-mono" style={{ maxWidth: 220 }}>
+                      <span title={row.original_to || ''}>{row.original_to || '—'}</span>
+                      <div className="text-xs text-tertiary">→ {row.resolved_to || '—'}</div>
+                    </td>
                     <td className="text-sm" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {row.subject_truncated || '—'}
                     </td>

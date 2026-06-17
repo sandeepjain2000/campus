@@ -190,22 +190,43 @@ export async function executeAction(page, baseUrl, accounts, action, ctx) {
 
   if (type === 'clickInRow') {
     const rowText = resolveTemplate(action.rowText, ctx);
-    const rowSelector = action.rowSelector || 'tr';
-    const row = page.locator(rowSelector).filter({ hasText: rowText }).first();
-    const buttonName = action.buttonName ? resolveTemplate(action.buttonName, ctx) : null;
-    const rowVisible = await row.isVisible().catch(() => false);
-    if (!rowVisible) {
-      if (action.skipIfMissing) return;
-      await row.waitFor({ state: 'visible', timeout: 15_000 });
+    const selectors = action.rowSelector ? [action.rowSelector] : ['tr', '.card.card-hover', '.card'];
+    let row = null;
+    for (const sel of selectors) {
+      const candidate = page.locator(sel).filter({ hasText: rowText }).first();
+      const count = await candidate.count().catch(() => 0);
+      if (count > 0 && (await candidate.isVisible().catch(() => false))) {
+        row = candidate;
+        break;
+      }
     }
+    if (!row) {
+      if (action.skipIfMissing) {
+        console.warn(`    (skipped: no row matching "${rowText}")`);
+        return;
+      }
+      throw new Error(`No row matching "${rowText}"`);
+    }
+    const buttonName = action.buttonName ? resolveTemplate(action.buttonName, ctx) : null;
     if (buttonName) {
-      const btn = row.getByRole('button', { name: buttonName }).first();
-      const n = await btn.count().catch(() => 0);
-      if (n === 0) {
-        if (action.skipIfMissing) return;
-        await btn.click({ timeout: 15_000 });
-      } else {
-        await btn.click({ timeout: 15_000 });
+      const candidates = [buttonName];
+      if (buttonName === 'Approve') candidates.push('Approve for campus');
+      let clicked = false;
+      for (const name of candidates) {
+        const btn = row.getByRole('button', { name }).first();
+        const n = await btn.count().catch(() => 0);
+        if (n > 0) {
+          await btn.click({ timeout: 15_000 });
+          clicked = true;
+          break;
+        }
+      }
+      if (!clicked) {
+        if (action.skipIfMissing) {
+          console.warn(`    (skipped: no "${buttonName}" button in row "${rowText}")`);
+          return;
+        }
+        throw new Error(`No button "${buttonName}" in row matching "${rowText}"`);
       }
     } else if (action.role && action.name) {
       await row.getByRole(action.role, { name: resolveTemplate(action.name, ctx) }).first().click({ timeout: 15_000 });

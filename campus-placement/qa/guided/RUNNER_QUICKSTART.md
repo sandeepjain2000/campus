@@ -38,6 +38,64 @@ npm run test:guided:playbook-list
 | **College approve → student apply → employer select** (after publish) | `npm run test:guided:playbook-apply` | CI-01, SI-04, EI-15, EI-16, SI-09 |
 | **Split E2E** (two sessions) | Run **publish**, then **apply** | Reuses SQLite marker |
 
+### Auto + voice (YouTube / screen recordings — no clicks)
+
+One-time voice deps:
+
+```powershell
+pip install -r qa/guided/requirements-voice.txt
+```
+
+| Flow | Command | Batch file |
+|------|---------|------------|
+| Full internship E2E + narration | `npm run test:guided:playbook-e2e-auto-voice` | `run_internship_e2e_auto_voice.bat` |
+| Employer publish only | `npm run test:guided:playbook-auto` | `run_internship_publish_auto_voice.bat` |
+| Apply + select only | `npm run test:guided:playbook-apply-auto` | `run_internship_apply_auto_voice.bat` |
+| Auto without voice | `npm run test:guided:playbook-e2e-auto` | — |
+
+Transcripts and MP3s land in `qa/guided/voice/` (import `.txt` files into ElevenLabs, Murf, or SonexLabs Pāṇini if you re-record).
+
+**Voice engine** — edit `qa/guided/guided-voice-config.json`:
+
+| Engine | Cost | Quality | Notes |
+|--------|------|---------|-------|
+| `edge_tts` (default) | Free | Good | Microsoft neural — **not** Windows SAPI. Default: `en-IN-NeerjaNeural` |
+| `openai` | ~$0.015/min | Very good | Set `"engine": "openai"`, `"voice_id": "nova"`, env `OPENAI_API_KEY` |
+| `sonexlabs` | 10k chars free | Premium (beta) | Pāṇini TTS API — works for **any** narration, not only phone AI. [sonexlabs.com](https://www.sonexlabs.com/) |
+| `transcript_only` | Free | — | Writes `.txt` only; batch in ElevenLabs / SonexLabs dashboard |
+
+List Edge voices: `edge-tts --list-voices | findstr en-IN`
+
+For smoother playback during OBS recordings, install [ffmpeg](https://ffmpeg.org/) so `ffplay` can block until each clip finishes (otherwise Windows estimates duration).
+
+### All Developer Notes use cases (auto + voice by slug)
+
+Every row on **Developer notes → Use cases** (and More / User testing pages) has a voice runner:
+
+```powershell
+npm run test:guided:voice -- placement-drive-full
+npm run test:guided:voice -- internship-publish-hire
+npm run test:guided:voice-list   # all 23 slugs
+```
+
+Windows batch (same as internship bats, any slug):
+
+```powershell
+run_use_case_auto_voice.bat assessment-csv
+run_use_case_auto_voice.bat email-delivery-audit
+```
+
+| Slug type | Playbook source |
+|-----------|-----------------|
+| `internship-publish-hire`, `placement-drive-full`, `college-internship-approve` | Full E2E playbooks (automated form fill + approve) |
+| All other slugs | Navigation tours + manual pauses (14s) for on-screen actions |
+
+Regenerate tour JSON after editing `qa/guided/use-case-tours.json`:
+
+```powershell
+npm run test:guided:build-uc-playbooks
+```
+
 One-off partnership setup (if campuses empty):
 
 ```powershell
@@ -88,7 +146,9 @@ The browser reads/writes the same DB through `/api/guided-runner` (dev/sandbox o
 
 ## Employer form fields (2026-06)
 
-**Internships** (`Post Internship`): use **Start date** + **End date** (segmented DD/MM/YYYY), not a duration dropdown. Set **Batch year** to **2026** (matches seeded students). **Eligible branches**: `All` unless testing branch filters.
+**Internships** (`Post Internship`): use **Start date** + **End date** (segmented DD/MM/YYYY), not a duration dropdown. Guided playbooks use **1 Jul 2026** → **31 Dec 2026**. Set **Batch year** to **2026** (matches seeded students). **Eligible branches**: `All` unless testing branch filters.
+
+**College approve (required before students see a posting):** Internships list → filter **Pending review** → **Approve for campus** (green check icon on the row).
 
 **Placement drives** (`Request placement drive`): drive date uses segmented fields; fill **Role & openings**, **Job description**, **Eligibility** (min CGPA, batch **2026**), and **Compensation** before submit. Playbooks automate these steps.
 
@@ -100,7 +160,7 @@ The browser reads/writes the same DB through `/api/guided-runner` (dev/sandbox o
 
 **Placement drives:** After employer **Submit request**, college approves on **College → Placement Drives** (status **Awaiting Approval** → **Approved**). Students only see **approved** or **scheduled** drives.
 
-Automated playbooks search for the session marker (`GT-…`) and click **Approve** on the matching row (skipped if already approved).
+Automated playbooks search for the session marker (`GT-…`) and click **Approve for campus** on the matching row (skipped if already approved).
 
 ---
 

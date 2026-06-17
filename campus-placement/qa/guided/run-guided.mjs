@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import { executeAction, resolveTemplate } from './action-runner.mjs';
 import {
   waitForNextClick,
+  waitForAutoAdvance,
   removeNextButton,
   installNextButton,
   setupNextClickBridge,
@@ -25,6 +26,7 @@ import {
   endGuidedSession,
   GUIDED_TESTING_DB_PATH,
 } from './next-button.mjs';
+import { announceStep, loadVoiceConfig, pauseBetweenRoles } from './voice-annotate.mjs';
 import { getGuidedMarker, setGuidedMarker } from '../../src/lib/guidedRunnerDb.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,10 +43,16 @@ function parseArgs(argv) {
     playbook: null,
     playbookList: false,
     baseUrl: null,
+    auto: false,
+    voice: false,
+    noVoice: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--list' || a === '-l') args.list = true;
+    else if (a === '--auto') args.auto = true;
+    else if (a === '--voice') args.voice = true;
+    else if (a === '--no-voice') args.noVoice = true;
     else if (a === '--playbook-list') args.playbookList = true;
     else if (a === '--uc' || a === '-u') {
       args.uc = argv[i + 1];
@@ -66,6 +74,7 @@ function parseArgs(argv) {
       args.playbook = a;
     }
   }
+  if (args.auto && !args.noVoice) args.voice = true;
   return args;
 }
 
@@ -93,7 +102,8 @@ COLLEGE APPROVAL
   Placement drives: /dashboard/college/drives — Awaiting Approval → Approve (GT-* marker)
 
 FORM FIELDS (2026-06)
-  Internships: Start date + End date (not duration dropdown); batch year 2026; eligible branches All
+  Internships: Start date 1 Jul 2026, End date 31 Dec 2026; batch year 2026; eligible branches All
+  College approve: Internships list → Approve for campus (icon button, not plain Approve)
   Drives: full request form includes role/eligibility/compensation; batch year 2026; drive date via segmented fields
 
 BEFORE INTERNSHIP TESTS (if no approved campuses)
@@ -102,7 +112,10 @@ BEFORE INTERNSHIP TESTS (if no approved campuses)
   Or: /data-entry → Campus tie-ups → Ensure IIT Madras tie-up
 
 ON SCREEN
-  One blue screen-tag click per step (S-xx top-right). Alt+Enter works. Tag pulses when ready.
+  Manual: one blue screen-tag click per step (S-xx top-right). Alt+Enter works.
+  Auto + voice (screen recordings): npm run test:guided:playbook-e2e-auto-voice
+    pip install -r qa/guided/requirements-voice.txt   # once
+    No clicks — Edge TTS narration + transcripts in qa/guided/voice/
 
 RECORDING (SQLite on your laptop)
   All step state + logs: db/sqlite/guided_testing.sqlite
@@ -161,12 +174,16 @@ function loadPlaybook(id) {
   return null;
 }
 
-function logStep({ stepIndex, stepTotal, phase, label, observe }) {
+function logStep({ stepIndex, stepTotal, phase, label, observe, auto }) {
   console.log(`\n── Step ${stepIndex}/${stepTotal} ──`);
   if (phase) console.log(`  Focus: ${phase}`);
   console.log(`  Do:      ${label}`);
   console.log(`  Observe: ${observe}`);
-  console.log('  → One click on the blue screen tag runs this step (Alt+Enter). Read Observe, then click when ready.');
+  if (auto) {
+    console.log('  → Auto mode: narration + timed pause, then action runs.');
+  } else {
+    console.log('  → One click on the blue screen tag runs this step (Alt+Enter). Read Observe, then click when ready.');
+  }
 }
 
 async function checkEmployerPartnershipReady(page) {
@@ -209,14 +226,30 @@ async function initPlaybookContext(page, playbook) {
   return { marker };
 }
 
-async function runPlaybook(page, baseUrl, accounts, playbook) {
+async function runPlaybook(page, baseUrl, accounts, playbook, runnerOptions = {}) {
+  const { auto = false, voice = false } = runnerOptions;
+  const voiceConfig = voice ? loadVoiceConfig() : null;
+  const phaseIntros = voiceConfig?.phase_intros || {};
+  const pauseBeforeActionMs = Math.max(
+    0,
+    Number(voiceConfig?.auto_run?.pause_before_action_sec ?? 1.5) * 1000,
+  );
+  let lastPhase = '';
+
   const ctx = await initPlaybookContext(page, playbook);
   const steps = playbook.steps || [];
   startGuidedSession({ playbookId: playbook.id || playbook.title, marker: ctx.marker });
   console.log(`\n▶ Playbook: ${playbook.title}`);
   console.log(`  Session marker: ${ctx.marker}`);
   console.log(`  SQLite log: ${GUIDED_TESTING_DB_PATH}`);
-  console.log(`  ${steps.length} steps — one screen-tag click per step; read terminal, click when ready\n`);
+  if (auto && voice) {
+    console.log(`  Mode: AUTO + VOICE (${steps.length} steps)`);
+    console.log('  Transcripts: qa/guided/voice/transcripts/');
+  } else if (auto) {
+    console.log(`  Mode: AUTO (${steps.length} steps, no voice)`);
+  } else {
+    console.log(`  ${steps.length} steps — one screen-tag click per step; read terminal, click when ready\n`);
+  }
 
   for (let i = 0; i < steps.length; i += 1) {
     const partnershipStartIdx = steps.findIndex(
@@ -262,9 +295,37 @@ async function runPlaybook(page, baseUrl, accounts, playbook) {
       phase,
       label,
       observe,
+      auto,
     });
 
-    await waitForNextClick(page, buttonPayload);
+    if (voice && phase && phase !== lastPhase) {
+      if (lastPhase) await pauseBetweenRoles(auto);
+      const intro = phaseIntros[phase];
+      if (intro) {
+        announceStep({
+          stageKey: `phase-${phase.toLowerCase()}`,
+          role: phase,
+          text: intro,
+          auto,
+        });
+      }
+      lastPhase = phase;
+    }
+
+    if (voice) {
+      announceStep({
+        stageKey: `step-${String(i + 1).padStart(2, '0')}`,
+        role: phase || 'STEP',
+        text: `${label}. ${observe}`,
+        auto,
+      });
+    }
+
+    if (auto) {
+      await waitForAutoAdvance(page, buttonPayload, { pauseMs: pauseBeforeActionMs });
+    } else {
+      await waitForNextClick(page, buttonPayload);
+    }
     console.log('  ▶ Running automated action…');
     await showRunnerRunning(page, buttonPayload);
 
@@ -345,9 +406,14 @@ function resolveFocusSection(focus, sectionId) {
   };
 }
 
-async function launchBrowser(runFn) {
+async function launchBrowser(runFn, { auto = false, voice = false } = {}) {
   console.log('');
-  console.log('  Click the blue screen tag (S-xx) top-right when armed. Alt+Enter works.');
+  if (auto) {
+    console.log('  AUTO mode — steps advance on a timer (no blue-tag clicks).');
+    if (voice) console.log('  VOICE on — Edge TTS + transcripts in qa/guided/voice/');
+  } else {
+    console.log('  Click the blue screen tag (S-xx) top-right when armed. Alt+Enter works.');
+  }
   console.log(`  Steps recorded in SQLite: ${GUIDED_TESTING_DB_PATH}`);
   console.log('');
   const browser = await chromium.launch({
@@ -426,13 +492,16 @@ async function main() {
       process.exit(1);
     }
     console.log(`Base URL: ${baseUrl}`);
-    await launchBrowser(async (page) => {
-      await page.goto(baseUrl, { waitUntil: 'load' }).catch(() => {});
-      await page.waitForSelector('body', { timeout: 15000 }).catch(() => {});
-      await clearRunnerUi(page);
-      await page.bringToFront().catch(() => {});
-      await runPlaybook(page, baseUrl, accounts, pb);
-    });
+    await launchBrowser(
+      async (page) => {
+        await page.goto(baseUrl, { waitUntil: 'load' }).catch(() => {});
+        await page.waitForSelector('body', { timeout: 15000 }).catch(() => {});
+        await clearRunnerUi(page);
+        await page.bringToFront().catch(() => {});
+        await runPlaybook(page, baseUrl, accounts, pb, { auto: args.auto, voice: args.voice });
+      },
+      { auto: args.auto, voice: args.voice },
+    );
     return;
   }
 

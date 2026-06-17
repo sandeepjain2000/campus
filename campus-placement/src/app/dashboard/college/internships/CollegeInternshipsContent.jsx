@@ -273,6 +273,17 @@ export default function CollegeInternshipsContent() {
         <div className="card card-table-shell" style={{ border: '1px solid var(--border-default)' }}>
           <div className="table-container" style={{ border: 'none', overflowX: 'auto' }}>
             <table className="data-table college-applications-table college-internships-table">
+              <colgroup>
+                <col className="college-internships-col-title" />
+                <col className="college-internships-col-employer" />
+                <col className="college-internships-col-type" />
+                <col className="college-internships-col-stipend" />
+                <col className="college-internships-col-cgpa" />
+                <col className="college-internships-col-openings" />
+                <col className="college-internships-col-posted" />
+                <col className="college-internships-col-campus" />
+                <col className="college-internships-col-actions" />
+              </colgroup>
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)' }}>
                   {TABLE_COLUMNS.map((col, i) => (
@@ -306,10 +317,12 @@ export default function CollegeInternshipsContent() {
                   const busy = actionBusyId === row.id;
                   return (
                     <tr key={row.id}>
-                      <td style={{ paddingLeft: '1.25rem', maxWidth: 240 }}>
-                        <div className="font-semibold text-sm cell-truncate" title={row.title}>
-                          {row.title}
-                        </div>
+                      <td
+                        className="font-semibold text-sm cell-truncate"
+                        style={{ paddingLeft: '1.25rem' }}
+                        title={row.title || undefined}
+                      >
+                        {row.title}
                       </td>
                       <td className="text-sm">
                         <CompanyNameLink name={row.company_name} website={row.website} />

@@ -61,6 +61,8 @@ async function __platform_POST(req) {
         subject: '[PlacementHub] Reset your password',
         text: `Hi ${user.first_name},\n\nClick the link below to reset your PlacementHub password:\n\n${resetLink}\n\nThis link will expire in 1 hour.`,
         html,
+        context: 'password_reset',
+        recipientUserId: user.id,
       });
     } catch (mailErr) {
       console.error('Forgot password mail error:', mailErr);

@@ -123,21 +123,99 @@ async function routeThroughCommunicationEmails(to) {
   return raw;
 }
 
+function extractPrimaryRecipientEmail(originalTo) {
+  const normalized = normalizeTo(originalTo);
+  if (!normalized) return null;
+  const first = normalized.split(',')[0].trim();
+  const email = extractEmailFromRaw(first);
+  return email.includes('@') ? email.toLowerCase() : null;
+}
+
+/** Resolve platform user for audit (login email, role, tenant) from a raw To address. */
+async function lookupRecipientAudit({ originalTo, recipientUserId }) {
+  const extractedLogin = extractPrimaryRecipientEmail(originalTo);
+
+  if (recipientUserId) {
+    const r = await query(
+      `SELECT id, email, role, tenant_id,
+              TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))) AS name
+       FROM users WHERE id = $1::uuid LIMIT 1`,
+      [recipientUserId],
+    );
+    const u = r.rows[0];
+    if (u) {
+      return {
+        recipientLoginEmail: (u.email || extractedLogin || '').toLowerCase() || null,
+        recipientUserId: u.id,
+        recipientRole: u.role || null,
+        recipientTenantId: u.tenant_id || null,
+        recipientName: (u.name || '').trim() || null,
+      };
+    }
+  }
+
+  if (!extractedLogin) {
+    return {
+      recipientLoginEmail: null,
+      recipientUserId: null,
+      recipientRole: null,
+      recipientTenantId: null,
+      recipientName: null,
+    };
+  }
+
+  const r = await query(
+    `SELECT id, email, role, tenant_id,
+            TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))) AS name
+     FROM users
+     WHERE LOWER(email) = $1
+        OR LOWER(NULLIF(TRIM(communication_email), '')) = $1
+     LIMIT 1`,
+    [extractedLogin],
+  );
+  const u = r.rows[0];
+  if (!u) {
+    return {
+      recipientLoginEmail: extractedLogin,
+      recipientUserId: null,
+      recipientRole: null,
+      recipientTenantId: null,
+      recipientName: null,
+    };
+  }
+  return {
+    recipientLoginEmail: (u.email || extractedLogin).toLowerCase(),
+    recipientUserId: u.id,
+    recipientRole: u.role || null,
+    recipientTenantId: u.tenant_id || null,
+    recipientName: (u.name || '').trim() || null,
+  };
+}
+
 /**
  * @param {object} row
  */
 async function persistMailDeliveryLog(row) {
   try {
+    const audit = await lookupRecipientAudit({
+      originalTo: row.originalTo,
+      recipientUserId: row.recipientUserId,
+    });
+    const afterCommunicationTo = row.afterCommunicationTo
+      ? normalizeTo(row.afterCommunicationTo).slice(0, 2000)
+      : null;
     await query(
       `INSERT INTO mail_delivery_logs (
-        context, status, skip_reason, original_to, resolved_to, subject_truncated,
-        error_message, error_code, message_id, smtp_response, user_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::uuid)`,
+        context, status, skip_reason, original_to, after_communication_to, resolved_to,
+        subject_truncated, error_message, error_code, message_id, smtp_response, user_id,
+        recipient_login_email, recipient_user_id, recipient_role, recipient_tenant_id, recipient_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::uuid, $13, $14::uuid, $15, $16::uuid, $17)`,
       [
-        row.context || null,
+        row.context || 'unspecified',
         row.status,
         row.skipReason || null,
         row.originalTo ? normalizeTo(row.originalTo).slice(0, 2000) : null,
+        afterCommunicationTo,
         row.resolvedTo ? normalizeTo(row.resolvedTo).slice(0, 2000) : null,
         row.subject ? String(row.subject).slice(0, 500) : null,
         row.errorMessage ? String(row.errorMessage).slice(0, 4000) : null,
@@ -145,6 +223,11 @@ async function persistMailDeliveryLog(row) {
         row.messageId ? String(row.messageId).slice(0, 500) : null,
         row.smtpResponse ? String(row.smtpResponse).slice(0, 2000) : null,
         row.userId || null,
+        audit.recipientLoginEmail,
+        audit.recipientUserId,
+        audit.recipientRole,
+        audit.recipientTenantId,
+        audit.recipientName,
       ],
     );
   } catch (e) {
@@ -197,6 +280,7 @@ export async function sendStudentWelcomeEmails(p) {
     text,
     context: 'student_welcome',
     userId,
+    recipientUserId: userId,
     skipRecipientRedirect: true,
   });
 
@@ -218,29 +302,42 @@ export async function sendStudentWelcomeEmails(p) {
 }
 
 /**
- * @param {{ to: string | string[], subject: string, text: string, html?: string, context?: string, userId?: string, replyTo?: string, skipCommunicationRouting?: boolean }} opts
- * @param {string} [opts.context] — optional label for logs (e.g. `guest_confirmation`, `student_welcome`)
- * @param {string} [opts.userId] — optional acting user (stored in `mail_delivery_logs.user_id`)
+ * @param {{ to: string | string[], subject: string, text: string, html?: string, context?: string, userId?: string, recipientUserId?: string, replyTo?: string, skipCommunicationRouting?: boolean }} opts
+ * @param {string} [opts.context] — audit label for logs (e.g. `guest_confirmation`, `student_welcome`)
+ * @param {string} [opts.userId] — acting user who triggered the send (stored in `mail_delivery_logs.user_id`)
+ * @param {string} [opts.recipientUserId] — intended recipient user when known (survives account deletion via `recipient_login_email`)
  * @param {boolean} [opts.skipCommunicationRouting] — send to `to` as-is (e.g. YOPmail disposable inbox)
  * @param {boolean} [opts.skipRecipientRedirect] — do not apply OUTBOUND_EMAIL_OVERRIDE / system inbox redirect
  */
 export async function sendMail(opts) {
-  const { context, userId, skipCommunicationRouting, skipRecipientRedirect, replyTo, ...mailOpts } = opts;
+  const {
+    context,
+    userId,
+    recipientUserId,
+    skipCommunicationRouting,
+    skipRecipientRedirect,
+    replyTo,
+    ...mailOpts
+  } = opts;
   const logCtx = context ? `[mail:${context}]` : '[mail]';
   const originalTo = mailOpts.to;
   const platform = await getPlatformSettings();
   const from = formatFrom(platform);
+  const logBase = {
+    context: context || 'unspecified',
+    originalTo,
+    subject: mailOpts.subject,
+    userId,
+    recipientUserId,
+  };
   if (!from) {
     console.warn(`${logCtx} skip: EMAIL_FROM / SMTP_USER not set (no From address)`);
     console.warn(`${logCtx} would-send to=%s subject=%s`, String(originalTo), mailOpts.subject);
     await persistMailDeliveryLog({
-      context,
+      ...logBase,
       status: 'skipped',
       skipReason: 'no_from',
-      originalTo,
       resolvedTo: null,
-      subject: mailOpts.subject,
-      userId,
     });
     return { skipped: true, reason: 'no_from' };
   }
@@ -250,13 +347,10 @@ export async function sendMail(opts) {
     console.warn(`${logCtx} skip: SMTP_USER / SMTP_PASS not set (no transport)`);
     console.warn(`${logCtx} would-send to=%s subject=%s`, String(originalTo), mailOpts.subject);
     await persistMailDeliveryLog({
-      context,
+      ...logBase,
       status: 'skipped',
       skipReason: 'no_smtp_credentials',
-      originalTo,
       resolvedTo: null,
-      subject: mailOpts.subject,
-      userId,
     });
     return { skipped: true, reason: 'no_smtp_credentials' };
   }
@@ -264,6 +358,7 @@ export async function sendMail(opts) {
   const afterCommunication = skipCommunicationRouting
     ? mailOpts.to
     : await routeThroughCommunicationEmails(mailOpts.to);
+  const afterCommunicationTo = afterCommunication;
   if (String(normalizeTo(afterCommunication)) !== String(normalizeTo(originalTo))) {
     console.info(
       `${logCtx} routed to communication email: before=%s after=%s`,
@@ -292,13 +387,11 @@ export async function sendMail(opts) {
     );
     console.warn(`${logCtx} would-send to=%s subject=%s`, String(originalTo), mailOpts.subject);
     await persistMailDeliveryLog({
-      context,
+      ...logBase,
       status: 'skipped',
       skipReason: 'daily_limit_reached',
-      originalTo,
+      afterCommunicationTo,
       resolvedTo: to,
-      subject: mailOpts.subject,
-      userId,
     });
     return {
       skipped: true,
@@ -325,14 +418,12 @@ export async function sendMail(opts) {
       info.response ?? '(none)',
     );
     await persistMailDeliveryLog({
-      context,
+      ...logBase,
       status: 'sent',
-      originalTo,
+      afterCommunicationTo,
       resolvedTo: to,
-      subject: mailOpts.subject,
       messageId: info.messageId,
       smtpResponse: info.response,
-      userId,
     });
     return { sent: true, messageId: info.messageId, response: info.response };
   } catch (err) {
@@ -347,15 +438,13 @@ export async function sendMail(opts) {
       console.error(`${logCtx} stack: %s`, e.stack.split('\n').slice(0, 8).join('\n'));
     }
     await persistMailDeliveryLog({
-      context,
+      ...logBase,
       status: 'failed',
-      originalTo,
+      afterCommunicationTo,
       resolvedTo: to,
-      subject: mailOpts.subject,
       errorMessage: e.message,
       errorCode: e.code != null ? String(e.code) : null,
       smtpResponse: e.response != null ? String(e.response).slice(0, 2000) : null,
-      userId,
     });
     throw err;
   }

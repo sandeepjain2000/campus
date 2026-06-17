@@ -107,6 +107,9 @@ async function __platform_POST() {
             ``,
             `— PlacementHub`,
           ].join('\n'),
+          context: 'user_data_export',
+          userId: session.user.id,
+          recipientUserId: session.user.id,
         });
       } catch (mailErr) {
         console.warn('data-export notify email', mailErr);

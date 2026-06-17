@@ -38,6 +38,8 @@ export async function notifyFeedbackReply({
         subject: title,
         text: `${greeting}\n\nThe PlacementHub team replied to your feedback:\n\n${preview}\n\nSign in to view the full thread: ${process.env.NEXTAUTH_URL || ''}/dashboard/feedback`,
         html: `<p>${greeting}</p><p>The PlacementHub team replied to your feedback:</p><blockquote style="border-left:3px solid #6366f1;padding-left:12px;color:#334155">${preview.replace(/\n/g, '<br>')}</blockquote><p><a href="${process.env.NEXTAUTH_URL || ''}/dashboard/feedback">View your feedback</a></p>`,
+        context: 'feedback_reply',
+        recipientUserId: submitterUserId || undefined,
       });
     } catch (e) {
       console.error('notifyFeedbackReply: email failed', e);

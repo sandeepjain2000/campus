@@ -26,33 +26,45 @@ async function __platform_GET(request) {
     if (search) {
       params.push(`%${search}%`);
       clauses.push(`(
-        context ILIKE $${params.length} OR 
-        original_to ILIKE $${params.length} OR 
-        resolved_to ILIKE $${params.length} OR 
-        subject_truncated ILIKE $${params.length} OR 
-        error_message ILIKE $${params.length}
+        m.context ILIKE $${params.length} OR
+        m.original_to ILIKE $${params.length} OR
+        m.after_communication_to ILIKE $${params.length} OR
+        m.resolved_to ILIKE $${params.length} OR
+        m.recipient_login_email ILIKE $${params.length} OR
+        m.recipient_name ILIKE $${params.length} OR
+        m.recipient_role ILIKE $${params.length} OR
+        m.subject_truncated ILIKE $${params.length} OR
+        m.error_message ILIKE $${params.length}
       )`);
     }
 
     if (statusFilter) {
       params.push(statusFilter);
-      clauses.push(`status = $${params.length}`);
+      clauses.push(`m.status = $${params.length}`);
     }
 
     const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
 
     const countRes = await query(
-      `SELECT count(*)::int FROM mail_delivery_logs ${whereClause}`,
+      `SELECT count(*)::int FROM mail_delivery_logs m ${whereClause}`,
       params
     );
     const totalCount = countRes.rows[0]?.count || 0;
 
     params.push(limit, offset);
     const sql = `
-      SELECT id, created_at, context, status, skip_reason, original_to, resolved_to, subject_truncated, error_message, error_code, message_id, smtp_response, user_id
-      FROM mail_delivery_logs
+      SELECT
+        m.id, m.created_at, m.context, m.status, m.skip_reason,
+        m.original_to, m.after_communication_to, m.resolved_to, m.subject_truncated,
+        m.error_message, m.error_code, m.message_id, m.smtp_response, m.user_id,
+        m.recipient_login_email, m.recipient_user_id, m.recipient_role,
+        m.recipient_tenant_id, m.recipient_name,
+        u.email AS acting_user_email,
+        TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS acting_user_name
+      FROM mail_delivery_logs m
+      LEFT JOIN users u ON u.id = m.user_id
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY m.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
 

@@ -106,14 +106,14 @@
     {
       "phase": "EMPLOYER",
       "label": "Set internship start date",
-      "observe": "Start date shows 01 Jun 2026.",
-      "action": { "type": "fillSegmentedDate", "nearLabel": "Start date", "value": "2026-06-01" }
+      "observe": "Start date shows 01 Jul 2026.",
+      "action": { "type": "fillSegmentedDate", "nearLabel": "Start date", "value": "2026-07-01" }
     },
     {
       "phase": "EMPLOYER",
       "label": "Set internship end date",
-      "observe": "End date shows 31 Aug 2026 (~3 months).",
-      "action": { "type": "fillSegmentedDate", "nearLabel": "End date", "value": "2026-08-31" }
+      "observe": "End date shows 31 Dec 2026.",
+      "action": { "type": "fillSegmentedDate", "nearLabel": "End date", "value": "2026-12-31" }
     },
     {
       "phase": "EMPLOYER",
@@ -219,12 +219,18 @@
     },
     {
       "phase": "COLLEGE",
+      "label": "Switch to list view",
+      "observe": "Table rows with Actions column — approve icon is easier to target in list view.",
+      "action": { "type": "click", "role": "button", "name": "List view" }
+    },
+    {
+      "phase": "COLLEGE",
       "label": "Approve guided internship for campus",
-      "observe": "Row with {{marker}} — click Approve (skipped if already Approved from a prior run).",
+      "observe": "Row with {{marker}} — click Approve for campus (green check icon; skipped if already Approved).",
       "action": {
         "type": "clickInRow",
         "rowText": "{{marker}}",
-        "buttonName": "Approve",
+        "buttonName": "Approve for campus",
         "skipIfMissing": true
       }
     },

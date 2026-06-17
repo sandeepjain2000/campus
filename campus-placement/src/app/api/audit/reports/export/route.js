@@ -127,6 +127,8 @@ async function __platform_POST(request) {
         to: requestedEmail,
         subject: 'Campus Placement audit report is ready',
         text: `Your audit report for ${from} to ${to} (${scopeLabel}) is ready.\n\nDownload link:\n${downloadUrl}\n\nThis link is time-limited for security.`,
+        context: 'audit_report_export',
+        userId: session.user.id,
       });
 
       return NextResponse.json({

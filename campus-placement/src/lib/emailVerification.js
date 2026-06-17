@@ -63,5 +63,6 @@ export async function sendSignupVerificationEmail({ to, firstName, token, role }
     subject: `Confirm your registration on PlacementHub`,
     text: `Hello ${firstName || 'there'},\n\nThank you for starting your registration on PlacementHub. To complete the setup process and confirm your email address, please visit the verification link below (expires in 48 hours):\n\n${link || '(link unavailable — set NEXTAUTH_URL)'}\n\n${roleLine}\n\nIf you did not initiate this request, you can safely ignore this email.\n\nBest regards,\nPlacementHub Team`,
     html,
+    context: 'email_verification',
   });
 }

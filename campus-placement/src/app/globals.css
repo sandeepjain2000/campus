@@ -1723,6 +1723,38 @@ a.admin-entity-name-btn {
   min-width: 980px;
 }
 
+.college-internships-col-title {
+  width: 22%;
+}
+
+.college-internships-col-employer {
+  width: 14%;
+}
+
+.college-internships-col-type {
+  width: 10%;
+}
+
+.college-internships-col-stipend {
+  width: 12%;
+}
+
+.college-internships-col-cgpa {
+  width: 6%;
+}
+
+.college-internships-col-openings {
+  width: 7%;
+}
+
+.college-internships-col-posted {
+  width: 10%;
+}
+
+.college-internships-col-campus {
+  width: 11%;
+}
+
 .college-internships-col-actions {
   width: 6.5rem;
 }
