@@ -4,6 +4,7 @@
 
 import { validateFieldOrError, FIELD_IDS, validateSalaryPair, validateStudentBacklogPair } from '@/lib/inputConstraints';
 import { validateEducationDetails, validateStudentProfileEmails } from '@/lib/validators';
+import { coerceEmployerMinCgpaInput } from '@/lib/employerJobDisplay';
 
 export { FIELD_IDS };
 
@@ -89,7 +90,7 @@ export function validateEmployerJobPayload({ salaryMin, salaryMax, minCgpa, vaca
   const { minId, maxId } = employerCompensationFieldIds(jobType);
   return rejectIfInvalid([
     validateSalaryPair(salaryMin, salaryMax, minId, maxId),
-    validateFieldOrError(FIELD_IDS.EMPLOYER_MIN_CGPA, minCgpa),
+    validateFieldOrError(FIELD_IDS.EMPLOYER_MIN_CGPA, coerceEmployerMinCgpaInput(minCgpa)),
     vacancies != null && vacancies !== ''
       ? validateFieldOrError(FIELD_IDS.EMPLOYER_VACANCIES, vacancies)
       : null,

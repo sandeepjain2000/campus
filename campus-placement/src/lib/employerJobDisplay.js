@@ -4,23 +4,35 @@
 
 import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
 
+/** Floor used when min CGPA is zero or invalid (legacy seed / bad input). */
+export const DEFAULT_EMPLOYER_MIN_CGPA = 5;
+
+/** Coerce zero/negative before validation; empty stays optional. */
+export function coerceEmployerMinCgpaInput(raw) {
+  if (raw == null || raw === '') return raw;
+  const n = Number(raw);
+  if (Number.isFinite(n) && n <= 0) return DEFAULT_EMPLOYER_MIN_CGPA;
+  return raw;
+}
+
 /** @param {unknown} raw */
 export function normalizeEmployerMinCgpa(raw) {
   if (raw == null || raw === '') return null;
   const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return null;
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_EMPLOYER_MIN_CGPA;
   return n;
 }
 
 /**
  * Validate then normalize min CGPA for create/update payloads.
- * Rejects 0 and values above 10; empty is allowed (stored as null).
+ * Zero is coerced to {@link DEFAULT_EMPLOYER_MIN_CGPA}; empty is stored as null.
  * @returns {{ error: string | null, value: number | null }}
  */
 export function resolveEmployerMinCgpaForSubmit(minCgpa) {
-  const err = validateFieldOrError(FIELD_IDS.EMPLOYER_MIN_CGPA, minCgpa);
+  const input = coerceEmployerMinCgpaInput(minCgpa);
+  const err = validateFieldOrError(FIELD_IDS.EMPLOYER_MIN_CGPA, input);
   if (err) return { error: err, value: null };
-  return { error: null, value: parseEmployerMinCgpaForDb(minCgpa) };
+  return { error: null, value: parseEmployerMinCgpaForDb(input) };
 }
 
 /** @param {unknown} raw */

@@ -167,7 +167,7 @@ async function __platform_POST(req) {
         'This uses keyword matching from a fixed list (not full AI parsing).',
       ];
       if (!aiConfigured) {
-        parts.push(`${llmConfigurationHint()} Smart AI extraction is disabled.`);
+        parts.push(llmConfigurationHint());
       } else if (aiError) {
         parts.push(`AI extraction failed: ${aiError}`);
       } else if (aiConfigured && !meta.aiUsed) {

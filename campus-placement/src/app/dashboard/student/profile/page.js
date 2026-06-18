@@ -1455,7 +1455,7 @@ export default function StudentProfilePage() {
                         ? suggestSkillsFeedback.meta.aiUsed
                           ? `AI extraction was used (${suggestSkillsFeedback.meta.aiLabel || suggestSkillsFeedback.meta.aiProvider || 'LLM'}). `
                           : `AI is configured (${suggestSkillsFeedback.meta.aiLabel || suggestSkillsFeedback.meta.aiProvider || 'LLM'}) but keyword matching was used. `
-                        : 'AI is not configured (set NVIDIA_API_KEY or OPENAI_API_KEY on the server). '}
+                        : 'Smart AI suggestions are not available on this site yet. '}
                     </p>
                   ) : null}
                 </div>

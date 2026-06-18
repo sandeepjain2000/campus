@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, Copy, Check } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import { getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
 
 const INITIAL_FORM = {
   collegeName: '',
@@ -44,6 +45,11 @@ export default function AdminAddCollegePage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const passwordErr = getPasswordValidationError(form.adminPassword);
+    if (passwordErr) {
+      setError(passwordErr);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     try {
@@ -275,8 +281,10 @@ export default function AdminAddCollegePage() {
               onChange={onChange('adminPassword')}
               required
               autoComplete="new-password"
-              placeholder="Min 8 chars, upper, lower, number"
+              minLength={PASSWORD_MIN_LENGTH}
+              placeholder={PASSWORD_REQUIREMENTS_HINT}
             />
+            <span className="form-hint">{PASSWORD_REQUIREMENTS_HINT}</span>
           </div>
         </div>
 

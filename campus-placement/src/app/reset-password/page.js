@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -25,6 +26,11 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+    const passwordErr = getPasswordValidationError(password);
+    if (passwordErr) {
+      setError(passwordErr);
       return;
     }
     
@@ -89,8 +95,11 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                 />
+                <span className="form-hint" style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                  {PASSWORD_REQUIREMENTS_HINT}
+                </span>
               </div>
               
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
@@ -103,7 +112,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                 />
               </div>
 

@@ -19,6 +19,8 @@ export const DEVELOPER_PAGE_TOC = [
   { id: 'use-cases-more', label: 'More use cases', hint: '10 additional flows', href: '/developer/use-cases-more' },
   { id: 'use-cases-user-testing', label: 'User testing', hint: 'Email, admin, platform QA', href: '/developer/use-cases-user-testing' },
   { id: 'runner-alerts', label: 'Runner alerts', hint: 'Recent UI / menu changes' },
+  { id: 'pending', label: 'Pending backlog', hint: 'Bugs, features, wish list' },
+  { id: 'production-hardening', label: 'Production hardening', hint: 'Pre-launch security & QA' },
   { id: 'email-demo', label: 'Email & demo mail', hint: 'YOPmail, workflows preview' },
   { id: 'e2e-roles', label: 'Internship E2E roles', hint: 'Who does what in full cycle' },
   { id: 'panel', label: 'Next button', hint: 'How the screen tag works' },
@@ -581,11 +583,140 @@ export const RUNNER_CHANGE_ALERTS = [
   },
 ];
 
-/** Demo email / notification pointers for QA (landing banner + /email-notifications). */
+/**
+ * Pre-launch security, RBAC QA, and defense-in-depth — not blocking sandbox workflow.
+ * category: security | rbac | ops
+ */
+export const DEVELOPER_PRODUCTION_HARDENING = {
+  intro:
+    'Items to verify or ship before production. Campus switching is disabled in the UI; these are API/storage edge cases and pen-test follow-ups — not day-to-day sandbox blockers.',
+  items: [
+    {
+      id: 'employer-change-campus-rbac',
+      category: 'rbac',
+      title: 'Employer campus scope — manual QA + optional API hardening',
+      detail:
+        'Campus switcher disabled (“All campuses” top bar; Use campus buttons off). Server writes check employer_approvals. Before launch: script QA — forge campusId in storage/API for an unapproved tenant → expect 403 or empty, never another employer’s rows. Optional: assertEmployerApprovedCampus on GET /api/employer/interviews; re-validate activeCampus client-side on overview.',
+      source: 'Exploration F29',
+    },
+  ],
+};
+
+/**
+ * Backlog from exploration review + product deferrals — not scheduled for immediate work.
+ * category: bug | feature | wishlist | security | ux | cleanup
+ */
+export const DEVELOPER_PENDING_BACKLOG = {
+  intro:
+    'Tracked items from sandbox QA / exploration (Jun 2026). Implemented or dismissed items are omitted. Use this as the feature wish list, bug list, and “handle later” queue.',
+  items: [
+    {
+      id: 'employer-dashboard-weekly-applications',
+      category: 'feature',
+      title: 'Employer overview — real weekly applications delta + full applicant totals',
+      detail:
+        'Wire a real “this week” count (or remove badge permanently). Include program_applications (internships, jobs, projects) in Total Applications, not only placement drive applications. API: /api/employer/dashboard.',
+      source: 'Exploration F24',
+      decision: 'We can handle it later. I don\'t want to do it right now.',
+    },
+    {
+      id: 'employer-offers-acceptance-rate-na',
+      category: 'bug',
+      title: 'Employer overview — show N/A when zero offers extended',
+      detail:
+        'Fixed Jun 2026: badge shows “No offers yet” when offersExtended is 0; % only when offers exist.',
+      source: 'Exploration F25',
+      decision: 'Done',
+    },
+    {
+      id: 'ai-title-validation',
+      category: 'feature',
+      title: 'AI validation for meaningful job / company / listing names',
+      detail:
+        'Replace or augment min-length title rules so garbage like “ABCD” or “DATA” is rejected. Programmatic charset rules alone are insufficient for sandbox data quality.',
+      source: 'Exploration F15, F19',
+      decision: 'Deferred — AI validation later, not programmatic-only.',
+    },
+    {
+      id: 'college-approve-notification-titles',
+      category: 'ux',
+      title: 'Sanitize “New internship” notification titles on college approve',
+      detail:
+        'jobPostingCollegeApproval.js still interpolates raw posting title. Add fallback copy or validation when title is weak (legacy seed data).',
+      source: 'Exploration F19',
+    },
+    {
+      id: 'remove-data-entry-hub',
+      category: 'cleanup',
+      title: 'Remove /data-entry hub entirely',
+      detail:
+        'Developer Notes + demo APIs are sufficient. /data-entry is password-gated (same as /developer) but could be deleted once purge/seed flows live only under /developer.',
+      source: 'Exploration F22 · product decision Jun 2026',
+    },
+    {
+      id: 'hide-dev-screen-ids-production',
+      category: 'cleanup',
+      title: 'Hide S-xx screen ID pills in production',
+      detail: 'Set NEXT_PUBLIC_SHOW_DEV_SCREEN_IDS=false at launch. Intentional for pre-launch QA on all roles.',
+      source: 'Exploration F8, F26',
+    },
+    {
+      id: 'branch-eligibility-taxonomy',
+      category: 'feature',
+      title: 'Cross-college branch taxonomy before per-college eligibility rules',
+      detail:
+        'Branch matching is off (BRANCH_ELIGIBILITY_MATCHING_ENABLED=false). Remove or hide misleading “All eligible branches” UI when a common denominator taxonomy exists.',
+      source: 'Exploration F14',
+    },
+    {
+      id: 'export-rate-limiting-security',
+      category: 'security',
+      title: 'Rate limiting / pen-test hardening for exports and bulk actions',
+      detail: 'Multiple same-day exports are audit-by-design; abuse controls are a separate security project.',
+      source: 'Exploration F12',
+    },
+    {
+      id: 'assessment-uploads-duplicate-nav',
+      category: 'ux',
+      title: 'Assessment uploads listed in two menu sections',
+      detail:
+        'Fixed in prior menu reorg: Assessment uploads (CSV) appears only under 👥 Recruitment & Selection. Candidate Pipeline is Applications + Offers only; Assessment map lives under Settings.',
+      source: 'Exploration F27',
+      decision: 'Done',
+    },
+    {
+      id: 'assessment-terminology-drift',
+      category: 'ux',
+      title: 'Assessment naming — Hiring Assessment vs map vs uploads',
+      detail:
+        'Employer menu uses Hiring Results Dashboard (read), Assessment uploads (CSV), Assessment Update Online (write), Assessment map (Settings labels). College keeps Hiring Assessment (read-only mirror). Stale employer “Hiring Assessment” copy on Interview Scheduling fixed Jun 2026.',
+      source: 'Exploration F28',
+      decision: 'Done',
+    },
+    {
+      id: 'student-registration-dead-code',
+      category: 'cleanup',
+      title: 'Remove dead student self-registration UI',
+      detail: 'Students do not self-register. RegisterJobAidPanel / student register path obsolete; /register is employer + college admin only.',
+      source: 'Exploration F1, F2',
+    },
+    {
+      id: 'robots-sitemap',
+      category: 'wishlist',
+      title: 'Sitemap.xml (robots.txt added)',
+      detail:
+        'public/robots.txt — disallows /dashboard, /developer, /data-entry, /api. Sitemap still open: add public/sitemap.xml or src/app/sitemap.js when marketing URL is fixed.',
+      source: 'Exploration recon',
+      decision: 'robots.txt done Jun 2026',
+    },
+  ],
+};
+
+/** Demo email / notification pointers for QA (landing yopmail banner + in-app alerts). */
 export const EMAIL_DEMO_NOTES = [
   'Disposable inbox for system mail in demos: placementhub@yopmail.com — check at https://yopmail.com/',
   'Data Tester seeded users use @placementhub.test (not YOPmail); password Admin@123.',
-  'Email workflows preview (no mail sent): Landing → Demo Tools → Email workflows, or /email-notifications.',
+  'Student reminder / email copy preview (no mail sent): /dashboard/student/reminders after login.',
   'Super admin → Email delivery logs: search by recipient login email, context, or subject. Each row stores original → communication routing → final SMTP.',
   'Mail contexts for QA: student_selection, registration_approved, student_welcome, password_reset, email_verification, audit_report_export, feedback_reply, login_support — see User testing use cases.',
   'CLI: node scripts/query_mail_logs.js <email-or-context> from repo root (reads .env.local DATABASE_URL).',

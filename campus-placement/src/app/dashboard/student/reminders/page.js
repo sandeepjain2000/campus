@@ -6,6 +6,8 @@ import useSWR from 'swr';
 import { ArrowLeft, Mail, CalendarClock, Building2, Bell } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import PageError from '@/components/PageError';
+import DriveVenueUnconfirmedWarning from '@/components/student/DriveVenueUnconfirmedWarning';
+import { formatDriveVenueForStudent } from '@/lib/driveVenueWarning';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -49,7 +51,11 @@ export default function StudentEmailRemindersPage() {
         id: drive.id,
         title: `${drive.company} drive`,
         when: `${describeWhen(drive.parsedDate)} · ${formatDate(drive.date)}`,
-        detail: `${drive.role} at ${drive.venue || 'TBD'}${drive.applied ? ' · You have already applied.' : ''}`,
+        role: drive.role,
+        venue: drive.venue,
+        date: drive.date,
+        applied: drive.applied,
+        detail: `${drive.role} · Venue: ${formatDriveVenueForStudent(drive.venue)}${drive.applied ? ' · You have already applied.' : ''}`,
       }));
   }, [drives]);
 
@@ -128,6 +134,7 @@ export default function StudentEmailRemindersPage() {
               <p className="text-sm" style={{ margin: '0.5rem 0 0', lineHeight: 1.5 }}>
                 {r.detail}
               </p>
+              <DriveVenueUnconfirmedWarning venue={r.venue} driveDate={r.date} />
             </div>
           </div>
         ))}

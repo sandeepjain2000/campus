@@ -181,8 +181,12 @@ export function isLlmChatConfigured() {
   return buildLlmAttemptChain().length > 0;
 }
 
+/** User-facing copy when LLM / smart AI is not configured (never expose env var names). */
+export const LLM_UNAVAILABLE_USER_MESSAGE =
+  'Smart AI features are not available on this site yet.';
+
 export function llmConfigurationHint() {
-  return 'Set NVIDIA_API_KEY, NVIDIA_KEYS_DIR, or OPENAI_API_KEY on the server (NVIDIA keys are tried first).';
+  return LLM_UNAVAILABLE_USER_MESSAGE;
 }
 
 /**

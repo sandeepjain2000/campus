@@ -13,6 +13,7 @@ import { assertActiveEmployerTieUp } from '@/lib/employerTieUp';
 import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
 import { syncPlacementDriveRegisteredCount, syncPlacementDriveSelectedCount } from '@/lib/employerApplicationCounts';
 import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
+import { notifyStudentApplicationSubmitted } from '@/lib/studentApplicationSubmittedNotify';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -255,6 +256,31 @@ async function __platform_POST(req) {
       }
 
       await syncPlacementDriveRegisteredCount(drive_id);
+
+      try {
+        const driveInfo = await query(
+          `SELECT d.title, ep.company_name
+           FROM placement_drives d
+           JOIN employer_profiles ep ON ep.id = d.employer_id
+           WHERE d.id = $1::uuid
+           LIMIT 1`,
+          [drive_id],
+        );
+        const driveRow = driveInfo.rows[0];
+        const firstName = String(session.user.name || '').trim().split(/\s+/)[0] || '';
+        await notifyStudentApplicationSubmitted({
+          studentUserId: userId,
+          email: session.user.email,
+          firstName,
+          companyName: driveRow?.company_name,
+          roleTitle: driveRow?.title,
+          jobType: 'placement_drive',
+          applicationId: ins.rows[0]?.id,
+          sourceKind: 'drive',
+        });
+      } catch (notifyErr) {
+        console.error('Failed to notify student of drive application submission', notifyErr);
+      }
 
       return NextResponse.json({ success: true, message: 'Application submitted successfully' });
     } catch (dbError) {

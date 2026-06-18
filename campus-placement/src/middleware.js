@@ -14,6 +14,12 @@ import {
   EMPLOYER_ALUMNI_JOBS_PATH,
   LEGACY_EMPLOYER_JOBS_PATH,
 } from '@/lib/employerAlumniRoutes';
+import {
+  DEV_NOTES_COOKIE,
+  isDeveloperNotesPublicPath,
+  requiresDevNotesUnlock,
+  verifyDevNotesSessionToken,
+} from '@/lib/developerNotesAuth';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -62,7 +68,7 @@ function withNoStore(response) {
 /**
  * Middleware enforces:
  *  1. Placement APIs — no-store so purge/list screens refresh immediately
- *  2. /data-entry — open (demo hub); individual /api/data-entry/* routes enforce auth as needed
+ *  2. /developer & /data-entry — shared team-password gate (unlock cookie)
  *  3. /login — authenticated users are redirected to their home
  *  4. /dashboard/* — each role can only reach its own prefix (or shared routes)
  */
@@ -73,8 +79,19 @@ export default async function proxy(request) {
     return appendLegacyCookieClearance(withNoStore(NextResponse.next()));
   }
 
-  // ── /data-entry — public demo tools from landing; APIs still gate writes ───
-  if (pathname.startsWith('/data-entry')) {
+  // ── /developer & /data-entry — shared password gate (bcrypt + signed cookie) ─
+  if (requiresDevNotesUnlock(pathname)) {
+    const token = request.cookies.get(DEV_NOTES_COOKIE)?.value;
+    const ok = await verifyDevNotesSessionToken(token);
+    if (!ok) {
+      const unlock = new URL('/developer/unlock', request.url);
+      unlock.searchParams.set('from', pathname);
+      return appendLegacyCookieClearance(NextResponse.redirect(unlock));
+    }
+    return appendLegacyCookieClearance(NextResponse.next());
+  }
+
+  if (isDeveloperNotesPublicPath(pathname)) {
     return appendLegacyCookieClearance(NextResponse.next());
   }
 
@@ -185,6 +202,8 @@ export const config = {
     '/sign-in',
     '/data-entry',
     '/data-entry/:path*',
+    '/developer',
+    '/developer/:path*',
     '/dashboard/:path*',
   ],
 };

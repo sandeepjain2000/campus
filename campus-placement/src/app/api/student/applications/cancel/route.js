@@ -46,7 +46,7 @@ async function __platform_POST(req) {
     // Withdraw the application
     await query(`
       UPDATE applications 
-      SET status = 'withdrawn', withdrawal_reason = $1, updated_at = NOW()
+      SET status = 'withdrawn', current_round = NULL, withdrawal_reason = $1, updated_at = NOW()
       WHERE id = $2
     `, [withdrawal_reason || 'Student cancelled', application_id]);
 

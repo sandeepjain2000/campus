@@ -101,10 +101,16 @@ export default function StudentOverviewPage() {
           />
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <span className="badge badge-amber badge-dot">Add Skills</span>
-          <span className="badge badge-amber badge-dot">Upload Resume</span>
-          <span className="badge badge-green badge-dot">Education ✓</span>
-          <span className="badge badge-green badge-dot">Personal Info ✓</span>
+          {(stats.profileCompletionItems || []).map((item) => (
+            <Link
+              key={item.id}
+              href="/dashboard/student/profile"
+              className={`badge ${item.complete ? 'badge-green' : 'badge-amber'} badge-dot`}
+              style={{ textDecoration: 'none' }}
+            >
+              {item.complete ? `${item.label} ✓` : item.incompleteLabel}
+            </Link>
+          ))}
         </div>
       </div>
 

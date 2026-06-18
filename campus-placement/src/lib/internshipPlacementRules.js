@@ -4,6 +4,9 @@ import {
   MAX_INTERNSHIPS_PER_STUDENT,
   STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE,
 } from '@/lib/internshipPlacementMessages';
+import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
+import { normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
+import { resolveInternshipDatesFromRow } from '@/lib/internshipPostingMeta';
 
 export { MAX_INTERNSHIPS_PER_STUDENT, STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE };
 
@@ -84,9 +87,6 @@ export async function assertStudentMayApplyToInternship(studentId, jobId = null)
   return { ok: false, error: STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE };
 }
 
-import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
-import { resolveInternshipDatesFromRow } from '@/lib/internshipPostingMeta';
-
 /** Map DB row to student opportunity list item (shared shape). */
 export function mapProgramOpportunityRow(r) {
   const jobType = r.job_type;
@@ -101,7 +101,7 @@ export function mapProgramOpportunityRow(r) {
     isAlumniJob,
     salaryMin: r.salary_min != null ? Number(r.salary_min) : null,
     salaryMax: r.salary_max != null ? Number(r.salary_max) : null,
-    minCgpa: isAlumniJob ? null : r.min_cgpa != null ? Number(r.min_cgpa) : null,
+    minCgpa: isAlumniJob ? null : normalizeEmployerMinCgpa(r.min_cgpa),
     maxBacklogs: isAlumniJob ? null : r.max_backlogs != null ? Number(r.max_backlogs) : null,
     eligibleBranches: isAlumniJob
       ? null

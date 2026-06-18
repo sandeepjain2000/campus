@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Terminal, Copy, Check } from 'lucide-react';
+import { ArrowLeft, BookOpen, Terminal, Copy, Check, LogOut } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import DevScreenTag from '@/components/DevScreenTag';
 import DemoDataTester from '@/components/demo/DemoDataTester';
@@ -25,6 +25,8 @@ import {
   DEMO_LOGINS,
   DEMO_PASSWORD,
   RUNNER_CHANGE_ALERTS,
+  DEVELOPER_PENDING_BACKLOG,
+  DEVELOPER_PRODUCTION_HARDENING,
   EMAIL_DEMO_NOTES,
   CLEANUP_OVERVIEW,
   CLEANUP_COMMANDS,
@@ -76,6 +78,15 @@ function resolveDemoFocusFromHash(hash) {
 export default function DeveloperPage() {
   const [demoFocus, setDemoFocus] = useState('apis');
 
+  const onLockDeveloperNotes = useCallback(async () => {
+    try {
+      await fetch('/api/developer-notes/logout', { method: 'POST' });
+    } catch {
+      /* ignore */
+    }
+    window.location.href = '/developer/unlock';
+  }, []);
+
   useEffect(() => {
     const applyHash = () => {
       const focus = resolveDemoFocusFromHash(window.location.hash);
@@ -102,6 +113,14 @@ export default function DeveloperPage() {
             <ArrowLeft size={16} aria-hidden /> Landing
           </Link>
           <div className="dev-notes-header-actions">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onLockDeveloperNotes}
+              title="Lock Developer Notes"
+            >
+              <LogOut size={14} aria-hidden /> Lock
+            </button>
             <ThemeToggleButton />
             <a href="#demo-apis" className="btn btn-secondary btn-sm">
               Demo APIs
@@ -253,6 +272,79 @@ export default function DeveloperPage() {
               </ul>
             </div>
           ))}
+        </Section>
+
+        <Section id="pending" title="Pending backlog" tone="warning">
+          <p className="dev-notes-detail" style={{ marginTop: 0 }}>
+            {DEVELOPER_PENDING_BACKLOG.intro}
+          </p>
+          <div className="dev-notes-table-wrap">
+            <table className="dev-notes-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Item</th>
+                  <th>Detail</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DEVELOPER_PENDING_BACKLOG.items.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <code className="dev-notes-inline-code">{item.category}</code>
+                    </td>
+                    <td>
+                      <strong>{item.title}</strong>
+                      {item.decision ? (
+                        <p className="dev-notes-muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem' }}>
+                          Decision: {item.decision}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td>{item.detail}</td>
+                    <td className="dev-notes-muted" style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                      {item.source}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        <Section id="production-hardening" title="Production hardening" tone="warning">
+          <p className="dev-notes-detail" style={{ marginTop: 0 }}>
+            {DEVELOPER_PRODUCTION_HARDENING.intro}
+          </p>
+          <div className="dev-notes-table-wrap">
+            <table className="dev-notes-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Item</th>
+                  <th>Detail</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DEVELOPER_PRODUCTION_HARDENING.items.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <code className="dev-notes-inline-code">{item.category}</code>
+                    </td>
+                    <td>
+                      <strong>{item.title}</strong>
+                    </td>
+                    <td>{item.detail}</td>
+                    <td className="dev-notes-muted" style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                      {item.source}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Section>
 
         <Section id="email-demo" title="Email &amp; demo mail" tone="info">

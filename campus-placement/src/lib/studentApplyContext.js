@@ -1,5 +1,10 @@
 /**
  * Normalize student apply context from program-opportunities / drives API payloads.
+ */
+
+import { normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
+
+/**
  * @param {Record<string, unknown> | null | undefined} data
  */
 export function buildStudentApplyContext(data) {
@@ -36,11 +41,7 @@ export function programOpportunityFromRow(row) {
       status: row.status || 'published',
     };
   }
-  const cgpaRaw = row.minCgpa ?? row.cgpa;
-  const minCgpa =
-    cgpaRaw != null && cgpaRaw !== '' && Number(cgpaRaw) > 0 && !Number.isNaN(Number(cgpaRaw))
-      ? Number(cgpaRaw)
-      : null;
+  const minCgpa = normalizeEmployerMinCgpa(row.minCgpa ?? row.cgpa);
   const branches = row.eligibleBranches ?? (Array.isArray(row.branch) ? row.branch : null);
   return {
     minCgpa,

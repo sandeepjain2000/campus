@@ -411,7 +411,7 @@ export default function EmployerInterviewsPage() {
         </div>
         <div className="page-header-actions">
           <Link href="/dashboard/employer/hiring-assessment" className="btn btn-secondary">
-            Hiring Assessment →
+            Hiring Results Dashboard →
           </Link>
           <ExportCsvSplitButton
             filenameBase="employer_interview_schedule"
@@ -444,11 +444,19 @@ export default function EmployerInterviewsPage() {
         style={{ marginBottom: '1rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border-default)' }}
       >
         <p className="text-sm text-secondary" style={{ margin: 0 }}>
-          Round results from your CSV uploads are edited under Assessment uploads;{' '}
-          <Link href="/dashboard/employer/hiring-assessment" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-            Hiring Assessment
+          Round results are entered under{' '}
+          <Link href="/dashboard/employer/assessment-uploads" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+            Assessment uploads (CSV)
           </Link>{' '}
-          is a read-only campus summary and export of that same data.
+          or{' '}
+          <Link href="/dashboard/employer/assessment-update-online" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+            Assessment Update Online
+          </Link>
+          ;{' '}
+          <Link href="/dashboard/employer/hiring-assessment" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+            Hiring Results Dashboard
+          </Link>{' '}
+          is the read-only campus summary and export of that data.
         </p>
       </div>
 

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DEFAULT_PHONE_DIAL_CODE, PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
-import { validatePhone, validateEmail, validatePersonName, validateBatchYear } from '@/lib/validators';
+import { validatePhone, validateEmail, validatePersonName, validateBatchYear, getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
 import { isRegistrationJobAidEnabled } from '@/lib/registrationJobAid';
 import RegisterJobAidPanel from '@/components/auth/RegisterJobAidPanel';
 import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
@@ -48,6 +48,7 @@ export default function RegisterPage() {
     campusBindingToken: '',
   });
   const [error, setError] = useState('');
+  const [showSignInLink, setShowSignInLink] = useState(false);
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaAnswer, setCaptchaAnswer] = useState('');
@@ -65,6 +66,7 @@ export default function RegisterPage() {
     setCaptchaKey((k) => k + 1);
     setCaptchaVerified(false);
     setError('');
+    setShowSignInLink(false);
   };
 
   const refreshCaptchaAfterFailure = () => {
@@ -116,9 +118,14 @@ export default function RegisterPage() {
     { id: 'college_admin', label: 'College Admin', icon: '🏫', desc: 'Manage your institution\'s placements' },
   ];
 
+  const clearRegistrationPasswords = () => {
+    setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setShowSignInLink(false);
 
     const fnErr = validatePersonName(formData.firstName, { required: true, label: 'First name' });
     if (fnErr) {
@@ -136,6 +143,11 @@ export default function RegisterPage() {
     }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+    const passwordErr = getPasswordValidationError(formData.password);
+    if (passwordErr) {
+      setError(passwordErr);
       return;
     }
 
@@ -173,12 +185,11 @@ export default function RegisterPage() {
         data = {};
       }
       if (!res.ok) {
-        const msg = data.error || `Registration failed (${res.status}). Please try again.`;
-        setError(
-          data.code === 'ACCOUNT_ALREADY_REGISTERED' || res.status === 409
-            ? `${msg} You can sign in from the login page if you already have access.`
-            : msg,
-        );
+        const isConflict = data.code === 'ACCOUNT_ALREADY_REGISTERED' || res.status === 409;
+        const msg = data.error || 'Registration failed. Please try again.';
+        clearRegistrationPasswords();
+        setShowSignInLink(isConflict);
+        setError(msg);
         if (res.status === 400 && String(msg).toLowerCase().includes('verification')) {
           refreshCaptchaAfterFailure();
           setStep(1);
@@ -192,6 +203,8 @@ export default function RegisterPage() {
       });
       return;
     } catch (err) {
+      clearRegistrationPasswords();
+      setShowSignInLink(false);
       setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -250,6 +263,14 @@ export default function RegisterPage() {
               marginBottom: '1rem'
             }}>
               {error}
+              {showSignInLink ? (
+                <p style={{ margin: '0.5rem 0 0', color: 'var(--text-secondary)' }}>
+                  <Link href="/login" style={{ fontWeight: 700, color: 'var(--primary-600)' }}>
+                    Sign in
+                  </Link>
+                  {' if you already have an account.'}
+                </p>
+              ) : null}
             </div>
           )}
 
@@ -552,9 +573,9 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Password <span className="required">*</span></label>
-                <input type="password" className="form-input" placeholder="Min 8 characters" value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })} required />
-                <span className="form-hint">Must contain uppercase, lowercase, and a number</span>
+                <input type="password" className="form-input" placeholder={`Min ${PASSWORD_MIN_LENGTH} characters`} value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })} required minLength={PASSWORD_MIN_LENGTH} />
+                <span className="form-hint">{PASSWORD_REQUIREMENTS_HINT}</span>
               </div>
 
               <div className="form-group">

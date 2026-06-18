@@ -6,6 +6,7 @@ import { FIELD_IDS } from '@/lib/inputConstraints';
 import { useToast } from '@/components/ToastProvider';
 import { Save, Building2, MapPin, Award, UserCircle, Globe, Image as ImageIcon, Shield } from 'lucide-react';
 import EntityLogo from '@/components/EntityLogo';
+import { getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
 
 export default function mb_Settings() {
   const { addToast } = useToast();
@@ -74,8 +75,9 @@ export default function mb_Settings() {
       addToast('Please fill all password fields.', 'warning');
       return;
     }
-    if (passwordForm.newPassword.length < 8) {
-      addToast('New password must be at least 8 characters.', 'warning');
+    const passwordErr = getPasswordValidationError(passwordForm.newPassword);
+    if (passwordErr) {
+      addToast(passwordErr, 'warning');
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -282,11 +284,12 @@ export default function mb_Settings() {
                 </div>
                 <div className="form-group mb-0">
                   <label className="text-xs text-secondary mb-1 block">New Password</label>
-                  <input className="form-input" type="password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))} />
+                  <input className="form-input" type="password" minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))} />
+                  <span className="form-hint" style={{ fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>{PASSWORD_REQUIREMENTS_HINT}</span>
                 </div>
                 <div className="form-group mb-0">
                   <label className="text-xs text-secondary mb-1 block">Confirm New Password</label>
-                  <input className="form-input" type="password" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))} />
+                  <input className="form-input" type="password" minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))} />
                 </div>
                 <button type="submit" className="btn btn-primary" disabled={passwordSaving} style={{ marginTop: '0.5rem' }}>
                   {passwordSaving ? 'Updating...' : 'Update Password'}

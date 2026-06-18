@@ -157,10 +157,37 @@ export function validateBatchYear(yearStr, { required = false } = {}) {
   return '';
 }
 
+/** Minimum length for user-chosen passwords (register, change, reset). */
+export const PASSWORD_MIN_LENGTH = 10;
+
+/** Form hints and placeholders. */
+export const PASSWORD_REQUIREMENTS_HINT =
+  'At least 10 characters with uppercase, lowercase, a number, and a special character';
+
+/** API / validation summary message. */
+export const PASSWORD_REQUIREMENTS_MESSAGE =
+  'Password must be at least 10 characters and include uppercase, lowercase, a number, and a special character (!@#$%^&* etc.)';
+
+const PASSWORD_SPECIAL_CHAR_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
+
+/** Returns an error message, or empty string when valid. */
+export function getPasswordValidationError(password) {
+  const s = String(password ?? '');
+  if (!s) return 'Password is required';
+  if (s.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+  }
+  if (!/[a-z]/.test(s)) return 'Password must include a lowercase letter';
+  if (!/[A-Z]/.test(s)) return 'Password must include an uppercase letter';
+  if (!/\d/.test(s)) return 'Password must include a number';
+  if (!PASSWORD_SPECIAL_CHAR_RE.test(s)) {
+    return 'Password must include a special character (!@#$%^&* etc.)';
+  }
+  return '';
+}
+
 export function validatePassword(password) {
-  // Min 8 chars, at least one uppercase, one lowercase, one number
-  const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-  return re.test(password);
+  return !getPasswordValidationError(password);
 }
 
 /** E.164: leading +, country code, 8–15 digits total (spaces/dashes stripped). */
@@ -301,8 +328,9 @@ export function validateRegistration(data) {
   if (!data.email || !validateEmail(data.email)) {
     errors.email = 'Valid email is required';
   }
-  if (!data.password || !validatePassword(data.password)) {
-    errors.password = 'Password must be at least 8 characters with uppercase, lowercase, and number';
+  const passwordErr = getPasswordValidationError(data.password);
+  if (passwordErr) {
+    errors.password = passwordErr === 'Password is required' ? PASSWORD_REQUIREMENTS_MESSAGE : passwordErr;
   }
   const fnErr = validatePersonName(data.firstName, { required: true, label: 'First name' });
   if (fnErr) errors.firstName = fnErr;

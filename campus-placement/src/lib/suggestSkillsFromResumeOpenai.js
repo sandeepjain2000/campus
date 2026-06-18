@@ -42,7 +42,7 @@ export async function suggestSkillsWithOpenAI(resumeText, existing = []) {
   if (!llm.configured) {
     return {
       skills: [],
-      error: `${llmConfigurationHint()} Smart AI extraction is disabled.`,
+      error: llmConfigurationHint(),
       httpStatus: null,
       provider: null,
     };

@@ -18,6 +18,8 @@ import {
 import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/studentApplyContext';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
+import DriveVenueUnconfirmedWarning from '@/components/student/DriveVenueUnconfirmedWarning';
+import { formatDriveVenueForStudent } from '@/lib/driveVenueWarning';
 
 function getTimeLeft(deadline) {
   if (!deadline) return null;
@@ -407,9 +409,10 @@ export default function StudentDrivesPage() {
                   </div>
                   <p className="text-sm text-secondary">{drive.role}</p>
                   <p className="text-xs text-tertiary" style={{ marginTop: '0.35rem' }}>
-                    📍 {drive.venue}
+                    📍 {formatDriveVenueForStudent(drive.venue)}
                     {drive.offCampusCity ? ` · ${drive.offCampusCity}` : ''}
                   </p>
+                  <DriveVenueUnconfirmedWarning venue={drive.venue} driveDate={drive.date} style={{ marginTop: '0.35rem' }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                   {activeApplication ? (

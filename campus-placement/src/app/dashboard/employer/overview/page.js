@@ -170,8 +170,11 @@ export default function EmployerOverviewPage() {
     stats.interviewStage || 0,
     stats.selectedCount || 0,
   ];
-  const acceptanceRate =
-    stats.offersExtended > 0 ? Math.round(((stats.selectedCount || 0) / stats.offersExtended) * 100) : 0;
+  const offersExtended = stats.offersExtended || 0;
+  const acceptanceBadgeLabel =
+    offersExtended > 0
+      ? `${Math.round(((stats.selectedCount || 0) / offersExtended) * 100)}% acceptance`
+      : null;
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -234,9 +237,7 @@ export default function EmployerOverviewPage() {
             <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: 'rgba(5, 150, 105, 0.1)', color: 'var(--success-600)' }}>
               <FileText size={22} strokeWidth={2} />
             </div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--success-600)', background: 'rgba(5, 150, 105, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              ↑ 23 this week
-            </div>
+            <div style={{ height: '24px' }}></div>
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats.totalApplications}</div>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Total Applications</div>
@@ -258,9 +259,15 @@ export default function EmployerOverviewPage() {
             <div style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', background: 'rgba(225, 29, 72, 0.1)', color: 'var(--rose-600)' }}>
               <Send size={22} strokeWidth={2} />
             </div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--rose-600)', background: 'rgba(225, 29, 72, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              {acceptanceRate}% acceptance
-            </div>
+            {acceptanceBadgeLabel ? (
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--rose-600)', background: 'rgba(225, 29, 72, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                {acceptanceBadgeLabel}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-tertiary)', padding: '0.25rem 0' }}>
+                No offers yet
+              </div>
+            )}
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats.offersExtended}</div>
           <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Offers Extended</div>

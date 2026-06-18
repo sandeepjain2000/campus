@@ -4,7 +4,11 @@ const {
   employerCompensationFieldIds,
 } = require('@/lib/apiInputValidation');
 const { FIELD_IDS } = require('@/lib/inputConstraints');
-const { resolveEmployerMinCgpaForSubmit } = require('@/lib/employerJobDisplay');
+const {
+  DEFAULT_EMPLOYER_MIN_CGPA,
+  normalizeEmployerMinCgpa,
+  resolveEmployerMinCgpaForSubmit,
+} = require('@/lib/employerJobDisplay');
 const { validateAndResolveEmployerJobSubmit } = require('@/lib/employerJobSubmitValidation');
 
 describe('employer min CGPA validation', () => {
@@ -15,13 +19,9 @@ describe('employer min CGPA validation', () => {
     jobType: 'internship',
   };
 
-  it('rejects CGPA of 0 on create payload (API rules)', () => {
-    expect(validateEmployerJobPayload({ ...base, minCgpa: 0 })).toMatch(
-      /greater than 0 and at most 10/i,
-    );
-    expect(validateEmployerJobPayload({ ...base, minCgpa: '0' })).toMatch(
-      /greater than 0 and at most 10/i,
-    );
+  it('coerces CGPA of 0 to default floor on create payload', () => {
+    expect(validateEmployerJobPayload({ ...base, minCgpa: 0 })).toBeNull();
+    expect(validateEmployerJobPayload({ ...base, minCgpa: '0' })).toBeNull();
   });
 
   it('allows empty min CGPA (optional field)', () => {
@@ -29,14 +29,22 @@ describe('employer min CGPA validation', () => {
     expect(validateEmployerJobPayload({ ...base, minCgpa: null })).toBeNull();
   });
 
-  it('resolveEmployerMinCgpaForSubmit rejects 0 and does not silently store null', () => {
+  it('resolveEmployerMinCgpaForSubmit stores default for 0', () => {
     const zero = resolveEmployerMinCgpaForSubmit(0);
-    expect(zero.error).toMatch(/greater than 0 and at most 10/i);
-    expect(zero.value).toBeNull();
+    expect(zero.error).toBeNull();
+    expect(zero.value).toBe(DEFAULT_EMPLOYER_MIN_CGPA);
 
     const valid = resolveEmployerMinCgpaForSubmit('7.5');
     expect(valid.error).toBeNull();
     expect(valid.value).toBe(7.5);
+  });
+
+  it('normalizeEmployerMinCgpa maps zero to default and keeps empty as null', () => {
+    expect(normalizeEmployerMinCgpa(0)).toBe(DEFAULT_EMPLOYER_MIN_CGPA);
+    expect(normalizeEmployerMinCgpa('0')).toBe(DEFAULT_EMPLOYER_MIN_CGPA);
+    expect(normalizeEmployerMinCgpa(null)).toBeNull();
+    expect(normalizeEmployerMinCgpa('')).toBeNull();
+    expect(normalizeEmployerMinCgpa(7)).toBe(7);
   });
 
   it('uses stipend field rules for program job types (create and edit parity)', () => {
@@ -51,14 +59,14 @@ describe('employer min CGPA validation', () => {
     expect(fullTime.maxId).toBe(FIELD_IDS.EMPLOYER_SALARY_MAX);
   });
 
-  it('validateAndResolveEmployerJobSubmit rejects invalid CGPA like API and edit flows', () => {
-    const bad = validateAndResolveEmployerJobSubmit({
+  it('validateAndResolveEmployerJobSubmit coerces zero like API and edit flows', () => {
+    const coerced = validateAndResolveEmployerJobSubmit({
       ...base,
       minCgpa: 0,
       jobType: 'short_project',
     });
-    expect(bad.error).toMatch(/greater than 0 and at most 10/i);
-    expect(bad.minCgpa).toBeNull();
+    expect(coerced.error).toBeNull();
+    expect(coerced.minCgpa).toBe(DEFAULT_EMPLOYER_MIN_CGPA);
 
     const good = validateAndResolveEmployerJobSubmit({
       ...base,

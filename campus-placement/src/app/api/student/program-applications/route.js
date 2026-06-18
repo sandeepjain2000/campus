@@ -22,10 +22,10 @@ import {
   campusProgramsForbiddenForAlumniResponse,
   isAlumniJobType,
 } from '@/lib/studentAlumni';
-import { ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
 import { createServerDebugTracer } from '@/lib/serverDebugTracer';
+import { notifyStudentApplicationSubmitted } from '@/lib/studentApplicationSubmittedNotify';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -263,8 +263,8 @@ async function __platform_POST(req) {
     const jpNotDeletedSql = await jobPostingNotDeletedSql('jp');
     const { sql: tenantInSql, params: tenantInParams } = uuidInClause(tenantIds, 2);
     const job = await query(
-      `SELECT jp.id, jp.job_type, jp.status, jp.min_cgpa, jp.max_backlogs, jp.eligible_branches,
-              jp.batch_year, jp.application_deadline
+      `SELECT jp.id, jp.job_type, jp.status, jp.title, jp.min_cgpa, jp.max_backlogs, jp.eligible_branches,
+              jp.batch_year, jp.application_deadline, ep.company_name
        FROM job_postings jp
        INNER JOIN job_posting_visibility jpv
          ON jpv.job_id = jp.id AND jpv.tenant_id IN (${tenantInSql})
@@ -360,18 +360,19 @@ async function __platform_POST(req) {
     tracer.log('__platform_POST', 'persist_success', { id: saved.row.id, status: saved.row.status });
 
     try {
-      await query(
-        `INSERT INTO notifications (user_id, title, message, type, link)
-         VALUES ($1::uuid, $2, $3, 'success', $4)`,
-        [
-          userId,
-          'Application Submitted',
-          `You have successfully applied for ${alumniJob ? 'the alumni job' : `the ${row.job_type}`}.`,
-          alumniJob ? ALUMNI_MY_JOBS_PATH : '/dashboard/student/applications',
-        ],
-      );
+      const firstName = String(session.user.name || '').trim().split(/\s+/)[0] || '';
+      await notifyStudentApplicationSubmitted({
+        studentUserId: userId,
+        email: session.user.email,
+        firstName,
+        companyName: row.company_name,
+        roleTitle: row.title,
+        jobType: row.job_type,
+        applicationId: saved.row.id,
+        sourceKind: 'program',
+      });
     } catch (err) {
-      console.error('Failed to create notification', err);
+      console.error('Failed to notify student of application submission', err);
     }
 
     tracer.log('__platform_POST', 'response_sent', { id: saved.row.id, status: saved.row.status });

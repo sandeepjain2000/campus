@@ -29,6 +29,12 @@ import TableBulkActionBar from '@/components/table/TableBulkActionBar';
 import OpportunityEmailComposeModal from '@/components/student/OpportunityEmailComposeModal';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import { downloadStudentOpportunityCsv } from '@/lib/studentOpportunityCsvExport';
+import {
+  applicationStatusCounts,
+  filterApplicationsByStatusTab,
+  normalizeAppStatus,
+  studentApplicationStageLabel,
+} from '@/lib/studentApplicationListTabs';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -39,34 +45,8 @@ const fetcher = async (url) => {
   return res.json();
 };
 
-function normalizeAppStatus(status) {
-  return String(status || '').toLowerCase().trim();
-}
-
-function applicationStatusCounts(applications) {
-  const counts = {
-    all: applications.length,
-    applied: 0,
-    shortlisted: 0,
-    selected: 0,
-    rejected: 0,
-    withdrawn: 0,
-  };
-  for (const app of applications) {
-    const key = normalizeAppStatus(app.status);
-    if (Object.prototype.hasOwnProperty.call(counts, key)) {
-      counts[key] += 1;
-    }
-  }
-  return counts;
-}
-
 function roundLabel(item) {
-  if (normalizeAppStatus(item.status) === 'selected') return 'All rounds cleared';
-  if (normalizeAppStatus(item.status) === 'rejected') return 'Not qualified';
-  if (normalizeAppStatus(item.status) === 'withdrawn') return 'Withdrawn';
-  if (Number(item.currentRound) > 0) return `Round ${item.currentRound}`;
-  return 'Pending review';
+  return studentApplicationStageLabel(item);
 }
 
 /** Map application row to opportunity shape for email / CSV actions. */
@@ -183,10 +163,7 @@ export default function StudentApplicationsPage({ params }) {
   }, [allApplications, typeMatcher]);
 
   const tabFiltered = useMemo(
-    () =>
-      typeApplications.filter(
-        (a) => !statusTab || normalizeAppStatus(a.status) === statusTab,
-      ),
+    () => filterApplicationsByStatusTab(typeApplications, statusTab),
     [typeApplications, statusTab],
   );
 

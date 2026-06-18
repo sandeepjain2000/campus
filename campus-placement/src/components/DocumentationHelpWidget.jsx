@@ -348,8 +348,7 @@ export default function DocumentationHelpWidget({ fullDocHref = '/dashboard/help
                 </div>
               </form>
               <p className="text-secondary" style={{ margin: '0.65rem 0 0', fontSize: '0.8125rem' }}>
-                Answers read the entire help library (same content as <code style={{ fontSize: '0.75rem' }}>docs/help/</code>
-                ). Requires <code style={{ fontSize: '0.75rem' }}>OPENAI_API_KEY</code> for best results.
+                Answers are drawn from the in-app help library. AI-powered answers may be limited when smart search is not enabled.
               </p>
               {hint && (
                 <p className="text-xs text-warning-600" style={{ margin: '0.5rem 0 0' }}>

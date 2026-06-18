@@ -15,7 +15,7 @@ import {
 } from '@/lib/organizationNames';
 import { assertEmailAvailable, formatEmailInUseMessage } from '@/lib/userEmail';
 import { slugify } from '@/lib/utils';
-import { validateEmail, validatePassword, validatePersonName } from '@/lib/validators';
+import { getPasswordValidationError, validateEmail, validatePersonName } from '@/lib/validators';
 import { SP_ACTIVE_ON } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
@@ -112,11 +112,9 @@ async function __platform_POST(request) {
     if (!validateEmail(adminEmail)) {
       return NextResponse.json({ error: 'Enter a valid email for the college admin' }, { status: 400 });
     }
-    if (!validatePassword(adminPassword)) {
-      return NextResponse.json(
-        { error: 'Password must be at least 8 characters with uppercase, lowercase, and a number' },
-        { status: 400 }
-      );
+    const passwordErr = getPasswordValidationError(adminPassword);
+    if (passwordErr) {
+      return NextResponse.json({ error: passwordErr }, { status: 400 });
     }
 
     const passwordHash = await hash(adminPassword, 10);

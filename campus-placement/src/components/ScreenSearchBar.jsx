@@ -40,7 +40,7 @@ export default function ScreenSearchBar() {
         return;
       }
       if (!data.openaiConfigured) {
-        setAiNote('Add NVIDIA_API_KEY or OPENAI_API_KEY on the server for smart matching.');
+        setAiNote('Smart screen matching is not available yet. Try searching by screen name.');
         return;
       }
       const matches = Array.isArray(data.matches) ? data.matches : [];

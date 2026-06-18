@@ -221,7 +221,7 @@ export default function MyExportsPage() {
           </button>
         </div>
         <p className="text-sm text-secondary" style={{ marginTop: '0.5rem' }}>
-          Same directory as the <strong>Screens</strong> search in the header. Smart matching needs <code>OPENAI_API_KEY</code> on the server.
+          Same directory as the <strong>Screens</strong> search in the header. Optional smart matching may be unavailable on this deployment.
         </p>
         {showAllScreens && (
           <div className="table-container" style={{ marginTop: '0.75rem' }}>

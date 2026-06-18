@@ -10,46 +10,11 @@ import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 import { jobPostingNotDeletedSql, programApplicationNotDeletedSql } from '@/lib/migrationReady';
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
+import { evaluateStudentOverviewCompletion } from '@/lib/studentProfileCompletion';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
-
-
-function calculateProfileCompletion(profile) {
-  if (!profile) return 0;
-  const checks = [
-    profile.prn,
-    profile.roll_number,
-    profile.phone,
-    profile.course,
-    profile.branch,
-    profile.current_semester,
-    profile.cgpa,
-    profile.tenth_percentage,
-    profile.twelfth_percentage,
-    profile.resume_url,
-  ];
-  const filled = checks.filter((v) => v != null && String(v).trim() !== '').length;
-  return Math.round((filled / checks.length) * 100);
-}
-
-/** Map DB row (real columns + aliases) to completion shape */
-function profileRowForCompletion(row) {
-  if (!row) return null;
-  return {
-    prn: row.prn,
-    roll_number: row.roll_number,
-    phone: row.phone,
-    course: row.course,
-    branch: row.branch,
-    current_semester: row.current_semester,
-    cgpa: row.cgpa,
-    tenth_percentage: row.tenth_percentage,
-    twelfth_percentage: row.twelfth_percentage,
-    resume_url: row.resume_url,
-  };
-}
 
 async function __platform_GET(request) {
   try {
@@ -199,15 +164,18 @@ async function __platform_GET(request) {
       `
       SELECT
         sp.roll_number,
-        sp.enrollment_number AS prn,
-        u.phone AS phone,
-        sp.department AS course,
+        sp.department,
         sp.branch,
-        8 AS current_semester,
+        u.phone AS user_phone,
         sp.cgpa,
         sp.tenth_percentage,
         sp.twelfth_percentage,
-        sp.resume_url
+        sp.resume_url,
+        (
+          SELECT COUNT(*)::int
+          FROM student_skills ss
+          WHERE ss.student_id = sp.id
+        ) AS skills_count
       FROM student_profiles sp
       INNER JOIN users u ON u.id = sp.user_id
       WHERE sp.user_id = $1::uuid AND ${SP_ACTIVE_CLAUSE}
@@ -215,7 +183,11 @@ async function __platform_GET(request) {
       `,
       [userId]
     );
-    const profileCompletion = calculateProfileCompletion(profileRowForCompletion(profileQuery.rows[0]));
+    const profileRow = profileQuery.rows[0] || null;
+    const { profileCompletion, items: profileCompletionItems } = evaluateStudentOverviewCompletion(
+      profileRow,
+      { skillsCount: profileRow?.skills_count ?? 0 },
+    );
 
     return NextResponse.json({
       isAlumni,
@@ -225,6 +197,7 @@ async function __platform_GET(request) {
         offersReceived: parseInt(statsQuery.rows[0].offersReceived || 0),
         upcomingDrives: drivesQuery.rows.length,
         profileCompletion,
+        profileCompletionItems,
       },
       recentDrives: drivesQuery.rows.map((d) => ({
         ...d,

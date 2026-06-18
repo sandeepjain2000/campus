@@ -2,6 +2,7 @@ import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { getPasswordValidationError } from '@/lib/validators';
 
 async function __platform_POST(req) {
   try {
@@ -10,8 +11,9 @@ async function __platform_POST(req) {
       return NextResponse.json({ error: 'Token and new password are required' }, { status: 400 });
     }
 
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
+    const passwordErr = getPasswordValidationError(newPassword);
+    if (passwordErr) {
+      return NextResponse.json({ error: passwordErr }, { status: 400 });
     }
 
     // Find the token

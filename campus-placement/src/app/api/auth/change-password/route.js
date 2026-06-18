@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next';
 import bcrypt from 'bcryptjs';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getPasswordValidationError } from '@/lib/validators';
 
 async function __platform_POST(req) {
   try {
@@ -21,8 +22,9 @@ async function __platform_POST(req) {
     if (!currentPassword || !newPassword) {
       return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 });
     }
-    if (String(newPassword).length < 8) {
-      return NextResponse.json({ error: 'New password must be at least 8 characters long' }, { status: 400 });
+    const passwordErr = getPasswordValidationError(newPassword);
+    if (passwordErr) {
+      return NextResponse.json({ error: passwordErr }, { status: 400 });
     }
     if (String(currentPassword) === String(newPassword)) {
       return NextResponse.json({ error: 'New password must be different from current password' }, { status: 400 });

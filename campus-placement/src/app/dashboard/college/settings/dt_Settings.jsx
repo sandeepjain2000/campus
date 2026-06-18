@@ -12,6 +12,7 @@ import {
 } from '@/components/SocialIcons';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
+import { getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
 
 function LabelWithIcon({ Icon, children }) {
   return (
@@ -125,8 +126,9 @@ export default function CollegeSettingsPage() {
       setPasswordMessage('Please fill all password fields.');
       return;
     }
-    if (passwordForm.newPassword.length < 8) {
-      setPasswordMessage('New password must be at least 8 characters.');
+    const passwordErr = getPasswordValidationError(passwordForm.newPassword);
+    if (passwordErr) {
+      setPasswordMessage(passwordErr);
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -564,10 +566,11 @@ export default function CollegeSettingsPage() {
                   className="form-input"
                   type="password"
                   autoComplete="new-password"
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
                 />
+                <span className="form-hint">{PASSWORD_REQUIREMENTS_HINT}</span>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Confirm new password</label>
@@ -575,7 +578,7 @@ export default function CollegeSettingsPage() {
                   className="form-input"
                   type="password"
                   autoComplete="new-password"
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
                 />
