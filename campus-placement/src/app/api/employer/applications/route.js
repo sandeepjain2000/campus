@@ -6,7 +6,6 @@ import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
 import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { notifyStudentSelection } from '@/lib/studentSelectionNotify';
-import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import {
 
 
@@ -595,6 +594,13 @@ async function __platform_PATCH(request) {
       const roleTitle = sourceKind === 'drive' ? metaResultRow.drive_title : metaResultRow.job_title;
 
       // 1. Notify student of selection (email + in-app)
+      const programType =
+        sourceKind === 'drive'
+          ? 'drives'
+          : String(metaResultRow?.job_type || 'internship').toLowerCase() === 'internship'
+            ? 'internships'
+            : 'jobs';
+
       await notifyStudentSelection({
         studentUserId,
         email,
@@ -602,59 +608,8 @@ async function __platform_PATCH(request) {
         companyName,
         roleTitle,
         sourceKind,
+        programType,
       });
-
-      // 2. Auto-generate pending offer in offers table if not exists
-      try {
-        let existingOffer;
-        if (sourceKind === 'drive') {
-          existingOffer = await query(
-            `SELECT id FROM offers WHERE application_id = $1::uuid`,
-            [applicationId]
-          );
-        } else {
-          existingOffer = await query(
-            `SELECT id FROM offers WHERE student_id = $1::uuid AND employer_id = $2::uuid AND job_title = $3 AND drive_id IS NULL`,
-            [studentProfileId, employerId, roleTitle]
-          );
-        }
-
-        if (existingOffer.rows.length === 0) {
-          const driveIdVal = sourceKind === 'drive' ? metaResultRow.drive_id : null;
-          const salaryVal = sourceKind === 'drive' ? 0 : (metaResultRow.salary_max ? Number(metaResultRow.salary_max) : 0);
-          const locationVal = sourceKind === 'drive' ? 'As per company policy' : (metaResultRow.locations || 'As per company policy');
-          const appIdVal = sourceKind === 'drive' ? applicationId : null;
-
-          let insertRes;
-          try {
-            insertRes = await query(
-              `INSERT INTO offers (
-                student_id, drive_id, employer_id, job_title, salary, location, status, salary_currency, reported_company_name, application_id
-              ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'INR', $7, $8)
-              RETURNING id`,
-              [studentProfileId, driveIdVal, employerId, roleTitle, salaryVal, locationVal, companyName, appIdVal]
-            );
-          } catch (insertErr) {
-            if (insertErr?.code === '42703' && String(insertErr?.message || '').includes('reported_company_name')) {
-              insertRes = await query(
-                `INSERT INTO offers (
-                  student_id, drive_id, employer_id, job_title, salary, location, status, salary_currency, application_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'INR', $7)
-                RETURNING id`,
-                [studentProfileId, driveIdVal, employerId, roleTitle, salaryVal, locationVal, appIdVal]
-              );
-            } else {
-              throw insertErr;
-            }
-          }
-          if (insertRes && insertRes.rows.length > 0) {
-            console.log(`Auto-created pending offer with ID: ${insertRes.rows[0].id} for student ${studentProfileId}`);
-            await refreshOfferLatestFlagsForStudent(studentProfileId);
-          }
-        }
-      } catch (offerErr) {
-        console.error('Failed to auto-create offer for selected student:', offerErr);
-      }
     }
 
     if (sourceKind === 'drive') {

@@ -9,7 +9,7 @@ export function normalizeAppStatus(status) {
 export function studentApplicationStageLabel(item) {
   const status = normalizeAppStatus(item?.status ?? item?.applicationStatus);
   if (status === 'withdrawn') return 'Withdrawn';
-  if (status === 'selected') return 'All rounds cleared';
+  if (status === 'selected') return 'Selected — formal offer pending';
   if (status === 'rejected') return 'Not qualified';
   if (status === 'on_hold') return 'On waitlist';
   if (status === 'in_progress') return 'Interview in progress';

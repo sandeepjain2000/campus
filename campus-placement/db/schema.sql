@@ -390,6 +390,92 @@ CREATE TABLE program_applications (
 CREATE INDEX idx_program_app_student ON program_applications(student_id);
 CREATE INDEX idx_program_app_job ON program_applications(job_id);
 
+CREATE TABLE internship_feedback (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    program_application_id UUID NOT NULL REFERENCES program_applications(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    student_profile_id UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES job_postings(id) ON DELETE CASCADE,
+    employer_id UUID REFERENCES employer_profiles(id) ON DELETE SET NULL,
+    author_role VARCHAR(20) NOT NULL CHECK (author_role IN ('student', 'employer')),
+    author_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    rating SMALLINT CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
+    feedback_text TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (program_application_id, author_role)
+);
+
+CREATE INDEX idx_internship_feedback_tenant ON internship_feedback (tenant_id, created_at DESC);
+CREATE INDEX idx_internship_feedback_job ON internship_feedback (job_id);
+CREATE INDEX idx_internship_feedback_employer ON internship_feedback (employer_id);
+
+CREATE TABLE internship_guides (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    program_application_id UUID NOT NULL REFERENCES program_applications(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    student_profile_id UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES job_postings(id) ON DELETE CASCADE,
+    guide_name VARCHAR(120) NOT NULL,
+    guide_email VARCHAR(255),
+    guide_phone VARCHAR(30),
+    guide_department VARCHAR(120),
+    guide_notes TEXT,
+    assigned_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (program_application_id)
+);
+
+CREATE INDEX idx_internship_guides_tenant ON internship_guides (tenant_id, updated_at DESC);
+CREATE INDEX idx_internship_guides_student ON internship_guides (student_profile_id);
+
+CREATE TABLE internship_supervisors (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    program_application_id UUID NOT NULL REFERENCES program_applications(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    student_profile_id UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES job_postings(id) ON DELETE CASCADE,
+    employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+    supervisor_name VARCHAR(120) NOT NULL,
+    supervisor_email VARCHAR(255),
+    supervisor_phone VARCHAR(30),
+    supervisor_team VARCHAR(120),
+    supervisor_notes TEXT,
+    assigned_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (program_application_id)
+);
+
+CREATE INDEX idx_internship_supervisors_employer ON internship_supervisors (employer_id, updated_at DESC);
+CREATE INDEX idx_internship_supervisors_tenant ON internship_supervisors (tenant_id);
+
+CREATE TABLE internship_ppo (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    program_application_id UUID NOT NULL REFERENCES program_applications(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    student_profile_id UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES job_postings(id) ON DELETE CASCADE,
+    employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+    status VARCHAR(30) NOT NULL DEFAULT 'pending_student'
+        CHECK (status IN ('pending_student', 'accepted', 'declined', 'revoked')),
+    employer_notes TEXT,
+    confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    confirmed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    student_responded_at TIMESTAMPTZ,
+    offer_id UUID REFERENCES offers(id) ON DELETE SET NULL,
+    revoked_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (program_application_id)
+);
+
+CREATE INDEX idx_internship_ppo_employer ON internship_ppo (employer_id, updated_at DESC);
+CREATE INDEX idx_internship_ppo_tenant ON internship_ppo (tenant_id, status);
+CREATE INDEX idx_internship_ppo_student ON internship_ppo (student_profile_id);
+
 -- ============================================
 -- 13. APPLICATION STATUS LOG (Audit Trail)
 -- ============================================
@@ -418,11 +504,32 @@ CREATE TABLE shortlists (
 );
 
 -- ============================================
+-- 14b. EMPLOYER OFFER TEMPLATES
+-- ============================================
+CREATE TABLE employer_offer_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    job_title VARCHAR(255) NOT NULL,
+    salary DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    location VARCHAR(255),
+    joining_date DATE,
+    response_deadline DATE,
+    body_template TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_employer_offer_templates_employer ON employer_offer_templates(employer_id);
+
+-- ============================================
 -- 15. OFFERS
 -- ============================================
 CREATE TABLE offers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     application_id UUID REFERENCES applications(id) ON DELETE CASCADE,
+    program_application_id UUID REFERENCES program_applications(id) ON DELETE SET NULL,
     student_id UUID REFERENCES student_profiles(id) ON DELETE CASCADE,
     employer_id UUID REFERENCES employer_profiles(id) ON DELETE CASCADE,
     drive_id UUID REFERENCES placement_drives(id) ON DELETE SET NULL,
@@ -432,8 +539,11 @@ CREATE TABLE offers (
     joining_date DATE,
     location VARCHAR(255),
     offer_letter_url TEXT,
+    offer_template_id UUID REFERENCES employer_offer_templates(id) ON DELETE SET NULL,
+    rendered_letter_html TEXT,
     reported_company_name VARCHAR(255),
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'expired', 'revoked')),
+    offer_kind VARCHAR(30) NOT NULL DEFAULT 'standard' CHECK (offer_kind IN ('standard', 'ppo_job')),
     deadline TIMESTAMP,
     accepted_at TIMESTAMP,
     rejected_at TIMESTAMP,
@@ -447,6 +557,8 @@ CREATE INDEX idx_offers_student ON offers(student_id);
 CREATE INDEX idx_offers_student_is_latest ON offers(student_id) WHERE is_latest = 1;
 CREATE INDEX idx_offers_employer ON offers(employer_id);
 CREATE INDEX idx_offers_status ON offers(status);
+CREATE INDEX idx_offers_drive_employer_student ON offers(drive_id, employer_id, student_id);
+CREATE INDEX idx_offers_program_application ON offers (program_application_id) WHERE program_application_id IS NOT NULL;
 
 -- ============================================
 -- 16. COLLEGE SETTINGS

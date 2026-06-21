@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { notifyStudentFormalOfferByOfferId } from '@/lib/studentFormalOfferNotify';
 import { validateEmployerOfferPayload, validateTitlePayload } from '@/lib/apiInputValidation';
 import { normalizeTitle } from '@/lib/validators';
 import { toDateOnlyString } from '@/lib/dateOnly';
@@ -129,6 +130,13 @@ async function __platform_POST(request) {
     }
 
     await refreshOfferLatestFlagsForStudent(studentId);
+
+    const offerId = created.rows[0]?.id;
+    if (offerId) {
+      notifyStudentFormalOfferByOfferId(String(offerId)).catch((err) => {
+        console.error('Formal offer notification after employer create:', err);
+      });
+    }
 
     return NextResponse.json({ offer: created.rows[0] }, { status: 201 });
   } catch (error) {

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { queryCollegeOffersForTenant } from '@/lib/collegeOffersListQuery';
 import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
+import { notifyStudentFormalOfferByOfferId } from '@/lib/studentFormalOfferNotify';
 import { offerDecisionTimestampsForInsert } from '@/lib/offerStatusTimestamps';
 import { toDateOnlyString, validateOfferDates } from '@/lib/dateOnly';
 import { validateCollegeOfferPayload, validateTitlePayload } from '@/lib/apiInputValidation';
@@ -175,7 +176,14 @@ async function __platform_POST(request) {
 
     await refreshOfferLatestFlagsForStudent(studentId);
 
-    return NextResponse.json({ id: ins.rows[0].id }, { status: 201 });
+    const newOfferId = ins.rows[0]?.id;
+    if (newOfferId && status === 'pending') {
+      notifyStudentFormalOfferByOfferId(String(newOfferId)).catch((err) => {
+        console.error('Formal offer notification after college create:', err);
+      });
+    }
+
+    return NextResponse.json({ id: newOfferId }, { status: 201 });
   } catch (error) {
     console.error('POST /api/college/offers', error);
     if (error?.code === '42703' || String(error?.message || '').includes('reported_company_name')) {

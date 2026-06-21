@@ -51,6 +51,7 @@ pip install -r qa/guided/requirements-voice.txt
 | Full internship E2E + narration | `npm run test:guided:playbook-e2e-auto-voice` | `run_internship_e2e_auto_voice.bat` |
 | Employer publish only | `npm run test:guided:playbook-auto` | `run_internship_publish_auto_voice.bat` |
 | Apply + select only | `npm run test:guided:playbook-apply-auto` | `run_internship_apply_auto_voice.bat` |
+| Guides, supervisors & feedback (after Select) | `npm run test:guided:voice-internship-care` | `run_internship_care_auto_voice.bat` |
 | Auto without voice | `npm run test:guided:playbook-e2e-auto` | — |
 
 Transcripts and MP3s land in `qa/guided/voice/` (import `.txt` files into ElevenLabs, Murf, or SonexLabs Pāṇini if you re-record).
@@ -75,14 +76,14 @@ Every row on **Developer notes → Use cases** (and More / User testing pages) h
 ```powershell
 npm run test:guided:voice -- placement-drive-full
 npm run test:guided:voice -- internship-publish-hire
-npm run test:guided:voice-list   # all 23 slugs
+npm run test:guided:voice-list   # all 24 slugs
 ```
 
 Windows batch (same as internship bats, any slug):
 
 ```powershell
 run_use_case_auto_voice.bat assessment-csv
-run_use_case_auto_voice.bat email-delivery-audit
+run_use_case_auto_voice.bat internship-guides-feedback-supervisors
 ```
 
 | Slug type | Playbook source |

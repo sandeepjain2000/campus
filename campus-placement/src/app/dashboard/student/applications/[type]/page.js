@@ -9,10 +9,8 @@ import PageError from '@/components/PageError';
 import PageLoading from '@/components/PageLoading';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import StudentOfferRespondActions from '@/components/student/StudentOfferRespondActions';
-import { findPendingOfferForApplication } from '@/lib/offerStatusNormalize';
+import StudentSelectionOfferPanel from '@/components/student/StudentSelectionOfferPanel';
 import { ClipboardList, Eye, Mail, X } from 'lucide-react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { use, useMemo } from 'react';
 import DataTableToolbar from '@/components/DataTableToolbar';
@@ -219,11 +217,6 @@ export default function StudentApplicationsPage({ params }) {
 
   const pageAllSelected = selection.allSelected(displayApplications);
   const pageSomeSelected = selection.someSelected(displayApplications);
-
-  const pendingOfferForSelected = useMemo(() => {
-    if (!selectedApp || normalizeAppStatus(selectedApp.status) !== 'selected') return null;
-    return findPendingOfferForApplication(offers, selectedApp, { type });
-  }, [offers, selectedApp, type]);
 
   const requestWithdraw = (applicationId) => {
     setWithdrawConfirmId(applicationId);
@@ -591,52 +584,23 @@ export default function StudentApplicationsPage({ params }) {
               <span className={`badge badge-${getStatusColor(selectedApp.status)} badge-dot`} style={{ fontSize: '0.85rem', padding: '0.375rem 0.75rem' }}>
                 {formatStatus(selectedApp.status)}
               </span>
-              {selectedApp.status === 'selected' && (
-                <span className="badge badge-green" style={{ padding: '0.375rem 1rem', marginLeft: '0.5rem' }}>Offer stage</span>
+              {normalizeAppStatus(selectedApp.status) === 'selected' && (
+                <span className="badge badge-blue" style={{ padding: '0.375rem 1rem', marginLeft: '0.5rem' }}>
+                  Selection complete
+                </span>
               )}
             </div>
 
-            {selectedApp.status === 'selected' && (
-              <div
-                style={{
-                  marginBottom: '1.25rem',
-                  padding: '1rem 1.25rem',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--success-200)',
-                  background: 'var(--success-50)',
+            {normalizeAppStatus(selectedApp.status) === 'selected' && (
+              <StudentSelectionOfferPanel
+                application={selectedApp}
+                offers={offers}
+                type={type}
+                onOfferUpdated={async () => {
+                  await mutateOffers();
+                  await mutate();
                 }}
-              >
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--success-800)' }}>
-                  Formal offer — accept or decline
-                </p>
-                {pendingOfferForSelected ? (
-                  <StudentOfferRespondActions
-                    offer={pendingOfferForSelected}
-                    compact
-                    onUpdated={async () => {
-                      await mutateOffers();
-                      await mutate();
-                    }}
-                  />
-                ) : (
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    No pending offer is linked to this application yet. When your college or employer creates one with status{' '}
-                    <strong>pending</strong>, accept and decline buttons will appear here and on{' '}
-                    <Link href="/dashboard/student/offers" style={{ fontWeight: 600, color: 'var(--primary-600)' }}>
-                      My Offers
-                    </Link>
-                    .
-                  </p>
-                )}
-                <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  Applies to placement offers (jobs, drives, internships, hackathons, and similar) once your college or employer publishes a{' '}
-                  <strong>pending</strong> offer. You can also respond from{' '}
-                  <Link href="/dashboard/student/offers" style={{ fontWeight: 600, color: 'var(--primary-600)' }}>
-                    My Offers
-                  </Link>
-                  .
-                </p>
-              </div>
+              />
             )}
 
             {/* Details grid */}

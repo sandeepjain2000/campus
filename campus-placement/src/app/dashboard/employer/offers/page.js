@@ -1,20 +1,18 @@
 'use client';
 
 import { useCallback, useState, useMemo } from 'react';
-import Link from 'next/link';
 import useSWR from 'swr';
-import { FileUp, RotateCcw, CheckCircle, Clock, XCircle, Search } from 'lucide-react';
+import { RotateCcw, CheckCircle, Clock, XCircle, Search, Mail, Send } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
-import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { validateEmployerOfferPayload } from '@/lib/apiInputValidation';
 import EmployerListFormLayout from '@/components/employer/EmployerListFormLayout';
+import BulkOfferGeneratePanel from '@/components/employer/BulkOfferGeneratePanel';
 
 const emptyOfferForm = {
   studentId: '',
@@ -38,6 +36,7 @@ export default function EmployerOffersPage() {
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/employer/offers', fetcher);
   const { data: optionsData } = useSWR('/api/employer/offers/options', fetcher);
+  const { data: templatesData } = useSWR('/api/employer/offer-templates', fetcher);
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
@@ -58,6 +57,7 @@ export default function EmployerOffersPage() {
   const offers = Array.isArray(data?.offers) ? data.offers : [];
   const students = Array.isArray(optionsData?.students) ? optionsData.students : [];
   const drives = Array.isArray(optionsData?.drives) ? optionsData.drives : [];
+  const templates = Array.isArray(templatesData?.templates) ? templatesData.templates : [];
 
   const filteredOffers = useMemo(() => {
     const result = offers.filter((o) => {
@@ -227,12 +227,14 @@ export default function EmployerOffersPage() {
     }
   };
 
-  const downloadAssessmentStarter = async () => {
+  const resendOfferEmail = async (id) => {
     try {
-      await downloadCsvFromApi('/api/employer/offers/assessment-starter', EMPLOYER_OFFERS_ALL_STUDENTS_CSV_FILENAME);
-      addToast('CSV lists all master-list students on every approved campus. Add job titles, then import.', 'success');
+      const res = await fetch(`/api/employer/offers/${id}/resend`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Failed to resend email');
+      addToast(json.message || 'Offer email sent again.', 'success');
     } catch (e) {
-      addToast(e.message || 'Download failed', 'error');
+      addToast(e.message || 'Failed to resend email', 'error');
     }
   };
 
@@ -405,22 +407,15 @@ export default function EmployerOffersPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileUp size={22} strokeWidth={1.75} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
+            <Send size={22} strokeWidth={1.75} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
             Offers
           </h1>
           <p className="text-secondary" style={{ margin: '0.25rem 0 0', lineHeight: 1.55 }}>
-            Manage offers extended to candidates. CSV import defaults to <strong>accepted</strong>. Use{' '}
-            <strong>Create Offer</strong> for <strong>pending</strong> rows students accept on <strong>My Offers</strong>.{' '}
-            <Link href="/dashboard/employer/offers-upload" className="link-inline" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
-              <FileUp size={14} style={{ verticalAlign: '-0.125em', marginRight: '0.2rem' }} aria-hidden />
-              Import offers from CSV
-            </Link>
+            <strong>Bulk:</strong> generate from drive selections using a saved template (below).{' '}
+            <strong>Single student:</strong> use Create offer for one-off cases. Per-student offers can still use an optional external letter URL.
           </p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-            Download Template
-          </button>
           <ExportCsvSplitButton
             filenameBase="placement_offers"
             currentCount={filteredOffers.length}
@@ -438,11 +433,13 @@ export default function EmployerOffersPage() {
         </div>
       </div>
 
+      <BulkOfferGeneratePanel drives={drives} templates={templates} onGenerated={mutate} />
+
       <div className="directive-panel" role="region" aria-label="Offer acceptance">
         <p className="directive-panel__title">Pending vs accepted</p>
         <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-          <strong>Pending</strong> — created here (or <code>status=pending</code> in CSV); students <strong>accept or decline</strong>{' '}
-          on <strong>Dashboard → My Offers</strong>. <strong>Accepted</strong> — use CSV import (default) when the hire is already confirmed outside the app.
+          <strong>Bulk-generated</strong> and <strong>Create offer</strong> rows are <strong>pending</strong> — students accept or decline on{' '}
+          <strong>My Offers</strong>. Use <strong>Resend email</strong> if a student did not receive the letter.
         </p>
       </div>
 
@@ -542,12 +539,23 @@ export default function EmployerOffersPage() {
                         </button>
                       )}
                       {offer.status === 'pending' && (
-                        <StandardTableIconAction
-                          action="archive"
-                          variant="danger"
-                          showLabel={false}
-                          onClick={() => revokeOffer(offer.id)}
-                        />
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-icon btn-sm"
+                            title="Resend offer email"
+                            aria-label="Resend offer email"
+                            onClick={() => resendOfferEmail(offer.id)}
+                          >
+                            <Mail size={16} strokeWidth={2} aria-hidden />
+                          </button>
+                          <StandardTableIconAction
+                            action="archive"
+                            variant="danger"
+                            showLabel={false}
+                            onClick={() => revokeOffer(offer.id)}
+                          />
+                        </>
                       )}
                       <StandardTableIconAction
                         action="delete"
@@ -563,22 +571,11 @@ export default function EmployerOffersPage() {
             {offers.length === 0 && (
               <tr>
                 <td colSpan="8" style={{ padding: '3rem 1rem' }}>
-                  <div className="empty-state-container" style={{ textAlign: 'center', maxWidth: '400px', margin: '0 auto' }}>
-                    <div style={{ background: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                      <FileUp size={32} className="text-primary-600" />
-                    </div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No offers uploaded yet</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                      Download the template, fill in the details, and import your first batch of offers.
+                  <div className="empty-state-container" style={{ textAlign: 'center', maxWidth: '420px', margin: '0 auto' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No offers yet</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: 0, lineHeight: '1.5' }}>
+                      Mark students selected on a drive, create an offer template, then use Generate offers above — or Create offer for one student.
                     </p>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                      <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-                        Download Template
-                      </button>
-                      <Link href="/dashboard/employer/offers-upload" className="btn btn-primary">
-                        Import CSV
-                      </Link>
-                    </div>
                   </div>
                 </td>
               </tr>

@@ -11,6 +11,7 @@ import { jobPostingNotDeletedSql, programApplicationNotDeletedSql } from '@/lib/
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 import { ALUMNI_JOB_TYPES } from '@/lib/studentAlumni';
 import { evaluateStudentOverviewCompletion } from '@/lib/studentProfileCompletion';
+import { countStudentVisibleOffers } from '@/lib/studentOffersCount';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -37,8 +38,7 @@ async function __platform_GET(request) {
       statsQuery = await query(
         `SELECT
           COUNT(*) AS "totalApplications",
-          COALESCE(SUM(CASE WHEN pa.status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted",
-          COALESCE(SUM(CASE WHEN pa.status = 'selected' THEN 1 ELSE 0 END), 0) AS "offersReceived"
+          COALESCE(SUM(CASE WHEN pa.status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted"
         FROM program_applications pa
         JOIN student_profiles sp ON sp.id = pa.student_id
         WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE} ${paNotDeletedSql}`,
@@ -113,8 +113,7 @@ async function __platform_GET(request) {
       statsQuery = await query(
         `SELECT
           COUNT(*) AS "totalApplications",
-          COALESCE(SUM(CASE WHEN status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted",
-          COALESCE(SUM(CASE WHEN status = 'selected' THEN 1 ELSE 0 END), 0) AS "offersReceived"
+          COALESCE(SUM(CASE WHEN status IN ('shortlisted', 'in_progress', 'selected') THEN 1 ELSE 0 END), 0) AS "shortlisted"
         FROM applications a
         JOIN student_profiles sp ON sp.id = a.student_id
         WHERE sp.user_id = $1 AND ${SP_ACTIVE_CLAUSE} ${AND_APP_NOT_DELETED}`,
@@ -163,6 +162,7 @@ async function __platform_GET(request) {
     const profileQuery = await query(
       `
       SELECT
+        sp.id AS student_id,
         sp.roll_number,
         sp.department,
         sp.branch,
@@ -189,12 +189,14 @@ async function __platform_GET(request) {
       { skillsCount: profileRow?.skills_count ?? 0 },
     );
 
+    const offersReceived = await countStudentVisibleOffers(profileRow?.student_id);
+
     return NextResponse.json({
       isAlumni,
       stats: {
         totalApplications: parseInt(statsQuery.rows[0].totalApplications || 0),
         shortlisted: parseInt(statsQuery.rows[0].shortlisted || 0),
-        offersReceived: parseInt(statsQuery.rows[0].offersReceived || 0),
+        offersReceived,
         upcomingDrives: drivesQuery.rows.length,
         profileCompletion,
         profileCompletionItems,

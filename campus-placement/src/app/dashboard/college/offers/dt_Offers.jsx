@@ -5,11 +5,8 @@ import useSWR from 'swr';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS, FILTER_ALL } from '@/lib/tableQueryPresets';
-import { FileUp, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { formatDate, formatCurrency, formatStatus, getStatusColor } from '@/lib/utils';
-import { downloadCollegeOffersTemplate } from '@/lib/collegeOffersCsvTemplate';
-import { COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME } from '@/lib/offersAssessmentStarterCsv';
-import { downloadCsvFromApi } from '@/lib/downloadCsvFromApi';
 import { useToast } from '@/components/ToastProvider';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import CompanyNameLink from '@/components/CompanyNameLink';
@@ -81,7 +78,6 @@ export default function DtCollegeOffers() {
     }));
   }, [studentsPayload]);
 
-  const [uploading, setUploading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewRow, setViewRow] = useState(null);
@@ -113,42 +109,6 @@ export default function DtCollegeOffers() {
   };
 
   const todayYmd = useMemo(() => toDateOnlyString(new Date()), []);
-
-  const downloadAssessmentStarter = async () => {
-    try {
-      await downloadCsvFromApi('/api/college/offers/assessment-starter', COLLEGE_OFFERS_ALL_STUDENTS_CSV_FILENAME);
-      addToast('CSV lists all campus master-list students (company from newest assessment when present). Add job details, then upload.', 'success');
-    } catch (err) {
-      addToast(err.message || 'Download failed', 'error');
-    }
-  };
-
-  const onUploadCsv = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/college/offers/upload', { method: 'POST', body: fd });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Upload failed');
-      const { accepted, errors } = json;
-      addToast(`Imported ${accepted} row(s).${errors?.length ? ` ${errors.length} issue(s) — see below.` : ''}`, accepted ? 'success' : 'warning');
-      if (errors?.length) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('CSV import issues', errors);
-        }
-        addToast(errors.slice(0, 3).map((x) => `Line ${x.line}: ${x.message}`).join(' · '), 'error');
-      }
-      await mutate();
-    } catch (err) {
-      addToast(err.message || 'Upload failed', 'error');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const submitAdd = async () => {
     if (!form.studentId || !form.reportedCompanyName.trim() || !form.jobTitle.trim()) {
@@ -328,16 +288,6 @@ export default function DtCollegeOffers() {
           ) : null}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={downloadCollegeOffersTemplate}>
-            <FileUp size={14} aria-hidden /> Template
-          </button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={downloadAssessmentStarter}>
-            <FileUp size={14} aria-hidden /> All students
-          </button>
-          <label className="btn btn-secondary btn-sm" style={{ cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
-            {uploading ? 'Importing…' : 'Upload CSV'}
-            <input type="file" accept=".csv,text/csv" hidden disabled={uploading} onChange={onUploadCsv} />
-          </label>
           <StandardTableIconAction
             action="add"
             variant="primary"
@@ -348,36 +298,6 @@ export default function DtCollegeOffers() {
             }}
           />
         </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <h3 className="card-title" style={{ marginBottom: '0.75rem' }}>
-          Import offers from CSV
-        </h3>
-        <p className="text-sm text-secondary" style={{ marginBottom: '1rem', lineHeight: 1.55 }}>
-          Download the template, fill one row per offer (roll numbers must exist under <strong>Students</strong>), then upload. Same actions are in the page header.
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          <button type="button" className="btn btn-secondary" onClick={downloadCollegeOffersTemplate}>
-            Blank template
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={downloadAssessmentStarter}>
-            Download Template (All students)
-          </button>
-          <label className="btn btn-primary" style={{ cursor: uploading ? 'wait' : 'pointer', margin: 0 }}>
-            {uploading ? 'Importing…' : 'Choose CSV file to import'}
-            <input type="file" accept=".csv,text/csv" hidden disabled={uploading} onChange={onUploadCsv} />
-          </label>
-        </div>
-      </div>
-
-      <div className="directive-panel" role="region" aria-label="Offer import rules" style={{ marginBottom: '1rem' }}>
-        <p className="directive-panel__title">Validation (not tied to assessments)</p>
-        <p className="text-sm text-secondary" style={{ margin: 0, lineHeight: 1.55 }}>
-          Each row must match a student in your <strong>master student list</strong> (roll number on your Students screen). We do <strong>not</strong> require that the
-          student appeared in employer assessment CSVs. Assessment outcomes are irrelevant for this screen — you can log offers even when everything happened over
-          email. Optional <strong>status</strong> in CSV: pending, accepted, rejected, expired, revoked (defaults to pending).
-        </p>
       </div>
 
       <div className="directive-panel" role="region" aria-label="Student acceptance" style={{ marginBottom: '1rem' }}>
@@ -584,7 +504,7 @@ export default function DtCollegeOffers() {
                 <td colSpan={OFFER_TABLE_COLUMNS.length} style={{ textAlign: 'center', padding: '3rem 2rem' }}>
                   <Send size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.25 }} aria-hidden />
                   <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>No offers yet</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Add manually or import CSV.</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Use Add offer above to log off-platform placements.</div>
                 </td>
               </tr>
             ) : null}

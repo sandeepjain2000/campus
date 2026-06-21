@@ -21,6 +21,10 @@ import {
   Lock,
   UserX,
   AlertTriangle,
+  Megaphone,
+  MessageSquareText,
+  UserRoundSearch,
+  UserCog,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -134,6 +138,8 @@ export const menuConfig = {
           { label: 'My Drives', href: '/dashboard/student/applications/drives', icon: Target },
           { label: 'My Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
           { label: 'My Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
+          { label: 'Internship feedback', href: '/dashboard/student/internship-feedback', icon: MessageSquareText },
+          { label: 'Internship PPO', href: '/dashboard/student/internship-ppo', icon: Award },
           { label: 'My Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
           { label: 'My Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
           { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
@@ -192,6 +198,9 @@ export const menuConfig = {
         title: '🎓 Student Opportunities',
         items: [
           { label: 'Internships', href: '/dashboard/employer/internships', icon: GraduationCap },
+          { label: 'Internship feedback', href: '/dashboard/employer/internship-feedback', icon: MessageSquareText },
+          { label: 'Internship supervisors', href: '/dashboard/employer/internship-supervisors', icon: UserCog },
+          { label: 'Internship PPO', href: '/dashboard/employer/internship-ppo', icon: Award },
           { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
           { label: 'Projects', href: '/dashboard/employer/projects', icon: FolderDot },
         ],
@@ -212,6 +221,7 @@ export const menuConfig = {
           { label: 'Applications', href: '/dashboard/employer/applications', icon: ClipboardList },
           { label: 'Unavailable (FCFS)', href: '/dashboard/employer/fcfs-unavailable', icon: UserX },
           { label: 'Offers', href: '/dashboard/employer/offers', icon: Send },
+          { label: 'Offer templates', href: '/dashboard/employer/offer-templates', icon: FileEdit },
         ],
       },
       {
@@ -279,6 +289,9 @@ export const menuConfig = {
           { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
           { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
           { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
+          { label: 'Internship feedback', href: '/dashboard/college/internship-feedback', icon: MessageSquareText },
+          { label: 'Internship guides', href: '/dashboard/college/internship-guides', icon: UserRoundSearch },
+          { label: 'Internship PPO', href: '/dashboard/college/internship-ppo', icon: Award },
         ],
       },
       {
@@ -314,6 +327,7 @@ export const menuConfig = {
           { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
           { label: 'Email templates', href: '/dashboard/college/communication-templates', icon: Mail },
           { label: 'Custom message templates', href: '/dashboard/college/message-templates', icon: FileEdit },
+          { label: 'Bulk notifications', href: '/dashboard/college/bulk-notifications', icon: Megaphone },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },

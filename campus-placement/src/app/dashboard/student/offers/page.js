@@ -46,8 +46,9 @@ export default function StudentOffersPage() {
         <div className="page-header-left">
           <h1>🎉 My Offers</h1>
           <p>
-            This is the only place you <strong>accept or decline</strong> an offer; your choice updates the record your employer and college see on their Offers
-            screens.
+            Formal offers live here — drafted offer letters, compensation terms, and your accept or decline response.
+            Being <strong>selected</strong> on My Applications is an earlier step; you will get a separate email when a
+            formal offer is published.
           </p>
         </div>
       </div>
@@ -59,7 +60,7 @@ export default function StudentOffersPage() {
         >
           <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
             You have offer records on file, but none are waiting for your response. New offers must be created with status{' '}
-            <strong>pending</strong> (employer <strong>Create Offer</strong> or college upload). If you expected Accept / Decline buttons, ask your placement office to re-open the offer as pending.
+            <strong>pending</strong> (employer bulk generate, Create offer, or college manual add). If you expected Accept / Decline buttons, ask your placement office to re-open the offer as pending.
           </p>
         </div>
       ) : null}
@@ -133,17 +134,37 @@ export default function StudentOffersPage() {
                 </div>
               </div>
 
-              {offer.offerLetterUrl && (
+              {(offer.renderedLetterHtml || offer.offerLetterUrl) && (
                 <div style={{ margin: '0 0 1.25rem' }}>
-                  <a
-                    href={offer.offerLetterUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-secondary btn-sm"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                  >
-                    📄 Open Offer Letter
-                  </a>
+                  {offer.renderedLetterHtml ? (
+                    <div
+                      style={{
+                        padding: '1rem 1.25rem',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-lg)',
+                        fontSize: '0.9rem',
+                        lineHeight: 1.65,
+                        whiteSpace: 'pre-wrap',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                        Offer letter
+                      </div>
+                      {offer.renderedLetterHtml}
+                    </div>
+                  ) : (
+                    <a
+                      href={offer.offerLetterUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      📄 Open Offer Letter
+                    </a>
+                  )}
                 </div>
               )}
 

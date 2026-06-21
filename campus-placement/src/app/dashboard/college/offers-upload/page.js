@@ -1,14 +1,6 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import ResponsiveWrapper from '@/components/mobile/ResponsiveWrapper';
-import DtCollegeOffersUpload from './dt_OffersUpload';
-import MbCollegeOffersUpload from './mb_OffersUpload';
-
+/** CSV offer import removed — use manual Add offer on Placement offers. */
 export default function CollegeOffersUploadPage() {
-  return (
-    <ResponsiveWrapper
-      desktopView={<DtCollegeOffersUpload />}
-      mobileView={<MbCollegeOffersUpload />}
-    />
-  );
+  redirect('/dashboard/college/offers');
 }

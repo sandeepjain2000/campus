@@ -45,6 +45,11 @@ export const QUICK_START_STEPS = [
 
 export const GUIDED_PLAYBOOKS = [
   {
+    goal: 'Internship guides, supervisors & feedback — auto + voice (after Select)',
+    command: 'run_internship_care_auto_voice.bat',
+    focus: 'npm run test:guided:voice-internship-care · Requires selected intern · pip install -r qa/guided/requirements-voice.txt once',
+  },
+  {
     goal: 'Full internship E2E — auto + voice for OBS recording (no blue-tag clicks)',
     command: 'run_internship_e2e_auto_voice.bat',
     focus: 'npm run test:guided:playbook-e2e-auto-voice · pip install -r qa/guided/requirements-voice.txt once',
@@ -424,6 +429,19 @@ export const USE_CASE_FLOWS_USER_TESTING = [
     ],
   },
   {
+    name: 'Internship guides, supervisors & feedback',
+    runnerSlug: 'internship-guides-feedback-supervisors',
+    steps: [
+      'Prerequisite: intern in Selected or In progress (apply-select playbook if empty)',
+      'College: assign campus guide on Internship guides',
+      'Employer: assign company supervisor on Internship supervisors',
+      'Employer: submit feedback on Internship feedback',
+      'Student: view guide + supervisor; submit feedback',
+      'College: read-only Internship feedback table + CSV export',
+      'College: verify supervisor on Internship guides card',
+    ],
+  },
+  {
     name: 'Guest engagement confirmation',
     runnerSlug: 'guest-engagement',
     steps: [
@@ -505,7 +523,8 @@ export const SCREEN_TAG_STUCK_TIPS = [
 ];
 
 export const SESSION_MARKER_NOTES = [
-  'Full-cycle playbook (npm run test:guided:playbook-e2e) runs all roles in one session — ~40 steps, one GT- marker.',
+  'Full-cycle playbook (npm run test:guided:playbook-e2e) runs all roles in one session — includes guide, supervisor, and feedback after Select.',
+  'Post-Select only (voice): run_internship_care_auto_voice.bat or npm run test:guided:voice-internship-care.',
   'Placement drive playbooks: test:guided:playbook-drives-e2e (full), playbook-drives (request + approve), playbook-drives-apply (apply + select). CSV export/upload on drives is still manual — see qa/MANUAL_TEST_PLAYBOOK.md.',
   'Publish-only or apply-only playbooks still available for partial testing.',
   'Publish playbook creates a title like GT-20260529T1530 Summer Data Intern.',
@@ -520,7 +539,10 @@ export const INTERNSHIP_E2E_ROLES = [
   { role: 'College', steps: 'Approve tie-up (if needed), Approve for campus on Internships list (green check icon)', account: 'admin@iitm.edu' },
   { role: 'Student', steps: 'Browse internships, apply to GT- posting', account: 'arjun.verma@iitm.edu' },
   { role: 'Employer', steps: 'Shortlist and Select applicant on Applications → Internships', account: 'hr@techcorp.com' },
-  { role: 'Closure', steps: 'Student confirms Selected on My Applications', account: 'arjun.verma@iitm.edu' },
+  { role: 'College', steps: 'Assign campus guide (Internship guides)', account: 'admin@iitm.edu' },
+  { role: 'Employer', steps: 'Assign supervisor (Internship supervisors) and submit feedback', account: 'hr@techcorp.com' },
+  { role: 'Student', steps: 'View guide + supervisor; submit Internship feedback', account: 'arjun.verma@iitm.edu' },
+  { role: 'Closure', steps: 'College reads feedback; student confirms Selected on My Applications', account: 'admin@iitm.edu / arjun.verma@iitm.edu' },
 ];
 
 export const DEMO_LOGINS = [
@@ -534,8 +556,19 @@ export const DEMO_PASSWORD = 'Admin@123';
 /** Shown on /developer and in npm run test:guided:help — keep current after UI/menu changes. */
 export const RUNNER_CHANGE_ALERTS = [
   {
+    date: '2026-06-02',
+    title: 'Internship guides, supervisors & feedback — voice runners',
+    items: [
+      'New screens: college Internship guides / feedback; employer Internship supervisors / feedback; student Internship feedback.',
+      'Standalone voice tour: run_internship_care_auto_voice.bat (or npm run test:guided:voice-internship-care).',
+      'Slug: internship-guides-feedback-supervisors · Prerequisite: selected intern — run apply-select bat first if lists are empty.',
+      'Full E2E + apply-select playbooks now include post-Select steps (guide, supervisor, feedback) when using auto + voice.',
+      'Migrations: npm run db:migrate:090 db:migrate:091 db:migrate:092 before testing.',
+    ],
+  },
+  {
     date: '2026-06-16',
-    title: 'Use-case voice runners (all 23 flows)',
+    title: 'Use-case voice runners (all 24 flows)',
     items: [
       'Every Developer Notes use case has an auto + voice runner: npm run test:guided:voice -- <slug>',
       'Windows: run_use_case_auto_voice.bat <slug> · List slugs: npm run test:guided:voice-list',
@@ -576,7 +609,7 @@ export const RUNNER_CHANGE_ALERTS = [
       'Assessment Update Online — new screen below CSV uploads; tabbed application table with inline round edits.',
       'Hiring Results Dashboard — read-only employer view (was Hiring Assessment); tabbed by opportunity type.',
       'Assessment map — configure round labels per kind under Settings (used by CSV upload and online update).',
-      'Upload offers (CSV) — removed from employer/college sidebar; still open via Offers page → /offers-upload.',
+      'Offer CSV import removed — employers use Offer templates + bulk generate; colleges use manual Add offer. Legacy /offers-upload URLs redirect to Offers.',
       'Purge test data — removed from employer/college login menus; super-admin only on /data-entry.',
       'After dashboardMenu.js edits run: npm run qa:sync-routes',
     ],
@@ -667,6 +700,24 @@ export const DEVELOPER_PENDING_BACKLOG = {
       detail:
         'Branch matching is off (BRANCH_ELIGIBILITY_MATCHING_ENABLED=false). Remove or hide misleading “All eligible branches” UI when a common denominator taxonomy exists.',
       source: 'Exploration F14',
+    },
+    {
+      id: 'tpo-shadow-employer-accounts',
+      category: 'feature',
+      title: 'Shadow Employer accounts — TPO-operated drives & employer workflow',
+      detail:
+        'Workflow validation #5 (TPO drive creation): instead of a separate “college creates drive” screen, provision Shadow Employer login(s) per campus that the TPO operates. TPO uses the normal employer path — drive request, assessments, bulk offers, templates — on behalf of off-platform or campus-initiated recruiters without waiting for a real employer account. Needs RBAC (TPO-only, scoped to tenant), audit trail, and clear UI that the session is shadow/proxy. Replaces building duplicate college-side drive authoring.',
+      source: 'Workflow validation #5 · product direction Jun 2026',
+      decision: 'Pending — shadow employer model preferred over native TPO drive creation UI.',
+    },
+    {
+      id: 'placement-analytics-reporting',
+      category: 'feature',
+      title: 'Placement Analytics & Reporting — employer and college roles',
+      detail:
+        'Workflow validation #8. College (partial today): /dashboard/college/reports — dept placement %, salary bands, top recruiters, YoY, student–company events, CSV exports; audit reports separate. Gaps: academic-year scoping consistency, internship/program offers in same season view, live season dashboard. Employer (missing today): no dedicated analytics menu — only overview stat tiles (F24 incomplete), Hiring Results Dashboard (assessment grid), and ad-hoc CSV exports on assessments/applications/offers. Target: unified “Placement analytics” for both roles — funnel (applied → shortlisted → selected → offer → accepted), CTC distribution, time-to-hire, per-campus breakdown for multi-campus employers, per-drive/per-program filters, export parity. College = institute season + department; Employer = own pipelines across drives, internships, jobs, projects.',
+      source: 'Workflow validation #8 · product request Jun 2026',
+      decision: 'Pending — name and scope agreed; build after core placement flows stabilize.',
     },
     {
       id: 'export-rate-limiting-security',

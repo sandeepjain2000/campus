@@ -30,10 +30,15 @@ function isMissingUpdatedAtError(e) {
   return e?.code === '42703' && String(e?.message || '').includes('updated_at');
 }
 
-function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField) {
+function isMissingRenderedLetterError(e) {
+  return e?.code === '42703' && String(e?.message || '').includes('rendered_letter_html');
+}
+
+function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField, includeRenderedLetter) {
   const latestClause =
     latestOnly && selectLatestField ? `AND (o.is_latest = 1 OR ${OFFER_PENDING_STATUS_SQL})` : '';
   const latestSel = selectLatestField ? ', o.is_latest as "isLatest"' : '';
+  const renderedSel = includeRenderedLetter ? ', o.rendered_letter_html AS "renderedLetterHtml"' : '';
   const companyExpr = useReportedCompany
     ? `COALESCE(ep.company_name, o.reported_company_name, 'Company')`
     : `COALESCE(ep.company_name, 'Company')`;
@@ -47,6 +52,7 @@ function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField
            o.status, o.deadline, o.drive_id as "driveId", o.application_id as "applicationId",
            o.created_at as "createdAt", o.accepted_at as "acceptedAt", o.rejected_at as "rejectedAt",
            o.offer_letter_url AS "offerLetterUrl"
+           ${renderedSel}
            ${latestSel}
     FROM offers o
     LEFT JOIN employer_profiles ep ON o.employer_id = ep.id
@@ -56,24 +62,41 @@ function buildStudentOffersSql(latestOnly, useReportedCompany, selectLatestField
 
 async function loadStudentOffersRows(studentId) {
   try {
-    return await query(buildStudentOffersSql(true, true, true), [studentId]);
+    return await query(buildStudentOffersSql(true, true, true, true), [studentId]);
   } catch (e) {
+    if (isMissingRenderedLetterError(e)) {
+      try {
+        return await query(buildStudentOffersSql(true, true, true, false), [studentId]);
+      } catch (e0) {
+        e = e0;
+      }
+    }
     if (isMissingIsLatestError(e)) {
       try {
-        return await query(buildStudentOffersSql(false, true, false), [studentId]);
+        return await query(buildStudentOffersSql(false, true, false, true), [studentId]);
       } catch (e2) {
+        if (isMissingRenderedLetterError(e2)) {
+          try {
+            return await query(buildStudentOffersSql(false, true, false, false), [studentId]);
+          } catch (e3) {
+            if (isMissingReportedColumnError(e3)) {
+              return await query(buildStudentOffersSql(false, false, false, false), [studentId]);
+            }
+            throw e3;
+          }
+        }
         if (isMissingReportedColumnError(e2)) {
-          return await query(buildStudentOffersSql(false, false, false), [studentId]);
+          return await query(buildStudentOffersSql(false, false, false, false), [studentId]);
         }
         throw e2;
       }
     }
     if (isMissingReportedColumnError(e)) {
       try {
-        return await query(buildStudentOffersSql(true, false, true), [studentId]);
+        return await query(buildStudentOffersSql(true, false, true, true), [studentId]);
       } catch (e2) {
         if (isMissingIsLatestError(e2)) {
-          return await query(buildStudentOffersSql(false, false, false), [studentId]);
+          return await query(buildStudentOffersSql(false, false, false, false), [studentId]);
         }
         throw e2;
       }

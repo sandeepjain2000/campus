@@ -1,5 +1,7 @@
 # PlacementHub help library
 
+**Product overview (features & flows):** [`../PLACEMENTHUB_FUNCTIONALITY.md`](../PLACEMENTHUB_FUNCTIONALITY.md)
+
 This folder is the **canonical markdown export** of in-app help. Point Cursor, Codex, or Claude Code here for the same content the Help widget uses.
 
 ## Sync from source
