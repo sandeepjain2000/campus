@@ -1,6 +1,10 @@
 import { query } from '@/lib/db';
 import { getApplyBlockReason } from '@/lib/getApplyBlockReason';
 import {
+  resolveStudentEligibilityGroupCode,
+  resolveStudentEligibilityGroupName,
+} from '@/lib/academicTaxonomy/mapProgram';
+import {
   getStudentPlacementApplyLock,
   getStudentResumeApplyState,
 } from '@/lib/studentApplyEligibility';
@@ -8,17 +12,26 @@ import {
 async function queryStudentProfileRow(studentId) {
   try {
     return await query(
-      `SELECT cgpa, branch, department, batch_year, backlogs_active, placement_status, tenant_id
+      `SELECT cgpa, branch, department, batch_year, backlogs_active, placement_status, tenant_id, aux_profile
        FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
       [studentId],
     );
   } catch (e) {
     if (e?.code !== '42703') throw e;
-    return query(
-      `SELECT cgpa, branch, department, batch_year, placement_status, tenant_id
-       FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
-      [studentId],
-    );
+    try {
+      return await query(
+        `SELECT cgpa, branch, department, batch_year, backlogs_active, placement_status, tenant_id
+         FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+        [studentId],
+      );
+    } catch (e2) {
+      if (e2?.code !== '42703') throw e2;
+      return query(
+        `SELECT cgpa, branch, department, batch_year, placement_status, tenant_id
+         FROM student_profiles WHERE id = $1::uuid LIMIT 1`,
+        [studentId],
+      );
+    }
   }
 }
 
@@ -37,6 +50,8 @@ export async function loadStudentApplyProfile(studentId, tenantId = null) {
       backlogsActive: 0,
       hasResume: false,
       isPlacementLocked: false,
+      eligibilityGroupCode: null,
+      eligibilityGroupName: null,
     };
   }
 
@@ -50,6 +65,10 @@ export async function loadStudentApplyProfile(studentId, tenantId = null) {
   const cgpaRaw = row.cgpa;
   const cgpa =
     cgpaRaw != null && cgpaRaw !== '' && !Number.isNaN(Number(cgpaRaw)) ? Number(cgpaRaw) : null;
+  const aux =
+    row.aux_profile && typeof row.aux_profile === 'object' && !Array.isArray(row.aux_profile)
+      ? row.aux_profile
+      : {};
 
   return {
     cgpa,
@@ -59,6 +78,8 @@ export async function loadStudentApplyProfile(studentId, tenantId = null) {
     backlogsActive: Number(row.backlogs_active ?? 0),
     hasResume: resumeState.hasResume,
     isPlacementLocked: Boolean(placementLock.locked),
+    eligibilityGroupCode: resolveStudentEligibilityGroupCode(aux),
+    eligibilityGroupName: resolveStudentEligibilityGroupName(aux),
   };
 }
 

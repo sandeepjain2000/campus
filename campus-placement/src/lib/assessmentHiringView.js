@@ -15,7 +15,7 @@ export { pickRepresentativeAssessmentRows, buildAssessmentSummary, classifyAsses
  * @param {{ employerId?: string | null, tenantId?: string | null }} filter
  */
 export async function fetchAssessmentRowsForView(filter) {
-  const { employerId, tenantId } = filter;
+  const { employerId, tenantId, driveId, jobId } = filter;
   const params = [];
   let where = '1=1';
   if (employerId) {
@@ -25,6 +25,14 @@ export async function fetchAssessmentRowsForView(filter) {
   if (tenantId) {
     params.push(tenantId);
     where += ` AND eau.tenant_id = $${params.length}::uuid`;
+  }
+  if (driveId) {
+    params.push(driveId);
+    where += ` AND eau.drive_id = $${params.length}::uuid`;
+  }
+  if (jobId) {
+    params.push(jobId);
+    where += ` AND eau.job_id = $${params.length}::uuid`;
   }
 
   const rows = await query(

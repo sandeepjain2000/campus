@@ -4,7 +4,7 @@ Normalize test case fields and build retry list from a prior results JSON.
 Usage (repo root):
   python qa2/fix_failed_test_cases.py
   python qa2/fix_failed_test_cases.py --results qa2/playwright_results_20260517T145410Z.json
-  python qa2/run_playwright_nvidia.py --case-ids-file qa2/retry_case_ids.txt
+  python qa2/run_playwright_nvidia.py --case-ids-file qa2/data/retry_case_ids.txt
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from case_fields import normalize_case
 
 ROOT = Path(__file__).resolve().parent
 CASES_PATH = ROOT / "test_cases.json"
-RETRY_IDS_PATH = ROOT / "retry_case_ids.txt"
+RETRY_IDS_PATH = ROOT / "data" / "retry_case_ids.txt"
 DEFAULT_RESULTS = ROOT / "playwright_results_20260517T145410Z.json"
 
 
@@ -81,7 +81,7 @@ def main() -> None:
 
     RETRY_IDS_PATH.write_text("\n".join(unique) + ("\n" if unique else ""), encoding="utf-8")
     print(f"Wrote {len(unique)} IDs -> {RETRY_IDS_PATH}")
-    print("Re-run: python qa2/run_playwright_nvidia.py --case-ids-file qa2/retry_case_ids.txt")
+    print("Re-run: python qa2/run_playwright_nvidia.py --case-ids-file qa2/data/retry_case_ids.txt")
 
 
 if __name__ == "__main__":

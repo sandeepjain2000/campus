@@ -165,8 +165,8 @@ export default function EmployerInternshipSupervisorsPage() {
             Internship supervisors
           </h1>
           <p className="text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.55 }}>
-            Assign a company supervisor for each intern. Students see supervisor contact details on their internship
-            feedback page.
+            Assign a company supervisor for each intern. Students see supervisor contact details on their
+            Internship Progress Reviews page.
           </p>
           <p className="text-sm text-tertiary" style={{ margin: '0.35rem 0 0' }}>{statLine}</p>
         </div>

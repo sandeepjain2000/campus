@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { ArrowLeft, Search, Building2, CheckCircle2, Clock, Info } from 'lucide-react';
 import EntityLogo from '@/components/EntityLogo';
+import { formatFilterBadgeLabelParen } from '@/lib/filterBadgeLabel';
 
 const fetcher = async (url) => {
   const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -233,9 +234,9 @@ export default function CreateTieupPage() {
                 </div>
                 
                 <select className="form-select" style={{ width: 'auto', padding: '0.65rem 2rem 0.65rem 1rem', fontSize: '0.95rem', fontWeight: 500 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                  <option value="available">Available ({availableCount})</option>
-                  <option value="approved">Approved ({approvedCount})</option>
-                  <option value="pending">Pending ({pendingCount})</option>
+                  <option value="available">{formatFilterBadgeLabelParen('Available', availableCount)}</option>
+                  <option value="approved">{formatFilterBadgeLabelParen('Approved', approvedCount)}</option>
+                  <option value="pending">{formatFilterBadgeLabelParen('Pending', pendingCount)}</option>
                   <option value="rejected">Rejected/Blacklisted</option>
                   <option value="all">All Colleges ({colleges.length})</option>
                 </select>

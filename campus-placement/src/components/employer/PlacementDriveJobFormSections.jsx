@@ -6,6 +6,7 @@ import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
 import { DriveFormSection, driveFormCompactField, driveFormFullRow } from '@/components/employer/DriveFormSection';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { PLACEMENT_DRIVE_JOB_TYPE_LABELS } from '@/lib/placementDriveJobFields';
+import EligibilityGroupPicker from '@/components/employer/EligibilityGroupPicker';
 
 /**
  * Shared job/role/eligibility/compensation fields for placement drive request & edit forms.
@@ -102,13 +103,11 @@ export default function PlacementDriveJobFormSections({ form, setForm }) {
             onChange={(v) => setField('minCgpa', v)}
           />
         </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">Eligible branches</label>
-          <input
-            className="form-input"
+        <div className="form-group" style={{ ...driveFormFullRow, marginBottom: 0 }}>
+          <label className="form-label">Eligible branches / groups</label>
+          <EligibilityGroupPicker
             value={form.eligibleBranches}
-            onChange={(e) => setField('eligibleBranches', e.target.value)}
-            placeholder="CSE, ECE, IT — or All for every branch"
+            onChange={(v) => setField('eligibleBranches', v)}
           />
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>

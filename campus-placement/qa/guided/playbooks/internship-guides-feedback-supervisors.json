@@ -16,7 +16,7 @@
     {
       "phase": "SETUP",
       "label": "Prerequisite — selected intern on record",
-      "observe": "Requires at least one internship application in Selected or In progress. If lists are empty, run run_internship_apply_auto_voice.bat or the full internship E2E through Select first.",
+      "observe": "Requires at least one internship application in Selected or In progress. If lists are empty, run qa/runners/batch/run_internship_apply_auto_voice.bat or the full internship E2E through Select first.",
       "action": {
         "type": "wait",
         "ms": 2000
@@ -78,7 +78,7 @@
     },
     {
       "phase": "EMPLOYER",
-      "label": "Open Internship feedback",
+      "label": "Open Internship Progress Reviews",
       "observe": "Employer feedback table; Add or Edit on a selected intern row.",
       "action": {
         "type": "goto",
@@ -87,7 +87,7 @@
     },
     {
       "phase": "EMPLOYER",
-      "label": "Submit employer internship feedback — manual",
+      "label": "Submit employer internship progress review — manual",
       "observe": "Optional star rating plus at least ten characters of feedback text.",
       "action": {
         "type": "wait",
@@ -96,7 +96,7 @@
     },
     {
       "phase": "STUDENT",
-      "label": "Student opens Internship feedback",
+      "label": "Student opens Internship Progress Reviews",
       "observe": "Campus guide and company supervisor visible when assigned. Submit student feedback below.",
       "action": {
         "type": "login",
@@ -105,7 +105,7 @@
     },
     {
       "phase": "STUDENT",
-      "label": "Navigate to Internship feedback",
+      "label": "Navigate to Internship Progress Reviews",
       "observe": "Selected internship card with guide, supervisor, and feedback form.",
       "action": {
         "type": "goto",
@@ -114,7 +114,7 @@
     },
     {
       "phase": "STUDENT",
-      "label": "Submit student internship feedback — manual",
+      "label": "Submit student internship progress review — manual",
       "observe": "Star rating optional; feedback text at least ten characters.",
       "action": {
         "type": "wait",
@@ -123,7 +123,7 @@
     },
     {
       "phase": "COLLEGE",
-      "label": "College reviews internship feedback",
+      "label": "College reviews internship progress review",
       "observe": "Read-only table; Export CSV when rows exist.",
       "action": {
         "type": "login",
@@ -132,7 +132,7 @@
     },
     {
       "phase": "COLLEGE",
-      "label": "Open Internship feedback",
+      "label": "Open Internship Progress Reviews",
       "observe": "Student and employer feedback columns for submitted rows.",
       "action": {
         "type": "goto",

@@ -31,7 +31,7 @@ async function __platform_POST(_request, { params }) {
     );
     if (!own.rows[0]) return NextResponse.json({ error: 'Offer not found' }, { status: 404 });
 
-    const sent = await notifyStudentFormalOfferByOfferId(offerId);
+    const sent = await notifyStudentFormalOfferByOfferId(offerId, { force: true });
     if (!sent) {
       return NextResponse.json(
         { error: 'Offer email can only be resent for pending offers with a valid student contact.' },

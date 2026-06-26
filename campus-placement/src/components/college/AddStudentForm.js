@@ -16,7 +16,8 @@ import {
   initialCollegeStudentForm,
   validateCollegeStudentForm,
 } from '@/lib/collegeStudentAdminFields';
-import AdmissionBatchYearPicker from '@/components/college/AdmissionBatchYearPicker';
+import AcademicProgramPicker from '@/components/college/AcademicProgramPicker';
+import { mapProgramToStudentFields } from '@/lib/academicTaxonomy/mapProgram';
 import { getMaxAdmissionBatchYear } from '@/lib/admissionBatchYear';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
@@ -76,6 +77,10 @@ export default function AddStudentForm({
   const [serverError, setServerError] = useState('');
   const nameRef = useRef(null);
   const { data: collegeSettings } = useSWR(active ? '/api/college/settings' : null, settingsFetcher);
+  const { data: taxonomySettings } = useSWR(
+    active && !isEdit ? '/api/college/settings/academic-taxonomy' : null,
+    settingsFetcher,
+  );
   const collegeShortCode = collegeSettings?.institution?.shortCode?.trim() || '';
 
   const rollPreview = useMemo(() => {
@@ -95,6 +100,18 @@ export default function AddStudentForm({
       setTimeout(() => nameRef.current?.focus(), 100);
     }
   }, [active, isEdit, initialValues]);
+
+  useEffect(() => {
+    if (!active || isEdit || !taxonomySettings?.settings?.defaultProgramCode) return;
+    const code = taxonomySettings.settings.defaultProgramCode;
+    const program = taxonomySettings.academicPrograms?.find((p) => p.code === code);
+    const mapped = mapProgramToStudentFields(program);
+    setForm((f) => {
+      if (f.academic_program_code) return f;
+      if (!mapped) return { ...f, academic_program_code: code };
+      return { ...f, ...mapped };
+    });
+  }, [active, isEdit, taxonomySettings]);
 
   const set = (field, val) => {
     setForm((f) => ({ ...f, [field]: val }));
@@ -239,6 +256,34 @@ export default function AddStudentForm({
         <fieldset style={{ border: 'none', padding: 0, margin: '0 0 1.5rem' }}>
           <SectionLegend>Academic context</SectionLegend>
           <div className="add-student-grid">
+            <AcademicProgramPicker
+              value={form.academic_program_code}
+              error={errors.academic_program_code || errors.department}
+              onChange={(code, mapped) => {
+                if (!mapped) {
+                  set('academic_program_code', '');
+                  set('eligibility_group_code', '');
+                  set('eligibility_group_name', '');
+                  set('academic_program_display', '');
+                  return;
+                }
+                setForm((f) => ({
+                  ...f,
+                  academic_program_code: mapped.academic_program_code,
+                  degree_pursued: mapped.degree_pursued,
+                  department: mapped.department,
+                  branch: mapped.branch,
+                  eligibility_group_code: mapped.eligibility_group_code,
+                  eligibility_group_name: mapped.eligibility_group_name,
+                  academic_program_display: mapped.academic_program_display,
+                }));
+                setErrors((e) => ({
+                  ...e,
+                  academic_program_code: '',
+                  department: '',
+                }));
+              }}
+            />
             <Field label="Batch *" error={errors.batch} fullWidth>
               <AdmissionBatchYearPicker
                 value={form.batch}
@@ -272,25 +317,29 @@ export default function AddStudentForm({
                 ))}
               </select>
             </Field>
-            <Field label="Department *" error={errors.department} fullWidth>
-              <select
-                className={`form-select${errors.department ? ' input-error' : ''}`}
+            <Field label="Department" error={errors.department}>
+              <input
+                className={`form-input${errors.department ? ' input-error' : ''}`}
                 value={form.department}
+                readOnly={Boolean(form.academic_program_code)}
                 onChange={(e) => set('department', e.target.value)}
-              >
-                <option value="">Select department…</option>
-                {ADD_STUDENT_DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+                placeholder={form.academic_program_code ? 'Filled from academic program' : 'Select program above or enter manually'}
+              />
             </Field>
             <Field label="Specialization / Branch">
-              <input className="form-input" maxLength={100} value={form.branch} onChange={(e) => set('branch', e.target.value)} />
+              <input
+                className="form-input"
+                maxLength={100}
+                value={form.branch}
+                readOnly={Boolean(form.academic_program_code)}
+                onChange={(e) => set('branch', e.target.value)}
+              />
             </Field>
             <Field label="Degree Pursued">
               <input
                 className="form-input"
                 value={form.degree_pursued}
+                readOnly={Boolean(form.academic_program_code)}
                 onChange={(e) => set('degree_pursued', e.target.value)}
                 placeholder="e.g. B.Tech"
               />

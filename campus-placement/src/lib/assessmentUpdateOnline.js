@@ -35,7 +35,7 @@ import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 const ONLINE_UPLOAD_LABEL = 'Online update';
 
 async function buildAssessmentIndex(employerId, { tenantId, driveId, jobId }) {
-  const rows = await fetchAssessmentRowsForView({ employerId, tenantId });
+  const rows = await fetchAssessmentRowsForView({ employerId, tenantId, driveId, jobId });
   const rep = pickRepresentativeAssessmentRows(rows);
   const map = new Map();
   for (const r of rep) {

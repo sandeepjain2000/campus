@@ -26,6 +26,8 @@ import {
   fetchEmployerAssessmentTargets,
   pickDefaultAssessmentTargetId,
 } from '@/lib/employerAssessmentTargets';
+import { shouldShowFilterCount } from '@/lib/filterBadgeLabel';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 const KIND_TABS = [
   { id: 'internship', label: 'Internship', icon: GraduationCap },
@@ -455,16 +457,18 @@ function EmployerAssessmentUploadsContent() {
             >
               <Icon size={16} aria-hidden />
               {t.label}
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  opacity: active ? 0.9 : 0.65,
-                  marginLeft: '0.15rem',
-                }}
-              >
-                {n}
-              </span>
+              {shouldShowFilterCount(n) ? (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    opacity: active ? 0.9 : 0.65,
+                    marginLeft: '0.15rem',
+                  }}
+                >
+                  {n}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -753,17 +757,20 @@ function EmployerAssessmentUploadsContent() {
                       <td>{u.accepted_rows}</td>
                       <td>{u.rejected_rows}</td>
                       <td>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
+                        <StandardTableIconAction
+                          action={editorUploadId === u.id ? 'close' : 'edit'}
+                          loading={false}
                           onClick={() => {
+                            if (editorUploadId === u.id) {
+                              setEditorUploadId(null);
+                              return;
+                            }
                             setEditorUploadId(u.id);
                             setAddRoll('');
                             setAddRemarks('');
                           }}
-                        >
-                          {editorUploadId === u.id ? 'Editing…' : 'View / edit'}
-                        </button>
+                          tooltip={editorUploadId === u.id ? 'Close editor' : 'View and edit hiring results'}
+                        />
                       </td>
                     </tr>
                   ))}

@@ -60,3 +60,13 @@ ALL frontend work in this project MUST meet production-grade, v0-level design qu
 
 Read both before writing any significant UI code.
 <!-- END:ui-quality-standard -->
+
+## Documentation layout
+
+| Path | Contents |
+|------|----------|
+| [`docs/README.md`](docs/README.md) | Master doc index |
+| [`docs/product/placementhub-functionality.md`](docs/product/placementhub-functionality.md) | Features & flows |
+| [`docs/help/`](docs/help/) | In-app help export |
+| [`qa/docs/`](qa/docs/) | Guided runner & manual QA playbooks |
+| [`qa/runners/`](qa/runners/) | Runner scripts (not markdown) |

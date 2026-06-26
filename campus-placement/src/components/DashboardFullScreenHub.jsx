@@ -9,7 +9,7 @@ import ThemeToggleButton from '@/components/ThemeToggleButton';
 import DevScreenTag from '@/components/DevScreenTag';
 import EntityLogo from '@/components/EntityLogo';
 import { useResolvedBrandLogoUrl } from '@/hooks/useResolvedBrandLogoUrl';
-import { getDashboardMenu, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS } from '@/config/dashboardMenu';
+import { getDashboardMenu, NAV_SECTION_STORAGE_KEY, ROLE_HOME_PATHS, getDashboardNavItemKey } from '@/config/dashboardMenu';
 import { isAlumniStudent } from '@/lib/studentAlumni';
 import { ALUMNI_BROWSE_JOBS_PATH, ALUMNI_MY_JOBS_PATH } from '@/lib/alumniRoutes';
 import { EMPLOYER_ALUMNI_JOBS_PATH } from '@/lib/employerAlumniRoutes';
@@ -56,9 +56,8 @@ function getQuickActions(role, employerHasCampus, isAlumni) {
     }
     return [
       { label: 'Browse drives', href: '/dashboard/student/drives' },
-      { label: 'Internships', href: '/dashboard/student/applications/internships' },
-      { label: 'Projects', href: '/dashboard/student/applications/projects' },
-      { label: 'Calendar', href: '/dashboard/student/calendar' },
+      { label: 'My internships', href: '/dashboard/student/applications/internships' },
+      { label: 'Mentor Connect', href: '/dashboard/student/mentorship-requests' },
       { label: 'Alerts', href: '/dashboard/alerts' },
       { label: 'My profile', href: '/dashboard/student/profile' },
     ];
@@ -327,22 +326,31 @@ export default function DashboardFullScreenHub({ role, session }) {
               <h2 className="dashboard-nav-hub-category-title">{section.title}</h2>
               <ul className="dashboard-nav-hub-list">
                 {section.items.map((item) => (
-                  <li key={`${section.id}-${item.href}`}>
-                    <Link
-                      href={item.href}
-                      className="dashboard-nav-hub-link"
-                      onClick={() => syncNavSection(section.id)}
-                    >
-                      <span className="dashboard-nav-hub-link-icon" aria-hidden="true">
-                        <item.icon size={16} strokeWidth={1.75} />
-                      </span>
-                      {item.label}
-                      {hubSearch.trim() ? (
-                        <span className="text-xs text-tertiary" style={{ marginLeft: '0.35rem' }}>
-                          ({getDevScreenId(item.href) || '—'})
+                  <li key={`${section.id}-${getDashboardNavItemKey(item)}`}>
+                    {item.disabled ? (
+                      <span className="dashboard-nav-hub-link dashboard-nav-hub-link--disabled" aria-disabled="true">
+                        <span className="dashboard-nav-hub-link-icon" aria-hidden="true">
+                          <item.icon size={16} strokeWidth={1.75} />
                         </span>
-                      ) : null}
-                    </Link>
+                        {item.label}
+                      </span>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className="dashboard-nav-hub-link"
+                        onClick={() => syncNavSection(section.id)}
+                      >
+                        <span className="dashboard-nav-hub-link-icon" aria-hidden="true">
+                          <item.icon size={16} strokeWidth={1.75} />
+                        </span>
+                        {item.label}
+                        {hubSearch.trim() ? (
+                          <span className="text-xs text-tertiary" style={{ marginLeft: '0.35rem' }}>
+                            ({getDevScreenId(item.href) || '—'})
+                          </span>
+                        ) : null}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

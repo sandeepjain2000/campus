@@ -122,12 +122,12 @@ async function __platform_GET() {
   } catch (error) {
     if (error?.code === '42P01') {
       return NextResponse.json(
-        { error: 'Internship feedback is not available yet. Apply migration 090_internship_feedback.sql.' },
+        { error: 'Internship Progress Reviews is not available yet. Apply migration 090_internship_feedback.sql.' },
         { status: 503 },
       );
     }
     console.error('GET /api/student/internship-feedback', error);
-    return NextResponse.json({ error: 'Failed to load internship feedback' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load internship progress reviews' }, { status: 500 });
   }
 }
 
@@ -211,12 +211,12 @@ async function __platform_POST(req) {
   } catch (error) {
     if (error?.code === '42P01') {
       return NextResponse.json(
-        { error: 'Internship feedback is not available yet. Apply migration 090_internship_feedback.sql.' },
+        { error: 'Internship Progress Reviews is not available yet. Apply migration 090_internship_feedback.sql.' },
         { status: 503 },
       );
     }
     console.error('POST /api/student/internship-feedback', error);
-    return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save progress review' }, { status: 500 });
   }
 }
 

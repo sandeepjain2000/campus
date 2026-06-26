@@ -7,6 +7,7 @@ import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { Calendar, Info, LayoutGrid, List, Mic, Send, X } from 'lucide-react';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 const KIND_LABEL = {
   guest_faculty: 'Guest faculty',
@@ -450,22 +451,19 @@ export default function EmployerCampusGuestNeedsPage() {
                         }}
                       >
                         <ConfirmationBadge item={item} />
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        <StandardTableIconAction
+                          action="confirm"
+                          variant="primary"
                           disabled={!canSend}
-                          title={
+                          onClick={() => void openConfirm(item)}
+                          tooltip={
                             sent
                               ? 'Already confirmed'
                               : !item.canConfirm
                                 ? 'College contact email missing'
                                 : 'Send confirmation email'
                           }
-                          onClick={() => void openConfirm(item)}
-                        >
-                          <Send size={14} /> Confirm
-                        </button>
+                        />
                       </div>
                     </div>
                   );
@@ -563,22 +561,19 @@ export default function EmployerCampusGuestNeedsPage() {
                         <ConfirmationBadge item={item} />
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        <StandardTableIconAction
+                          action="confirm"
+                          variant="primary"
                           disabled={!canSend}
-                          title={
+                          onClick={() => void openConfirm(item)}
+                          tooltip={
                             sent
                               ? 'Already confirmed'
                               : !item.canConfirm
                                 ? 'College contact email missing'
                                 : 'Send confirmation email'
                           }
-                          onClick={() => void openConfirm(item)}
-                        >
-                          <Send size={14} /> Confirm
-                        </button>
+                        />
                       </td>
                     </tr>
                   );

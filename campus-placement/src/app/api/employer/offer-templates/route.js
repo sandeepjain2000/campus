@@ -6,6 +6,7 @@ import { DEFAULT_OFFER_TEMPLATE_BODY } from '@/lib/offerTemplateRender';
 import { validateEmployerOfferPayload, validateTitlePayload } from '@/lib/apiInputValidation';
 import { normalizeTitle } from '@/lib/validators';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { normalizeOfferEventType } from '@/lib/offerEventType';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ function mapTemplateRow(row) {
     joiningDate: row.joining_date ? toDateOnlyString(row.joining_date) : '',
     responseDeadline: row.response_deadline ? toDateOnlyString(row.response_deadline) : '',
     bodyTemplate: row.body_template,
+    eventType: normalizeOfferEventType(row.event_type),
     isActive: row.is_active !== false,
     updatedAt: row.updated_at,
   };
@@ -43,7 +45,7 @@ async function __platform_GET() {
     if (!employerId) return NextResponse.json({ templates: [] });
 
     const res = await query(
-      `SELECT id, name, job_title, salary, location, joining_date, response_deadline, body_template, is_active, updated_at
+      `SELECT id, name, job_title, salary, location, joining_date, response_deadline, body_template, event_type, is_active, updated_at
        FROM employer_offer_templates
        WHERE employer_id = $1::uuid AND is_active = true
        ORDER BY updated_at DESC`,
@@ -91,12 +93,13 @@ async function __platform_POST(request) {
     });
     if (offerErr) return NextResponse.json({ error: offerErr }, { status: 400 });
     if (!bodyTemplate) return NextResponse.json({ error: 'Letter body is required' }, { status: 400 });
+    const eventType = normalizeOfferEventType(body?.eventType ?? body?.event_type);
 
     const ins = await query(
       `INSERT INTO employer_offer_templates (
-         employer_id, name, job_title, salary, location, joining_date, response_deadline, body_template
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, name, job_title, salary, location, joining_date, response_deadline, body_template, is_active, updated_at`,
+         employer_id, name, job_title, salary, location, joining_date, response_deadline, body_template, event_type
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, name, job_title, salary, location, joining_date, response_deadline, body_template, event_type, is_active, updated_at`,
       [
         employerId,
         name,
@@ -106,6 +109,7 @@ async function __platform_POST(request) {
         joiningDate || null,
         responseDeadline || null,
         bodyTemplate,
+        eventType,
       ],
     );
 

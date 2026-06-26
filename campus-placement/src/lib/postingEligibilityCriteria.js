@@ -2,8 +2,11 @@
  * Per-posting eligibility rules the system can verify from profile + posting fields.
  */
 
-/** Free-text branch/specialisation matching is off until a multi-select branch picker ships. */
+/** Free-text branch/specialisation matching is off until taxonomy group matching is used. */
 export const BRANCH_ELIGIBILITY_MATCHING_ENABLED = false;
+
+/** Match recruiter eligibility groups (Computer Science, Electronics, …) to student taxonomy. */
+export const ELIGIBILITY_GROUP_MATCHING_ENABLED = true;
 
 function normalizeToken(value) {
   return String(value || '')
@@ -21,16 +24,36 @@ function isOpenToAllBranches(label) {
  * @param {string[] | null | undefined} eligibleBranches
  * @param {string | null | undefined} studentBranch
  * @param {string | null | undefined} studentDepartment
+ * @param {{ eligibilityGroupCode?: string | null, eligibilityGroupName?: string | null }} [options]
  */
-export function evaluateBranchEligibility(eligibleBranches, studentBranch, studentDepartment) {
-  if (!BRANCH_ELIGIBILITY_MATCHING_ENABLED) {
-    return { eligible: true };
-  }
-
+export function evaluateBranchEligibility(eligibleBranches, studentBranch, studentDepartment, options = {}) {
   const list = Array.isArray(eligibleBranches)
     ? eligibleBranches.map((b) => String(b || '').trim()).filter(Boolean)
     : [];
   if (!list.length || list.some(isOpenToAllBranches)) {
+    return { eligible: true };
+  }
+
+  if (ELIGIBILITY_GROUP_MATCHING_ENABLED) {
+    const groupCode = normalizeToken(options.eligibilityGroupCode);
+    const groupName = normalizeToken(options.eligibilityGroupName);
+    if (groupCode || groupName) {
+      const allowed = list.map(normalizeToken);
+      const groupMatch = allowed.some((a) => {
+        if (isOpenToAllBranches(a)) return true;
+        if (groupCode && (a === groupCode || a.replace(/\s+/g, '_') === groupCode.replace(/\s+/g, '_'))) return true;
+        if (groupName && (a === groupName || groupName.includes(a) || a.includes(groupName))) return true;
+        return false;
+      });
+      if (groupMatch) return { eligible: true };
+      return {
+        eligible: false,
+        reason: `This opening is limited to: ${list.join(', ')}.`,
+      };
+    }
+  }
+
+  if (!BRANCH_ELIGIBILITY_MATCHING_ENABLED) {
     return { eligible: true };
   }
 

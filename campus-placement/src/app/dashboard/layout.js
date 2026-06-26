@@ -18,6 +18,7 @@ import {
   isSidebarItemActive,
   isSidebarItemActiveInMenu,
   isRoleDashboardHome,
+  getDashboardNavItemKey,
 } from '@/config/dashboardMenu';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import DevScreenTag from '@/components/DevScreenTag';
@@ -331,6 +332,45 @@ export default function DashboardLayout({ children }) {
     );
   }
 
+  const renderSidebarNavItem = (item, activeFn) => {
+    const key = getDashboardNavItemKey(item);
+    const icon = (
+      <span className="sidebar-link-icon">
+        <item.icon size={18} aria-hidden="true" />
+      </span>
+    );
+    const label = <span className="sidebar-link-label">{item.label}</span>;
+
+    if (item.disabled) {
+      return (
+        <span
+          key={key}
+          className="sidebar-link sidebar-link--disabled"
+          title={item.label}
+          aria-disabled="true"
+        >
+          {icon}
+          {label}
+        </span>
+      );
+    }
+
+    const active = activeFn(item.href);
+    return (
+      <Link
+        key={key}
+        href={item.href}
+        className={`sidebar-link ${active ? 'active' : ''}`}
+        onClick={() => setMobileOpen(false)}
+        aria-current={active ? 'page' : undefined}
+        title={item.label}
+      >
+        {icon}
+        {label}
+      </Link>
+    );
+  };
+
   return (
     <div className={`dashboard-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <aside
@@ -370,41 +410,17 @@ export default function DashboardLayout({ children }) {
             menu.sections.map((section) => (
               <div key={section.id}>
                 <div className="sidebar-section-title">{section.title}</div>
-                {section.items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`sidebar-link ${isSidebarItemActiveInMenu(item.href, menu, pathname) ? 'active' : ''}`}
-                    onClick={() => setMobileOpen(false)}
-                    aria-current={isSidebarItemActiveInMenu(item.href, menu, pathname) ? 'page' : undefined}
-                    title={item.label}
-                  >
-                    <span className="sidebar-link-icon">
-                      <item.icon size={18} aria-hidden="true" />
-                    </span>
-                    <span className="sidebar-link-label">{item.label}</span>
-                  </Link>
-                ))}
+                {section.items.map((item) =>
+                  renderSidebarNavItem(item, (href) => isSidebarItemActiveInMenu(href, menu, pathname)),
+                )}
               </div>
             ))
           ) : (
             <>
               <div className="sidebar-section-title">{activeSection.title}</div>
-              {activeSection.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`sidebar-link ${isSidebarItemActive(item.href, activeSection, pathname) ? 'active' : ''}`}
-                  onClick={() => setMobileOpen(false)}
-                  aria-current={isSidebarItemActive(item.href, activeSection, pathname) ? 'page' : undefined}
-                  title={item.label}
-                >
-                  <span className="sidebar-link-icon">
-                    <item.icon size={18} aria-hidden="true" />
-                  </span>
-                  <span className="sidebar-link-label">{item.label}</span>
-                </Link>
-              ))}
+              {activeSection.items.map((item) =>
+                renderSidebarNavItem(item, (href) => isSidebarItemActive(href, activeSection, pathname)),
+              )}
             </>
           )}
         </nav>

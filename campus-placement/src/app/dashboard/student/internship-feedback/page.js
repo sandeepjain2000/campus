@@ -35,7 +35,7 @@ export default function StudentInternshipFeedbackPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Save failed');
-      addToast('Internship feedback saved.', 'success');
+      addToast('Progress review saved.', 'success');
       await mutate();
     } catch (e) {
       addToast(e.message || 'Save failed', 'error');
@@ -52,11 +52,11 @@ export default function StudentInternshipFeedbackPage() {
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <MessageSquareText size={26} aria-hidden />
-            Internship feedback
+            Internship Progress Reviews
           </h1>
           <p className="text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.55 }}>
-            Share feedback on internships where you were <strong>selected</strong> or <strong>in progress</strong>. Your
-            placement office and employer can review submissions.
+            Share progress reviews on internships where you were <strong>selected</strong> or <strong>in progress</strong>.
+            Your placement office and employer can review submissions.
           </p>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default function StudentInternshipFeedbackPage() {
       {!error && items.length === 0 ? (
         <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
           <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
-            No selected internships yet. After you are selected, return here to submit feedback.
+            No selected internships yet. After you are selected, return here to submit a progress review.
           </p>
         </div>
       ) : null}

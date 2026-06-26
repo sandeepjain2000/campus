@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import DataTableToolbar from '@/components/DataTableToolbar';
 import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
-import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight, Building2, MapPin } from 'lucide-react';
+import { Briefcase, FileText, CheckCircle, Send, Users, Calendar, ArrowRight, Building2, MapPin, Eye } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import PageError from '@/components/PageError';
 import PageLoading from '@/components/PageLoading';
@@ -472,11 +472,14 @@ export default function EmployerOverviewPage() {
                   </td>
                   <td className="text-sm text-secondary">{formatDate(app.appliedAt)}</td>
                   <td style={{ paddingRight: '1.5rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <Link className="btn btn-ghost btn-sm" href={`/dashboard/employer/applications?jobId=${app.jobId}`}>
-                        View Details
-                      </Link>
-                    </div>
+                    <Link
+                      href={`/dashboard/employer/applications?jobId=${app.jobId}`}
+                      className="btn btn-ghost btn-icon btn-sm"
+                      title="View application details"
+                      aria-label="View application details"
+                    >
+                      <Eye size={16} strokeWidth={2} aria-hidden />
+                    </Link>
                   </td>
                 </tr>
               ))}

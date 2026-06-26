@@ -25,6 +25,20 @@ export function toDateOnlyString(value) {
 }
 
 /**
+ * Safe ISO timestamp for offer/application deadlines (end of local calendar day).
+ * Never throws — returns null when the date is missing or invalid.
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+export function toDeadlineTimestampIso(value) {
+  const ymd = toDateOnlyString(value);
+  if (!ymd) return null;
+  const d = new Date(`${ymd}T23:59:59`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
  * Parse YYYY-MM-DD as local calendar date (avoids UTC off-by-one in toLocaleDateString).
  * @param {string} ymd
  * @returns {Date | null}

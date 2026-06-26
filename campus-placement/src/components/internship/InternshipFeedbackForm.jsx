@@ -52,7 +52,7 @@ export default function InternshipFeedbackForm({ initialRating, initialText, sav
         <StarPicker value={rating} onChange={setRating} disabled={saving} />
       </div>
       <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-        <label className="form-label">Your feedback</label>
+        <label className="form-label">Your progress review</label>
         <textarea
           className="form-textarea"
           rows={4}
@@ -64,7 +64,7 @@ export default function InternshipFeedbackForm({ initialRating, initialText, sav
         />
       </div>
       <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-        {saving ? 'Saving…' : initialText ? 'Update feedback' : 'Submit feedback'}
+        {saving ? 'Saving…' : initialText ? 'Update progress review' : 'Submit progress review'}
       </button>
     </form>
   );

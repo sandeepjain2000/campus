@@ -5,6 +5,7 @@ import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { useToast } from '@/components/ToastProvider';
 import { Save, Building2, MapPin, Award, UserCircle, Globe, Image as ImageIcon, Shield } from 'lucide-react';
+import AcademicTaxonomySettingsPanel from '@/components/college/AcademicTaxonomySettingsPanel';
 import EntityLogo from '@/components/EntityLogo';
 import { getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
 
@@ -214,6 +215,8 @@ export default function mb_Settings() {
 
             {activeSection === 'academics' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <AcademicTaxonomySettingsPanel />
+                <hr style={{ margin: '0.5rem 0', borderColor: 'var(--border-default)' }} />
                 <div className="form-group mb-0">
                   <label className="text-xs text-secondary mb-1 block">Accreditation Body</label>
                   <input className="form-input" value={form.accreditation.body} onChange={(e) => setNested('accreditation', 'body', e.target.value)} />

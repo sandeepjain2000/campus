@@ -12,17 +12,22 @@ import {
   FolderDot,
   GraduationCap,
   Search,
-  UserRound,
 } from 'lucide-react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { useToast } from '@/components/ToastProvider';
 import PageLoading from '@/components/PageLoading';
 import EmployerStudentProfileModal from '@/components/employer/EmployerStudentProfileModal';
+import EmployerApplicationRowActions from '@/components/employer/EmployerApplicationRowActions';
 import {
   EMPLOYER_ALUMNI_APPLICATIONS_PATH,
   isEmployerAlumniDashboardPath,
 } from '@/lib/employerAlumniRoutes';
+import {
+  countApplicationStatusPills,
+  formatFilterBadgeLabel,
+  shouldShowFilterCount,
+} from '@/lib/filterBadgeLabel';
 
 const ALL_TABS = [
   { id: 'drives', label: 'Placement drives', shortLabel: 'Drives', icon: Building2, desc: 'Students who registered for your campus placement drives.' },
@@ -87,6 +92,7 @@ export default function EmployerApplicationsPage() {
   const [search, setSearch] = useState('');
   const [sortOption, setSortOption] = useState('date_desc');
   const [profileContext, setProfileContext] = useState(null);
+  const [updatingAppKey, setUpdatingAppKey] = useState(null);
   const profileStudentId = profileContext?.studentId ?? null;
   const profileApplication = useMemo(
     () => profileApplicationContext(profileContext),
@@ -144,6 +150,10 @@ export default function EmployerApplicationsPage() {
 
   const items = useMemo(() => (Array.isArray(data?.items) ? data.items : []), [data]);
   const counts = data?.counts || { drives: 0, jobs: 0, internships: 0, projects: 0 };
+  const statusCounts = useMemo(
+    () => countApplicationStatusPills(items, STATUS_PILLS),
+    [items],
+  );
 
   const filtered = useMemo(() => {
     const result = items.filter((a) => {
@@ -248,6 +258,9 @@ export default function EmployerApplicationsPage() {
   };
 
   const updateStatus = async (app, status) => {
+    const appKey = `${app.sourceKind}-${app.id}`;
+    if (updatingAppKey === appKey) return;
+    setUpdatingAppKey(appKey);
     try {
       const res = await fetch('/api/employer/applications', {
         method: 'PATCH',
@@ -260,6 +273,8 @@ export default function EmployerApplicationsPage() {
       addToast(`Application marked as ${formatStatus(status)}.`, 'success');
     } catch (e) {
       addToast(e.message || 'Failed to update status', 'error');
+    } finally {
+      setUpdatingAppKey(null);
     }
   };
 
@@ -333,7 +348,7 @@ export default function EmployerApplicationsPage() {
           <span>
             <strong>{items.length}</strong> applicant{items.length === 1 ? '' : 's'} for this placement drive
             {statusFilter || search ? ` (${filtered.length} shown with current filters)` : ''}.
-            Use <strong>Shortlist</strong> on each row to move candidates forward.
+            Use the shortlist icon on each row to move candidates forward.
           </span>
           <Link href="/dashboard/employer/applications?tab=drives" className="btn btn-ghost btn-sm">
             Show all drives
@@ -400,9 +415,11 @@ export default function EmployerApplicationsPage() {
               >
                 <Icon size={17} strokeWidth={active ? 2.5 : 1.75} />
                 {t.shortLabel}
-                <span style={{ opacity: 0.85, fontSize: '0.8rem', background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)', borderRadius: '999px', padding: '0.1rem 0.4rem', fontWeight: 700, color: active ? 'white' : 'var(--text-tertiary)' }}>
-                  {n}
-                </span>
+                {shouldShowFilterCount(n) ? (
+                  <span style={{ opacity: 0.85, fontSize: '0.8rem', background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)', borderRadius: '999px', padding: '0.1rem 0.4rem', fontWeight: 700, color: active ? 'white' : 'var(--text-tertiary)' }}>
+                    {n}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -460,7 +477,7 @@ export default function EmployerApplicationsPage() {
               transition: 'all 0.15s',
             }}
           >
-            {p.label}
+            {formatFilterBadgeLabel(p.label, statusCounts[p.key])}
           </button>
         ))}
       </div>
@@ -500,10 +517,9 @@ export default function EmployerApplicationsPage() {
                       <th>System ID</th>
                       <th>Branch</th>
                       <th>CGPA</th>
-                      <th>Type</th>
                       <th>Status</th>
                       <th>Applied</th>
-                      <th style={{ textAlign: 'right', paddingRight: '1.5rem', minWidth: 280 }}>Actions</th>
+                      <th style={{ textAlign: 'right', paddingRight: '1.5rem', width: 1 }}>Actions</th>
                     </>
                   ) : (
                     <>
@@ -513,10 +529,9 @@ export default function EmployerApplicationsPage() {
                       <th>Branch</th>
                       <th>CGPA</th>
                       <th>Opening</th>
-                      <th>Type</th>
                       <th>Status</th>
                       <th>Applied</th>
-                      <th style={{ textAlign: 'right', paddingRight: '1.5rem', minWidth: 280 }}>Actions</th>
+                      <th style={{ textAlign: 'right', paddingRight: '1.5rem', width: 1 }}>Actions</th>
                     </>
                   )}
                 </tr>
@@ -568,11 +583,6 @@ export default function EmployerApplicationsPage() {
                       ) : '—'}
                     </td>
                   );
-                  const typeCell = (
-                    <td>
-                      <span className="badge badge-gray" style={{ fontSize: '0.75rem' }}>{jobTypeLabel(app.jobType)}</span>
-                    </td>
-                  );
                   const statusCell = (
                     <td>
                       <span className={`badge badge-${getStatusColor(app.status)} badge-dot`} style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}>
@@ -583,63 +593,24 @@ export default function EmployerApplicationsPage() {
                   const appliedCell = <td className="text-sm text-secondary">{app.appliedAt ? formatDate(app.appliedAt) : '—'}</td>;
                   const actionsCell = (
                     <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          onClick={() =>
-                            setProfileContext({
-                              studentId: app.studentProfileId,
-                              openingTitle: app.openingTitle,
-                              status: app.status,
-                              appliedAt: app.appliedAt,
-                              currentRound: app.currentRound,
-                              jobType: app.jobType,
-                              notes: app.notes,
-                              sourceKind: app.sourceKind,
-                            })
-                          }
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                          title="View full student profile, CV, and all uploaded documents"
-                        >
-                          <UserRound size={14} /> View
-                          {app.documentCount > 0 ? (
-                            <span className="badge badge-gray" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-                              {app.documentCount}
-                            </span>
-                          ) : null}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => openResume(app.resumeUrl)}
-                          disabled={!app.hasResume}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                          title={app.hasResume ? 'Open CV only' : 'No CV uploaded'}
-                        >
-                          <FileText size={14} /> CV
-                        </button>
-                        {app.status !== 'withdrawn' && (app.status === 'applied' || app.status === 'on_hold') && (
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'shortlisted')}>
-                            Shortlist
-                          </button>
-                        )}
-                        {app.status !== 'withdrawn' && app.status === 'shortlisted' && (
-                          <>
-                            <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(app, 'selected')}>
-                              Select
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(app, 'rejected')}>
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        {app.status !== 'withdrawn' && app.status === 'in_progress' && (
-                          <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(app, 'selected')}>
-                            Select
-                          </button>
-                        )}
-                      </div>
+                      <EmployerApplicationRowActions
+                        app={app}
+                        busy={updatingAppKey === `${app.sourceKind}-${app.id}`}
+                        onViewProfile={() =>
+                          setProfileContext({
+                            studentId: app.studentProfileId,
+                            openingTitle: app.openingTitle,
+                            status: app.status,
+                            appliedAt: app.appliedAt,
+                            currentRound: app.currentRound,
+                            jobType: app.jobType,
+                            notes: app.notes,
+                            sourceKind: app.sourceKind,
+                          })
+                        }
+                        onOpenResume={() => openResume(app.resumeUrl)}
+                        onUpdateStatus={updateStatus}
+                      />
                     </td>
                   );
                   return (
@@ -652,7 +623,6 @@ export default function EmployerApplicationsPage() {
                           {systemIdCell}
                           {branchCell}
                           {cgpaCell}
-                          {typeCell}
                           {statusCell}
                           {appliedCell}
                           {actionsCell}
@@ -665,7 +635,6 @@ export default function EmployerApplicationsPage() {
                           {branchCell}
                           {cgpaCell}
                           {openingCell}
-                          {typeCell}
                           {statusCell}
                           {appliedCell}
                           {actionsCell}

@@ -21,6 +21,7 @@ import PageError from '@/components/PageError';
 import { reportClientApiFailure } from '@/lib/clientPlatformErrorReport';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 import { useEmployerPostingCampuses } from '@/hooks/useEmployerPostingCampuses';
+import { formatFilterBadgeLabelParen } from '@/lib/filterBadgeLabel';
 
 const EMPLOYER_DRIVES_API = '/api/employer/drives';
 
@@ -570,10 +571,7 @@ export default function EmployerDrivesPage() {
                   boxShadow: statusFilter === tab.id ? '0 4px 10px rgba(79, 70, 229, 0.18)' : 'none',
                 }}
               >
-                {tab.label}
-                <span style={{ marginLeft: '0.35rem', opacity: statusFilter === tab.id ? 0.9 : 0.65 }}>
-                  ({statusCounts[tab.id] ?? 0})
-                </span>
+                {formatFilterBadgeLabelParen(tab.label, statusCounts[tab.id])}
               </button>
             ))}
           </div>

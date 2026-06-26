@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const stepsPath = path.join(repoRoot, 'qa/guided/internship-post-selection-steps.json');
+const stepsPath = path.join(repoRoot, 'qa/guided/config/internship-post-selection-steps.json');
 const postSteps = JSON.parse(fs.readFileSync(stepsPath, 'utf8'));
 
 const MARKER = '__POST_SELECTION_STEPS__';

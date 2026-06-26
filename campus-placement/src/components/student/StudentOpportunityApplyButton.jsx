@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Send, Loader2 } from 'lucide-react';
 import { resolveApplyBlockReason } from '@/lib/getApplyBlockReason';
 import { programOpportunityFromRow } from '@/lib/studentApplyContext';
 
@@ -38,16 +38,17 @@ export default function StudentOpportunityApplyButton({
       ) : null}
       <button
         type="button"
-        className="btn btn-primary btn-sm"
+        className="btn btn-primary btn-icon btn-sm"
         disabled={Boolean(blockReason) || applying}
         aria-disabled={blockReason || applying ? 'true' : undefined}
-        title={blockReason || undefined}
+        title={blockReason || 'Apply'}
+        aria-label={blockReason ? `Apply — ${blockReason}` : 'Apply'}
         onClick={() => {
           if (blockReason || applying) return;
           onApply(row.id, row.title);
         }}
       >
-        {applying ? '…' : 'Apply'}
+        {applying ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Send size={15} aria-hidden />}
       </button>
     </div>
   );

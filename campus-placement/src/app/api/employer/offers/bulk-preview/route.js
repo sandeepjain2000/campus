@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { countDriveSelectionOfferStats, assertEmployerOwnsDrive } from '@/lib/bulkOfferGenerate';
+import {
+  assertEmployerOwnsDrive,
+  assertEmployerOwnsInternshipPosting,
+  countDriveSelectionOfferStats,
+  countInternshipSelectionOfferStats,
+} from '@/lib/bulkOfferGenerate';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 export const dynamic = 'force-dynamic';
@@ -24,8 +29,32 @@ async function __platform_GET(request) {
     const employerId = await getEmployerId(session);
     if (!employerId) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
-    const driveId = new URL(request.url).searchParams.get('driveId')?.trim();
-    if (!driveId) return NextResponse.json({ error: 'driveId is required' }, { status: 400 });
+    const params = new URL(request.url).searchParams;
+    const driveId = params.get('driveId')?.trim();
+    const jobId = params.get('jobId')?.trim();
+
+    if (jobId) {
+      const posting = await assertEmployerOwnsInternshipPosting(employerId, jobId);
+      if (!posting) return NextResponse.json({ error: 'Internship posting not found' }, { status: 404 });
+
+      const stats = await countInternshipSelectionOfferStats({ employerId, jobId });
+
+      return NextResponse.json({
+        posting: { id: posting.id, title: posting.title },
+        selectedCount: stats.selectedCount,
+        offersExistingCount: stats.offersExistingCount,
+        readyToGenerateCount: stats.readyToGenerateCount,
+        pendingStudents: stats.withoutOffer.map((r) => ({
+          programApplicationId: r.program_application_id,
+          studentName: r.student_name,
+          collegeName: r.college_name,
+        })),
+      });
+    }
+
+    if (!driveId) {
+      return NextResponse.json({ error: 'driveId or jobId is required' }, { status: 400 });
+    }
 
     const drive = await assertEmployerOwnsDrive(employerId, driveId);
     if (!drive) return NextResponse.json({ error: 'Drive not found' }, { status: 404 });

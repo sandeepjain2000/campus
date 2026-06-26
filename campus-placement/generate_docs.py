@@ -100,7 +100,8 @@ def create_user_document():
         p.add_run(desc)
 
     # Save the document
-    file_path = sys.argv[1] if len(sys.argv) > 1 else 'Campus_Placement_System_User_Document.docx'
+    default_out = 'docs/product/campus-placement-system-user-document.docx'
+    file_path = sys.argv[1] if len(sys.argv) > 1 else default_out
     try:
         doc.save(file_path)
         print(f"Document saved successfully as {file_path}")

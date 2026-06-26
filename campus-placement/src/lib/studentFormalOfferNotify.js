@@ -14,6 +14,55 @@ function appOrigin() {
   return '';
 }
 
+async function formalOfferAlreadyNotified(offerId, studentUserId, { programApplicationId, applicationId } = {}) {
+  if (!studentUserId) return false;
+
+  const refs = [];
+  if (programApplicationId) refs.push(`internship-offer-app:${programApplicationId}`);
+  if (applicationId) refs.push(`drive-offer-app:${applicationId}`);
+  if (offerId) refs.push(`offer:${offerId}`);
+
+  if (refs.length === 0) return false;
+
+  try {
+    for (const ref of refs) {
+      const res = await query(
+        `SELECT 1 FROM notifications
+         WHERE user_id = $1::uuid
+           AND title LIKE 'Formal offer%'
+           AND message LIKE $2
+         LIMIT 1`,
+        [studentUserId, `%${ref}%`],
+      );
+      if (res.rows.length > 0) return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('formalOfferAlreadyNotified check failed:', err);
+    return false;
+  }
+}
+
+async function formalOfferEmailRecentlySent(studentUserId, subject) {
+  if (!studentUserId || !subject) return false;
+  try {
+    const res = await query(
+      `SELECT 1 FROM mail_delivery_logs
+       WHERE recipient_user_id = $1::uuid
+         AND context = 'student_formal_offer'
+         AND status = 'sent'
+         AND subject_truncated = $2
+         AND created_at > NOW() - INTERVAL '7 days'
+       LIMIT 1`,
+      [studentUserId, subject.slice(0, 500)],
+    );
+    return res.rows.length > 0;
+  } catch (err) {
+    console.error('formalOfferEmailRecentlySent check failed:', err);
+    return false;
+  }
+}
+
 /**
  * Notify student when a formal pending offer is published (email + in-app alert).
  * Selection notifications are separate — see studentSelectionNotify.js.
@@ -29,6 +78,9 @@ function appOrigin() {
  *   offerLetterUrl?: string | null;
  *   renderedLetterHtml?: string | null;
  *   offerId?: string | null;
+ *   programApplicationId?: string | null;
+ *   applicationId?: string | null;
+ *   force?: boolean;
  * }} opts
  */
 export async function notifyStudentFormalOffer({
@@ -42,7 +94,20 @@ export async function notifyStudentFormalOffer({
   offerLetterUrl,
   renderedLetterHtml,
   offerId,
+  programApplicationId,
+  applicationId,
+  force = false,
 }) {
+  const subject = `[PlacementHub] Formal offer — ${companyName} · ${roleTitle}`;
+
+  if (
+    !force &&
+    ((await formalOfferAlreadyNotified(offerId, studentUserId, { programApplicationId, applicationId })) ||
+      (await formalOfferEmailRecentlySent(studentUserId, subject)))
+  ) {
+    return { sent: false, skipped: true, reason: 'already_notified' };
+  }
+
   const origin = appOrigin();
   const offersLink = origin ? `${origin}/dashboard/student/offers` : '/dashboard/student/offers';
   const letterUrl = String(offerLetterUrl || '').trim();
@@ -50,9 +115,17 @@ export async function notifyStudentFormalOffer({
   const ctcLine =
     salary != null && Number(salary) > 0 ? formatCurrency(salary) : 'See offer letter for compensation details';
   const deadlineText = deadline ? new Date(deadline).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : null;
+  const refParts = [
+    programApplicationId ? `internship-offer-app:${programApplicationId}` : '',
+    applicationId ? `drive-offer-app:${applicationId}` : '',
+    offerId ? `offer:${offerId}` : '',
+  ].filter(Boolean);
+  const offerRef = refParts.join(' ');
 
   const title = `Formal offer — ${companyName}`;
-  const message = `Your formal offer for ${roleTitle} at ${companyName} is ready. Review the offer letter and respond on My Offers before the deadline.`;
+  const message = offerRef
+    ? `Your formal offer for ${roleTitle} at ${companyName} is ready. Review the offer letter and respond on My Offers before the deadline. (${offerRef})`
+    : `Your formal offer for ${roleTitle} at ${companyName} is ready. Review the offer letter and respond on My Offers before the deadline.`;
 
   try {
     await query(
@@ -109,23 +182,26 @@ export async function notifyStudentFormalOffer({
   try {
     await sendMail({
       to: email,
-      subject: `[PlacementHub] Formal offer — ${companyName} · ${roleTitle}`,
+      subject,
       text: textLines.join('\n'),
       html,
       context: 'student_formal_offer',
       recipientUserId: studentUserId,
     });
+    return { sent: true };
   } catch (err) {
     console.error('Failed to send formal offer email:', err);
+    return { sent: false, reason: 'send_failed' };
   }
 }
 
 /**
  * Load offer + student contact and send formal-offer notification when status is pending.
  * @param {string} offerId
+ * @param {{ force?: boolean }} [opts] — pass force: true for explicit resend
  * @returns {Promise<boolean>} true when notification was sent
  */
-export async function notifyStudentFormalOfferByOfferId(offerId) {
+export async function notifyStudentFormalOfferByOfferId(offerId, { force = false } = {}) {
   if (!offerId) return false;
 
   const baseSql = (includeRendered) => `
@@ -153,7 +229,7 @@ export async function notifyStudentFormalOfferByOfferId(offerId) {
   if (!row?.user_id) return false;
   if (!isPendingOfferStatus(normalizeOfferStatus(row.status))) return false;
 
-  await notifyStudentFormalOffer({
+  const result = await notifyStudentFormalOffer({
     studentUserId: String(row.user_id),
     email: String(row.email || ''),
     firstName: row.first_name,
@@ -164,9 +240,10 @@ export async function notifyStudentFormalOfferByOfferId(offerId) {
     offerLetterUrl: row.offer_letter_url,
     renderedLetterHtml: row.rendered_letter_html,
     offerId: String(row.id),
+    force,
   });
 
-  return true;
+  return result?.sent !== false;
 }
 
 function escapeHtml(text) {

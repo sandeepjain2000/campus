@@ -10,7 +10,7 @@ import PageLoading from '@/components/PageLoading';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import StudentSelectionOfferPanel from '@/components/student/StudentSelectionOfferPanel';
-import { ClipboardList, Eye, Mail, X } from 'lucide-react';
+import { ClipboardList, Mail, X } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { use, useMemo } from 'react';
 import DataTableToolbar from '@/components/DataTableToolbar';
@@ -33,6 +33,7 @@ import {
   normalizeAppStatus,
   studentApplicationStageLabel,
 } from '@/lib/studentApplicationListTabs';
+import { formatFilterBadgeLabelParen } from '@/lib/filterBadgeLabel';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -326,12 +327,22 @@ export default function StudentApplicationsPage({ params }) {
 
       {/* Status Tabs */}
       <div className="tabs">
-        <button className={`tab ${statusTab === '' ? 'active' : ''}`} onClick={() => setStatusTab('')}>All ({statusCounts.all})</button>
-        <button className={`tab ${statusTab === 'applied' ? 'active' : ''}`} onClick={() => setStatusTab('applied')}>Applied ({statusCounts.applied})</button>
-        <button className={`tab ${statusTab === 'shortlisted' ? 'active' : ''}`} onClick={() => setStatusTab('shortlisted')}>Shortlisted ({statusCounts.shortlisted})</button>
-        <button className={`tab ${statusTab === 'selected' ? 'active' : ''}`} onClick={() => setStatusTab('selected')}>Selected ({statusCounts.selected})</button>
-        <button className={`tab ${statusTab === 'rejected' ? 'active' : ''}`} onClick={() => setStatusTab('rejected')}>Rejected ({statusCounts.rejected})</button>
-        <button className={`tab ${statusTab === 'withdrawn' ? 'active' : ''}`} onClick={() => setStatusTab('withdrawn')}>Withdrawn ({statusCounts.withdrawn})</button>
+        {[
+          { key: '', label: 'All', count: statusCounts.all },
+          { key: 'applied', label: 'Applied', count: statusCounts.applied },
+          { key: 'shortlisted', label: 'Shortlisted', count: statusCounts.shortlisted },
+          { key: 'selected', label: 'Selected', count: statusCounts.selected },
+          { key: 'rejected', label: 'Rejected', count: statusCounts.rejected },
+          { key: 'withdrawn', label: 'Withdrawn', count: statusCounts.withdrawn },
+        ].map(({ key, label, count }) => (
+          <button
+            key={key || 'all'}
+            className={`tab ${statusTab === key ? 'active' : ''}`}
+            onClick={() => setStatusTab(key)}
+          >
+            {formatFilterBadgeLabelParen(label, count)}
+          </button>
+        ))}
       </div>
 
       {/* Tabular Applications */}
@@ -481,24 +492,32 @@ export default function StudentApplicationsPage({ params }) {
                           ) : null}
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
+                        <div
+                          className="table-actions"
+                          style={{
+                            display: 'inline-flex',
+                            gap: '0.35rem',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            flexWrap: 'nowrap',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <StandardTableIconAction
+                            action="view"
+                            showLabel={false}
                             onClick={() => setSelectedApp(app)}
-                            title="View details"
-                          >
-                            <Eye size={14} /> View
-                          </button>
-                          {normalizeAppStatus(app.status) === 'applied' && (
-                            <button
-                              className="btn btn-danger btn-sm"
+                            tooltip="View application details"
+                          />
+                          {normalizeAppStatus(app.status) === 'applied' ? (
+                            <StandardTableIconAction
+                              action="withdraw"
+                              variant="danger"
+                              loading={withdrawingId === app.id}
                               disabled={withdrawingId === app.id}
                               onClick={() => requestWithdraw(app.id)}
-                            >
-                              {withdrawingId === app.id ? 'Withdrawing...' : 'Withdraw'}
-                            </button>
-                          )}
+                            />
+                          ) : null}
                         </div>
                       )}
                     </td>

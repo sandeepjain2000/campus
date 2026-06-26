@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+REPORTS_DIR = ROOT / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_RESULTS = ROOT / "agent_results_20260516T154639Z.json"
 
 
@@ -96,8 +98,8 @@ def main():
         if "playwright_results" in results_path.name and offset
         else ("playwright_100" if "playwright_results" in results_path.name else "100")
     )
-    out_csv = ROOT / f"test_results_{suffix}.csv"
-    out_md = ROOT / f"test_results_{suffix}.md"
+    out_csv = REPORTS_DIR / f"test_results_{suffix}.csv"
+    out_md = REPORTS_DIR / f"test_results_{suffix}.md"
 
     cases_by_id = {c["id"]: c for c in json.loads(CASES_FILE.read_text(encoding="utf-8"))["cases"]}
     rows_data = results_doc["results"]

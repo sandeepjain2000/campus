@@ -15,6 +15,7 @@ import {
   TIE_UP_REVOKE_MESSAGES,
 } from '@/lib/employerTieUpShared';
 import { labelEmployerCompanyType } from '@/lib/employerCompanyTypeLabels';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import { Building2, Globe, Users, Shield, Star, ExternalLink, X, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
 const fetcher = async (url) => {
@@ -253,21 +254,41 @@ export default function DesktopEmployers() {
                                 <ExternalLink size={13} />
                               </a>
                             )}
-                            {emp.status === 'pending' && <Link href="/dashboard/college/employers/requests" className="btn btn-primary btn-sm">Review</Link>}
+                            {emp.status === 'pending' && (
+                              <Link
+                                href="/dashboard/college/employers/requests"
+                                className="btn btn-primary btn-icon btn-sm"
+                                title="Review pending request"
+                                aria-label="Review pending request"
+                              >
+                                <CheckCircle2 size={16} strokeWidth={2} aria-hidden />
+                              </Link>
+                            )}
                             {emp.status === 'approved' && (
                               <>
-                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPocModal(emp)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border-default)', fontSize: '0.8rem' }}>
-                                  <Users size={13} /> POCs
-                                </button>
-                                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger-500)', border: '1px solid var(--danger-500)', padding: '0.35rem', opacity: TIE_UP_REVOKE_ENABLED ? 1 : 0.45 }} onClick={() => TIE_UP_REVOKE_ENABLED && setRevokeTarget({ id: emp.employer_id, name: emp.name })} disabled={!TIE_UP_REVOKE_ENABLED || processingId === emp.employer_id} title={TIE_UP_REVOKE_ENABLED ? 'Revoke tie-up' : TIE_UP_REVOKE_DISABLED_TITLE}>
-                                  {processingId === emp.employer_id ? '…' : <X size={13} />}
-                                </button>
+                                <StandardTableIconAction
+                                  action="pocs"
+                                  variant="ghost"
+                                  onClick={() => setPocModal(emp)}
+                                />
+                                <StandardTableIconAction
+                                  action="delete"
+                                  variant="danger"
+                                  disabled={!TIE_UP_REVOKE_ENABLED || processingId === emp.employer_id}
+                                  loading={processingId === emp.employer_id}
+                                  onClick={() => TIE_UP_REVOKE_ENABLED && setRevokeTarget({ id: emp.employer_id, name: emp.name })}
+                                  tooltip={TIE_UP_REVOKE_ENABLED ? 'Revoke tie-up' : TIE_UP_REVOKE_DISABLED_TITLE}
+                                />
                               </>
                             )}
                             {emp.status === 'revoked' && (
-                              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: '0.8rem', border: '1px solid var(--success-500)', color: 'var(--success-700)' }} onClick={() => handleReinstate(emp.employer_id)} disabled={processingId === emp.employer_id}>
-                                {processingId === emp.employer_id ? '…' : 'Restore tie-up'}
-                              </button>
+                              <StandardTableIconAction
+                                action="restore"
+                                variant="ghost"
+                                loading={processingId === emp.employer_id}
+                                disabled={processingId === emp.employer_id}
+                                onClick={() => handleReinstate(emp.employer_id)}
+                              />
                             )}
                           </div>
                         </td>

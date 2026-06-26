@@ -2,9 +2,10 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
+import Link from 'next/link';
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
-import { Briefcase, Plus, DollarSign, Users, FileText, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List, Undo2 } from 'lucide-react';
+import { Briefcase, Plus, DollarSign, Users, FileText, ArrowRight, X, Building2, AlignLeft, CheckCircle2, Ban, LayoutGrid, List, Undo2, GitBranch } from 'lucide-react';
 import { formatJobPostingStatus } from '@/lib/employerJobDisplay';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import CurrencyAmountInput from '@/components/form/CurrencyAmountInput';
@@ -20,6 +21,8 @@ import {
 } from '@/lib/alumniJobPosting';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 import { useEmployerPostingCampuses } from '@/hooks/useEmployerPostingCampuses';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
+import { formatFilterBadgeLabelParen } from '@/lib/filterBadgeLabel';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -364,11 +367,11 @@ export default function EmployerJobsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {[
-            { id: '', label: `All Alumni Jobs (${tabCounts.all})` },
-            { id: 'published', label: `Published (${tabCounts.published})` },
-            { id: 'draft', label: `Drafts (${tabCounts.draft})` },
-            { id: 'closed', label: `Closed (${tabCounts.closed})` },
-            { id: 'cancelled', label: `Withdrawn (${tabCounts.withdrawn})` },
+            { id: '', label: 'All Alumni Jobs', count: tabCounts.all },
+            { id: 'published', label: 'Published', count: tabCounts.published },
+            { id: 'draft', label: 'Drafts', count: tabCounts.draft },
+            { id: 'closed', label: 'Closed', count: tabCounts.closed },
+            { id: 'cancelled', label: 'Withdrawn', count: tabCounts.withdrawn },
           ].map((t) => (
             <button
               key={t.id}
@@ -386,7 +389,7 @@ export default function EmployerJobsPage() {
                 boxShadow: filter === t.id ? '0 4px 10px rgba(79, 70, 229, 0.2)' : 'none',
               }}
             >
-              {t.label}
+              {formatFilterBadgeLabelParen(t.label, t.count)}
             </button>
           ))}
         </div>
@@ -556,21 +559,17 @@ export default function EmployerJobsPage() {
               </span>
 
               {/* Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '0.75rem' }}>
-                <button
-                  className="btn btn-secondary"
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                  onClick={(e) => { e.stopPropagation(); handleEdit(job); }}
-                >
-                  Edit
-                </button>
-                <a
-                  className="btn btn-primary"
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingLeft: '0.75rem' }}>
+                <StandardTableIconAction action="edit" onClick={(e) => { e.stopPropagation(); handleEdit(job); }} />
+                <Link
                   href={`/dashboard/employer/applications?tab=jobs&jobId=${job.id}`}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                  className="btn btn-primary btn-icon btn-sm"
+                  title="View pipeline"
+                  aria-label="View pipeline"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Pipeline <ArrowRight size={13} />
-                </a>
+                  <GitBranch size={16} strokeWidth={2} aria-hidden />
+                </Link>
                 {job.status === 'published' && (
                   <>
                     <button

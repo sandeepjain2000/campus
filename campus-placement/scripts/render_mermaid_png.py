@@ -83,6 +83,6 @@ def ensure_diagram_pngs(md_path: Path, *, force: bool = False) -> list[Path]:
 
 
 if __name__ == "__main__":
-    md = ROOT / "docs" / "PLACEMENTHUB_FUNCTIONALITY.md"
+    md = ROOT / "docs" / "product" / "placementhub-functionality.md"
     force = "--force" in sys.argv
     ensure_diagram_pngs(md, force=force)

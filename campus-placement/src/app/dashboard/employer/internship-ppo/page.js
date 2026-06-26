@@ -10,6 +10,7 @@ import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { SORT_DATE_ASC, SORT_DATE_DESC } from '@/lib/dataTableQuery';
 import { useToast } from '@/components/ToastProvider';
 import { employerPpoStatusLabel } from '@/lib/internshipPpo';
+import { templateMatchesEventTab } from '@/lib/offerEventType';
 import { formatDate, formatStatus } from '@/lib/utils';
 
 const PPO_SORT_OPTIONS = [
@@ -52,7 +53,9 @@ export default function EmployerInternshipPpoPage() {
 
   const items = Array.isArray(data?.items) ? data.items : [];
   const summary = data?.summary || { total: 0, withPpo: 0, awaitingStudent: 0, accepted: 0, jobOfferIssued: 0 };
-  const templates = (templatesData?.templates || templatesData?.items || []).filter((t) => t.is_active !== false);
+  const templates = (templatesData?.templates || templatesData?.items || [])
+    .filter((t) => t.is_active !== false)
+    .filter((t) => templateMatchesEventTab(t, 'internship'));
 
   const {
     search,
@@ -111,9 +114,10 @@ export default function EmployerInternshipPpoPage() {
             Internship PPO
           </h1>
           <p className="text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.55 }}>
-            Pre-Placement Offer (PPO) is separate from internship selection and from the formal job offer letter. Confirm
-            PPO per intern on or after the internship start date; after the student accepts, generate a job offer from
-            an offer template.
+            Pre-Placement Offer (PPO) is a <strong>full-time job offer after internship</strong> based on performance — not
+            the internship selection offer (use <Link href="/dashboard/employer/offers">Offers → Internship</Link> for that).
+            Confirm PPO per intern on or after the internship start date; after the student accepts, generate a PPO job offer
+            from an offer template.
           </p>
           <p className="text-sm text-tertiary" style={{ margin: '0.35rem 0 0' }}>{statLine}</p>
         </div>

@@ -23,6 +23,30 @@ describe('postingEligibilityCriteria', () => {
     expect(evaluateBranchEligibility(['Computer Science & Engineering'], 'CSE', '').eligible).toBe(true);
   });
 
+  it('matches eligibility groups when enabled', () => {
+    expect(
+      evaluateBranchEligibility(['Computer Science'], 'ECE', 'Electronics', {
+        eligibilityGroupCode: 'computer_science',
+        eligibilityGroupName: 'Computer Science',
+      }).eligible,
+    ).toBe(true);
+    expect(
+      evaluateBranchEligibility(['Electronics'], 'CSE', 'Computer Science', {
+        eligibilityGroupCode: 'computer_science',
+        eligibilityGroupName: 'Computer Science',
+      }).eligible,
+    ).toBe(false);
+  });
+
+  it('blocks when student eligibility group does not match posting groups', () => {
+    const result = evaluateBranchEligibility(['Mechanical'], 'CSE', 'Computer Science', {
+      eligibilityGroupCode: 'computer_science',
+      eligibilityGroupName: 'Computer Science',
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toMatch(/Mechanical/);
+  });
+
   it('blocks after application deadline', () => {
     const past = new Date();
     past.setDate(past.getDate() - 2);

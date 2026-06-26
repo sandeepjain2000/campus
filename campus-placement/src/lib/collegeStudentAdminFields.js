@@ -56,6 +56,10 @@ export function initialCollegeStudentForm() {
     department: '',
     branch: '',
     degree_pursued: '',
+    academic_program_code: '',
+    eligibility_group_code: '',
+    eligibility_group_name: '',
+    academic_program_display: '',
     batch: defaultAdmissionBatchYear(),
     batch_year: defaultAdmissionBatchYear(),
     graduation_year: CURRENT_GRADUATION_YEAR,
@@ -143,6 +147,10 @@ export function buildAuxProfileFromForm(form, existingAux = {}) {
     semester: String(form.semester || '').trim() || base.semester || '',
     disabilityStatus: String(form.disability_status || 'None').trim() || base.disabilityStatus || 'None',
     internshipStatus: normalizeInternshipStatus(form.internship_status) || base.internshipStatus || 'none',
+    academicProgramCode: String(form.academic_program_code || '').trim() || base.academicProgramCode || '',
+    eligibilityGroupCode: String(form.eligibility_group_code || '').trim() || base.eligibilityGroupCode || '',
+    eligibilityGroupName: String(form.eligibility_group_name || '').trim() || base.eligibilityGroupName || '',
+    academicProgramDisplay: String(form.academic_program_display || '').trim() || base.academicProgramDisplay || '',
   };
 }
 
@@ -169,7 +177,9 @@ export function validateCollegeStudentForm(form, { isEdit = false, collegeShortC
     errors.phone = 'Use international format, e.g. +91 9876543210.';
   }
 
-  if (!form.department?.trim()) errors.department = 'Department is required.';
+  if (!form.academic_program_code?.trim() && !form.department?.trim()) {
+    errors.department = 'Select an academic program or department.';
+  }
 
   const cgpaErr = validateStudentCgpa(form.cgpa);
   if (cgpaErr) errors.cgpa = cgpaErr;

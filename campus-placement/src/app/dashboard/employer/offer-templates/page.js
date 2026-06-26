@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { FileEdit, Plus } from 'lucide-react';
@@ -11,6 +11,9 @@ import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import EmployerListFormLayout from '@/components/employer/EmployerListFormLayout';
+import OfferEventTypeTabs, { OFFER_EVENT_TABS } from '@/components/employer/OfferEventTypeTabs';
+import { countOfferEventTypes, normalizeOfferEventType, templateMatchesEventTab } from '@/lib/offerEventType';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -27,21 +30,40 @@ const emptyForm = {
   joiningDate: '',
   responseDeadline: '',
   bodyTemplate: DEFAULT_OFFER_TEMPLATE_BODY,
+  eventType: 'drive',
 };
+
+function eventTypeLabel(id) {
+  return OFFER_EVENT_TABS.find((t) => t.id === id)?.label || id;
+}
 
 export default function EmployerOfferTemplatesPage() {
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/employer/offer-templates', fetcher);
   const templates = Array.isArray(data?.templates) ? data.templates : [];
 
+  const [eventTab, setEventTab] = useState('drive');
   const [mode, setMode] = useState(null);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
+  const eventCounts = useMemo(
+    () =>
+      countOfferEventTypes(templates, (t) =>
+        normalizeOfferEventType(t.eventType ?? t.event_type),
+      ),
+    [templates],
+  );
+
+  const tabTemplates = useMemo(
+    () => templates.filter((t) => templateMatchesEventTab(t, eventTab)),
+    [templates, eventTab],
+  );
+
   const openCreate = () => {
     setEditId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, eventType: eventTab });
     setMode('form');
   };
 
@@ -55,6 +77,7 @@ export default function EmployerOfferTemplatesPage() {
       joiningDate: t.joiningDate || '',
       responseDeadline: t.responseDeadline || '',
       bodyTemplate: t.bodyTemplate || DEFAULT_OFFER_TEMPLATE_BODY,
+      eventType: normalizeOfferEventType(t.eventType ?? t.event_type),
     });
     setMode('form');
   };
@@ -123,6 +146,20 @@ export default function EmployerOfferTemplatesPage() {
             <input className="form-input" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. TechCorp SDE — Mar 2026" />
           </div>
           <div className="form-group">
+            <label className="form-label">Event type</label>
+            <select
+              className="form-select"
+              value={form.eventType}
+              onChange={(e) => setForm((p) => ({ ...p, eventType: e.target.value }))}
+            >
+              {OFFER_EVENT_TABS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
             <label className="form-label">Role / job title</label>
             <input className="form-input" value={form.jobTitle} onChange={(e) => setForm((p) => ({ ...p, jobTitle: e.target.value }))} />
           </div>
@@ -176,20 +213,29 @@ export default function EmployerOfferTemplatesPage() {
         </button>
       </div>
 
+      <OfferEventTypeTabs activeTab={eventTab} onTabChange={setEventTab} counts={eventCounts} />
+
       {error ? <p style={{ color: 'var(--danger-600)' }}>{error.message}</p> : null}
       {isLoading ? <div className="skeleton skeleton-card" style={{ height: 200 }} /> : null}
 
-      {!isLoading && templates.length === 0 ? (
+      {!isLoading && tabTemplates.length === 0 ? (
         <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p className="text-secondary">No templates yet. Create one before bulk-generating offers.</p>
+          <p className="text-secondary">
+            No {eventTypeLabel(eventTab).toLowerCase()} templates yet.
+            {eventTab === 'drive'
+              ? ' Create one before bulk-generating drive offers.'
+              : eventTab === 'internship'
+                ? ' Create one for internship selection offers (and PPO job offers after internship).'
+                : ' Create one for alumni job offer letters.'}
+          </p>
           <button type="button" className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={openCreate}>
-            Create first template
+            Create {eventTypeLabel(eventTab).toLowerCase()} template
           </button>
         </div>
       ) : null}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {templates.map((t) => (
+        {tabTemplates.map((t) => (
           <div key={t.id} className="card" style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
               <div>
@@ -198,13 +244,9 @@ export default function EmployerOfferTemplatesPage() {
                   {t.jobTitle} · CTC {formatCurrency(Number(t.salary) || 0)} · {t.location || 'Location TBD'}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => openEdit(t)}>
-                  Edit
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => deactivate(t.id)}>
-                  Remove
-                </button>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <StandardTableIconAction action="edit" onClick={() => openEdit(t)} />
+                <StandardTableIconAction action="delete" variant="danger" onClick={() => deactivate(t.id)} />
               </div>
             </div>
           </div>

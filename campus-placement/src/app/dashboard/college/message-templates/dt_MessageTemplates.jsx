@@ -8,6 +8,7 @@ import { COMMON_SORT_OPTIONS } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { variablesToFormText } from '@/lib/messageTemplateUtils';
 import { FileEdit, Mail, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 const TYPE_OPTIONS = [
   { value: 'email', label: 'Email' },
@@ -319,18 +320,8 @@ export default function CollegeMessageTemplatesPage() {
                   </td>
                   <td>{t.is_active ? <span className="badge badge-green">Active</span> : <span className="badge badge-gray">Off</span>}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => startEdit(t)}>
-                      <Pencil size={14} style={{ marginRight: 4 }} />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      style={{ color: 'var(--danger-600, #b91c1c)' }}
-                      onClick={() => void remove(t.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <StandardTableIconAction action="edit" variant="ghost" onClick={() => startEdit(t)} />
+                    <StandardTableIconAction action="delete" variant="danger" onClick={() => void remove(t.id)} />
                   </td>
                 </tr>
               ))}

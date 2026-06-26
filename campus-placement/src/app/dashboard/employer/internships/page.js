@@ -21,6 +21,7 @@ import { toCsvIsoDate } from '@/lib/csvExport';
 import { formatEmployerMinCgpa, formatJobPostingStatus, normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
 import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
+import EligibilityGroupPicker from '@/components/employer/EligibilityGroupPicker';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import { buildPostingEligibilityChecks } from '@/lib/buildPostingEligibilityChecks';
 import {
@@ -640,14 +641,9 @@ export default function EmployerInternshipsPage() {
             <label className="form-label">Min CGPA</label>
             <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_MIN_CGPA} step="0.1" value={minCgpa} onChange={setMinCgpa} />
           </div>
-          <div className="form-group">
-            <label className="form-label">Eligible branches</label>
-            <input
-              className="form-input"
-              placeholder="CSE, ECE, IT — or All for every branch"
-              value={eligibleBranches}
-              onChange={(e) => setEligibleBranches(e.target.value)}
-            />
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label className="form-label">Eligible branches / groups</label>
+            <EligibilityGroupPicker value={eligibleBranches} onChange={setEligibleBranches} />
           </div>
           <div className="form-group">
             <label className="form-label">Specializations</label>

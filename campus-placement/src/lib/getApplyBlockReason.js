@@ -30,6 +30,8 @@ const DEFAULT_OPEN_STATUSES = ['published'];
  *   backlogsActive?: number | null;
  *   hasResume?: boolean;
  *   isPlacementLocked?: boolean;
+ *   eligibilityGroupCode?: string | null;
+ *   eligibilityGroupName?: string | null;
  * }} StudentLike
  * @typedef {{
  *   openStatuses?: string[];
@@ -79,6 +81,10 @@ export function getApplyBlockReason(opportunity, student, options = {}) {
       opportunity?.eligibleBranches,
       student?.branch,
       student?.department,
+      {
+        eligibilityGroupCode: student?.eligibilityGroupCode,
+        eligibilityGroupName: student?.eligibilityGroupName,
+      },
     );
     if (!branchCheck.eligible && branchCheck.reason) {
       return branchCheck.reason;

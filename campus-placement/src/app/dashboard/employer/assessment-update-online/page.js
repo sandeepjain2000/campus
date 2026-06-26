@@ -20,6 +20,7 @@ import {
   fetchEmployerAssessmentTargets,
   pickDefaultAssessmentTargetId,
 } from '@/lib/employerAssessmentTargets';
+import { shouldShowFilterCount } from '@/lib/filterBadgeLabel';
 
 export default function EmployerAssessmentUpdateOnlinePage() {
   const { addToast } = useToast();
@@ -373,7 +374,9 @@ export default function EmployerAssessmentUpdateOnlinePage() {
             >
               <Icon size={16} aria-hidden />
               {t.label}
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, opacity: active ? 0.9 : 0.65 }}>{n}</span>
+              {shouldShowFilterCount(n) ? (
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, opacity: active ? 0.9 : 0.65 }}>{n}</span>
+              ) : null}
             </button>
           );
         })}

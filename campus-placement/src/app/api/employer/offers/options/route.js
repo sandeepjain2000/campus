@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
+import { AND_APP_NOT_DELETED, AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
 
 export const dynamic = 'force-dynamic';
@@ -30,15 +30,23 @@ async function __platform_GET() {
     }
     const employerId = await getEmployerId(session);
     if (!employerId) {
-      return NextResponse.json({ drives: [], students: [] });
+      return NextResponse.json({ drives: [], internships: [], students: [] });
     }
 
-    const [drivesRes, studentsRes] = await Promise.all([
+    const [drivesRes, internshipsRes, studentsRes] = await Promise.all([
       query(
         `SELECT id, title, drive_date
          FROM placement_drives d
          WHERE d.employer_id = $1 ${AND_DRIVE_NOT_DELETED}
          ORDER BY drive_date DESC, created_at DESC
+         LIMIT 300`,
+        [employerId]
+      ),
+      query(
+        `SELECT jp.id, jp.title, jp.internship_start_date, jp.internship_end_date
+         FROM job_postings jp
+         WHERE jp.employer_id = $1::uuid AND jp.job_type = 'internship' ${AND_JP_NOT_DELETED}
+         ORDER BY jp.internship_start_date DESC NULLS LAST, jp.created_at DESC
          LIMIT 300`,
         [employerId]
       ),
@@ -58,6 +66,7 @@ async function __platform_GET() {
 
     return NextResponse.json({
       drives: drivesRes.rows,
+      internships: internshipsRes.rows,
       students: studentsRes.rows.map((s) => ({
         id: s.id,
         name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Unknown Student',

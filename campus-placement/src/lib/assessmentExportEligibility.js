@@ -48,6 +48,10 @@ export function getAssessmentExportBlockReason(opportunity, student, options = {
     opportunity?.eligibleBranches,
     student?.branch,
     student?.department,
+    {
+      eligibilityGroupCode: student?.eligibilityGroupCode,
+      eligibilityGroupName: student?.eligibilityGroupName,
+    },
   );
   if (!branchCheck.eligible && branchCheck.reason) return branchCheck.reason;
 

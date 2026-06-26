@@ -7,6 +7,7 @@ import { useDataTableQuery } from '@/hooks/useDataTableQuery';
 import { COMMON_SORT_OPTIONS, PENDING_ROLE_FILTER_OPTIONS, roleFilterFn } from '@/lib/tableQueryPresets';
 import { useToast } from '@/components/ToastProvider';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function AdminPendingRegistrationsPage() {
   const { addToast } = useToast();
@@ -192,15 +193,14 @@ export default function AdminPendingRegistrationsPage() {
                       {r.emailVerified ? 'Yes' : 'Pending'}
                     </span>
                     {!r.emailVerified && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                      <StandardTableIconAction
+                        action="resend"
+                        variant="ghost"
+                        loading={processing === r.id + 'resend'}
                         disabled={processing === r.id + 'resend'}
                         onClick={() => handleResendVerification(r.id)}
-                      >
-                        Resend
-                      </button>
+                        tooltip="Resend verification email"
+                      />
                     )}
                   </div>
                 </td>
@@ -208,23 +208,21 @@ export default function AdminPendingRegistrationsPage() {
                   {r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button
-                    type="button"
-                    className="btn btn-success btn-sm"
-                    disabled={processing === r.id + 'approve'}
-                    onClick={() => act(r.id, 'approve')}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    style={{ marginLeft: 8 }}
-                    disabled={processing === r.id + 'reject'}
-                    onClick={() => setRejectFor(r)}
-                  >
-                    Reject
-                  </button>
+                  <div className="table-actions" style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                    <StandardTableIconAction
+                      action="approve"
+                      variant="success"
+                      loading={processing === r.id + 'approve'}
+                      disabled={processing === r.id + 'approve'}
+                      onClick={() => act(r.id, 'approve')}
+                    />
+                    <StandardTableIconAction
+                      action="reject"
+                      variant="danger"
+                      disabled={processing === r.id + 'reject'}
+                      onClick={() => setRejectFor(r)}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}

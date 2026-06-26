@@ -3,7 +3,7 @@ Option B: Playwright executes each case (login + navigation + page signals).
 NVIDIA keys: one small chat call per case for PASS / FAIL / BLOCKED verdict only.
 
 Usage (repo root):
-  pip install -r qa2/requirements-playwright.txt
+  pip install -r qa2/requirements/requirements-playwright.txt
   playwright install chromium
 
   python qa2/run_playwright_nvidia.py --limit 100

@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { MessageSquareText } from 'lucide-react';
 import PageLoading from '@/components/PageLoading';
 import InternshipFeedbackForm from '@/components/internship/InternshipFeedbackForm';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 import { useToast } from '@/components/ToastProvider';
 import { formatStatus } from '@/lib/utils';
 
@@ -33,7 +34,7 @@ export default function EmployerInternshipFeedbackPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Save failed');
-      addToast('Intern feedback saved.', 'success');
+      addToast('Intern progress review saved.', 'success');
       setExpandedId(null);
       await mutate();
     } catch (e) {
@@ -51,10 +52,10 @@ export default function EmployerInternshipFeedbackPage() {
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <MessageSquareText size={26} aria-hidden />
-            Internship feedback
+            Internship Progress Reviews
           </h1>
           <p className="text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.55 }}>
-            Record feedback for selected or in-progress interns. Student submissions appear read-only when shared.
+            Record progress reviews for selected or in-progress interns. Student submissions appear read-only when shared.
           </p>
         </div>
       </div>
@@ -71,8 +72,8 @@ export default function EmployerInternshipFeedbackPage() {
                 <th>Student</th>
                 <th>Internship</th>
                 <th>Status</th>
-                <th>Student feedback</th>
-                <th>Your feedback</th>
+                <th>Student review</th>
+                <th>Your review</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -105,15 +106,19 @@ export default function EmployerInternshipFeedbackPage() {
                       )}
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
+                      <StandardTableIconAction
+                        action={expandedId === row.programApplicationId ? 'close' : row.employerFeedback ? 'edit' : 'add'}
                         onClick={() =>
                           setExpandedId(expandedId === row.programApplicationId ? null : row.programApplicationId)
                         }
-                      >
-                        {expandedId === row.programApplicationId ? 'Close' : row.employerFeedback ? 'Edit' : 'Add'}
-                      </button>
+                        tooltip={
+                          expandedId === row.programApplicationId
+                            ? 'Close review form'
+                            : row.employerFeedback
+                              ? 'Edit your review'
+                              : 'Add your review'
+                        }
+                      />
                     </td>
                   </tr>
                   {expandedId === row.programApplicationId ? (
@@ -121,7 +126,7 @@ export default function EmployerInternshipFeedbackPage() {
                       <td colSpan={6} style={{ background: 'var(--bg-secondary)', padding: '1rem 1.25rem' }}>
                         {row.studentFeedback ? (
                           <div style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem' }}>Student feedback</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem' }}>Student review</div>
                             <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{row.studentFeedback.feedbackText}</p>
                           </div>
                         ) : null}

@@ -13,6 +13,8 @@ import {
   canRequestEmployerTieUp,
 } from '@/lib/employerTieUpShared';
 import { EMPLOYER_USE_CAMPUS_DISABLED_TITLE } from '@/lib/employerActiveCampus';
+import { formatFilterBadgeLabelParen } from '@/lib/filterBadgeLabel';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 const fetcher = async (url) => {
   const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -353,7 +355,7 @@ export default function SelectCampusPage() {
                 gap: '0.4rem'
               }}
             >
-              {t.label} {count !== '' && <span style={{ opacity: 0.8, fontSize: '0.85rem' }}>({count})</span>}
+              {formatFilterBadgeLabelParen(t.label, count !== '' ? count : 0)}
             </button>
           )
         })}
@@ -525,9 +527,14 @@ export default function SelectCampusPage() {
                             </>
                           )}
                           {showRequest && (
-                            <button className="btn btn-primary btn-sm" disabled={requesting === c.id} onClick={() => handleRequestAccess(c)}>
-                              {requesting === c.id ? 'Requesting…' : 'Request Tie-up'}
-                            </button>
+                            <StandardTableIconAction
+                              action="request"
+                              variant="primary"
+                              loading={requesting === c.id}
+                              disabled={requesting === c.id}
+                              onClick={() => handleRequestAccess(c)}
+                              tooltip={`Request tie-up with ${c.name}`}
+                            />
                           )}
                           {isPending && <span style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600, padding: '0.4rem 0.5rem' }}>Awaiting Approval</span>}
                         </div>

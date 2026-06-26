@@ -88,6 +88,76 @@ CREATE TABLE IF NOT EXISTS reference_departments (
 
 CREATE INDEX IF NOT EXISTS idx_reference_departments_sort ON reference_departments (sort_order, name);
 
+-- Academic taxonomy (degrees, disciplines, specializations, eligibility groups, programs)
+CREATE TABLE IF NOT EXISTS taxonomy_degree_levels (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(40) NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT taxonomy_degree_levels_code_unique UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_degrees (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    level_id UUID NOT NULL REFERENCES taxonomy_degree_levels(id) ON DELETE CASCADE,
+    code VARCHAR(60) NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_engineering_default BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT taxonomy_degrees_code_unique UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_discipline_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(60) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT taxonomy_discipline_categories_code_unique UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_disciplines (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category_id UUID REFERENCES taxonomy_discipline_categories(id) ON DELETE SET NULL,
+    code VARCHAR(80) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_engineering_default BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT taxonomy_disciplines_code_unique UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_specializations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    discipline_id UUID REFERENCES taxonomy_disciplines(id) ON DELETE SET NULL,
+    code VARCHAR(80) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT taxonomy_specializations_code_unique UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_eligibility_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(60) NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_engineering_default BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT taxonomy_eligibility_groups_code_unique UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_academic_programs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(120) NOT NULL,
+    degree_id UUID NOT NULL REFERENCES taxonomy_degrees(id) ON DELETE CASCADE,
+    discipline_id UUID NOT NULL REFERENCES taxonomy_disciplines(id) ON DELETE CASCADE,
+    specialization_id UUID REFERENCES taxonomy_specializations(id) ON DELETE SET NULL,
+    eligibility_group_id UUID NOT NULL REFERENCES taxonomy_eligibility_groups(id) ON DELETE RESTRICT,
+    display_name VARCHAR(255) NOT NULL,
+    aliases TEXT[] NOT NULL DEFAULT '{}',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_engineering_default BOOLEAN NOT NULL DEFAULT false,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    CONSTRAINT taxonomy_academic_programs_code_unique UNIQUE (code)
+);
+
 -- ============================================
 -- 3. STUDENT PROFILES
 -- ============================================
@@ -516,12 +586,14 @@ CREATE TABLE employer_offer_templates (
     joining_date DATE,
     response_deadline DATE,
     body_template TEXT NOT NULL,
+    event_type VARCHAR(30) NOT NULL DEFAULT 'drive' CHECK (event_type IN ('internship', 'drive', 'alumni_jobs')),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_employer_offer_templates_employer ON employer_offer_templates(employer_id);
+CREATE INDEX idx_employer_offer_templates_event_type ON employer_offer_templates (employer_id, event_type) WHERE is_active = true;
 
 -- ============================================
 -- 15. OFFERS
@@ -543,7 +615,7 @@ CREATE TABLE offers (
     rendered_letter_html TEXT,
     reported_company_name VARCHAR(255),
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'expired', 'revoked')),
-    offer_kind VARCHAR(30) NOT NULL DEFAULT 'standard' CHECK (offer_kind IN ('standard', 'ppo_job')),
+    offer_kind VARCHAR(30) NOT NULL DEFAULT 'standard' CHECK (offer_kind IN ('standard', 'ppo_job', 'internship_offer')),
     deadline TIMESTAMP,
     accepted_at TIMESTAMP,
     rejected_at TIMESTAMP,
@@ -942,6 +1014,44 @@ CREATE TABLE campus_guest_confirmation_sends (
 
 CREATE INDEX idx_campus_guest_conf_listing ON campus_guest_confirmation_sends (listing_id);
 CREATE INDEX idx_campus_guest_conf_employer ON campus_guest_confirmation_sends (employer_user_id);
+
+-- ============================================
+-- 29b. STUDENT MENTORSHIP REQUESTS (informal)
+-- ============================================
+CREATE TABLE student_mentorship_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    student_profile_id UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    summary TEXT NOT NULL,
+    topics TEXT,
+    preferred_format TEXT,
+    time_hint TEXT,
+    status VARCHAR(30) NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'submitted', 'approved', 'rejected', 'closed')),
+    college_note TEXT,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_student_mentorship_requests_tenant ON student_mentorship_requests (tenant_id);
+CREATE INDEX idx_student_mentorship_requests_student ON student_mentorship_requests (student_profile_id);
+CREATE INDEX idx_student_mentorship_requests_status ON student_mentorship_requests (tenant_id, status);
+
+CREATE TABLE student_mentorship_volunteers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    request_id UUID NOT NULL REFERENCES student_mentorship_requests(id) ON DELETE CASCADE,
+    employer_id UUID NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+    employer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT,
+    volunteered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (request_id, employer_id)
+);
+
+CREATE INDEX idx_student_mentorship_volunteers_request ON student_mentorship_volunteers (request_id);
+CREATE INDEX idx_student_mentorship_volunteers_employer ON student_mentorship_volunteers (employer_id);
 
 -- ============================================
 -- 30. MAIL DELIVERY LOGS (outbound email audit)

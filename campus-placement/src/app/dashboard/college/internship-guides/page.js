@@ -181,7 +181,7 @@ export default function CollegeInternshipGuidesPage() {
           </h1>
           <p className="text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.55 }}>
             Assign a campus faculty or TPO guide for each intern. Students see guide contact details on their
-            internship feedback page.
+            Internship Progress Reviews page.
           </p>
           <p className="text-sm text-tertiary" style={{ margin: '0.35rem 0 0' }}>{statLine}</p>
         </div>

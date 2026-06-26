@@ -506,7 +506,7 @@
     },
     {
       "phase": "EMPLOYER",
-      "label": "Open Internship feedback",
+      "label": "Open Internship Progress Reviews",
       "observe": "Table of selected interns; Add or Edit opens employer feedback form. Student feedback shows read-only when present.",
       "action": {
         "type": "goto",
@@ -515,7 +515,7 @@
     },
     {
       "phase": "EMPLOYER",
-      "label": "Submit employer internship feedback — manual",
+      "label": "Submit employer internship progress review — manual",
       "observe": "Optional star rating plus feedback text of at least ten characters.",
       "action": {
         "type": "wait",
@@ -524,7 +524,7 @@
     },
     {
       "phase": "STUDENT",
-      "label": "Student opens Internship feedback",
+      "label": "Student opens Internship Progress Reviews",
       "observe": "Campus guide and company supervisor blocks appear when assigned. Submit student feedback on the same page.",
       "action": {
         "type": "login",
@@ -533,7 +533,7 @@
     },
     {
       "phase": "STUDENT",
-      "label": "Navigate to Internship feedback",
+      "label": "Navigate to Internship Progress Reviews",
       "observe": "Selected internship card with guide, supervisor, and feedback form.",
       "action": {
         "type": "goto",
@@ -542,7 +542,7 @@
     },
     {
       "phase": "STUDENT",
-      "label": "Submit student internship feedback — manual",
+      "label": "Submit student internship progress review — manual",
       "observe": "Star rating optional; feedback text at least ten characters.",
       "action": {
         "type": "wait",
@@ -551,8 +551,8 @@
     },
     {
       "phase": "COLLEGE",
-      "label": "College reviews internship feedback (read-only)",
-      "observe": "Programs and Drives → Internship feedback. Table shows student and employer submissions; Export CSV available.",
+      "label": "College reviews internship progress review (read-only)",
+      "observe": "Internship Outcomes → Internship Progress Reviews. Table shows student and employer submissions; Export CSV available.",
       "action": {
         "type": "login",
         "account": "college_admin"
@@ -560,7 +560,7 @@
     },
     {
       "phase": "COLLEGE",
-      "label": "Open Internship feedback",
+      "label": "Open Internship Progress Reviews",
       "observe": "Rows appear after at least one side submits feedback.",
       "action": {
         "type": "goto",

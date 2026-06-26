@@ -13,6 +13,7 @@ import {
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
+import AcademicTaxonomySettingsPanel from '@/components/college/AcademicTaxonomySettingsPanel';
 
 function LabelWithIcon({ Icon, children }) {
   return (
@@ -297,6 +298,8 @@ export default function CollegeSettingsPage() {
           <div>{message}</div>
         </div>
       )}
+
+      <AcademicTaxonomySettingsPanel />
 
       <div className="grid grid-2">
         <div className="card" style={{ gridColumn: '1 / -1' }}>

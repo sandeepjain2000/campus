@@ -232,8 +232,8 @@ def convert_md_to_docx(md_path: Path, docx_path: Path, *, force_diagrams: bool =
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[1]
-    md = root / "docs" / "PLACEMENTHUB_FUNCTIONALITY.md"
-    out = root / "docs" / "PLACEMENTHUB_FUNCTIONALITY.docx"
+    md = root / "docs" / "product" / "placementhub-functionality.md"
+    out = root / "docs" / "product" / "placementhub-functionality.docx"
     force = "--force-diagrams" in sys.argv
     if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
         out = Path(sys.argv[1])

@@ -4,8 +4,6 @@ import {
   ALUMNI_MY_JOBS_PATH,
 } from '@/lib/alumniRoutes';
 import {
-  EMPLOYER_ALUMNI_APPLICATIONS_PATH,
-  EMPLOYER_ALUMNI_INTERVIEWS_PATH,
   EMPLOYER_ALUMNI_JOBS_PATH,
 } from '@/lib/employerAlumniRoutes';
 import {
@@ -25,6 +23,10 @@ import {
   MessageSquareText,
   UserRoundSearch,
   UserCog,
+  HandHeart,
+  ScrollText,
+  ClipboardCheck,
+  Video,
 } from 'lucide-react';
 
 /** Exact path for each role’s dashboard home (landing + section switcher). */
@@ -115,20 +117,18 @@ export const menuConfig = {
         items: [
           { label: 'Dashboard', href: '/dashboard/student/overview', icon: LayoutDashboard },
           { label: 'Getting Started', href: '/dashboard/student/getting-started', icon: Rocket },
-          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
+          { label: 'My Data Export', href: '/dashboard/my-exports', icon: Download },
         ],
       },
       {
-        id: 'student-placements',
-        title: 'Placements',
+        id: 'student-opportunities',
+        title: 'Opportunities',
         items: [
           { label: 'Browse Drives', href: '/dashboard/student/drives', icon: Target },
-          { label: 'Browse Jobs', href: '/dashboard/student/jobs', icon: Briefcase },
           { label: 'Browse Internships', href: '/dashboard/student/internships', icon: GraduationCap },
-          { label: 'Not Processed Internships', href: '/dashboard/student/internships/not-processed', icon: Lock },
           { label: 'Browse Projects', href: '/dashboard/student/projects', icon: FolderDot },
           { label: 'Browse Hackathons', href: '/dashboard/student/hackathons', icon: Trophy },
-          { label: 'Placement calendar', href: '/dashboard/student/calendar', icon: CalendarDays },
+          { label: 'Browse Jobs', href: '/dashboard/student/jobs', icon: Briefcase },
         ],
       },
       {
@@ -136,31 +136,110 @@ export const menuConfig = {
         title: 'My Applications',
         items: [
           { label: 'My Drives', href: '/dashboard/student/applications/drives', icon: Target },
-          { label: 'My Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
           { label: 'My Internships', href: '/dashboard/student/applications/internships', icon: GraduationCap },
-          { label: 'Internship feedback', href: '/dashboard/student/internship-feedback', icon: MessageSquareText },
-          { label: 'Internship PPO', href: '/dashboard/student/internship-ppo', icon: Award },
           { label: 'My Projects', href: '/dashboard/student/applications/projects', icon: FolderDot },
           { label: 'My Hackathons', href: '/dashboard/student/applications/hackathons', icon: Award },
           { label: 'My Interviews', href: '/dashboard/student/interviews', icon: Calendar },
           { label: 'My Offers', href: '/dashboard/student/offers', icon: Handshake },
+          {
+            label: 'Pending / Not Processed Applications',
+            href: '/dashboard/student/internships/not-processed',
+            icon: Lock,
+          },
+          { label: 'My Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
+        ],
+      },
+      {
+        id: 'student-internship-outcomes',
+        title: 'Internship Outcomes',
+        items: [
+          {
+            label: 'Internship Progress Reviews',
+            href: '/dashboard/student/internship-feedback',
+            icon: MessageSquareText,
+          },
+          { label: 'PPO', href: '/dashboard/student/internship-ppo', icon: Award },
+          {
+            id: 'future-final-evaluation',
+            label: 'Final Evaluation (Future)',
+            href: '#future-final-evaluation',
+            icon: ClipboardCheck,
+            disabled: true,
+          },
+          {
+            id: 'future-completion-certificate',
+            label: 'Completion Certificate (Future)',
+            href: '#future-completion-certificate',
+            icon: ScrollText,
+            disabled: true,
+          },
+        ],
+      },
+      {
+        id: 'student-career-services',
+        title: 'Career Services',
+        items: [
+          { label: 'Mentor Connect', href: '/dashboard/student/mentorship-requests', icon: HandHeart },
+          {
+            id: 'future-career-counselling',
+            label: 'Career Counselling (Future)',
+            href: '#future-career-counselling',
+            icon: UserRoundSearch,
+            disabled: true,
+          },
+          {
+            id: 'future-resume-review',
+            label: 'Resume Review (Future)',
+            href: '#future-resume-review',
+            icon: FileEdit,
+            disabled: true,
+          },
+          {
+            id: 'future-mock-interviews',
+            label: 'Mock Interviews (Future)',
+            href: '#future-mock-interviews',
+            icon: Video,
+            disabled: true,
+          },
+          { label: 'Clarifications', href: '/dashboard/student/clarifications', icon: HelpCircle },
         ],
       },
       {
         id: 'student-communication',
         title: 'Communication',
         items: [
-          { label: 'Clarifications', href: '/dashboard/student/clarifications', icon: HelpCircle },
-          { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
+          { label: 'Notifications / Alerts', href: '/dashboard/alerts', icon: Bell },
+          {
+            id: 'future-announcements',
+            label: 'Announcements (Future)',
+            href: '#future-announcements',
+            icon: Megaphone,
+            disabled: true,
+          },
+          {
+            id: 'future-messages',
+            label: 'Messages (Future)',
+            href: '#future-messages',
+            icon: Mail,
+            disabled: true,
+          },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
       {
         id: 'student-profile',
-        title: 'Documents & Profile',
+        title: 'Profile & Documents',
         items: [
           { label: 'My Profile', href: '/dashboard/student/profile', icon: User },
           { label: 'Documents', href: '/dashboard/student/documents', icon: FileText },
+          { label: 'Resume', href: '/dashboard/student/documents', icon: FileEdit },
+          {
+            id: 'future-certificates',
+            label: 'Certificates (Future)',
+            href: '#future-certificates',
+            icon: ScrollText,
+            disabled: true,
+          },
         ],
       },
     ],
@@ -170,7 +249,7 @@ export const menuConfig = {
     sections: [
       {
         id: 'employer-core',
-        title: '🧭 Core / Overview',
+        title: 'Core / Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/employer/overview', icon: LayoutDashboard },
           { label: 'Getting Started', href: '/dashboard/employer/getting-started', icon: Rocket },
@@ -179,82 +258,120 @@ export const menuConfig = {
             href: '/dashboard/employer/select-campus',
             icon: Handshake,
           },
-          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
+          { label: 'My Data Export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
       {
-        id: 'employer-organization',
-        title: '🏢 Organization Management',
-        items: [
-          { label: 'Company Profile', href: '/dashboard/employer/profile', icon: Building2 },
-          { label: 'Sponsorships', href: '/dashboard/employer/sponsorships', icon: Gem },
-          { label: 'Startup seed funding', href: '/dashboard/employer/startup-funding', icon: Rocket },
-          { label: 'Campus guest needs', href: '/dashboard/employer/campus-guest-needs', icon: Mic },
-        ],
-      },
-      {
         id: 'employer-programs',
-        title: '🎓 Student Opportunities',
+        title: 'Student Opportunities',
         items: [
-          { label: 'Internships', href: '/dashboard/employer/internships', icon: GraduationCap },
-          { label: 'Internship feedback', href: '/dashboard/employer/internship-feedback', icon: MessageSquareText },
-          { label: 'Internship supervisors', href: '/dashboard/employer/internship-supervisors', icon: UserCog },
-          { label: 'Internship PPO', href: '/dashboard/employer/internship-ppo', icon: Award },
           { label: 'Placement Drives', href: '/dashboard/employer/drives', icon: Target },
+          { label: 'Internships', href: '/dashboard/employer/internships', icon: GraduationCap },
           { label: 'Projects', href: '/dashboard/employer/projects', icon: FolderDot },
-        ],
-      },
-      {
-        id: 'employer-recruitment',
-        title: '👥 Recruitment & Selection',
-        items: [
-          { label: 'Hiring Results Dashboard', href: '/dashboard/employer/hiring-assessment', icon: ListChecks },
-          { label: 'Assessment uploads (CSV)', href: '/dashboard/employer/assessment-uploads', icon: FileText },
-          { label: 'Assessment Update Online', href: '/dashboard/employer/assessment-update-online', icon: Table2 },
+          { label: 'Alumni Job Postings', href: EMPLOYER_ALUMNI_JOBS_PATH, icon: Briefcase },
         ],
       },
       {
         id: 'employer-pipeline',
-        title: '📥 Candidate Pipeline',
+        title: 'Candidate Pipeline',
         items: [
           { label: 'Applications', href: '/dashboard/employer/applications', icon: ClipboardList },
-          { label: 'Unavailable (FCFS)', href: '/dashboard/employer/fcfs-unavailable', icon: UserX },
+          {
+            label: 'Shortlisted / Unavailable (FCFS)',
+            href: '/dashboard/employer/fcfs-unavailable',
+            icon: UserX,
+          },
           { label: 'Offers', href: '/dashboard/employer/offers', icon: Send },
-          { label: 'Offer templates', href: '/dashboard/employer/offer-templates', icon: FileEdit },
+          { label: 'Offer Templates', href: '/dashboard/employer/offer-templates', icon: FileEdit },
+        ],
+      },
+      {
+        id: 'employer-recruitment',
+        title: 'Recruitment & Selection',
+        items: [
+          { label: 'Hiring Results Dashboard', href: '/dashboard/employer/hiring-assessment', icon: ListChecks },
+          { label: 'Assessment Uploads (CSV)', href: '/dashboard/employer/assessment-uploads', icon: FileText },
+          { label: 'Assessment Update Online', href: '/dashboard/employer/assessment-update-online', icon: Table2 },
+          { label: 'Interview Scheduling', href: '/dashboard/employer/interviews', icon: Calendar },
+        ],
+      },
+      {
+        id: 'employer-internship-outcomes',
+        title: 'Internship Outcomes',
+        items: [
+          {
+            label: 'Internship Progress Reviews',
+            href: '/dashboard/employer/internship-feedback',
+            icon: MessageSquareText,
+          },
+          { label: 'Internship Supervisors', href: '/dashboard/employer/internship-supervisors', icon: UserCog },
+          { label: 'Internship PPO', href: '/dashboard/employer/internship-ppo', icon: Award },
+        ],
+      },
+      {
+        id: 'employer-organization',
+        title: 'Organization Management',
+        items: [
+          { label: 'Company Profile', href: '/dashboard/employer/profile', icon: Building2 },
+          { label: 'Sponsorships', href: '/dashboard/employer/sponsorships', icon: Gem },
+          { label: 'Startup Seed Funding', href: '/dashboard/employer/startup-funding', icon: Rocket },
+          { label: 'Campus Guest Needs', href: '/dashboard/employer/campus-guest-needs', icon: Mic },
+          {
+            label: 'Student Mentorship Requests',
+            href: '/dashboard/employer/mentorship-requests',
+            icon: HandHeart,
+          },
         ],
       },
       {
         id: 'employer-communication',
-        title: '💬 Communication & Support',
+        title: 'Communication & Support',
         items: [
           { label: 'Clarifications', href: '/dashboard/employer/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/employer/discussions', icon: MessageSquare },
-          { label: 'Email templates', href: '/dashboard/employer/communication-templates', icon: Mail },
+          { label: 'Email Templates', href: '/dashboard/employer/communication-templates', icon: Mail },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
       {
         id: 'employer-operations',
-        title: '⚙️ Operations',
+        title: 'Operations',
         items: [
-          { label: 'Interview Scheduling', href: '/dashboard/employer/interviews', icon: Calendar },
           { label: 'Events Calendar', href: '/dashboard/employer/calendar', icon: CalendarDays },
+          {
+            id: 'future-campus-calendar',
+            label: 'Campus Calendar (Future)',
+            href: '#future-employer-campus-calendar',
+            icon: CalendarDays,
+            disabled: true,
+          },
+          {
+            id: 'future-recruitment-calendar',
+            label: 'Recruitment Calendar (Future)',
+            href: '#future-employer-recruitment-calendar',
+            icon: Calendar,
+            disabled: true,
+          },
+        ],
+      },
+      {
+        id: 'employer-alumni',
+        title: 'Alumni',
+        items: [
+          {
+            label: 'Alumni Job Assessment Online',
+            href: '/dashboard/employer/alumni/assessment-online',
+            icon: Table2,
+          },
         ],
       },
       {
         id: 'employer-settings',
         title: 'Settings',
         items: [
-          { label: 'Campus posting limits', href: '/dashboard/employer/settings', icon: Building2 },
-          { label: 'Assessment map', href: '/dashboard/employer/assessment-summary', icon: Map },
-        ],
-      },
-      {
-        id: 'employer-alumni',
-        title: '🎓 Alumni',
-        items: [
-          { label: 'Alumni Job Assessment Online', href: '/dashboard/employer/alumni/assessment-online', icon: Table2 },
+          { label: 'Campus Posting Limits', href: '/dashboard/employer/settings', icon: Building2 },
+          { label: 'Assessment Map', href: '/dashboard/employer/assessment-summary', icon: Map },
         ],
       },
     ],
@@ -264,99 +381,112 @@ export const menuConfig = {
     sections: [
       {
         id: 'college-overview',
-        title: '🧭 Overview',
+        title: 'Overview',
         items: [
           { label: 'Dashboard', href: '/dashboard/college/overview', icon: LayoutDashboard },
           { label: 'Getting Started', href: '/dashboard/college/getting-started', icon: Rocket },
-          { label: 'My data export', href: '/dashboard/my-exports', icon: Download },
+          { label: 'My Data Export', href: '/dashboard/my-exports', icon: Download },
           { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
         ],
       },
       {
-        id: 'college-employers',
-        title: '🏢 Employers & Partnerships',
-        items: [
-          { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
-          { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests', icon: Inbox },
-          { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
-          { label: 'Startup seed funding', href: '/dashboard/college/startup-funding', icon: Rocket },
-        ],
-      },
-      {
-        id: 'college-programs',
-        title: '🎓 Programs & Drives',
-        items: [
-          { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
-          { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
-          { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
-          { label: 'Internship feedback', href: '/dashboard/college/internship-feedback', icon: MessageSquareText },
-          { label: 'Internship guides', href: '/dashboard/college/internship-guides', icon: UserRoundSearch },
-          { label: 'Internship PPO', href: '/dashboard/college/internship-ppo', icon: Award },
-        ],
-      },
-      {
-        id: 'college-alumni',
-        title: '🎓 Alumni',
-        items: [
-          { label: 'Alumni Jobs', href: '/dashboard/college/jobs', icon: Briefcase },
-        ],
-      },
-      {
         id: 'college-students-apps',
-        title: '👨‍🎓 Students & Applications',
+        title: 'Students & Applications',
         items: [
           { label: 'Students', href: '/dashboard/college/students', icon: Users },
-          { label: 'Add student', href: '/dashboard/college/students/add', icon: UserPlus },
+          { label: 'Add Student', href: '/dashboard/college/students/add', icon: UserPlus },
           { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
           { label: 'Offers', href: '/dashboard/college/offers', icon: Send },
         ],
       },
       {
-        id: 'college-evaluation',
-        title: '🧪 Evaluation & Selection',
+        id: 'college-employers',
+        title: 'Employers & Partnerships',
         items: [
-          { label: 'Hiring Assessment', href: '/dashboard/college/hiring-assessment', icon: ListChecks },
+          { label: 'Employers', href: '/dashboard/college/employers', icon: Building2 },
+          { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests', icon: Inbox },
+          { label: 'Sponsorships', href: '/dashboard/college/sponsorships', icon: Gem },
+          { label: 'Startup Seed Funding', href: '/dashboard/college/startup-funding', icon: Rocket },
+        ],
+      },
+      {
+        id: 'college-programs',
+        title: 'Programs & Drives',
+        items: [
+          { label: 'Placement Drives', href: '/dashboard/college/drives', icon: Target },
+          { label: 'Internships', href: '/dashboard/college/internships', icon: GraduationCap },
+          { label: 'Internship Results', href: '/dashboard/college/internship-results', icon: CalendarDays },
+        ],
+      },
+      {
+        id: 'college-evaluation',
+        title: 'Evaluation & Selection',
+        items: [
+          { label: 'Hiring Assessments', href: '/dashboard/college/hiring-assessment', icon: ListChecks },
           { label: 'Interview Scheduling', href: '/dashboard/college/interviews', icon: Calendar },
         ],
       },
       {
+        id: 'college-internship-outcomes',
+        title: 'Internship Outcomes',
+        items: [
+          {
+            label: 'Internship Progress Reviews',
+            href: '/dashboard/college/internship-feedback',
+            icon: MessageSquareText,
+          },
+          { label: 'Internship Guides', href: '/dashboard/college/internship-guides', icon: UserRoundSearch },
+          { label: 'Internship PPO', href: '/dashboard/college/internship-ppo', icon: Award },
+        ],
+      },
+      {
         id: 'college-communication',
-        title: '💬 Communication & Support',
+        title: 'Communication & Support',
         items: [
           { label: 'Clarifications', href: '/dashboard/college/clarifications', icon: HelpCircle },
           { label: 'Discussions', href: '/dashboard/college/discussions', icon: MessageSquare },
-          { label: 'Email templates', href: '/dashboard/college/communication-templates', icon: Mail },
-          { label: 'Custom message templates', href: '/dashboard/college/message-templates', icon: FileEdit },
-          { label: 'Bulk notifications', href: '/dashboard/college/bulk-notifications', icon: Megaphone },
+          { label: 'Email Templates', href: '/dashboard/college/communication-templates', icon: Mail },
+          { label: 'Custom Message Templates', href: '/dashboard/college/message-templates', icon: FileEdit },
+          { label: 'Bulk Notifications', href: '/dashboard/college/bulk-notifications', icon: Megaphone },
           { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare },
         ],
       },
       {
         id: 'college-engagement',
-        title: '📣 Engagement',
+        title: 'Engagement',
         items: [
           { label: 'Calendar', href: '/dashboard/college/calendar', icon: CalendarDays },
           { label: 'Events', href: '/dashboard/college/events', icon: PartyPopper },
-          { label: 'Guest faculty & lectures', href: '/dashboard/college/guest-engagements', icon: Mic },
+          { label: 'Guest Faculty & Lectures', href: '/dashboard/college/guest-engagements', icon: Mic },
+          {
+            label: 'Student Mentorship Requests',
+            href: '/dashboard/college/mentorship-requests',
+            icon: HandHeart,
+          },
+        ],
+      },
+      {
+        id: 'college-alumni',
+        title: 'Alumni',
+        items: [{ label: 'Alumni Jobs', href: '/dashboard/college/jobs', icon: Briefcase }],
+      },
+      {
+        id: 'college-insights',
+        title: 'Insights',
+        items: [
+          { label: 'Reports', href: '/dashboard/college/reports', icon: TrendingUp },
+          { label: 'Audit Reports', href: '/dashboard/college/audit-reports', icon: FileText },
         ],
       },
       {
         id: 'college-administration',
-        title: '⚙️ Administration',
+        title: 'Administration',
         items: [
-          { label: 'Enrollment key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
+          { label: 'Enrollment Key', href: '/dashboard/college/enrollment-key', icon: KeyRound },
           { label: 'Placement Rules', href: '/dashboard/college/rules', icon: SlidersHorizontal },
-          { label: 'Academic years', href: '/dashboard/college/academic-years', icon: CalendarRange },
+          { label: 'Academic Years', href: '/dashboard/college/academic-years', icon: CalendarRange },
           { label: 'Infrastructure', href: '/dashboard/college/infrastructure', icon: Building },
           { label: 'Settings', href: '/dashboard/college/settings', icon: Settings },
-        ],
-      },
-      {
-        id: 'college-insights',
-        title: '📊 Insights',
-        items: [
-          { label: 'Reports', href: '/dashboard/college/reports', icon: TrendingUp },
-          { label: 'Audit reports', href: '/dashboard/college/audit-reports', icon: FileText },
         ],
       },
     ],
@@ -413,7 +543,7 @@ const STUDENT_CAMPUS_ONLY_HREFS = new Set([
   '/dashboard/student/internships/not-processed',
   '/dashboard/student/projects',
   '/dashboard/student/hackathons',
-  '/dashboard/student/calendar',
+  '/dashboard/student/mentorship-requests',
   '/dashboard/student/clarifications',
   '/dashboard/student/applications/drives',
   '/dashboard/student/applications/internships',
@@ -449,13 +579,18 @@ function filterStudentMenu(menu, isAlumni) {
       .map((section) => ({
         ...section,
         title:
-          isAlumni && section.id === 'student-placements' ? 'Alumni' : section.title,
+          isAlumni && section.id === 'student-opportunities' ? 'Alumni' : section.title,
         items: section.items
-          .filter((item) => !hidden.has(item.href))
+          .filter((item) => item.disabled || !hidden.has(item.href))
           .map((item) => mapStudentNavItem(item, isAlumni)),
       }))
       .filter((section) => section.items.length > 0),
   };
+}
+
+/** Stable React key for a nav item (disabled future items may share placeholder hrefs). */
+export function getDashboardNavItemKey(item) {
+  return item.id || item.href;
 }
 
 /** Role menu with alumni vs campus student visibility applied. */

@@ -40,7 +40,7 @@ export default function StudentOpportunityRowActions({
       />
       <StandardTableIconAction
         action="download"
-        showLabel
+        showLabel={false}
         onClick={() => onDownload?.(row)}
         tooltip={kind === 'job' ? 'Download job details as CSV' : 'Download internship details as CSV'}
       />

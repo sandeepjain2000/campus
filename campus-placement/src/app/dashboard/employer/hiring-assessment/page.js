@@ -11,6 +11,7 @@ import { HiringResultBreakdown } from '@/components/assessment/HiringResultBreak
 import { useToast } from '@/components/ToastProvider';
 import { pickRepresentativeAssessmentRows, buildAssessmentSummary } from '@/lib/assessmentHiringViewShared';
 import { toCsvIsoDate } from '@/lib/csvExport';
+import { shouldShowFilterCount } from '@/lib/filterBadgeLabel';
 
 const KIND_TABS = [
   { id: 'internship', label: 'Internship', icon: GraduationCap },
@@ -227,19 +228,21 @@ export default function EmployerHiringAssessmentPage() {
             >
               <Icon size={16} strokeWidth={active ? 2.5 : 1.75} aria-hidden />
               {t.label}
-              <span
-                style={{
-                  opacity: 0.85,
-                  fontSize: '0.75rem',
-                  background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)',
-                  borderRadius: '999px',
-                  padding: '0.1rem 0.45rem',
-                  fontWeight: 700,
-                  color: active ? 'white' : 'var(--text-tertiary)',
-                }}
-              >
-                {n}
-              </span>
+              {shouldShowFilterCount(n) ? (
+                <span
+                  style={{
+                    opacity: 0.85,
+                    fontSize: '0.75rem',
+                    background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-primary)',
+                    borderRadius: '999px',
+                    padding: '0.1rem 0.45rem',
+                    fontWeight: 700,
+                    color: active ? 'white' : 'var(--text-tertiary)',
+                  }}
+                >
+                  {n}
+                </span>
+              ) : null}
             </button>
           );
         })}

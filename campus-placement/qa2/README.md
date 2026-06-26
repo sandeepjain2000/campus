@@ -31,17 +31,20 @@ Single-key mode: `NVIDIA_API_KEY`, or `NVIDIA_KEY_FILE` / `--nvidia-key-file`.
 
 The **Next.js app** uses the same NVIDIA env vars for chat features (CV skill suggest, help, screen smart-match): all keys in `NVIDIA_KEYS_DIR` are tried in order; on failure the next key is used, then `OPENAI_API_KEY` as final fallback. Optional: `NVIDIA_API_BASE_URL`, `NVIDIA_CHAT_MODEL` (default `meta/llama-3.1-8b-instruct`). Help **embeddings** still require `OPENAI_API_KEY`.
 
-## Execution logs
+## Execution logs & data
 
 | Output | Location |
 |--------|----------|
 | **Log** | `qa2/logs/run_agent_<UTC-timestamp>.log` |
 | **Results** | `qa2/agent_results_<timestamp>.json` |
+| **Report markdown** | `qa2/reports/` (exported test result tables) |
+| **Retry ID list** | `qa2/data/retry_case_ids.txt` |
+| **Python deps** | `qa2/requirements/requirements.txt`, `requirements-playwright.txt` |
 
 ## Run
 
 ```bash
-pip install -r qa2/requirements.txt
+pip install -r qa2/requirements/requirements.txt
 
 # Vercel + local browser (typical)
 python qa2/run_agent_cloud.py --local --limit 1

@@ -1,4 +1,4 @@
-"""Build qa/guided/focus-areas.json and qa/focus_areas_catalog.csv from Focus Areas.xlsx."""
+"""Build qa/guided/config/focus-areas.json and qa/data/catalogs/focus_areas_catalog.csv from Focus Areas.xlsx."""
 from __future__ import annotations
 
 import csv
@@ -10,8 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 XLSX = ROOT.parent / "Focus Areas.xlsx"
-OUT_JSON = ROOT / "qa" / "guided" / "focus-areas.json"
-OUT_CSV = ROOT / "qa" / "focus_areas_catalog.csv"
+OUT_JSON = ROOT / "qa" / "guided" / "config" / "focus-areas.json"
+OUT_CSV = ROOT / "qa" / "data" / "catalogs" / "focus_areas_catalog.csv"
 
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 

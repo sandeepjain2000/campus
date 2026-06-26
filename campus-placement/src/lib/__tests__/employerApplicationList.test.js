@@ -2,6 +2,7 @@ import {
   dedupeEmployerApplicationItems,
   employerMayUpdateApplicationStatus,
   normalizeEmployerApplicationStatus,
+  shouldNotifyStudentSelectionOnStatusChange,
 } from '../employerApplicationList';
 
 describe('employerApplicationList', () => {
@@ -39,5 +40,12 @@ describe('employerApplicationList', () => {
       error: 'Withdrawn applications cannot be updated.',
     });
     expect(employerMayUpdateApplicationStatus('shortlisted', 'selected')).toEqual({ ok: true });
+  });
+
+  it('notifies selection only on first transition to selected', () => {
+    expect(shouldNotifyStudentSelectionOnStatusChange('shortlisted', 'selected')).toBe(true);
+    expect(shouldNotifyStudentSelectionOnStatusChange('Selected', 'selected')).toBe(false);
+    expect(shouldNotifyStudentSelectionOnStatusChange('selected', 'selected')).toBe(false);
+    expect(shouldNotifyStudentSelectionOnStatusChange('shortlisted', 'rejected')).toBe(false);
   });
 });

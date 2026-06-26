@@ -95,7 +95,7 @@ export default function CollegeInternshipFeedbackPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'internship_feedback.csv';
+    a.download = 'internship_progress_reviews.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -106,7 +106,7 @@ export default function CollegeInternshipFeedbackPage() {
     [summary],
   );
 
-  if (isLoading) return <PageLoading message="Loading internship feedback…" variant="skeleton-card" />;
+  if (isLoading) return <PageLoading message="Loading progress reviews…" variant="skeleton-card" />;
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -114,10 +114,10 @@ export default function CollegeInternshipFeedbackPage() {
         <div className="page-header-left">
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <MessageSquareText size={26} aria-hidden />
-            Internship feedback
+            Internship Progress Reviews
           </h1>
           <p className="text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.55 }}>
-            Read-only view of student and employer feedback for selected / in-progress internships on your campus.
+            Read-only view of student and employer progress reviews for selected / in-progress internships on your campus.
           </p>
           <p className="text-sm text-tertiary" style={{ margin: '0.35rem 0 0' }}>{statLine}</p>
         </div>
@@ -199,7 +199,7 @@ export default function CollegeInternshipFeedbackPage() {
               {!error && filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)' }}>
-                    No internship feedback submitted yet.
+                    No progress reviews submitted yet.
                   </td>
                 </tr>
               ) : null}

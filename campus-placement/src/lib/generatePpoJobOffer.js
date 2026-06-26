@@ -5,7 +5,7 @@ import { refreshOfferLatestFlagsForStudent } from '@/lib/offersLatestFlag';
 import { notifyStudentFormalOfferByOfferId } from '@/lib/studentFormalOfferNotify';
 import { AND_JP_NOT_DELETED, AND_OFFER_NOT_DELETED, AND_PA_NOT_DELETED } from '@/lib/softDeleteSql';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
-import { toDateOnlyString } from '@/lib/dateOnly';
+import { toDateOnlyString, toDeadlineTimestampIso } from '@/lib/dateOnly';
 import { INTERNSHIP_PPO_ACCEPTED } from '@/lib/internshipPpo';
 
 /**
@@ -61,9 +61,7 @@ export async function generatePpoJobOffer({ employerId, programApplicationId, te
     throw err;
   }
 
-  const deadlineIso = template.response_deadline
-    ? new Date(`${toDateOnlyString(template.response_deadline)}T23:59:59`).toISOString()
-    : null;
+  const deadlineIso = toDeadlineTimestampIso(template.response_deadline);
   const joiningDate = template.joining_date ? toDateOnlyString(template.joining_date) : null;
   const renderedLetter = buildRenderedOfferLetter({
     template,

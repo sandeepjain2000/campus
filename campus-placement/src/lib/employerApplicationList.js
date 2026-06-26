@@ -50,3 +50,9 @@ export function employerMayUpdateApplicationStatus(currentStatus, nextStatus) {
   }
   return { ok: true };
 }
+
+/** Send selection email/in-app alert only on first transition to selected (not re-select). */
+export function shouldNotifyStudentSelectionOnStatusChange(currentStatus, nextStatus) {
+  if (normalizeEmployerApplicationStatus(nextStatus) !== 'selected') return false;
+  return normalizeEmployerApplicationStatus(currentStatus) !== 'selected';
+}

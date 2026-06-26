@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { generateOffersFromSelections } from '@/lib/bulkOfferGenerate';
+import {
+  assertEmployerOwnsDrive,
+  assertEmployerOwnsInternshipPosting,
+  countDriveSelectionOfferStats,
+  countInternshipSelectionOfferStats,
+  generateInternshipOffersFromSelections,
+  generateOffersFromSelections,
+  mapBulkOfferGenerateError,
+} from '@/lib/bulkOfferGenerate';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 export const dynamic = 'force-dynamic';
@@ -26,10 +34,26 @@ async function __platform_POST(request) {
 
     const body = await request.json();
     const driveId = String(body?.driveId || body?.drive_id || '').trim();
+    const jobId = String(body?.jobId || body?.job_id || '').trim();
     const templateId = String(body?.templateId || body?.template_id || '').trim();
 
-    if (!driveId || !templateId) {
-      return NextResponse.json({ error: 'driveId and templateId are required' }, { status: 400 });
+    if (!templateId) {
+      return NextResponse.json({ error: 'templateId is required' }, { status: 400 });
+    }
+
+    if (jobId) {
+      const result = await generateInternshipOffersFromSelections({ employerId, jobId, templateId });
+      return NextResponse.json({
+        message:
+          result.created > 0
+            ? `Generated ${result.created} internship offer(s) and sent ${result.emailed} email(s).`
+            : 'No new internship selections without offers — run again after marking more students as selected.',
+        ...result,
+      });
+    }
+
+    if (!driveId) {
+      return NextResponse.json({ error: 'driveId or jobId is required' }, { status: 400 });
     }
 
     const result = await generateOffersFromSelections({ employerId, driveId, templateId });
@@ -42,11 +66,15 @@ async function __platform_POST(request) {
       ...result,
     });
   } catch (error) {
-    if (error?.message === 'DRIVE_NOT_FOUND') {
-      return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
+    if (error?.message === 'DRIVE_NOT_FOUND' || error?.message === 'INTERNSHIP_NOT_FOUND') {
+      return NextResponse.json({ error: 'Posting not found' }, { status: 404 });
     }
     if (error?.message === 'TEMPLATE_NOT_FOUND') {
       return NextResponse.json({ error: 'Offer template not found' }, { status: 404 });
+    }
+    const mapped = mapBulkOfferGenerateError(error);
+    if (mapped) {
+      return NextResponse.json({ error: mapped }, { status: 503 });
     }
     console.error('POST /api/employer/offers/bulk-generate', error);
     return NextResponse.json({ error: 'Failed to generate offers' }, { status: 500 });

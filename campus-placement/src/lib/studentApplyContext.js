@@ -24,6 +24,8 @@ export function buildStudentApplyContext(data) {
         : 0,
     hasResume: cs.hasResume ?? data?.hasResume ?? false,
     isPlacementLocked: cs.isPlacementLocked ?? data?.placementLocked ?? false,
+    eligibilityGroupCode: cs.eligibilityGroupCode ?? cs.eligibility_group_code ?? null,
+    eligibilityGroupName: cs.eligibilityGroupName ?? cs.eligibility_group_name ?? null,
   };
 }
 

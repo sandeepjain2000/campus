@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Trophy, School, CreditCard, Building2, Landmark, X, Eye, Lock, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import PageLoading from '@/components/PageLoading';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 /** Demo-only checkout — values are illustrative (Stripes-123 is not a real processor). */
 const DEMO_CHECKOUT = {
@@ -445,26 +446,20 @@ export default function EmployerSponsorshipsPage() {
                   )}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    title="View benefits"
-                    aria-label={`View benefits for ${row.tierName}`}
+                  <StandardTableIconAction
+                    action="view"
+                    variant="ghost"
                     onClick={() => setDetailsRow(row)}
-                  >
-                    <Eye size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    style={{ marginLeft: 6 }}
+                    tooltip={`View benefits for ${row.tierName}`}
+                  />
+                  <StandardTableIconAction
+                    action="sponsor"
+                    variant="primary"
+                    style={{ marginLeft: '0.25rem' }}
                     disabled={!row.canPayAnother}
-                    title={row.canPayAnother ? 'Record sponsorship payment' : 'Already paid for this tier'}
                     onClick={() => openPay(row)}
-                  >
-                    <CreditCard size={14} style={{ marginRight: 4 }} />
-                    Sponsor
-                  </button>
+                    tooltip={row.canPayAnother ? 'Record sponsorship payment' : 'Already paid for this tier'}
+                  />
                 </td>
               </tr>
             ))}

@@ -12,6 +12,7 @@ import {
 } from '@/lib/tableQueryPresets';
 import { getRoleDisplayName } from '@/lib/utils';
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
@@ -123,7 +124,9 @@ export default function AdminUsersPage() {
               <td className="text-sm">{u.email}</td>
               <td><span className={`badge badge-${u.role === 'super_admin' ? 'red' : u.role === 'college_admin' ? 'indigo' : u.role === 'employer' ? 'green' : 'blue'}`}>{getRoleDisplayName(u.role)}</span></td>
               <td><span className={`badge ${u.active ? 'badge-green' : 'badge-gray'} badge-dot`}>{u.active ? 'Active' : 'Inactive'}</span></td>
-              <td><button className="btn btn-ghost btn-sm" disabled title="Coming soon">Edit</button></td>
+              <td>
+                <StandardTableIconAction action="edit" variant="ghost" disabled tooltip="Coming soon" />
+              </td>
             </tr>
           ))}
           {!isLoading && totalCount === 0 ? (

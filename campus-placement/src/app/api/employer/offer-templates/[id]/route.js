@@ -6,6 +6,7 @@ import { DEFAULT_OFFER_TEMPLATE_BODY } from '@/lib/offerTemplateRender';
 import { validateEmployerOfferPayload, validateTitlePayload } from '@/lib/apiInputValidation';
 import { normalizeTitle } from '@/lib/validators';
 import { toDateOnlyString } from '@/lib/dateOnly';
+import { normalizeOfferEventType } from '@/lib/offerEventType';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,9 @@ async function __platform_PATCH(request, { params }) {
       const bt = String(body.bodyTemplate ?? body.body_template ?? DEFAULT_OFFER_TEMPLATE_BODY).trim();
       if (!bt) return NextResponse.json({ error: 'Letter body is required' }, { status: 400 });
       push('body_template =', bt);
+    }
+    if (body.eventType != null || body.event_type != null) {
+      push('event_type =', normalizeOfferEventType(body.eventType ?? body.event_type));
     }
 
     if (!sets.length) return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

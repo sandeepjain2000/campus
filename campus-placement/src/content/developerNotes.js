@@ -1,6 +1,6 @@
 /**
  * In-app Developer page — QA runbook (Guided Runner + demo tools).
- * Route: /developer — keep in sync with qa/guided/RUNNER_QUICKSTART.md
+ * Route: /developer — keep in sync with qa/docs/guided-runner-quickstart.md
  */
 
 export const DEVELOPER_PAGE_META = {
@@ -46,22 +46,22 @@ export const QUICK_START_STEPS = [
 export const GUIDED_PLAYBOOKS = [
   {
     goal: 'Internship guides, supervisors & feedback — auto + voice (after Select)',
-    command: 'run_internship_care_auto_voice.bat',
-    focus: 'npm run test:guided:voice-internship-care · Requires selected intern · pip install -r qa/guided/requirements-voice.txt once',
+    command: 'qa/runners/batch/run_internship_care_auto_voice.bat',
+    focus: 'npm run test:guided:voice-internship-care · Requires selected intern · pip install -r qa/data/requirements/requirements-voice.txt once',
   },
   {
     goal: 'Full internship E2E — auto + voice for OBS recording (no blue-tag clicks)',
-    command: 'run_internship_e2e_auto_voice.bat',
-    focus: 'npm run test:guided:playbook-e2e-auto-voice · pip install -r qa/guided/requirements-voice.txt once',
+    command: 'qa/runners/batch/run_internship_e2e_auto_voice.bat',
+    focus: 'npm run test:guided:playbook-e2e-auto-voice · pip install -r qa/data/requirements/requirements-voice.txt once',
   },
   {
     goal: 'Employer publish + college approve — auto + voice',
-    command: 'run_internship_publish_auto_voice.bat',
+    command: 'qa/runners/batch/run_internship_publish_auto_voice.bat',
     focus: 'npm run test:guided:playbook-auto',
   },
   {
     goal: 'Student apply + employer select — auto + voice',
-    command: 'run_internship_apply_auto_voice.bat',
+    command: 'qa/runners/batch/run_internship_apply_auto_voice.bat',
     focus: 'npm run test:guided:playbook-apply-auto',
   },
   {
@@ -137,7 +137,7 @@ export function useCaseRunnerCommand(slug) {
 }
 
 export function useCaseRunnerBat(slug) {
-  return `run_use_case_auto_voice.bat ${slug}`;
+  return `qa/runners/batch/run_use_case_auto_voice.bat ${slug}`;
 }
 
 /** End-to-end use cases — one row each, up to 7 steps (columns). */
@@ -435,9 +435,9 @@ export const USE_CASE_FLOWS_USER_TESTING = [
       'Prerequisite: intern in Selected or In progress (apply-select playbook if empty)',
       'College: assign campus guide on Internship guides',
       'Employer: assign company supervisor on Internship supervisors',
-      'Employer: submit feedback on Internship feedback',
+      'Employer: submit progress review on Internship Progress Reviews',
       'Student: view guide + supervisor; submit feedback',
-      'College: read-only Internship feedback table + CSV export',
+      'College: read-only Internship Progress Reviews table + CSV export',
       'College: verify supervisor on Internship guides card',
     ],
   },
@@ -463,7 +463,7 @@ export const USE_CASE_FLOWS_USER_TESTING = [
       'College: switch to List view — Title column must not be blank',
       'College: Approve for campus (green check icon on row)',
       'Student: internship visible after approval',
-      'Guided runner: run_internship_publish_auto_voice.bat for OBS demo',
+      'Guided runner: qa/runners/batch/run_internship_publish_auto_voice.bat for OBS demo',
       'Email logs if selection follows: student_selection context',
     ],
   },
@@ -524,8 +524,8 @@ export const SCREEN_TAG_STUCK_TIPS = [
 
 export const SESSION_MARKER_NOTES = [
   'Full-cycle playbook (npm run test:guided:playbook-e2e) runs all roles in one session — includes guide, supervisor, and feedback after Select.',
-  'Post-Select only (voice): run_internship_care_auto_voice.bat or npm run test:guided:voice-internship-care.',
-  'Placement drive playbooks: test:guided:playbook-drives-e2e (full), playbook-drives (request + approve), playbook-drives-apply (apply + select). CSV export/upload on drives is still manual — see qa/MANUAL_TEST_PLAYBOOK.md.',
+  'Post-Select only (voice): qa/runners/batch/run_internship_care_auto_voice.bat or npm run test:guided:voice-internship-care.',
+  'Placement drive playbooks: test:guided:playbook-drives-e2e (full), playbook-drives (request + approve), playbook-drives-apply (apply + select). CSV export/upload on drives is still manual — see qa/docs/manual-test-playbook.md.',
   'Publish-only or apply-only playbooks still available for partial testing.',
   'Publish playbook creates a title like GT-20260529T1530 Summer Data Intern.',
   'Marker + every step event are stored in db/sqlite/guided_testing.sqlite (laptop only).',
@@ -541,7 +541,7 @@ export const INTERNSHIP_E2E_ROLES = [
   { role: 'Employer', steps: 'Shortlist and Select applicant on Applications → Internships', account: 'hr@techcorp.com' },
   { role: 'College', steps: 'Assign campus guide (Internship guides)', account: 'admin@iitm.edu' },
   { role: 'Employer', steps: 'Assign supervisor (Internship supervisors) and submit feedback', account: 'hr@techcorp.com' },
-  { role: 'Student', steps: 'View guide + supervisor; submit Internship feedback', account: 'arjun.verma@iitm.edu' },
+  { role: 'Student', steps: 'View guide + supervisor; submit Internship Progress Reviews', account: 'arjun.verma@iitm.edu' },
   { role: 'Closure', steps: 'College reads feedback; student confirms Selected on My Applications', account: 'admin@iitm.edu / arjun.verma@iitm.edu' },
 ];
 
@@ -559,8 +559,8 @@ export const RUNNER_CHANGE_ALERTS = [
     date: '2026-06-02',
     title: 'Internship guides, supervisors & feedback — voice runners',
     items: [
-      'New screens: college Internship guides / feedback; employer Internship supervisors / feedback; student Internship feedback.',
-      'Standalone voice tour: run_internship_care_auto_voice.bat (or npm run test:guided:voice-internship-care).',
+      'New screens: college Internship guides / progress reviews; employer Internship supervisors / progress reviews; student Internship Progress Reviews.',
+      'Standalone voice tour: qa/runners/batch/run_internship_care_auto_voice.bat (or npm run test:guided:voice-internship-care).',
       'Slug: internship-guides-feedback-supervisors · Prerequisite: selected intern — run apply-select bat first if lists are empty.',
       'Full E2E + apply-select playbooks now include post-Select steps (guide, supervisor, feedback) when using auto + voice.',
       'Migrations: npm run db:migrate:090 db:migrate:091 db:migrate:092 before testing.',
@@ -571,10 +571,10 @@ export const RUNNER_CHANGE_ALERTS = [
     title: 'Use-case voice runners (all 24 flows)',
     items: [
       'Every Developer Notes use case has an auto + voice runner: npm run test:guided:voice -- <slug>',
-      'Windows: run_use_case_auto_voice.bat <slug> · List slugs: npm run test:guided:voice-list',
+      'Windows: qa/runners/batch/run_use_case_auto_voice.bat <slug> · List slugs: npm run test:guided:voice-list',
       'Full E2E (internship, placement drive) reuse existing playbooks; others are navigation tours with manual pauses.',
-      'Regenerate tour JSON: npm run test:guided:build-uc-playbooks after editing qa/guided/use-case-tours.json',
-      'Legacy internship bats still work: run_internship_e2e_auto_voice.bat = slug internship-publish-hire',
+      'Regenerate tour JSON: npm run test:guided:build-uc-playbooks after editing qa/guided/config/use-case-tours.json',
+      'Legacy internship bats still work: qa/runners/batch/run_internship_e2e_auto_voice.bat = slug internship-publish-hire',
     ],
   },
   {
@@ -583,7 +583,7 @@ export const RUNNER_CHANGE_ALERTS = [
     items: [
       'College Internships defaults to card view — runner now switches to List view and clicks Approve for campus (icon button).',
       'Playbook internship dates: start 1 Jul 2026, end 31 Dec 2026.',
-      'OBS screen recordings: run_internship_e2e_auto_voice.bat (or npm run test:guided:playbook-e2e-auto-voice).',
+      'OBS screen recordings: qa/runners/batch/run_internship_e2e_auto_voice.bat (or npm run test:guided:playbook-e2e-auto-voice).',
       'Dashboard ads: Super Admin → Platform Settings → Show sponsored banner (off by default).',
       'Email delivery logs: recipient_login_email, context on all sends, three-step routing trail — Developer Notes → User testing use cases.',
     ],
@@ -873,7 +873,8 @@ export const LEGACY_RUNNER_COMMANDS = [
   { command: 'npm run test:guided:internships', use: 'Browse Focus Areas internship cases (navigation only)' },
   { command: 'npm run test:guided -- --focus EI-03', use: 'Single Focus Area case' },
   { command: 'npm run test:guided -- --playbook <id>', use: 'Any playbook in qa/guided/playbooks/' },
-  { command: '..\\run-guided.ps1 (parent CampusPlacement folder)', use: 'Launcher if cwd is wrong' },
+  { command: 'qa/runners/batch/run-guided.ps1', use: 'Guided runner (PowerShell)' },
+  { command: '..\\run-guided.ps1 (parent folder forwarder)', use: 'Same launcher from CampusPlacement parent' },
 ];
 
 export const DATABASE_SCHEMA_NOTES = {
@@ -884,8 +885,8 @@ export const DATABASE_SCHEMA_NOTES = {
 };
 
 export const RELATED_DOCS = [
-  { label: 'Use-case runner manifest', path: 'qa/guided/use-case-runners.json' },
-  { label: 'Use-case tour steps (source)', path: 'qa/guided/use-case-tours.json' },
+  { label: 'Use-case runner manifest', path: 'qa/guided/config/use-case-runners.json' },
+  { label: 'Use-case tour steps (source)', path: 'qa/guided/config/use-case-tours.json' },
   { label: 'Build tour playbooks', path: 'npm run test:guided:build-uc-playbooks' },
   { label: 'More use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_MORE)', href: '/developer/use-cases-more' },
   { label: 'User testing use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_USER_TESTING)', href: '/developer/use-cases-user-testing' },
@@ -896,8 +897,8 @@ export const RELATED_DOCS = [
   { label: 'Delete test college tenants script', path: 'scripts/delete_test_college_tenants.py' },
   { label: 'Clear placement SQL', path: 'db/scripts/clear_all_placement_data.sql' },
   { label: 'Help library for Cursor / Claude (markdown)', path: 'docs/help/', hint: 'Point AI tools here; sync: npm run qa:sync-help-knowledge' },
-  { label: 'Manual test playbook (CSV, cross-view)', path: 'qa/MANUAL_TEST_PLAYBOOK.md' },
-  { label: 'Runner quick start (repo file)', path: 'qa/guided/RUNNER_QUICKSTART.md' },
-  { label: 'Focus Areas JSON', path: 'qa/guided/focus-areas.json', hint: 'Rebuild: npm run qa:build-focus-areas' },
+  { label: 'Manual test playbook (CSV, cross-view)', path: 'qa/docs/manual-test-playbook.md' },
+  { label: 'Runner quick start (repo file)', path: 'qa/docs/guided-runner-quickstart.md' },
+  { label: 'Focus Areas JSON', path: 'qa/guided/config/focus-areas.json', hint: 'Rebuild: npm run qa:build-focus-areas' },
   { label: 'QA routes by role', path: 'qa/routes-by-role.js', hint: 'Rebuild: npm run qa:sync-routes' },
 ];

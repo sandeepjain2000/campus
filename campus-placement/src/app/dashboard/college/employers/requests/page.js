@@ -10,6 +10,7 @@ import CompanyNameLink from '@/components/CompanyNameLink';
 import { toCompanyWebsiteUrl } from '@/lib/companyWebsite';
 import { useToast } from '@/components/ToastProvider';
 import { fetchJson, swrFetcher } from '@/lib/fetchJson';
+import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
 
 async function collegeRequestsFetcher(url) {
   const data = await swrFetcher(url);
@@ -138,22 +139,21 @@ export default function EmployerRequestsPage() {
                     </td>
                     <td>{formatDate(req.created_at)}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          className="btn btn-success btn-sm"
+                      <div className="table-actions" style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                        <StandardTableIconAction
+                          action="approve"
+                          variant="success"
+                          loading={processing === req.approval_id}
                           disabled={processing === req.approval_id}
                           onClick={() => handleAction(req.approval_id, 'approve')}
-                        >
-                          {processing === req.approval_id ? '...' : 'Approve'}
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          style={{ color: 'var(--danger-500)' }}
+                        />
+                        <StandardTableIconAction
+                          action="reject"
+                          variant="danger"
+                          loading={processing === req.approval_id}
                           disabled={processing === req.approval_id}
                           onClick={() => handleAction(req.approval_id, 'reject')}
-                        >
-                          Reject
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>
