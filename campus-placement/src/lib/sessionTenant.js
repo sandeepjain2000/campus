@@ -30,15 +30,28 @@ export async function resolveStudentPlacementTenantIds(userId, sessionFallbackTe
   return ids;
 }
 
-/** College admin's tenant from DB (JWT can be stale after admin updates). */
-export async function resolveCollegeAdminTenantId(userId, sessionFallbackTenantId) {
-  const r = await query(`SELECT tenant_id FROM users WHERE id = $1::uuid AND role = 'college_admin'`, [userId]);
+/** College staff tenant from DB (college admin or placement committee). */
+export async function resolveCollegeStaffTenantId(userId, sessionFallbackTenantId) {
+  const r = await query(
+    `SELECT tenant_id FROM users WHERE id = $1::uuid AND role IN ('college_admin', 'placement_committee')`,
+    [userId],
+  );
   return r.rows[0]?.tenant_id || sessionFallbackTenantId || null;
 }
 
-/** Resolve college admin tenant from a NextAuth session (preferred over JWT tenant_id alone). */
-export async function resolveCollegeAdminTenantFromSession(session) {
+/** @deprecated use resolveCollegeStaffTenantId */
+export async function resolveCollegeAdminTenantId(userId, sessionFallbackTenantId) {
+  return resolveCollegeStaffTenantId(userId, sessionFallbackTenantId);
+}
+
+/** Resolve college staff tenant from a NextAuth session. */
+export async function resolveCollegeStaffTenantFromSession(session) {
   const userId = session?.user?.id || session?.user?.sub;
   const sessionTenant = session?.user?.tenantId || session?.user?.tenant_id;
-  return (await resolveCollegeAdminTenantId(userId, sessionTenant)) || sessionTenant || null;
+  return (await resolveCollegeStaffTenantId(userId, sessionTenant)) || sessionTenant || null;
+}
+
+/** @deprecated use resolveCollegeStaffTenantFromSession */
+export async function resolveCollegeAdminTenantFromSession(session) {
+  return resolveCollegeStaffTenantFromSession(session);
 }

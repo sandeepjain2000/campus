@@ -25,7 +25,7 @@ function getHubPageTitle(session, role, menu) {
     const first = session?.user?.name?.split(' ')?.[0];
     return first ? `${first} — Dashboard` : 'Student Dashboard';
   }
-  if (session?.user?.tenantName && (role === 'employer' || role === 'college_admin')) {
+  if (session?.user?.tenantName && (role === 'employer' || role === 'college_admin' || role === 'placement_committee')) {
     return `${session.user.tenantName} Dashboard`;
   }
   return `${menu.title} Dashboard`;
@@ -70,6 +70,14 @@ function getQuickActions(role, employerHasCampus, isAlumni) {
       { label: 'Employer Partnership Requests', href: '/dashboard/college/employers/requests' },
       { label: 'Settings', href: '/dashboard/college/settings' },
       { label: 'Alerts', href: '/dashboard/alerts' },
+    ];
+  }
+  if (role === 'placement_committee') {
+    return [
+      { label: 'Students', href: '/dashboard/college/students' },
+      { label: 'Applications', href: '/dashboard/college/applications' },
+      { label: 'Alerts', href: '/dashboard/alerts' },
+      { label: 'Feedback', href: '/dashboard/feedback' },
     ];
   }
   if (role === 'super_admin') {

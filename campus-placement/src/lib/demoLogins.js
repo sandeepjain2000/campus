@@ -16,6 +16,14 @@ export const DEMO_LOGINS = [
   { label: 'Admin (IITM)',  email: 'admin@iitm.edu', icon: '🏫', name: 'IIT Madras' },
   { label: 'Admin (NITT)',  email: 'admin@nitt.edu', icon: '🏫', name: 'NIT Trichy' },
   { label: 'Admin (BITS)',  email: 'admin@bits.edu', icon: '🏫', name: 'BITS Pilani' },
+  // Placement committee (read-only student data per college)
+  { label: 'Placement Committee (IITM)', email: 'committee@iitm.edu', icon: '📋', group: 'placement_committee', name: 'IIT Madras — read-only' },
+  { label: 'Placement Committee (NITT)', email: 'committee@nitt.edu', icon: '📋', group: 'placement_committee', name: 'NIT Trichy — read-only' },
+  { label: 'Placement Committee (BITS)', email: 'committee@bits.edu', icon: '📋', group: 'placement_committee', name: 'BITS Pilani — read-only' },
+  { label: 'Placement Committee (Jadavpur)', email: 'committee.jadavpur@campus-placement.work', icon: '📋', group: 'placement_committee', name: 'Jadavpur University — read-only' },
+  { label: 'Placement Committee (VIT)', email: 'committee.vit@campus-placement.work', icon: '📋', group: 'placement_committee', name: 'VIT Vellore — read-only' },
+  { label: 'Placement Committee (DTU)', email: 'committee.dtu@campus-placement.work', icon: '📋', group: 'placement_committee', name: 'DTU — read-only' },
+  { label: 'Placement Committee (IIIT-H)', email: 'committee.iiith@campus-placement.work', icon: '📋', group: 'placement_committee', name: 'IIIT Hyderabad — read-only' },
   // Platform
   { label: 'Super Admin', email: 'admin@placementhub.com', icon: '⚙️', name: 'PlacementHub' },
 ];

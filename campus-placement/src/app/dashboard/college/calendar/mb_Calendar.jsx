@@ -7,6 +7,7 @@ import { Plus, Calendar as CalendarIcon, Briefcase, GraduationCap, Building2 } f
 import { formatDate } from '@/lib/utils';
 import { CampusCalendarGrid } from '@/components/calendar/CampusCalendarGrid';
 import { collegeEventsToCalendarItems } from '@/lib/calendarItems';
+import AddCollegeProgramEventModal from '@/components/college/AddCollegeProgramEventModal';
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -17,9 +18,10 @@ const fetcher = async (url) => {
 
 export default function mb_Calendar() {
   const { addToast } = useToast();
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8)); // September 2026
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8));
   const [selectedDate, setSelectedDate] = useState(new Date(2026, 8, 13));
   const [showForm, setShowForm] = useState(false);
+  const [modalMode, setModalMode] = useState(null);
   const { data, error, mutate, isLoading } = useSWR('/api/college/events', fetcher);
 
   const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
@@ -43,33 +45,20 @@ export default function mb_Calendar() {
     return { color: 'var(--text-secondary)', bg: 'var(--bg-secondary)', icon: <CalendarIcon size={14}/>, label: 'Other' };
   };
 
-  const createCalendarEntry = async ({ title, eventType, startDate, endDate, isBlocking }) => {
-    const res = await fetch('/api/college/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, eventType, startDate, endDate, isBlocking }),
-    });
-    if (!res.ok) throw new Error('Failed to save event');
-  };
-
-  const addEvent = async () => {
-    try {
-      const title = window.prompt('Event title');
-      if (!title) return;
-      const type = window.prompt('Type (placement_drive / exam / holiday / other)', 'placement_drive');
-      const startStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
-      await createCalendarEntry({ title, eventType: type, startDate: startStr, endDate: startStr, isBlocking: false });
-      await mutate();
-      addToast('Event added', 'success');
-    } catch (e) {
-      addToast(e.message || 'Failed to add event', 'error');
+  const handleProgramSaved = async ({ warning } = {}) => {
+    await mutate();
+    setShowForm(false);
+    if (warning) {
+      addToast(`Program saved. ${warning}`, 'warning');
+    } else {
+      addToast('College program added', 'success');
     }
   };
 
   return (
     <>
-      <MobileHeader 
-        title="Calendar" 
+      <MobileHeader
+        title="Calendar"
         action={
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
             <Plus size={16} /> Add
@@ -77,13 +66,24 @@ export default function mb_Calendar() {
         }
       />
       <div className="animate-fadeIn" style={{ padding: '1rem 1rem 5rem 1rem' }}>
-        
+
         {showForm && (
           <div className="card" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px solid var(--primary-300)' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Quick Actions</h3>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Add to calendar</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <button className="btn btn-outline" onClick={() => { addEvent(); setShowForm(false); }} style={{ justifyContent: 'flex-start' }}>
-                <Plus size={16} /> Add Event to Selected Date
+              <button
+                className="btn btn-outline"
+                onClick={() => { setModalMode('program'); setShowForm(false); }}
+                style={{ justifyContent: 'flex-start' }}
+              >
+                <GraduationCap size={16} /> Add exam / program
+              </button>
+              <button
+                className="btn btn-outline"
+                onClick={() => { setModalMode('block'); setShowForm(false); }}
+                style={{ justifyContent: 'flex-start' }}
+              >
+                <Building2 size={16} /> Block dates
               </button>
               <button className="btn btn-outline" onClick={() => setShowForm(false)} style={{ color: 'var(--danger-600)', borderColor: 'var(--danger-200)', justifyContent: 'flex-start' }}>
                 Cancel
@@ -142,6 +142,14 @@ export default function mb_Calendar() {
         )}
 
       </div>
+
+      <AddCollegeProgramEventModal
+        open={modalMode != null}
+        mode={modalMode === 'block' ? 'block' : 'program'}
+        initialStartDate={selectedDayKey}
+        onClose={() => setModalMode(null)}
+        onSaved={handleProgramSaved}
+      />
     </>
   );
 }

@@ -32,6 +32,7 @@ import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/stude
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { buildStudentOpportunityCsvPayload } from '@/lib/studentOpportunityCsvExport';
 import { formatInternshipPeriodLabel } from '@/lib/internshipPostingMeta';
+import { useProgramApplicationWithCv } from '@/components/student/StudentCvApply';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -47,10 +48,14 @@ export default function StudentInternshipsPage() {
   const { data: session } = useSession();
   const { addToast } = useToast();
   const [selectedRow, setSelectedRow] = useState(null);
-  const [applyingId, setApplyingId] = useState(null);
   const { data, error, isLoading, mutate } = useSWR('/api/student/program-opportunities?kind=internship', fetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 0,
+  });
+  const { startApply, applyingId, pickerModal } = useProgramApplicationWithCv({
+    addToast,
+    mutate,
+    fetchApply: debugFetch,
   });
 
   const items = data?.items || [];
@@ -60,7 +65,10 @@ export default function StudentInternshipsPage() {
   const notProcessedCount = data?.notProcessedCount ?? 0;
   const applyBlockedReason = data?.applyBlockedReason || '';
   const currentStudent = buildStudentApplyContext(data);
-  const applyOptions = { internshipLocked };
+  const applyOptions = {
+    internshipLocked,
+    requireCvVerification: Boolean(currentStudent.cvVerificationRequired),
+  };
   const canApply = data?.canApply !== false;
   const globalBlockedReason = globalApplyBlockedReason(canApply, applyBlockedReason);
   const canBrowseListings = data?.canBrowseListings !== false;
@@ -109,31 +117,8 @@ export default function StudentInternshipsPage() {
       return;
     }
 
-    setApplyingId(jobId);
-    try {
-      clientDebugLog('student_apply', 'sending_request', { jobId });
-      const res = await debugFetch('/api/student/program-applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId }),
-      });
-      const json = await res.json().catch(() => ({}));
-      clientDebugLog('student_apply', 'response_received', { status: res.status, json });
-      if (!res.ok) {
-        addToast(json.error || 'Could not apply', 'error');
-        clientDebugLog('student_apply', 'apply_failed', { error: json.error });
-        return;
-      }
-      addToast(`Applied to ${title}`, 'success');
-      clientDebugLog('student_apply', 'apply_success', { jobId, title });
-      mutate();
-    } catch (err) {
-      addToast('Network error', 'error');
-      clientDebugLog('student_apply', 'apply_exception', { message: err?.message || String(err) });
-    } finally {
-      setApplyingId(null);
-      await flushClientDebugLog('student_apply', session?.user?.email);
-    }
+    startApply(jobId, title);
+    await flushClientDebugLog('student_apply', session?.user?.email);
   };
 
   const buildCsvRows = (scope) => {
@@ -380,6 +365,7 @@ export default function StudentInternshipsPage() {
       ) : null}
       </StudentBrowsePrerequisitePanel>
       )}
+      {pickerModal}
     </div>
   );
 }

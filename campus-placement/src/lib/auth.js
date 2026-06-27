@@ -120,7 +120,7 @@ export const authOptions = {
 
         if (!user.is_active) {
           console.warn(`[NextAuth Authorize] User account is inactive. role=${user.role}, email=${email}`);
-          if (['college_admin', 'employer'].includes(user.role)) {
+          if (['college_admin', 'placement_committee', 'employer'].includes(user.role)) {
             if (user.registration_rejected_at) {
               const hint = user.registration_rejection_note
                 ? ` ${user.registration_rejection_note}`
@@ -148,10 +148,11 @@ export const authOptions = {
             if (user.email.includes('techcorp')) fallbackTenantName = 'TechCorp Solutions';
             else if (user.email.includes('infosys')) fallbackTenantName = 'Infosys Limited';
             else fallbackTenantName = 'Corporate Partner';
-          } else if (user.role === 'college_admin') {
+          } else if (user.role === 'college_admin' || user.role === 'placement_committee') {
             if (user.email.includes('iitm')) fallbackTenantName = 'IIT Madras';
             else if (user.email.includes('nitt')) fallbackTenantName = 'NIT Trichy';
-            else fallbackTenantName = 'College Admin';
+            else if (user.email.includes('bits')) fallbackTenantName = 'BITS Pilani';
+            else fallbackTenantName = user.role === 'placement_committee' ? 'Placement Committee' : 'College Admin';
           }
         }
 

@@ -1,6 +1,7 @@
 import { query } from '@/lib/db';
 import { getCollegeOfferRules } from '@/lib/offerPlacementRules';
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
+import { getStudentCvApplyState } from '@/lib/studentCv';
 import {
   STUDENT_PLACEMENT_LOCKED_APPLY_MESSAGE,
   STUDENT_RESUME_REQUIRED_APPLY_MESSAGE,
@@ -39,29 +40,7 @@ async function queryStudentProfileRow(studentId) {
  * Whether the student has a real resume (profile primary or authoritative resume document).
  */
 export async function getStudentResumeApplyState(studentId) {
-  if (!studentId) {
-    return { hasResume: false, resumeUrl: '' };
-  }
-
-  const [profileRes, docsRes] = await Promise.all([
-    query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]),
-    query(
-      `SELECT document_type AS type, file_url AS url, uploaded_at AS "uploadedAt"
-       FROM student_documents
-       WHERE student_id = $1::uuid`,
-      [studentId],
-    ),
-  ]);
-
-  const resumeUrl = resolveStudentResumeUrl({
-    resumeUrl: profileRes.rows[0]?.resume_url,
-    documents: docsRes.rows,
-  });
-
-  return {
-    hasResume: isAuthoritativeResumeUrl(resumeUrl),
-    resumeUrl,
-  };
+  return getStudentCvApplyState(studentId);
 }
 
 /** @returns {{ ok: true } | { ok: false, error: string }} */

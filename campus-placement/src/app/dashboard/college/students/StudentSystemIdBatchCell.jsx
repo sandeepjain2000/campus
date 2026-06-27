@@ -46,7 +46,7 @@ export default function StudentSystemIdBatchCell({
           fontWeight: 700,
           color: 'var(--primary-700)',
           letterSpacing: '0.02em',
-          wordBreak: 'break-all',
+          whiteSpace: 'nowrap',
         }}
       >
         {systemIdLine}

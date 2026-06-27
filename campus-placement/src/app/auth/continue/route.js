@@ -10,6 +10,7 @@ const ROLE_HOME_PATHS = {
   student: '/dashboard/student',
   employer: '/dashboard/employer',
   college_admin: '/dashboard/college',
+  placement_committee: '/dashboard/college',
   super_admin: '/dashboard/admin',
 };
 

@@ -11,7 +11,7 @@ import { useToast } from '@/components/ToastProvider';
 import PageError from '@/components/PageError';
 import PageLoading from '@/components/PageLoading';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { STUDENT_DOCUMENT_ACCEPT_ATTR, STUDENT_RESUME_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
+import { STUDENT_DOCUMENT_ACCEPT_ATTR } from '@/lib/studentDocumentUpload';
 import { uploadStudentDocumentViaServer } from '@/lib/clientStudentDocumentUpload';
 
 const fetcher = (url) => fetch(url).then((res) => {
@@ -26,57 +26,22 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function ResumeDocCard({ doc, badge, onRemove }) {
-  return (
-    <div className="card card-hover">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem' }}>
-        <div className="stats-card-icon indigo" style={{ width: 40, height: 40, fontSize: '1.125rem' }}>
-          📄
-        </div>
-        {badge ? <span className={`badge badge-${badge.tone}`}>{badge.label}</span> : null}
-      </div>
-      <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', wordBreak: 'break-word' }}>{doc.document_name}</h4>
-      <div className="text-xs text-tertiary" style={{ marginBottom: '0.75rem' }}>
-        Resume • {formatSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
-      </div>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <a
-          className="btn btn-ghost btn-sm"
-          style={{ flex: 1 }}
-          href={`/api/student/documents/view?id=${encodeURIComponent(doc.id)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Open
-        </a>
-        {onRemove ? (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            style={{ color: 'var(--danger-500)' }}
-            onClick={() => onRemove(doc)}
-          >
-            Remove
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export default function StudentDocumentsPage() {
   const { addToast } = useToast();
   const { data, error, isLoading, mutate } = useSWR('/api/student/documents', fetcher);
   const [showUpload, setShowUpload] = useState(false);
-  const [showCvUpload, setShowCvUpload] = useState(false);
   const [view, setView] = useState('cards');
   const [docType, setDocType] = useState('academic');
   const [uploading, setUploading] = useState(false);
-  const [cvUploading, setCvUploading] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
 
-  const documents = data?.documents || [];
-  const primaryResumeUrl = data?.primaryResumeUrl || '';
+  const documents = useMemo(
+    () =>
+      (data?.documents || []).filter(
+        (d) => String(d.document_type || '').toLowerCase() !== 'resume',
+      ),
+    [data],
+  );
 
   const {
     search,
@@ -102,14 +67,7 @@ export default function StudentDocumentsPage() {
     defaultSort: 'date_desc',
   });
 
-  const { primaryResume, additionalResumes, otherDocuments } = useMemo(() => {
-    const resumes = documents.filter((d) => String(d.document_type || '').toLowerCase() === 'resume');
-    return {
-      primaryResume: resumes.find((d) => d.is_primary_resume) || null,
-      additionalResumes: resumes.filter((d) => !d.is_primary_resume),
-      otherDocuments: documents.filter((d) => String(d.document_type || '').toLowerCase() !== 'resume'),
-    };
-  }, [documents]);
+  const otherDocuments = documents;
 
   const docTypes = {
     id_proof: { label: 'ID Proof', icon: '🪪', color: 'blue' },
@@ -125,40 +83,8 @@ export default function StudentDocumentsPage() {
 
     setUploading(true);
     try {
-      const isResume = docType === 'resume';
       const result = await uploadStudentDocumentViaServer(file, {
         documentType: docType,
-        setAsPrimaryResume: isResume,
-      });
-      if (!result.ok) {
-        addToast(result.error + (result.hint ? ` — ${result.hint}` : ''), 'warning');
-        return;
-      }
-
-      mutate();
-      setShowUpload(false);
-      addToast(
-        isResume
-          ? 'Résumé saved and set as your primary CV (shown to employers).'
-          : 'Document uploaded.',
-        'success',
-      );
-    } catch {
-      addToast('Upload failed (network).', 'warning');
-    } finally {
-      setUploading(false);
-    }
-  }, [addToast, docType, mutate]);
-
-  const onAdditionalCvSelected = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setCvUploading(true);
-    try {
-      const result = await uploadStudentDocumentViaServer(file, {
-        documentType: 'resume',
         setAsPrimaryResume: false,
       });
       if (!result.ok) {
@@ -167,14 +93,14 @@ export default function StudentDocumentsPage() {
       }
 
       mutate();
-      setShowCvUpload(false);
-      addToast('Additional CV saved. Your profile CV is still the one employers see.', 'success');
+      setShowUpload(false);
+      addToast('Document uploaded.', 'success');
     } catch {
       addToast('Upload failed (network).', 'warning');
     } finally {
-      setCvUploading(false);
+      setUploading(false);
     }
-  }, [addToast, mutate]);
+  }, [addToast, docType, mutate]);
 
   const removeDoc = async (id) => {
     const res = await fetch(`/api/student/documents?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -195,8 +121,11 @@ export default function StudentDocumentsPage() {
         <div className="page-header-left">
           <h1>📄 My documents</h1>
           <p>
-            Your <strong>profile CV</strong> is what employers see when you apply. You can also upload extra CV versions
-            here for your records (stored in S3; not shared with employers yet).
+            CVs are managed separately with mandatory labels.{' '}
+            <Link href="/dashboard/student/cvs" style={{ fontWeight: 600 }}>
+              My CVs
+            </Link>{' '}
+            — use this page for ID proof, academic records, certificates, and other files.
           </p>
         </div>
         <div className="page-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -204,9 +133,9 @@ export default function StudentDocumentsPage() {
             <button type="button" className={view === 'cards' ? 'active' : ''} onClick={() => setView('cards')}>Cards</button>
             <button type="button" className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>Table</button>
           </div>
-          <button type="button" className="btn btn-secondary" onClick={() => setShowCvUpload((v) => !v)}>
-            + Additional CV
-          </button>
+          <Link href="/dashboard/student/cvs" className="btn btn-secondary">
+            My CVs
+          </Link>
           <button type="button" className="btn btn-primary" onClick={() => setShowUpload(!showUpload)}>
             + Other document
           </button>
@@ -216,86 +145,28 @@ export default function StudentDocumentsPage() {
       <div className="card" style={{ marginBottom: '1.25rem', border: '1px solid var(--primary-200)', background: 'var(--primary-50)' }}>
         <div style={{ padding: '1.25rem 1.5rem' }}>
           <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary-900)' }}>
-            Primary CV (shown to employers)
+            CVs / résumés
           </h3>
           <p className="text-sm text-secondary" style={{ margin: '0 0 0.75rem', lineHeight: 1.55 }}>
-            Upload or replace your main CV on your profile. That file is used in applications and employer reviews.
+            Upload labelled CVs, choose which one to send with each application, and archive old versions. Employers see your
+            label only — not the original file name.
           </p>
-          {primaryResume ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                📄 {primaryResume.document_name}
-              </span>
-              <a
-                className="btn btn-primary btn-sm"
-                href={`/api/student/documents/view?id=${encodeURIComponent(primaryResume.id)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open primary CV
-              </a>
-            </div>
-          ) : primaryResumeUrl ? (
-            <p className="text-sm text-secondary" style={{ margin: 0 }}>Primary CV is on your profile.</p>
-          ) : (
-            <p className="text-sm" style={{ margin: 0, color: 'var(--warning-700)', fontWeight: 600 }}>
-              No primary CV yet — upload one on your profile.
-            </p>
-          )}
-          <Link href="/dashboard/student/profile" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>
-            Go to profile → upload primary CV
+          <Link href="/dashboard/student/cvs" className="btn btn-primary btn-sm">
+            Go to My CVs
           </Link>
         </div>
       </div>
-
-      {showCvUpload && (
-        <div className="card" style={{ marginBottom: '1.25rem', border: '2px dashed var(--border-default)' }}>
-          <div style={{ padding: '1.5rem' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Upload an additional CV</h3>
-            <p className="text-sm text-secondary" style={{ marginBottom: '1rem', lineHeight: 1.55 }}>
-              This copy is stored for you only. It does <strong>not</strong> replace your profile CV or change what employers
-              see.
-            </p>
-            <label className="btn btn-primary" style={{ cursor: cvUploading ? 'wait' : 'pointer', margin: 0 }}>
-              {cvUploading ? 'Uploading…' : 'Choose CV file'}
-              <input
-                type="file"
-                hidden
-                accept={STUDENT_RESUME_ACCEPT_ATTR}
-                disabled={cvUploading}
-                onChange={onAdditionalCvSelected}
-              />
-            </label>
-          </div>
-        </div>
-      )}
-
-      {!isLoading && additionalResumes.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Additional CVs ({additionalResumes.length})</h2>
-          <div className="grid grid-3">
-            {additionalResumes.map((doc) => (
-              <ResumeDocCard
-                key={doc.id}
-                doc={doc}
-                badge={{ label: 'Stored only', tone: 'gray' }}
-                onRemove={(d) => setRemoveTarget({ id: d.id, name: d.document_name })}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {showUpload && (
         <div className="card" style={{ marginBottom: '1.5rem', border: '2px dashed var(--primary-300)' }}>
           <div style={{ padding: '1.5rem' }}>
             <h3 style={{ marginBottom: '0.75rem' }}>Upload another document</h3>
             <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
-              ID proof, academic records, certificates, and other files (not CV — use Additional CV above for extra résumés).
+              ID proof, academic records, certificates, and other files. For CVs, use{' '}
+              <Link href="/dashboard/student/cvs">My CVs</Link>.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
               <select className="form-select" style={{ width: 'auto' }} value={docType} onChange={(e) => setDocType(e.target.value)} disabled={uploading}>
-                <option value="resume">Résumé / CV (stored copy)</option>
                 <option value="id_proof">ID proof</option>
                 <option value="academic">Academic</option>
                 <option value="certificate">Certificate</option>
@@ -306,7 +177,7 @@ export default function StudentDocumentsPage() {
                 <input
                   type="file"
                   hidden
-                  accept={docType === 'resume' ? STUDENT_RESUME_ACCEPT_ATTR : STUDENT_DOCUMENT_ACCEPT_ATTR}
+                  accept={STUDENT_DOCUMENT_ACCEPT_ATTR}
                   disabled={uploading}
                   onChange={onFileSelected}
                 />
@@ -361,7 +232,7 @@ export default function StudentDocumentsPage() {
               );
             })}
           </div>
-          {otherDocuments.length === 0 && additionalResumes.length === 0 && !primaryResume && (
+          {otherDocuments.length === 0 && (
             <p className="text-sm text-secondary" style={{ marginTop: '0.5rem' }}>
               No other documents yet. Use the upload buttons above.
             </p>
@@ -408,26 +279,12 @@ export default function StudentDocumentsPage() {
                   </tr>
                 ) : null}
                 {displayDocuments.map((doc) => {
-                  const isResume = String(doc.document_type || '').toLowerCase() === 'resume';
-                  const dtype = isResume
-                    ? { label: 'Resume' }
-                    : docTypes[doc.document_type] || docTypes.other;
-                  const roleLabel = doc.is_primary_resume
-                    ? 'Primary CV'
-                    : isResume
-                      ? 'Additional CV'
-                      : '—';
+                  const dtype = docTypes[doc.document_type] || docTypes.other;
                   return (
                     <tr key={doc.id}>
                       <td className="font-semibold">{doc.document_name}</td>
                       <td>{dtype.label}</td>
-                      <td>
-                        {roleLabel !== '—' ? (
-                          <span className={`badge badge-${doc.is_primary_resume ? 'green' : 'gray'}`}>{roleLabel}</span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
+                      <td>—</td>
                       <td>{formatSize(doc.file_size)}</td>
                       <td>{formatDate(doc.uploaded_at)}</td>
                       <td>{doc.is_verified ? 'Yes' : 'Pending'}</td>

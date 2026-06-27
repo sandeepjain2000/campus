@@ -13,6 +13,7 @@ import {
 } from '@/lib/collegeAcademicYearContext';
 import { mapCollegeDriveFromApi, isDriveStaffDirty } from '@/lib/collegeDrivesClient';
 import { fetchCollegeDrivesList } from '@/lib/collegeDrivesApi';
+import { approveCollegeDriveWithClashCheck } from '@/lib/collegeDriveApprovalClient';
 import PageLoading from '@/components/PageLoading';
 import {
   Target, CheckCircle, XCircle, Download, Video, Building2,
@@ -151,9 +152,13 @@ export default function DesktopDrives() {
   const approveDrive = async (id) => {
     setActionBusyId(id);
     try {
-      const res = await fetch('/api/college/drives', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ driveId: id, action: 'approve' }) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed to approve drive');
+      const result = await approveCollegeDriveWithClashCheck(id);
+      if (!result.ok) {
+        if (result.error && result.error !== 'Approval cancelled due to calendar clash.') {
+          addToast(result.error, 'error');
+        }
+        return;
+      }
       setDrives((prev) => prev.map((d) => (d.id === id ? { ...d, status: 'approved' } : d)));
       addToast('Drive approved.', 'success');
     } catch (error) { addToast(error.message, 'error'); }

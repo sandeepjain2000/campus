@@ -47,6 +47,14 @@ INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_n
   ('b1000000-0000-0000-0000-000000000023', 'a1000000-0000-0000-0000-000000000007', 'admin.iiith@campus-placement.work', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'college_admin', 'Placement', 'Office', true, true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Placement committee (read-only student data) — one per live demo college
+INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_name, is_active, is_verified) VALUES
+  ('b1000000-0000-0000-0000-000000000046', 'a1000000-0000-0000-0000-000000000004', 'committee.jadavpur@campus-placement.work', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true),
+  ('b1000000-0000-0000-0000-000000000047', 'a1000000-0000-0000-0000-000000000005', 'committee.vit@campus-placement.work', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true),
+  ('b1000000-0000-0000-0000-000000000048', 'a1000000-0000-0000-0000-000000000006', 'committee.dtu@campus-placement.work', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true),
+  ('b1000000-0000-0000-0000-000000000049', 'a1000000-0000-0000-0000-000000000007', 'committee.iiith@campus-placement.work', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true)
+ON CONFLICT (id) DO NOTHING;
+
 -- ---------------------------------------------------------------------------
 -- Students (3 per college) — email firstname.lastname.<college-key>@campus-placement.work
 -- ---------------------------------------------------------------------------

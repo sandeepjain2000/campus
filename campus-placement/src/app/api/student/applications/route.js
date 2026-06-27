@@ -14,6 +14,8 @@ import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib
 import { syncPlacementDriveRegisteredCount, syncPlacementDriveSelectedCount } from '@/lib/employerApplicationCounts';
 import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
 import { notifyStudentApplicationSubmitted } from '@/lib/studentApplicationSubmittedNotify';
+import { hasColumn } from '@/lib/migrationReady';
+import { resolveCvForApplication, assertStudentCvVerifiedForCampusApply } from '@/lib/studentCv';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -89,7 +91,7 @@ async function __platform_POST(req) {
     }
 
     const userId = session.user.id;
-    const { drive_id, location_preference } = await req.json();
+    const { drive_id, location_preference, cvId } = await req.json();
 
     if (!drive_id) {
       return NextResponse.json({ error: 'Drive ID required' }, { status: 400 });
@@ -183,6 +185,20 @@ async function __platform_POST(req) {
         return NextResponse.json({ error: blockReason }, { status: 400 });
       }
 
+      const cvGate = await resolveCvForApplication(studentId, cvId);
+      if (!cvGate.ok) {
+        return NextResponse.json({ error: cvGate.error }, { status: 400 });
+      }
+
+      const cvVerifyGate = await assertStudentCvVerifiedForCampusApply(
+        studentId,
+        studentTenantId,
+        cvGate.studentCvId,
+      );
+      if (!cvVerifyGate.ok) {
+        return NextResponse.json({ error: cvVerifyGate.error }, { status: 403 });
+      }
+
       const existing = await query(
         `SELECT status FROM applications
          WHERE student_id = $1::uuid AND drive_id = $2::uuid
@@ -214,8 +230,22 @@ async function __platform_POST(req) {
         }
       }
 
+      const hasCvCol = await hasColumn('applications', 'student_cv_id');
       const ins = await query(
-        `
+        hasCvCol
+          ? `
+        INSERT INTO applications (student_id, drive_id, job_id, status, notes, student_cv_id)
+        VALUES ($1, $2, $3, $4, $5, $6::uuid)
+        ON CONFLICT (student_id, drive_id)
+        DO UPDATE SET
+          status = $4,
+          notes = COALESCE(EXCLUDED.notes, applications.notes),
+          student_cv_id = COALESCE(EXCLUDED.student_cv_id, applications.student_cv_id),
+          updated_at = NOW()
+        WHERE applications.status <> 'withdrawn'
+        RETURNING id
+      `
+          : `
         INSERT INTO applications (student_id, drive_id, job_id, status, notes)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (student_id, drive_id)
@@ -226,7 +256,9 @@ async function __platform_POST(req) {
         WHERE applications.status <> 'withdrawn'
         RETURNING id
       `,
-        [studentId, drive_id, null, initialStatus, notes],
+        hasCvCol
+          ? [studentId, drive_id, null, initialStatus, notes, cvGate.studentCvId || null]
+          : [studentId, drive_id, null, initialStatus, notes],
       );
 
       if (ins.rowCount === 0) {

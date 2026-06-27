@@ -9,6 +9,8 @@ import {
 } from '@/lib/migrationReady';
 import { getStudentApplyGate } from '@/lib/studentApplyEligibility';
 import { getStudentBrowseGate } from '@/lib/studentBrowseGate';
+import { mergeCampusCvVerificationApplyGate } from '@/lib/collegeCvVerification';
+import { getStudentCampusCvVerificationGate } from '@/lib/studentCv';
 import {
   getStudentInternshipSelectionLock,
   mapProgramOpportunityRow,
@@ -217,6 +219,14 @@ async function __platform_GET(request) {
     const applyGate = studentProfileId
       ? await getStudentApplyGate(studentProfileId, tenantIdForGate)
       : { hasResume: false, placementLocked: false, canApply: false, applyBlockedReason: null };
+    const cvVerificationGate =
+      kind === 'internship' && studentProfileId
+        ? await getStudentCampusCvVerificationGate(studentProfileId, tenantIdForGate)
+        : { required: false, hasVerifiedCv: true, applyBlockedReason: null };
+    const mergedApplyGate =
+      kind === 'internship'
+        ? mergeCampusCvVerificationApplyGate(applyGate, cvVerificationGate)
+        : applyGate;
     const browseGate = studentProfileId
       ? await getStudentBrowseGate(studentProfileId, tenantIdForGate)
       : {
@@ -303,15 +313,15 @@ async function __platform_GET(request) {
     }
 
     const internshipLocked = kind === 'internship' && internshipLock.locked;
-    const canApplyInternship = applyGate.canApply && !internshipLocked;
-    let applyBlockedReason = applyGate.applyBlockedReason;
+    const canApplyInternship = mergedApplyGate.canApply && !internshipLocked;
+    let applyBlockedReason = mergedApplyGate.applyBlockedReason;
     if (internshipLocked && canApplyInternship === false) {
       applyBlockedReason = STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE;
     }
 
     const responsePayload = {
       kind,
-      canApply: canApplyInternship,
+      canApply: kind === 'internship' ? canApplyInternship : applyGate.canApply,
       hasResume: browseGate.hasResume,
       profileComplete: browseGate.profileComplete,
       canBrowseListings: browseGate.canBrowseListings,
@@ -320,6 +330,8 @@ async function __platform_GET(request) {
       profileMissingLabels: browseGate.profileMissingLabels,
       placementLocked: applyGate.placementLocked,
       applyBlockedReason,
+      cvVerificationRequired: kind === 'internship' ? cvVerificationGate.required : false,
+      hasVerifiedCv: kind === 'internship' ? cvVerificationGate.hasVerifiedCv : true,
       internshipLocked,
       selectedInternship: internshipLock.selection,
       notProcessedCount: browseGate.canBrowseListings ? notProcessedCount : 0,
@@ -332,6 +344,8 @@ async function __platform_GET(request) {
             backlogsActive: applyProfile.backlogsActive,
             hasResume: applyProfile.hasResume,
             isPlacementLocked: applyProfile.isPlacementLocked,
+            cvVerificationRequired: applyProfile.cvVerificationRequired,
+            hasVerifiedCv: applyProfile.hasVerifiedCv,
           }
         : {
             cgpa: null,
@@ -341,6 +355,8 @@ async function __platform_GET(request) {
             backlogsActive: 0,
             hasResume: browseGate.hasResume,
             isPlacementLocked: applyGate.placementLocked,
+            cvVerificationRequired: kind === 'internship' ? cvVerificationGate.required : false,
+            hasVerifiedCv: kind === 'internship' ? cvVerificationGate.hasVerifiedCv : true,
           },
       items: browseGate.canBrowseListings ? items : [],
     };

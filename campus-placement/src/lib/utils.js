@@ -167,6 +167,7 @@ export function getDashboardPath(role) {
   const paths = {
     super_admin: '/dashboard/admin',
     college_admin: '/dashboard/college',
+    placement_committee: '/dashboard/college',
     employer: '/dashboard/employer',
     student: '/dashboard/student',
   };
@@ -180,6 +181,7 @@ export function getRoleDisplayName(role) {
   const names = {
     super_admin: 'Super Admin',
     college_admin: 'College Admin',
+    placement_committee: 'Placement Committee',
     employer: 'Employer',
     student: 'Student',
   };

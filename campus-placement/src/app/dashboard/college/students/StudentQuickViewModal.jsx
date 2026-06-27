@@ -19,7 +19,7 @@ function Field({ label, value, children }) {
   );
 }
 
-export default function StudentQuickViewModal({ student, onClose, onVerify }) {
+export default function StudentQuickViewModal({ student, onClose, onVerify, readOnly = false }) {
   if (!student) return null;
 
   const commEmail =
@@ -144,20 +144,22 @@ export default function StudentQuickViewModal({ student, onClose, onVerify }) {
             background: 'var(--bg-secondary)',
           }}
         >
-          {student.verified ? (
-            <button type="button" className="btn btn-ghost" onClick={() => onVerify(student.id, false)}>
-              Clear Verification
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => onVerify(student.id, true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            >
-              <CheckCircle2 size={16} /> Approve & Verify
-            </button>
-          )}
+          {onVerify && !readOnly ? (
+            student.verified ? (
+              <button type="button" className="btn btn-ghost" onClick={() => onVerify(student.id, false)}>
+                Clear Verification
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => onVerify(student.id, true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <CheckCircle2 size={16} /> Approve & Verify
+              </button>
+            )
+          ) : null}
           <Link
             href={`/dashboard/college/students/${student.id}`}
             className="btn btn-secondary"

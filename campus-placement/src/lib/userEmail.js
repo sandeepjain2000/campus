@@ -1,7 +1,7 @@
 const ROLE_LABELS = {
   student: 'student',
   college_admin: 'college administrator',
-  employer: 'employer',
+  placement_committee: 'placement committee',
   super_admin: 'platform administrator',
 };
 

@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { isArchiveSchemaError, ARCHIVE_COLUMN_HINT } from '@/lib/collegeStudentArchive';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { resolveCollegeStaffTenantFromSession } from '@/lib/sessionTenant';
+import { assertCollegeStaff } from '@/lib/collegeAccess';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -110,11 +112,12 @@ async function loadApplications(tenantId, includeArchivedFilter) {
 async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeStaff(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = getTenantId(session);
+    const tenantId = (await resolveCollegeStaffTenantFromSession(session)) || getTenantId(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }

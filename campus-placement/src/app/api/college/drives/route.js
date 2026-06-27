@@ -7,6 +7,10 @@ import { emailPlacementDriveApproved } from '@/lib/placementDriveEmail';
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { AND_DRIVE_NOT_DELETED } from '@/lib/softDeleteSql';
 import { DRIVE_APPLICANT_COUNT_SUBQUERY, DRIVE_SELECTED_COUNT_SUBQUERY } from '@/lib/employerApplicationCounts';
+import {
+  detectDriveApprovalClashes,
+  formatClashSummary,
+} from '@/lib/calendarClashDetection';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -191,9 +195,39 @@ async function __platform_PATCH(request) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
 
-    const { driveId, action } = await request.json();
+    const body = await request.json();
+    const { driveId, action, force } = body || {};
     if (!driveId || !['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'driveId and valid action are required' }, { status: 400 });
+    }
+
+    if (action === 'approve' && !force) {
+      const pending = await query(
+        `SELECT drive_date FROM placement_drives d
+         WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid AND d.status = 'requested'
+         ${AND_DRIVE_NOT_DELETED}`,
+        [driveId, tenantId],
+      );
+      const driveDate = pending.rows[0]?.drive_date;
+      if (driveDate) {
+        const clashResult = await detectDriveApprovalClashes(query, tenantId, driveDate, {
+          excludeDriveId: driveId,
+        });
+        if (clashResult.clashes.length) {
+          return NextResponse.json(
+            {
+              error: 'This drive clashes with college academic calendar.',
+              code: 'CALENDAR_CLASH',
+              clashes: clashResult.clashes,
+              bufferDays: clashResult.bufferDays,
+              summary: formatClashSummary(clashResult.clashes, {
+                bufferDays: clashResult.bufferDays,
+              }),
+            },
+            { status: 409 },
+          );
+        }
+      }
     }
 
     const nextStatus = action === 'approve' ? 'approved' : 'cancelled';

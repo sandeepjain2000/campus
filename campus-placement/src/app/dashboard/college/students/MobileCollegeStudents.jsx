@@ -14,11 +14,15 @@ import {
   academicYearQueryString,
   readActiveAcademicYearContext,
 } from '@/lib/collegeAcademicYearContext';
+import { usePlacementCommitteeReadOnly } from '@/lib/placementCommittee';
+import StudentCvVerificationBadge from '@/components/college/StudentCvVerificationBadge';
 
 export default function MobileCollegeStudents() {
   const { addToast } = useToast();
+  const readOnly = usePlacementCommitteeReadOnly();
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [requireCvVerification, setRequireCvVerification] = useState(false);
   
   const reloadStudents = useCallback(async () => {
     setIsLoading(true);
@@ -28,6 +32,7 @@ export default function MobileCollegeStudents() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to load students');
       setStudents(Array.isArray(json) ? json : json.students || []);
+      setRequireCvVerification(Boolean(json.requireCvVerification));
     } catch (error) {
       addToast(error.message || 'Failed to load students', 'error');
       setStudents([]);
@@ -73,13 +78,15 @@ export default function MobileCollegeStudents() {
             {filtered.length} of {students.length} enrolled
           </p>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link
-              href="/dashboard/college/students/add"
-              className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            >
-              <UserPlus size={14} /> Add
-            </Link>
+            {!readOnly ? (
+              <Link
+                href="/dashboard/college/students/add"
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <UserPlus size={14} /> Add
+              </Link>
+            ) : null}
           </div>
         </div>
 
@@ -148,8 +155,9 @@ export default function MobileCollegeStudents() {
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>Job: {formatStatus(s.jobStatus)}</span>
                     {s.verified
-                      ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{ marginRight: 4 }} /> Verified</span>
-                      : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Unverified</span>}
+                      ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{ marginRight: 4 }} /> Profile</span>
+                      : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Profile pending</span>}
+                    {requireCvVerification ? <StudentCvVerificationBadge status={s.cvStatus} compact /> : null}
                   </div>
                 </Link>
               );

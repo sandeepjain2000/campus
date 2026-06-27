@@ -1863,7 +1863,7 @@ a.admin-entity-name-btn {
 
 .college-students-col-id-batch {
   width: 11%;
-  min-width: 6.5rem;
+  min-width: calc(6.5rem + 2ch);
 }
 
 .college-students-col-degree {
@@ -1876,6 +1876,11 @@ a.admin-entity-name-btn {
 
 .college-students-col-status {
   width: 10%;
+}
+
+.college-students-col-cv {
+  width: 8%;
+  min-width: 5.5rem;
 }
 
 .student-section-summary-row {

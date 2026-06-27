@@ -10,7 +10,8 @@ import {
   validateAcademicYearsPayload,
   parseAcademicYearLabel,
 } from '@/lib/academicYearTenant';
-import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
+import { resolveCollegeStaffTenantFromSession, resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
+import { assertCollegeStaff, assertCollegeWriter } from '@/lib/collegeAccess';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -42,10 +43,11 @@ async function loadYearsBundle(tenantId) {
 async function __platform_GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeStaff(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
 
     const bundle = await loadYearsBundle(tenantId);
@@ -59,8 +61,9 @@ async function __platform_GET() {
 async function __platform_PUT(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeWriter(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
     const tenantId = await resolveCollegeAdminTenantFromSession(session);
     if (!tenantId) return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });

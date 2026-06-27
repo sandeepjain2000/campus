@@ -53,6 +53,8 @@ export default function CollegeSettingsPage() {
       researchCenters: '',
     },
     placementOfficer: { name: '', email: '', designation: '' },
+    requireCvVerification: false,
+    delegateCvVerificationToCommittee: false,
   });
 
   useEffect(() => {
@@ -83,6 +85,8 @@ export default function CollegeSettingsPage() {
             researchCenters: '',
           },
           placementOfficer: json.placementOfficer || { name: '', email: '', designation: '' },
+          requireCvVerification: Boolean(json.requireCvVerification),
+          delegateCvVerificationToCommittee: Boolean(json.delegateCvVerificationToCommittee),
         });
       } catch (e) {
         if (!mounted) return;
@@ -519,6 +523,64 @@ export default function CollegeSettingsPage() {
               onChange={(e) => setNested('institutionShowcase', 'researchCenters', e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">📄 CV Verification</h3>
+          </div>
+          <p className="text-sm text-secondary" style={{ marginTop: 0 }}>
+            When enabled, students must have a college-verified CV before applying to placement drives and internships.
+          </p>
+          <label className="form-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={Boolean(form.requireCvVerification)}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setForm((prev) => ({
+                  ...prev,
+                  requireCvVerification: checked,
+                  delegateCvVerificationToCommittee: checked ? prev.delegateCvVerificationToCommittee : false,
+                }));
+              }}
+              style={{ marginTop: '0.2rem' }}
+            />
+            <span>
+              <span className="form-label" style={{ display: 'block', marginBottom: '0.15rem' }}>
+                Require verified CV for drives &amp; internships
+              </span>
+              <span className="text-xs text-tertiary">
+                Each uploaded CV can be marked verified individually on the student profile.
+              </span>
+            </span>
+          </label>
+          <label
+            className="form-group"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.6rem',
+              cursor: form.requireCvVerification ? 'pointer' : 'not-allowed',
+              opacity: form.requireCvVerification ? 1 : 0.55,
+            }}
+          >
+            <input
+              type="checkbox"
+              disabled={!form.requireCvVerification}
+              checked={Boolean(form.delegateCvVerificationToCommittee)}
+              onChange={(e) => setRoot('delegateCvVerificationToCommittee', e.target.checked)}
+              style={{ marginTop: '0.2rem' }}
+            />
+            <span>
+              <span className="form-label" style={{ display: 'block', marginBottom: '0.15rem' }}>
+                Delegate verification to Placement Committee
+              </span>
+              <span className="text-xs text-tertiary">
+                Placement committee members can mark CVs verified when this is on; college admins always can.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="card">

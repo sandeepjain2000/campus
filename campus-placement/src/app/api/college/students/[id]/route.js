@@ -15,7 +15,8 @@ import {
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { displaySemesterForStudentList } from '@/lib/academicYearTenant';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
-import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
+import { resolveCollegeStaffTenantFromSession } from '@/lib/sessionTenant';
+import { assertCollegeStaff, assertCollegeWriter } from '@/lib/collegeAccess';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -37,11 +38,12 @@ async function loadStudentForTenant(tenantId, studentId, semesterDisplay) {
 async function __platform_GET(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeStaff(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -80,11 +82,12 @@ async function __platform_GET(request, { params }) {
 async function __platform_PATCH(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeWriter(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -151,11 +154,12 @@ async function __platform_PATCH(request, { params }) {
 async function __platform_DELETE(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeWriter(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }

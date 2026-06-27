@@ -9,6 +9,7 @@ import { STUDENT_INTERNSHIP_SELECTED_LOCK_MESSAGE } from '@/lib/internshipPlacem
 import {
   STUDENT_PLACEMENT_LOCKED_APPLY_MESSAGE,
   STUDENT_RESUME_REQUIRED_APPLY_MESSAGE,
+  STUDENT_CV_VERIFICATION_REQUIRED_APPLY_MESSAGE,
 } from '@/lib/studentApplyMessages';
 
 const DEFAULT_OPEN_STATUSES = ['published'];
@@ -30,6 +31,7 @@ const DEFAULT_OPEN_STATUSES = ['published'];
  *   backlogsActive?: number | null;
  *   hasResume?: boolean;
  *   isPlacementLocked?: boolean;
+ *   hasVerifiedCv?: boolean;
  *   eligibilityGroupCode?: string | null;
  *   eligibilityGroupName?: string | null;
  * }} StudentLike
@@ -37,6 +39,7 @@ const DEFAULT_OPEN_STATUSES = ['published'];
  *   openStatuses?: string[];
  *   internshipLocked?: boolean;
  *   skipCampusPlacementCriteria?: boolean;
+ *   requireCvVerification?: boolean;
  * }} ApplyBlockOptions
  */
 
@@ -56,6 +59,10 @@ export function getApplyBlockReason(opportunity, student, options = {}) {
 
   if (student?.hasResume === false) {
     return STUDENT_RESUME_REQUIRED_APPLY_MESSAGE;
+  }
+
+  if (options.requireCvVerification && student?.hasVerifiedCv === false) {
+    return STUDENT_CV_VERIFICATION_REQUIRED_APPLY_MESSAGE;
   }
 
   if (student?.isPlacementLocked && !skipCampus) {

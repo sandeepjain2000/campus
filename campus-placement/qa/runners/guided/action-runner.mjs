@@ -254,4 +254,50 @@ export async function executeAction(page, baseUrl, accounts, action, ctx) {
     await page.waitForTimeout(400);
     return;
   }
+
+  if (type === 'uploadSampleCvs') {
+    const { uploadSampleCvs } = await import('./cv-upload.mjs');
+    console.log('    → uploadSampleCvs: docs/CVs/*.docx with manifest labels');
+    const result = await uploadSampleCvs(page, baseUrl, {
+      skipExistingLabels: action.skipExisting !== false,
+      firstAsDefault: action.firstAsDefault !== false,
+    });
+    ctx.sampleCvsUploaded = result.uploaded.length;
+    console.log(`    → uploaded ${result.uploaded.length}, skipped ${result.skipped.length}`);
+    return;
+  }
+
+  if (type === 'downloadEmployerCvs' || type === 'downloadStudentCvs') {
+    const { downloadEmployerApplicationCvs, downloadStudentOwnCvs } = await import('./cv-download.mjs');
+    const limit = Number(action.limit) || 5;
+    const marker =
+      action.filterMarker === true || action.filterMarker === 'true'
+        ? resolveTemplate(action.marker || '{{marker}}', ctx)
+        : action.marker
+          ? resolveTemplate(action.marker, ctx)
+          : null;
+
+    console.log(`    → ${type}: saving up to ${limit} CV(s) under qa/data/downloads/cvs/`);
+    const manifest =
+      type === 'downloadStudentCvs'
+        ? await downloadStudentOwnCvs(page, baseUrl, { limit })
+        : await downloadEmployerApplicationCvs(page, baseUrl, {
+            limit,
+            marker: marker || null,
+            tabs: action.tabs
+              ? String(action.tabs)
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : undefined,
+            studentNameContains: action.studentName
+              ? resolveTemplate(action.studentName, ctx)
+              : null,
+          });
+
+    ctx.lastCvDownloadDir = manifest.outDir;
+    ctx.lastCvDownloadCount = manifest.count;
+    console.log(`    → ${manifest.count} file(s) → ${manifest.outDir}`);
+    return;
+  }
 }

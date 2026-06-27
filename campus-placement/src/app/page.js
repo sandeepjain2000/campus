@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Rocket,
   GraduationCap,
   Building2,
   School,
@@ -11,6 +10,9 @@ import {
   CalendarDays,
   ShieldCheck,
   ArrowRight,
+  Users,
+  Handshake,
+  Sparkles,
 } from 'lucide-react';
 import { appendClientDebugLog } from '@/lib/clientDebugLog';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
@@ -123,15 +125,16 @@ export default function LandingPage() {
           
           <div style={{ maxWidth: '48rem', margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', borderRadius: '9999px', border: '1px solid var(--primary-200)', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', padding: '0.375rem 1rem', fontSize: '0.875rem', fontWeight: 600, marginBottom: '2rem' }}>
-              <Rocket size={16} /> India&apos;s #1 Campus Recruitment Platform
+              <Sparkles size={16} aria-hidden /> More than a placement platform
             </div>
-            <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 800, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.1 }}>
-              Transform Your <br />
-              <span style={{ color: 'var(--primary-600)' }}>Campus Placements</span>
+            <h1 style={{ fontSize: 'clamp(2.25rem, 5vw, 3.75rem)', fontWeight: 800, letterSpacing: '-0.025em', color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.12 }}>
+              Beyond Placements. <br />
+              <span style={{ color: 'var(--primary-600)' }}>Building Industry-Ready Talent</span>
             </h1>
-            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '2.5rem', maxWidth: '42rem', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>
-              Connect students, employers, and colleges on a single intelligent platform. 
-              Streamline drives, automate hiring pipelines, and track every offer in real-time.
+            <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '2.5rem', maxWidth: '44rem', margin: '0 auto 2.5rem auto', lineHeight: 1.65 }}>
+              Placements are an <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>outcome—not the objective</strong>.
+              PlacementHub connects students, institutions, employers, mentors, alumni, and industry experts in one
+              year-round ecosystem—not just recruitment season.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <Link href="/register" className="btn btn-primary" style={{ padding: '0.875rem 2rem', fontSize: '1.125rem', background: 'linear-gradient(135deg, var(--primary-600), var(--primary-500))', border: 'none' }}>
@@ -158,14 +161,73 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Vision — More Than a Placement Platform */}
+        <section style={{ padding: '5rem 1.5rem', backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)' }}>
+          <div style={{ maxWidth: '52rem', margin: '0 auto' }}>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '1.5rem', letterSpacing: '-0.025em', textAlign: 'center' }}>
+              More Than a Placement Platform
+            </h2>
+            <div style={{ fontSize: '1.0625rem', color: 'var(--text-secondary)', lineHeight: 1.75, display: 'grid', gap: '1.25rem' }}>
+              <p style={{ margin: 0 }}>
+                PlacementHub goes beyond managing campus placements. We believe{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>placements are an outcome—not the objective</strong>.
+                The real objective is to build <strong style={{ color: 'var(--text-primary)' }}>industry-ready graduates</strong> through
+                continuous collaboration between{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>students, institutions, employers, mentors, alumni, training partners, and industry experts</strong>.
+              </p>
+              <p style={{ margin: 0 }}>
+                PlacementHub creates a connected ecosystem where academia and industry engage throughout the student journey—not
+                just during the recruitment season. By bringing all stakeholders onto a single platform, we enable meaningful
+                interactions, experiential learning, mentoring, internships, skill development, industry projects, hackathons,
+                assessments, and career guidance that prepare students for the workplace.
+              </p>
+              <p style={{ margin: 0 }}>
+                Our vision is to transform placements from a seasonal activity into a{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>year-round ecosystem</strong> that strengthens employability,
+                fosters innovation, and bridges the gap between education and industry.
+              </p>
+            </div>
+
+            <div style={{ marginTop: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+              {[
+                { icon: Users, label: 'Students & alumni', detail: 'Profiles, skills, applications, mentorship' },
+                { icon: School, label: 'Institutions', detail: 'Rules, calendars, verification, reporting' },
+                { icon: Building2, label: 'Employers & partners', detail: 'Drives, internships, projects, offers' },
+                { icon: Handshake, label: 'Mentors & experts', detail: 'Guidance beyond the placement window' },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-primary)',
+                    padding: '1.25rem 1.35rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', color: 'var(--primary-600)' }}>
+                    <item.icon size={20} aria-hidden />
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{item.label}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ margin: '2.5rem 0 0', textAlign: 'center', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+              PlacementHub isn&apos;t just about managing placements.{' '}
+              <span style={{ color: 'var(--primary-600)' }}>It&apos;s about building the future workforce.</span>
+            </p>
+          </div>
+        </section>
+
         {/* Features Section */}
-        <section id="features" style={{ padding: '6rem 1.5rem', backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
+        <section id="features" style={{ padding: '6rem 1.5rem', backgroundColor: 'var(--bg-primary)', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
           <div style={{ textAlign: 'center', maxWidth: '42rem', margin: '0 auto 4rem auto' }}>
             <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '1rem', letterSpacing: '-0.025em' }}>
-              Everything You Need for <span style={{ color: 'var(--primary-600)' }}>Seamless Placements</span>
+              One Platform for the <span style={{ color: 'var(--primary-600)' }}>Full Journey</span>
             </h2>
             <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)' }}>
-              From drive scheduling to offer management — one platform to rule them all.
+              From internships and hackathons to drives and offers—every program runs on shared profiles, college policy, and real-time visibility.
             </p>
           </div>
 
@@ -217,10 +279,10 @@ export default function LandingPage() {
         <section style={{ padding: '6rem 1.5rem', textAlign: 'center' }}>
           <div className="gradient-banner" style={{ borderRadius: 'var(--radius-2xl)', border: 'none', padding: '4rem 2rem', maxWidth: '56rem', margin: '0 auto', boxShadow: 'var(--shadow-xl)' }}>
             <h2 className="gradient-banner-title" style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-0.025em' }}>
-              Ready to Transform Placements?
+              Build Industry-Ready Talent—Year Round
             </h2>
             <p style={{ fontSize: '1.125rem', color: 'var(--banner-fg-muted)', marginBottom: '2.5rem', maxWidth: '42rem', marginLeft: 'auto', marginRight: 'auto' }}>
-              Join 500+ colleges already using PlacementHub to drive better outcomes.
+              Join colleges and employers using PlacementHub to connect learning, mentoring, and hiring in one ecosystem.
             </p>
             <Link href="/register" className="btn gradient-banner-solid-btn" style={{ padding: '1rem 2.5rem', fontSize: '1.125rem', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}>
               Start Your Free Trial

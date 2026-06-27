@@ -5,6 +5,7 @@ import { getInitialCalendarCursorFromIsoDates } from '@/lib/calendarInitialCurso
 import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
 import { CampusCalendarGrid } from '@/components/calendar/CampusCalendarGrid';
 import { collegeEventsToCalendarItems } from '@/lib/calendarItems';
+import AddCollegeProgramEventModal from '@/components/college/AddCollegeProgramEventModal';
 import { useToast } from '@/components/ToastProvider';
 import useSWR from 'swr';
 
@@ -18,6 +19,7 @@ const fetcher = async (url) => {
 export default function CollegeCalendarPage() {
   const { addToast } = useToast();
   const { data, error, mutate } = useSWR('/api/college/events', fetcher);
+  const [modalMode, setModalMode] = useState(null);
 
   const events = useMemo(() => (Array.isArray(data?.events) ? data.events : []), [data]);
   const calItems = useMemo(() => collegeEventsToCalendarItems(events), [events]);
@@ -49,49 +51,12 @@ export default function CollegeCalendarPage() {
     [currentMonth],
   );
 
-  const createCalendarEntry = async ({ title, eventType, startDate, endDate, isBlocking }) => {
-    const res = await fetch('/api/college/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        eventType,
-        startDate,
-        endDate,
-        isBlocking,
-      }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'Failed to save event');
-  };
-
-  const addEvent = async () => {
-    try {
-      const title = window.prompt('Event title');
-      if (!title) return;
-      const startDate = window.prompt('Start date (YYYY-MM-DD)');
-      if (!startDate) return;
-      const eventType = window.prompt('Event type: placement_drive | exam | holiday | workshop | other', 'placement_drive') || 'other';
-      await createCalendarEntry({ title, eventType, startDate, endDate: startDate, isBlocking: false });
-      await mutate();
-      addToast('Event added', 'success');
-    } catch (e) {
-      addToast(e.message || 'Failed to add event', 'error');
-    }
-  };
-
-  const blockDates = async () => {
-    try {
-      const title = window.prompt('Block title', 'Blocked Date');
-      if (!title) return;
-      const startDate = window.prompt('Start date (YYYY-MM-DD)');
-      if (!startDate) return;
-      const endDate = window.prompt('End date (YYYY-MM-DD)', startDate) || startDate;
-      await createCalendarEntry({ title, eventType: 'holiday', startDate, endDate, isBlocking: true });
-      await mutate();
-      addToast('Dates blocked', 'success');
-    } catch (e) {
-      addToast(e.message || 'Failed to block dates', 'error');
+  const handleProgramSaved = async ({ warning } = {}) => {
+    await mutate();
+    if (warning) {
+      addToast(`Program saved. ${warning}`, 'warning');
+    } else {
+      addToast('College program added to calendar', 'success');
     }
   };
 
@@ -112,7 +77,10 @@ export default function CollegeCalendarPage() {
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
-        <div className="page-header-left"><h1>📅 Placement Calendar</h1><p>Manage academic and placement schedules</p></div>
+        <div className="page-header-left">
+          <h1>📅 Placement Calendar</h1>
+          <p>Add exams and academic programs to avoid clashes with placement drives</p>
+        </div>
         <div className="page-header-actions">
           <ExportCsvSplitButton
             filenameBase="interview_schedule"
@@ -120,8 +88,12 @@ export default function CollegeCalendarPage() {
             fullCount={events.length}
             getRows={getScheduleCsv}
           />
-          <button className="btn btn-secondary" onClick={addEvent}>+ Add Event</button>
-          <button className="btn btn-secondary" onClick={blockDates}>+ Block Dates</button>
+          <button className="btn btn-primary" type="button" onClick={() => setModalMode('program')}>
+            + Add program / exam
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={() => setModalMode('block')}>
+            + Block dates
+          </button>
         </div>
       </div>
 
@@ -135,15 +107,14 @@ export default function CollegeCalendarPage() {
         />
         {error && <p className="text-secondary" style={{ margin: '0.75rem 1.5rem 0' }}>Failed to load calendar events.</p>}
 
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: '1.5rem', margin: '1rem 1.5rem 1.5rem', fontSize: '0.8125rem' }}>
+        <div style={{ display: 'flex', gap: '1.5rem', margin: '1rem 1.5rem 1.5rem', fontSize: '0.8125rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--primary-100)' }} />
             Placement Drive
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--danger-100)' }} />
-            Exam
+            Exam / Blocking program
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--success-100)' }} />
@@ -151,6 +122,13 @@ export default function CollegeCalendarPage() {
           </div>
         </div>
       </div>
+
+      <AddCollegeProgramEventModal
+        open={modalMode != null}
+        mode={modalMode === 'block' ? 'block' : 'program'}
+        onClose={() => setModalMode(null)}
+        onSaved={handleProgramSaved}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { getEmployerProfileId } from '@/lib/employerApplicationAccess';
-import { isAuthoritativeResumeUrl } from '@/lib/studentResumeUrl';
+import { buildEmployerResumeApiUrl } from '@/lib/employerApplicationResume';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { updateEmployerApplicationStatus } from '@/lib/employerApplicationStatusUpdate';
 import {
@@ -40,10 +40,11 @@ export const revalidate = 0;
 function mapRow(row) {
   const first = row.first_name || '';
   const last = row.last_name || '';
-  const hasResume = Boolean(row.resume_document_id || isAuthoritativeResumeUrl(row.resume_url));
+  const hasResume = Boolean(row.cv_id || row.resume_document_id || isAuthoritativeResumeUrl(row.resume_url));
+  const sourceKind = row.source_kind;
   return {
     id: row.id,
-    sourceKind: row.source_kind,
+    sourceKind,
     status: normalizeEmployerApplicationStatus(row.application_status ?? row.status),
     appliedAt: row.applied_at,
     currentRound: row.current_round,
@@ -57,8 +58,15 @@ function mapRow(row) {
     branch: row.branch || row.department || '—',
     cgpa: row.cgpa != null ? Number(row.cgpa) : null,
     hasResume,
-    resumeUrl: hasResume ? `/api/employer/applications/resume?studentId=${encodeURIComponent(row.student_id)}` : null,
-    resumeFileName: row.resume_document_name || null,
+    resumeUrl: hasResume
+      ? buildEmployerResumeApiUrl({
+          studentId: row.student_id,
+          applicationId: row.id,
+          sourceKind,
+        })
+      : null,
+    resumeFileName: row.cv_label || null,
+    cvLabel: row.cv_label || null,
     documentCount: Number(row.document_count) || 0,
     openingTitle: row.opening_title || '—',
     jobType: row.job_type || null,
@@ -239,6 +247,8 @@ async function __platform_GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           app_cv.id AS cv_id,
+           app_cv.label AS cv_label,
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
@@ -252,6 +262,7 @@ async function __platform_GET(request) {
          INNER JOIN placement_drives d ON d.id = a.drive_id
          INNER JOIN employer_profiles ep ON ep.id = d.employer_id
          INNER JOIN student_profiles sp ON sp.id = a.student_id
+         LEFT JOIN student_cvs app_cv ON app_cv.id = a.student_cv_id
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          ${resumeLateral}
@@ -282,6 +293,8 @@ async function __platform_GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           app_cv.id AS cv_id,
+           app_cv.label AS cv_label,
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
@@ -296,6 +309,7 @@ async function __platform_GET(request) {
          ${jobVisSql}
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
+         LEFT JOIN student_cvs app_cv ON app_cv.id = pa.student_cv_id
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          ${resumeLateral}
@@ -327,6 +341,8 @@ async function __platform_GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           app_cv.id AS cv_id,
+           app_cv.label AS cv_label,
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
@@ -341,6 +357,7 @@ async function __platform_GET(request) {
          ${jobVisSql}
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
+         LEFT JOIN student_cvs app_cv ON app_cv.id = pa.student_cv_id
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN LATERAL (
@@ -378,6 +395,8 @@ async function __platform_GET(request) {
            sp.department,
            sp.cgpa,
            sp.resume_url,
+           app_cv.id AS cv_id,
+           app_cv.label AS cv_label,
            resume_doc.id AS resume_document_id,
            resume_doc.document_name AS resume_document_name,
            resume_doc.file_url AS resume_document_url,
@@ -392,6 +411,7 @@ async function __platform_GET(request) {
          ${jobVisSql}
          INNER JOIN employer_profiles ep ON ep.id = jp.employer_id
          INNER JOIN student_profiles sp ON sp.id = pa.student_id
+         LEFT JOIN student_cvs app_cv ON app_cv.id = pa.student_cv_id
          INNER JOIN users u ON u.id = sp.user_id
          LEFT JOIN tenants t ON t.id = sp.tenant_id
          LEFT JOIN LATERAL (

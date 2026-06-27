@@ -8,6 +8,7 @@ import {
   getStudentPlacementApplyLock,
   getStudentResumeApplyState,
 } from '@/lib/studentApplyEligibility';
+import { getStudentCampusCvVerificationGate } from '@/lib/studentCv';
 
 async function queryStudentProfileRow(studentId) {
   try {
@@ -50,15 +51,18 @@ export async function loadStudentApplyProfile(studentId, tenantId = null) {
       backlogsActive: 0,
       hasResume: false,
       isPlacementLocked: false,
+      cvVerificationRequired: false,
+      hasVerifiedCv: true,
       eligibilityGroupCode: null,
       eligibilityGroupName: null,
     };
   }
 
-  const [profileRes, resumeState, placementLock] = await Promise.all([
+  const [profileRes, resumeState, placementLock, cvVerificationGate] = await Promise.all([
     queryStudentProfileRow(studentId),
     getStudentResumeApplyState(studentId),
     getStudentPlacementApplyLock(studentId, tenantId),
+    getStudentCampusCvVerificationGate(studentId, tenantId),
   ]);
 
   const row = profileRes.rows[0] || {};
@@ -78,6 +82,8 @@ export async function loadStudentApplyProfile(studentId, tenantId = null) {
     backlogsActive: Number(row.backlogs_active ?? 0),
     hasResume: resumeState.hasResume,
     isPlacementLocked: Boolean(placementLock.locked),
+    cvVerificationRequired: Boolean(cvVerificationGate.required),
+    hasVerifiedCv: Boolean(cvVerificationGate.hasVerifiedCv),
     eligibilityGroupCode: resolveStudentEligibilityGroupCode(aux),
     eligibilityGroupName: resolveStudentEligibilityGroupName(aux),
   };

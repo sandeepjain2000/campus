@@ -9,8 +9,11 @@ export function demoAccountLine1(user) {
   if (user.role === 'super_admin') {
     return 'Platform Admin';
   }
-  if (user.college_name) {
-    return person ? `${person} · ${user.college_name}` : user.college_name;
+  if (user.role === 'placement_committee') {
+    return user.college_name ? `Placement Committee · ${user.college_name}` : 'Placement Committee';
+  }
+  if (user.role === 'college_admin') {
+    return user.college_name ? `College Admin · ${user.college_name}` : 'College Admin';
   }
   return person || user.email;
 }

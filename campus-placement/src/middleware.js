@@ -15,6 +15,9 @@ import {
   LEGACY_EMPLOYER_JOBS_PATH,
 } from '@/lib/employerAlumniRoutes';
 import {
+  isPlacementCommitteePathAllowed,
+} from '@/lib/collegeAccess';
+import {
   DEV_NOTES_COOKIE,
   isDeveloperNotesPublicPath,
   requiresDevNotesUnlock,
@@ -41,6 +44,7 @@ const ROLE_HOME_PATHS = {
   student:      '/dashboard/student',
   employer:     '/dashboard/employer',
   college_admin:'/dashboard/college',
+  placement_committee: '/dashboard/college',
   super_admin:  '/dashboard/admin',
 };
 
@@ -49,6 +53,7 @@ const ROLE_OWNED_PREFIX = {
   student:      '/dashboard/student',
   employer:     '/dashboard/employer',
   college_admin:'/dashboard/college',
+  placement_committee: '/dashboard/college',
   super_admin:  '/dashboard/admin',
 };
 
@@ -177,6 +182,11 @@ export default async function proxy(request) {
 
     // Allow the role's own dashboard subtree
     if (ownedPrefix && (pathname === ownedPrefix || pathname.startsWith(ownedPrefix + '/'))) {
+      if (role === 'placement_committee' && !isPlacementCommitteePathAllowed(pathname)) {
+        return appendLegacyCookieClearance(
+          NextResponse.redirect(new URL('/dashboard/college/students', request.url)),
+        );
+      }
       return appendLegacyCookieClearance(NextResponse.next());
     }
 

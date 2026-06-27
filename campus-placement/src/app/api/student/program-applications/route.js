@@ -26,6 +26,7 @@ import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
 import { applicationStatusFromHiringResult } from '@/lib/hiringResult';
 import { createServerDebugTracer } from '@/lib/serverDebugTracer';
 import { notifyStudentApplicationSubmitted } from '@/lib/studentApplicationSubmittedNotify';
+import { resolveCvForApplication, assertStudentCvVerifiedForCampusApply } from '@/lib/studentCv';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -36,7 +37,7 @@ const PROGRAM_TYPES = new Set([
   ...CAMPUS_PROGRAM_JOB_TYPES,
 ]);
 
-async function persistProgramApplication(studentId, jobId, notes, tracer = null) {
+async function persistProgramApplication(studentId, jobId, notes, tracer = null, studentCvId = null) {
   const t = tracer || { log: () => {} };
   const hasDeletedCol = await hasColumn('program_applications', 'is_deleted');
   t.log('persistProgramApplication', 'check_prior_application', { studentId, jobId });
@@ -90,7 +91,17 @@ async function persistProgramApplication(studentId, jobId, notes, tracer = null)
     if (hasDeletedCol && existing.is_deleted) {
       t.log('persistProgramApplication', 'reviving_deleted_application', { id: existing.id, newStatus: initialStatus });
       const revived = await query(
-        `UPDATE program_applications
+        (await hasColumn('program_applications', 'student_cv_id'))
+          ? `UPDATE program_applications
+         SET status = $3,
+             notes = COALESCE($4, notes),
+             student_cv_id = COALESCE($5::uuid, student_cv_id),
+             is_deleted = false,
+             updated_at = NOW(),
+             applied_at = COALESCE(applied_at, NOW())
+         WHERE student_id = $1::uuid AND job_id = $2::uuid
+         RETURNING id, status`
+          : `UPDATE program_applications
          SET status = $3,
              notes = COALESCE($4, notes),
              is_deleted = false,
@@ -98,7 +109,9 @@ async function persistProgramApplication(studentId, jobId, notes, tracer = null)
              applied_at = COALESCE(applied_at, NOW())
          WHERE student_id = $1::uuid AND job_id = $2::uuid
          RETURNING id, status`,
-        [studentId, jobId, initialStatus, notes || null],
+        (await hasColumn('program_applications', 'student_cv_id'))
+          ? [studentId, jobId, initialStatus, notes || null, studentCvId || null]
+          : [studentId, jobId, initialStatus, notes || null],
       );
       if (!revived.rowCount) {
         t.log('persistProgramApplication', 'revive_failed');
@@ -130,12 +143,19 @@ async function persistProgramApplication(studentId, jobId, notes, tracer = null)
     return { ok: true, row: { id: existing.id, status: existing.status } };
   }
 
-  t.log('persistProgramApplication', 'inserting_application', { studentId, jobId, initialStatus });
+  const hasCvCol = await hasColumn('program_applications', 'student_cv_id');
+  t.log('persistProgramApplication', 'inserting_application', { studentId, jobId, initialStatus, studentCvId });
   const inserted = await query(
-    `INSERT INTO program_applications (student_id, job_id, status, notes)
-     VALUES ($1::uuid, $2::uuid, $3, $4)
-     RETURNING id, status`,
-    [studentId, jobId, initialStatus, notes || null],
+    hasCvCol
+      ? `INSERT INTO program_applications (student_id, job_id, status, notes, student_cv_id)
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5::uuid)
+         RETURNING id, status`
+      : `INSERT INTO program_applications (student_id, job_id, status, notes)
+         VALUES ($1::uuid, $2::uuid, $3, $4)
+         RETURNING id, status`,
+    hasCvCol
+      ? [studentId, jobId, initialStatus, notes || null, studentCvId || null]
+      : [studentId, jobId, initialStatus, notes || null],
   );
   const insertedId = inserted.rows[0]?.id;
   t.log('persistProgramApplication', 'insert_success', { id: insertedId, status: inserted.rows[0]?.status });
@@ -226,7 +246,7 @@ async function __platform_POST(req) {
       return NextResponse.json({ error: 'Missing student context' }, { status: 400 });
     }
 
-    const { jobId, notes } = await req.json();
+    const { jobId, notes, cvId } = await req.json();
     if (!jobId) {
       return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
     }
@@ -351,7 +371,23 @@ async function __platform_POST(req) {
       return NextResponse.json({ error: blockReason }, { status: 400 });
     }
 
-    const saved = await persistProgramApplication(studentId, jobId, notes, tracer);
+    const cvGate = await resolveCvForApplication(studentId, cvId);
+    if (!cvGate.ok) {
+      return NextResponse.json({ error: cvGate.error }, { status: 400 });
+    }
+
+    if (row.job_type === 'internship') {
+      const cvVerifyGate = await assertStudentCvVerifiedForCampusApply(
+        studentId,
+        tenantIds[0] || sessionTenant,
+        cvGate.studentCvId,
+      );
+      if (!cvVerifyGate.ok) {
+        return NextResponse.json({ error: cvVerifyGate.error }, { status: 403 });
+      }
+    }
+
+    const saved = await persistProgramApplication(studentId, jobId, notes, tracer, cvGate.studentCvId);
     if (!saved.ok) {
       tracer.log('__platform_POST', 'persist_failed', { error: saved.error, status: saved.status });
       await tracer.flush(userId);

@@ -1,7 +1,7 @@
 import { query } from '@/lib/db';
 import Link from 'next/link';
 import DemoAccountLoginLink from '@/components/auth/DemoAccountLoginLink';
-import { ArrowLeft, GraduationCap, Building2, School, ShieldCheck, Award } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Building2, School, ShieldCheck, Award, ClipboardList } from 'lucide-react';
 import { DEMO_SEED_PASSWORD } from '@/lib/demoLogins';
 import { demoAccountLine1, demoAccountRowStyles } from '@/lib/demoAccountDisplay';
 import { writePlatformErrorLog } from '@/lib/platformErrorLog';
@@ -9,7 +9,7 @@ import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-function DemoAccountRow({ user, isLast }) {
+function DemoAccountRow({ user, isLast, accentColor }) {
   const inactive = user.is_active === false;
   return (
     <DemoAccountLoginLink
@@ -17,6 +17,7 @@ function DemoAccountRow({ user, isLast }) {
       style={{
         ...demoAccountRowStyles.link,
         borderBottom: isLast ? 'none' : '1px solid var(--border-default)',
+        borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
         opacity: inactive ? 0.55 : 1,
       }}
       className="demo-account-row-hover"
@@ -66,7 +67,7 @@ function DemoAccountGroup({ group, users }) {
       </div>
       <div>
         {users.map((user, i) => (
-          <DemoAccountRow key={user.email} user={user} isLast={i === users.length - 1} />
+          <DemoAccountRow key={user.email} user={user} isLast={i === users.length - 1} accentColor={group.color} />
         ))}
       </div>
     </div>
@@ -107,6 +108,7 @@ export default async function DemoAccountsPage() {
     { key: 'alumni', label: 'Alumni', icon: Award, bg: 'var(--accent-50, #f5f3ff)', color: 'var(--accent-700, #6d28d9)', border: 'var(--accent-200, #ddd6fe)' },
     { key: 'employer', label: 'Employers', icon: Building2, bg: 'var(--success-50)', color: 'var(--success-700)', border: 'var(--success-200)' },
     { key: 'college_admin', label: 'College Admins', icon: School, bg: 'var(--warning-50)', color: 'var(--warning-700)', border: 'var(--warning-200)' },
+    { key: 'placement_committee', label: 'Placement Committees', icon: ClipboardList, bg: '#f0fdfa', color: '#0f766e', border: '#99f6e4' },
     { key: 'super_admin', label: 'Super Admins', icon: ShieldCheck, bg: 'var(--danger-50)', color: 'var(--danger-700)', border: 'var(--danger-200)' },
   ];
 
@@ -114,6 +116,7 @@ export default async function DemoAccountsPage() {
   const alumni = users.filter((u) => u.role === 'student' && u.is_alumni);
   const employers = users.filter((u) => u.role === 'employer');
   const collegeAdmins = users.filter((u) => u.role === 'college_admin');
+  const placementCommittees = users.filter((u) => u.role === 'placement_committee');
   const superAdmins = users.filter((u) => u.role === 'super_admin');
 
   return (
@@ -176,8 +179,9 @@ export default async function DemoAccountsPage() {
           <DemoAccountGroup group={groups[1]} users={alumni} />
           <DemoAccountGroup group={groups[2]} users={employers} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <DemoAccountGroup group={groups[4]} users={superAdmins} />
+            <DemoAccountGroup group={groups[5]} users={superAdmins} />
             <DemoAccountGroup group={groups[3]} users={collegeAdmins} />
+            <DemoAccountGroup group={groups[4]} users={placementCommittees} />
           </div>
         </div>
       </div>

@@ -172,6 +172,8 @@ async function __platform_GET() {
         email: settings.placementOfficer?.email || session.user.email || '',
         designation: settings.placementOfficer?.designation || '',
       },
+      requireCvVerification: Boolean(settings.requireCvVerification),
+      delegateCvVerificationToCommittee: Boolean(settings.delegateCvVerificationToCommittee),
       academicYearsWithData,
     });
   } catch (error) {
@@ -230,6 +232,9 @@ async function __platform_POST(request) {
         incubationCells: institutionShowcase.incubationCells || '',
         researchCenters: institutionShowcase.researchCenters || '',
       },
+      requireCvVerification: body?.requireCvVerification === true,
+      delegateCvVerificationToCommittee:
+        body?.requireCvVerification === true && body?.delegateCvVerificationToCommittee === true,
     };
 
     const comm = String(institution.communicationEmail ?? '').trim().toLowerCase();

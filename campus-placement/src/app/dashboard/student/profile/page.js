@@ -171,6 +171,18 @@ export default function StudentProfilePage() {
     isAlumni ? null : '/api/student/calendar',
     calendarFetcher,
   );
+  const { data: cvData, mutate: mutateCvs } = useSWR('/api/student/cvs', async (url) => {
+    const res = await fetch(url);
+    const json = await res.json().catch(() => ({}));
+    if (res.status === 503) return { items: [], legacy: true };
+    if (!res.ok) throw new Error(json.error || 'Failed to load CVs');
+    return { items: json.items || [], legacy: false };
+  });
+  const defaultCv = useMemo(() => {
+    const items = Array.isArray(cvData?.items) ? cvData.items.filter((c) => !c.archivedAt) : [];
+    return items.find((c) => c.isDefault) || items[0] || null;
+  }, [cvData]);
+  const useCvApi = cvData?.legacy !== true;
   const upcomingPlacementDates = useMemo(() => {
     const events = Array.isArray(placementCalData?.events) ? placementCalData.events : [];
     const now = new Date();
@@ -475,11 +487,33 @@ export default function StudentProfilePage() {
     }
   };
 
-  const onCvChange = async (e) => {
-    const file = e.target.files?.[0];
+  const onCvUpload = async ({ file, label, event }) => {
     if (!file) return;
 
-    e.target.value = '';
+    if (label) {
+      setCvUploading(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('label', label);
+        fd.append('set_as_default', '1');
+        const res = await fetch('/api/student/cvs/upload', { method: 'POST', body: fd });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          addToast(json.error || 'Upload failed', 'warning');
+          return;
+        }
+        await loadProfileFromApi({ silent: true });
+        await mutateCvs?.();
+        addToast('CV uploaded and set as default.', 'success');
+      } catch {
+        addToast('Résumé upload failed (network).', 'warning');
+      } finally {
+        setCvUploading(false);
+      }
+      return;
+    }
+
     const validated = await validateStudentResumeFileAsync(file);
     if (!validated.ok) {
       addToast(validated.error, 'warning');
@@ -503,6 +537,7 @@ export default function StudentProfilePage() {
       addToast('Résumé upload failed (network).', 'warning');
     } finally {
       setCvUploading(false);
+      if (event?.target) event.target.value = '';
     }
   };
 
@@ -521,8 +556,12 @@ export default function StudentProfilePage() {
 
   const rawAvatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
   const avatarSrc = rawAvatarSrc.startsWith('data:') ? rawAvatarSrc : toSignedViewUrl(rawAvatarSrc);
-  const resumeViewUrl = profile.resumeUrl ? '/api/student/resume/view' : '';
-  const resumeLabel = profile.cvFileName?.trim() || 'View résumé';
+  const resumeViewUrl = defaultCv
+    ? `/api/student/cvs/${encodeURIComponent(defaultCv.id)}/view`
+    : profile.resumeUrl
+      ? '/api/student/resume/view'
+      : '';
+  const resumeLabel = defaultCv?.label || profile.cvFileName?.trim() || '';
   const headerActionLabelStyle = {
     fontSize: '0.72rem',
     fontWeight: 600,
@@ -823,7 +862,8 @@ export default function StudentProfilePage() {
         resumeViewUrl={resumeViewUrl}
         resumeLabel={resumeLabel}
         cvUploading={cvUploading}
-        onCvChange={onCvChange}
+        onCvUpload={onCvUpload}
+        useCvApi={useCvApi}
       />
 
       {!isAlumni ? (
@@ -1855,13 +1895,9 @@ export default function StudentProfilePage() {
                   onChange={onAvatarChange}
                 />
               </label>
-              <label
-                className={`btn btn-secondary btn-sm${cvUploading ? ' disabled' : ''}`}
-                style={{ cursor: cvUploading ? 'wait' : 'pointer', margin: 0, opacity: cvUploading ? 0.7 : 1 }}
-              >
-                {cvUploading ? '⏳ Uploading CV…' : '📄 Upload CV / Resume'}
-                <input type="file" accept={STUDENT_RESUME_ACCEPT_ATTR} hidden disabled={cvUploading} onChange={onCvChange} />
-              </label>
+              <Link href="/dashboard/student/cvs" className="btn btn-secondary btn-sm">
+                Manage CVs
+              </Link>
             </div>
             <textarea className="form-textarea" value={profile.bio} onChange={(e) => persist({ ...profile, bio: e.target.value })} rows={4} />
           </div>

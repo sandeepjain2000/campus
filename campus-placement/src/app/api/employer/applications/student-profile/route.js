@@ -12,12 +12,11 @@ import {
 } from '@/lib/employerApplicationAccess';
 import {
   filterDisplayDocuments,
-  isAuthoritativeResumeUrl,
   resolveStudentResumeFileName,
-  resolveStudentResumeUrl,
 } from '@/lib/studentResumeUrl';
 import { formatStudentSystemId } from '@/lib/studentSystemId';
 import { resolveStudentPhotoDisplayUrl } from '@/lib/clientAssetUrl';
+import { buildEmployerResumeApiUrl, resolveEmployerApplicationResume } from '@/lib/employerApplicationResume';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -33,7 +32,10 @@ async function __platform_GET(request) {
     }
 
     const userId = session.user.id || session.user.sub;
-    const studentId = String(new URL(request.url).searchParams.get('studentId') || '').trim();
+    const params = new URL(request.url).searchParams;
+    const studentId = String(params.get('studentId') || '').trim();
+    const applicationId = String(params.get('applicationId') || '').trim() || null;
+    const sourceKind = String(params.get('source') || '').trim() || null;
     if (!userId || !studentId) {
       return NextResponse.json({ error: 'Missing student id' }, { status: 400 });
     }
@@ -135,17 +137,18 @@ async function __platform_GET(request) {
       avatarUrl: sp.avatar_url,
     });
 
-    const resolvedResumeUrl = resolveStudentResumeUrl({
-      resumeUrl: sp.resume_url,
-      documents: rawDocuments,
-    });
-    const hasResume = isAuthoritativeResumeUrl(resolvedResumeUrl);
-    const resumeUrl = hasResume ? `/api/employer/applications/resume?studentId=${encodeURIComponent(studentId)}` : '';
-    const primaryResumeFileName = resolveStudentResumeFileName({
-      resumeUrl: sp.resume_url,
-      documents: rawDocuments,
-      cvFileName: profile.cvFileName,
-    });
+    const resolvedResume = await resolveEmployerApplicationResume({ studentId, applicationId, sourceKind });
+    const hasResume = Boolean(resolvedResume?.fileUrl);
+    const resumeUrl = hasResume
+      ? buildEmployerResumeApiUrl({ studentId, applicationId, sourceKind })
+      : '';
+    const primaryResumeFileName =
+      resolvedResume?.cvLabel ||
+      resolveStudentResumeFileName({
+        resumeUrl: sp.resume_url,
+        documents: rawDocuments,
+        cvFileName: profile.cvFileName,
+      });
 
     return NextResponse.json({
       student: {

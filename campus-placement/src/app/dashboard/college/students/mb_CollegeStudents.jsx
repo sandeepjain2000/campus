@@ -19,13 +19,17 @@ import {
   academicYearQueryString,
   readActiveAcademicYearContext,
 } from '@/lib/collegeAcademicYearContext';
+import { usePlacementCommitteeReadOnly } from '@/lib/placementCommittee';
+import StudentCvVerificationBadge from '@/components/college/StudentCvVerificationBadge';
 
 export default function mb_CollegeStudents() {
   const router = useRouter();
+  const readOnly = usePlacementCommitteeReadOnly();
   const { addToast } = useToast();
   const [students, setStudents] = useState([]);
   const [sessionMeta, setSessionMeta] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [requireCvVerification, setRequireCvVerification] = useState(false);
   const [quickViewStudent, setQuickViewStudent] = useState(null);
 
   useEffect(() => {
@@ -48,6 +52,7 @@ export default function mb_CollegeStudents() {
       if (!res.ok) throw new Error(json?.error || 'Failed to load students');
       const list = Array.isArray(json) ? json : json.students || [];
       setStudents(list);
+      setRequireCvVerification(Boolean(json.requireCvVerification));
       setSessionMeta(Array.isArray(json) ? null : json.session || null);
     } catch (error) {
       addToast(error.message || 'Failed to load students', 'error');
@@ -146,13 +151,15 @@ export default function mb_CollegeStudents() {
             {filtered.length} of {students.length} enrolled
           </p>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link
-              href="/dashboard/college/students/add"
-              className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            >
-              <UserPlus size={14} /> Add
-            </Link>
+            {!readOnly ? (
+              <Link
+                href="/dashboard/college/students/add"
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <UserPlus size={14} /> Add
+              </Link>
+            ) : null}
           </div>
         </div>
 
@@ -243,25 +250,29 @@ export default function mb_CollegeStudents() {
                       >
                         <Eye size={18} aria-hidden />
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm btn-icon"
-                        aria-label={`Edit ${s.name}`}
-                        title="Edit"
-                        onClick={() => router.push(`/dashboard/college/students/${s.id}/edit`)}
-                      >
-                        <Pencil size={18} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm btn-icon"
-                        aria-label={`Archive ${s.name}`}
-                        title="Archive"
-                        onClick={() => archiveStudent(s)}
-                        style={{ color: 'var(--danger-600)' }}
-                      >
-                        <Trash2 size={18} aria-hidden />
-                      </button>
+                      {!readOnly ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm btn-icon"
+                            aria-label={`Edit ${s.name}`}
+                            title="Edit"
+                            onClick={() => router.push(`/dashboard/college/students/${s.id}/edit`)}
+                          >
+                            <Pencil size={18} aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm btn-icon"
+                            aria-label={`Archive ${s.name}`}
+                            title="Archive"
+                            onClick={() => archiveStudent(s)}
+                            style={{ color: 'var(--danger-600)' }}
+                          >
+                            <Trash2 size={18} aria-hidden />
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                   
@@ -272,8 +283,9 @@ export default function mb_CollegeStudents() {
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span className={`badge badge-${getStatusColor(s.jobStatus)} badge-dot`} style={{ fontSize: '0.75rem' }}>Job: {formatStatus(s.jobStatus)}</span>
                     {s.verified
-                      ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{ marginRight: 4 }} /> Verified</span>
-                      : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Unverified</span>}
+                      ? <span className="badge badge-green" style={{ fontSize: '0.75rem' }}><CheckCircle2 size={12} style={{ marginRight: 4 }} /> Profile</span>
+                      : <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>Profile pending</span>}
+                    {requireCvVerification ? <StudentCvVerificationBadge status={s.cvStatus} compact /> : null}
                   </div>
                 </div>
               );
@@ -291,7 +303,8 @@ export default function mb_CollegeStudents() {
       <StudentQuickViewModal
         student={quickViewStudent}
         onClose={() => setQuickViewStudent(null)}
-        onVerify={setStudentVerified}
+        onVerify={readOnly ? null : setStudentVerified}
+        readOnly={readOnly}
       />
 
       </div>

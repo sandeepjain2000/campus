@@ -348,10 +348,18 @@
     {
       "phase": "STUDENT",
       "label": "Log in as student (Arjun Verma)",
-      "observe": "Student dashboard — profile must have a primary CV to apply.",
+      "observe": "Student dashboard — profile must have labelled CVs to apply.",
       "action": {
         "type": "login",
         "account": "student"
+      }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Upload sample CVs from docs/CVs",
+      "observe": "Five labelled .docx files (Research CV, Academic CV, etc.) — skips any label already active. Enables CV picker on apply.",
+      "action": {
+        "type": "uploadSampleCvs"
       }
     },
     {
@@ -592,6 +600,26 @@
       "action": {
         "type": "goto",
         "path": "/dashboard/student/applications/internships"
+      }
+    },
+    {
+      "phase": "CLOSURE",
+      "label": "Download application CVs to qa folder",
+      "observe": "Terminal prints qa/data/downloads/cvs/<timestamp>/. Open files — names should match CV labels (not original upload filenames). manifest.json lists each download.",
+      "action": {
+        "type": "login",
+        "account": "employer"
+      }
+    },
+    {
+      "phase": "CLOSURE",
+      "label": "Save employer CV downloads",
+      "observe": "Up to 5 CVs from this session (GT- marker) saved locally for manual review.",
+      "action": {
+        "type": "downloadEmployerCvs",
+        "limit": 5,
+        "filterMarker": true,
+        "tabs": "internships"
       }
     }
   ]

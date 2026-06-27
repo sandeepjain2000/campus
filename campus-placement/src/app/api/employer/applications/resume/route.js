@@ -1,23 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { query } from '@/lib/db';
-import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import {
-
-
-
   canEmployerAccessStudent,
   extractS3Key,
   getEmployerProfileId,
 } from '@/lib/employerApplicationAccess';
-import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
+import { resolveEmployerApplicationResume } from '@/lib/employerApplicationResume';
+import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 
 export const dynamic = 'force-dynamic';
-import { withApiHandlers } from '@/lib/platformErrorRoute';
 export const revalidate = 0;
-
-
 
 function isS3Url(url) {
   try {
@@ -36,7 +30,11 @@ async function __platform_GET(request) {
     }
 
     const userId = session.user.id || session.user.sub;
-    const studentId = String(new URL(request.url).searchParams.get('studentId') || '').trim();
+    const params = new URL(request.url).searchParams;
+    const studentId = String(params.get('studentId') || '').trim();
+    const applicationId = String(params.get('applicationId') || '').trim() || null;
+    const sourceKind = String(params.get('source') || '').trim() || null;
+
     if (!userId || !studentId) {
       return NextResponse.json({ error: 'Missing student id' }, { status: 400 });
     }
@@ -51,29 +49,17 @@ async function __platform_GET(request) {
       return NextResponse.json({ error: 'Resume not available for this employer' }, { status: 403 });
     }
 
-    const [profile, docs] = await Promise.all([
-      query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]),
-      query(
-        `SELECT document_type AS type, file_url AS url, uploaded_at AS "uploadedAt"
-         FROM student_documents
-         WHERE student_id = $1::uuid
-         ORDER BY uploaded_at DESC`,
-        [studentId],
-      ),
-    ]);
-    const fileUrl = resolveStudentResumeUrl({
-      resumeUrl: profile.rows[0]?.resume_url,
-      documents: docs.rows,
-    });
-
-    if (!isAuthoritativeResumeUrl(fileUrl)) {
+    const resolved = await resolveEmployerApplicationResume({ studentId, applicationId, sourceKind });
+    if (!resolved?.fileUrl) {
       return NextResponse.json({ error: 'No uploaded resume found for this student' }, { status: 404 });
     }
+
+    const { fileUrl, downloadFileName } = resolved;
 
     if (isS3Url(fileUrl) && isS3Configured()) {
       const key = extractS3Key(fileUrl);
       if (key) {
-        const { downloadUrl } = await createDownloadUrlForKey(key, 60 * 30);
+        const { downloadUrl } = await createDownloadUrlForKey(key, 60 * 30, { downloadFileName });
         return NextResponse.redirect(downloadUrl);
       }
     }
@@ -85,8 +71,8 @@ async function __platform_GET(request) {
   }
 }
 
-
-const __platformApiHandlers = withApiHandlers({
-  GET: __platform_GET,
-}, { context: 'api_employer_applications_resume' });
+const __platformApiHandlers = withApiHandlers(
+  { GET: __platform_GET },
+  { context: 'api_employer_applications_resume' },
+);
 export const GET = __platformApiHandlers.GET;

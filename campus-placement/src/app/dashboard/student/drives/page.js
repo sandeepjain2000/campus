@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
@@ -10,6 +10,7 @@ import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
 import StudentBrowsePrerequisitePanel from '@/components/student/StudentBrowsePrerequisitePanel';
 import PostingEligibilitySection from '@/components/student/PostingEligibilitySection';
 import StudentApplyEligibilityControls from '@/components/student/StudentApplyEligibilityControls';
+import { useStudentCvApply } from '@/components/student/StudentCvApply';
 import PageLoading from '@/components/PageLoading';
 import {
   globalApplyBlockedReason,
@@ -98,6 +99,44 @@ export default function StudentDrivesPage() {
   const [applyingTo, setApplyingTo] = useState(null);
   const [locationPref, setLocationPref] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const applyingToRef = useRef(null);
+  applyingToRef.current = applyingTo;
+
+  const { runApplyFlow, pickerModal, applying: cvApplying } = useStudentCvApply({
+    onApply: async (cvId) => {
+      const drive = applyingToRef.current;
+      if (!drive) return;
+      setIsSubmitting(true);
+      try {
+        const body = { drive_id: drive.id, location_preference: locationPref };
+        if (cvId) body.cvId = cvId;
+        const res = await fetch('/api/student/applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok || data.success) {
+          await swrMutate('/api/student/drives');
+          await swrMutate('/api/student/applications');
+          addToast(`Applied to ${drive.company}. Good luck!`, 'info');
+          setApplyingTo(null);
+        } else {
+          addToast(data.error || 'Could not record application. Try again.', 'warning');
+        }
+      } catch {
+        addToast('Network error — application may not be saved.', 'warning');
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    onError: (msg) => addToast(msg, 'warning'),
+  });
+
+  const confirmApply = async () => {
+    if (!applyingTo || isSubmitting || cvApplying) return;
+    await runApplyFlow();
+  };
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
@@ -123,6 +162,10 @@ export default function StudentDrivesPage() {
   };
   const currentStudent = buildStudentApplyContext(drivesData);
   const driveOpenStatuses = ['approved', 'scheduled'];
+  const driveApplyOptions = {
+    openStatuses: driveOpenStatuses,
+    requireCvVerification: Boolean(currentStudent.cvVerificationRequired),
+  };
 
   function driveOpportunity(drive) {
     return programOpportunityFromRow(drive);
@@ -170,40 +213,12 @@ export default function StudentDrivesPage() {
   const openApplyModal = (drive) => {
     if (drive.applied) return;
     const blockReason = resolveApplyBlockReason(driveOpportunity(drive), currentStudent, {
-      openStatuses: driveOpenStatuses,
+      ...driveApplyOptions,
       globalBlockedReason,
     });
     if (blockReason) return;
     setApplyingTo(drive);
     setLocationPref('');
-  };
-
-  const confirmApply = async () => {
-    if (!applyingTo) return;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/student/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          drive_id: applyingTo.id,
-          location_preference: locationPref,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok || data.success) {
-        await swrMutate('/api/student/drives');
-        await swrMutate('/api/student/applications');
-        addToast(`Applied to ${applyingTo.company}. Good luck!`, 'info');
-      } else {
-        addToast(data.error || 'Could not record application. Try again.', 'warning');
-      }
-    } catch {
-      addToast('Network error — application may not be saved.', 'warning');
-    } finally {
-      setIsSubmitting(false);
-      setApplyingTo(null);
-    }
   };
 
   return (
@@ -388,7 +403,7 @@ export default function StudentDrivesPage() {
           const blockReason =
             !isExpired && !hasPriorApplication && !activeApplication
               ? resolveApplyBlockReason(driveOpportunity(drive), currentStudent, {
-                  openStatuses: driveOpenStatuses,
+                  ...driveApplyOptions,
                   globalBlockedReason,
                 })
               : null;
@@ -517,7 +532,7 @@ export default function StudentDrivesPage() {
 
       {applyingTo && (() => {
         const confirmBlockReason = resolveApplyBlockReason(driveOpportunity(applyingTo), currentStudent, {
-          openStatuses: driveOpenStatuses,
+          ...driveApplyOptions,
           globalBlockedReason,
         });
         return (
@@ -571,11 +586,11 @@ export default function StudentDrivesPage() {
                 type="button"
                 className="btn btn-primary"
                 onClick={confirmApply}
-                disabled={isSubmitting || Boolean(confirmBlockReason)}
-                aria-disabled={isSubmitting || confirmBlockReason ? 'true' : undefined}
+                disabled={isSubmitting || cvApplying || Boolean(confirmBlockReason)}
+                aria-disabled={isSubmitting || cvApplying || confirmBlockReason ? 'true' : undefined}
                 title={confirmBlockReason || undefined}
               >
-                {isSubmitting ? 'Submitting…' : 'Confirm application'}
+                {isSubmitting || cvApplying ? 'Submitting…' : 'Confirm application'}
               </button>
             </div>
             {confirmBlockReason ? (
@@ -587,6 +602,7 @@ export default function StudentDrivesPage() {
         </div>
         );
       })()}
+      {pickerModal}
     </div>
   );
 }

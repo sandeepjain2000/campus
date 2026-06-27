@@ -57,7 +57,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     communication_email VARCHAR(255),
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'college_admin', 'employer', 'student')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'college_admin', 'placement_committee', 'employer', 'student')),
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100),
     phone VARCHAR(20),
@@ -251,6 +251,26 @@ CREATE TABLE student_documents (
 );
 
 -- ============================================
+-- 6b. STUDENT CVS (labelled résumés; archive-only)
+-- ============================================
+CREATE TABLE student_cvs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    student_id UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    label VARCHAR(20) NOT NULL CHECK (char_length(trim(label)) >= 1),
+    file_url TEXT NOT NULL,
+    file_size INTEGER,
+    original_file_name VARCHAR(255) NOT NULL,
+    file_extension VARCHAR(20) NOT NULL,
+    is_default BOOLEAN NOT NULL DEFAULT false,
+    archived_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_student_cvs_student ON student_cvs (student_id);
+CREATE INDEX idx_student_cvs_student_active ON student_cvs (student_id) WHERE archived_at IS NULL;
+
+-- ============================================
 -- 7. STUDENT PROJECTS
 -- ============================================
 CREATE TABLE student_projects (
@@ -430,6 +450,7 @@ CREATE TABLE applications (
     updated_at TIMESTAMP DEFAULT NOW(),
     withdrawal_reason TEXT,
     notes TEXT,
+    student_cv_id UUID REFERENCES student_cvs(id) ON DELETE SET NULL,
     UNIQUE(student_id, drive_id)
 );
 
@@ -454,6 +475,7 @@ CREATE TABLE program_applications (
     notes TEXT,
     applied_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
+    student_cv_id UUID REFERENCES student_cvs(id) ON DELETE SET NULL,
     UNIQUE(student_id, job_id)
 );
 

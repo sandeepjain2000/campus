@@ -59,6 +59,10 @@
     "db:migrate:096": "node scripts/db_exec_sql_file.js db/migrations/096_academic_taxonomy.sql",
     "db:migrate:097": "node scripts/db_exec_sql_file.js db/migrations/097_offers_one_internship_selection.sql",
     "db:migrate:098": "node scripts/db_exec_sql_file.js db/migrations/098_student_mentorship_requests.sql",
+    "db:migrate:099": "node scripts/db_exec_sql_file.js db/migrations/099_student_cvs.sql",
+    "db:migrate:100": "node scripts/db_exec_sql_file.js db/migrations/100_placement_committee_role.sql",
+    "db:migrate:101": "node scripts/db_exec_sql_file.js db/migrations/101_placement_committee_per_college.sql",
+    "db:migrate:102": "node scripts/db_exec_sql_file.js db/migrations/102_student_cv_verification.sql",
     "seed:academic-taxonomy": "node scripts/seed_academic_taxonomy.js",
     "db:clear-placement": "node scripts/clear_all_placement_data.js",
     "db:delete-test-employers": "py -3 scripts/delete_test_employers.py",
@@ -109,6 +113,9 @@
     "test:guided:build-uc-playbooks": "node qa/runners/guided/build-uc-playbooks.mjs",
     "test:guided:voice-list": "node qa/runners/guided/run-use-case-voice.mjs --help",
     "test:guided:help": "node qa/runners/guided/run-guided.mjs --help",
+    "test:guided:download-cvs": "node qa/runners/guided/download-cvs.mjs",
+    "test:guided:download-cvs:student": "node qa/runners/guided/download-cvs.mjs --role student",
+    "test:guided:upload-sample-cvs": "node qa/runners/guided/upload-sample-cvs.mjs",
     "qa:guided:db-log": "node qa/runners/guided/db-log.mjs"
   },
   "dependencies": {

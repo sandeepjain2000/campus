@@ -5,6 +5,8 @@ import { query } from '@/lib/db';
 import { getStudentApplyGate } from '@/lib/studentApplyEligibility';
 import { loadStudentApplyProfile } from '@/lib/studentApplyProfile';
 import { getStudentBrowseGate } from '@/lib/studentBrowseGate';
+import { mergeCampusCvVerificationApplyGate } from '@/lib/collegeCvVerification';
+import { getStudentCampusCvVerificationGate } from '@/lib/studentCv';
 import { getOrCreateStudentProfileId } from '@/lib/studentServer';
 import { campusProgramsForbiddenForAlumniResponse, isAlumniStudent } from '@/lib/studentAlumni';
 import { mapStudentDriveListRow } from '@/lib/placementDriveJobFields';
@@ -47,6 +49,11 @@ async function __platform_GET() {
     }
 
     const applyGate = await getStudentApplyGate(studentProfileId, session.user.tenantId);
+    const cvVerificationGate = await getStudentCampusCvVerificationGate(
+      studentProfileId,
+      session.user.tenantId,
+    );
+    const mergedApplyGate = mergeCampusCvVerificationApplyGate(applyGate, cvVerificationGate);
     const browseGate = await getStudentBrowseGate(studentProfileId, session.user.tenantId);
 
     const applyProfile = await loadStudentApplyProfile(studentProfileId, session.user.tenantId);
@@ -109,7 +116,7 @@ async function __platform_GET() {
       : [];
 
     return NextResponse.json({
-      canApply: applyGate.canApply,
+      canApply: mergedApplyGate.canApply,
       hasResume: browseGate.hasResume,
       profileComplete: browseGate.profileComplete,
       canBrowseListings: browseGate.canBrowseListings,
@@ -117,7 +124,9 @@ async function __platform_GET() {
       browseGateMessage: browseGate.browseGateMessage,
       profileMissingLabels: browseGate.profileMissingLabels,
       placementLocked: applyGate.placementLocked,
-      applyBlockedReason: applyGate.applyBlockedReason,
+      applyBlockedReason: mergedApplyGate.applyBlockedReason,
+      cvVerificationRequired: cvVerificationGate.required,
+      hasVerifiedCv: cvVerificationGate.hasVerifiedCv,
       currentStudent: {
         cgpa: applyProfile.cgpa,
         branch: applyProfile.branch,
@@ -126,6 +135,8 @@ async function __platform_GET() {
         backlogsActive: applyProfile.backlogsActive,
         hasResume: applyProfile.hasResume,
         isPlacementLocked: applyProfile.isPlacementLocked,
+        cvVerificationRequired: applyProfile.cvVerificationRequired,
+        hasVerifiedCv: applyProfile.hasVerifiedCv,
       },
       drives: driveRows,
     });

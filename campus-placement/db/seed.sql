@@ -183,7 +183,9 @@ INSERT INTO users (id, tenant_id, email, communication_email, password_hash, rol
 ('b1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'admin@iitm.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'college_admin', 'Rajesh', 'Kumar', true, true),
 ('b1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000002', 'admin@nitt.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'college_admin', 'Priya', 'Sharma', true, true),
 ('b1000000-0000-0000-0000-000000000012', 'a1000000-0000-0000-0000-000000000003', 'admin@bits.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'college_admin', 'Suresh', 'Rao', true, true),
-('b1000000-0000-0000-0000-000000000017', 'a1000000-0000-0000-0000-000000000001', 'committee@iitm.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'college_admin', 'Placement', 'Committee', true, true);
+('b1000000-0000-0000-0000-000000000017', 'a1000000-0000-0000-0000-000000000001', 'committee@iitm.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true),
+('b1000000-0000-0000-0000-000000000042', 'a1000000-0000-0000-0000-000000000002', 'committee@nitt.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true),
+('b1000000-0000-0000-0000-000000000043', 'a1000000-0000-0000-0000-000000000003', 'committee@bits.edu', 'sandeepjain200019@gmail.com', '$2b$10$ltqrYuTkwv8DSRWH/v5kyeuL2KX7OX8IwqYect/Bbp/8kZOXcVp82', 'placement_committee', 'Placement', 'Committee', true, true);
 
 -- Employers
 INSERT INTO users (id, email, communication_email, password_hash, role, first_name, last_name, is_active, is_verified) VALUES

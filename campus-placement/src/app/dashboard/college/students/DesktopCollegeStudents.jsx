@@ -31,14 +31,18 @@ import StudentListAvatar from '@/components/student/StudentListAvatar';
 import StudentSystemIdBatchCell, {
   StudentSystemIdBatchHeader,
 } from './StudentSystemIdBatchCell';
+import { usePlacementCommitteeReadOnly } from '@/lib/placementCommittee';
+import StudentCvVerificationBadge from '@/components/college/StudentCvVerificationBadge';
 
 export default function DesktopCollegeStudents() {
   const router = useRouter();
+  const readOnly = usePlacementCommitteeReadOnly();
   const { addToast } = useToast();
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [importBusy, setImportBusy] = useState(false);
   const [sessionMeta, setSessionMeta] = useState(null);
+  const [requireCvVerification, setRequireCvVerification] = useState(false);
   const [quickViewStudent, setQuickViewStudent] = useState(null);
 
   useEffect(() => {
@@ -61,6 +65,7 @@ export default function DesktopCollegeStudents() {
       if (!res.ok) throw new Error(json?.error || 'Failed to load students');
       const list = Array.isArray(json) ? json : json.students || [];
       setStudents(list);
+      setRequireCvVerification(Boolean(json.requireCvVerification));
       setSessionMeta(Array.isArray(json) ? null : json.session || null);
     } catch (error) {
       addToast(error.message || 'Failed to load students', 'error');
@@ -215,22 +220,30 @@ export default function DesktopCollegeStudents() {
             enrolled
           </p>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: '0.35rem 0 0', maxWidth: 520 }}>
-            CSV import: fill every column in the template; only <strong>Remarks</strong> may be left blank.
+            {readOnly
+              ? 'Read-only placement committee view — browse and export student records for your college.'
+              : 'CSV import: fill every column in the template; only Remarks may be left blank.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={downloadTemplate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border-default)', fontSize: '0.85rem' }}>
-            <Download size={14} /> Template
-          </button>
+          {!readOnly ? (
+            <>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={downloadTemplate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border-default)', fontSize: '0.85rem' }}>
+                <Download size={14} /> Template
+              </button>
+              <ImportCsvSplitButton onFileSelected={onImportFile} busy={importBusy} />
+            </>
+          ) : null}
           <ExportCsvSplitButton filenameBase="students" currentCount={filtered.length} fullCount={students.length} getRows={getStudentCsv} />
-          <ImportCsvSplitButton onFileSelected={onImportFile} busy={importBusy} />
-          <Link
-            href="/dashboard/college/students/add"
-            className="btn btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-          >
-            <UserPlus size={15} /> Add Student
-          </Link>
+          {!readOnly ? (
+            <Link
+              href="/dashboard/college/students/add"
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <UserPlus size={15} /> Add Student
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -288,6 +301,7 @@ export default function DesktopCollegeStudents() {
                   <col className="college-students-col-cgpa" />
                   <col className="college-students-col-status" />
                   <col className="college-students-col-verified" />
+                  {requireCvVerification ? <col className="college-students-col-cv" /> : null}
                   <col className="college-students-col-actions" />
                 </colgroup>
                 <thead>
@@ -298,7 +312,8 @@ export default function DesktopCollegeStudents() {
                     <StudentDegreeSpecializationHeader />
                     <th>CGPA</th>
                     <th>Job Status</th>
-                    <th>Verified</th>
+                    <th title="Student profile approved by college">Profile</th>
+                    {requireCvVerification ? <th title="Uploaded CV verified for drives &amp; internships">CV</th> : null}
                     <th style={{ paddingRight: '1.5rem', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
@@ -343,6 +358,11 @@ export default function DesktopCollegeStudents() {
                             ? <span className="badge badge-green" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle2 size={12} /> Verified</span>
                             : <span className="badge badge-amber" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CircleAlert size={12} /> Pending</span>}
                         </td>
+                        {requireCvVerification ? (
+                          <td>
+                            <StudentCvVerificationBadge status={s.cvStatus} compact />
+                          </td>
+                        ) : null}
                         <td style={{ paddingRight: '1.5rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                             <StandardTableIconAction
@@ -350,18 +370,22 @@ export default function DesktopCollegeStudents() {
                               showLabel={false}
                               onClick={() => setQuickViewStudent(s)}
                             />
-                            <StandardTableIconAction
-                              action="edit"
-                              showLabel={false}
-                              onClick={() => router.push(`/dashboard/college/students/${s.id}/edit`)}
-                            />
-                            <StandardTableIconAction
-                              action="delete"
-                              variant="danger"
-                              showLabel={false}
-                              tooltip="Archive student"
-                              onClick={() => archiveStudent(s)}
-                            />
+                            {!readOnly ? (
+                              <>
+                                <StandardTableIconAction
+                                  action="edit"
+                                  showLabel={false}
+                                  onClick={() => router.push(`/dashboard/college/students/${s.id}/edit`)}
+                                />
+                                <StandardTableIconAction
+                                  action="delete"
+                                  variant="danger"
+                                  showLabel={false}
+                                  tooltip="Archive student"
+                                  onClick={() => archiveStudent(s)}
+                                />
+                              </>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -369,7 +393,7 @@ export default function DesktopCollegeStudents() {
                   })}
                   {!isLoading && filtered.length === 0 && (
                     <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
+                      <td colSpan={requireCvVerification ? 9 : 8} style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-tertiary)' }}>
                         <GraduationCap size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
                         <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No students found</div>
                         <div>Try adjusting your filters or import a student CSV.</div>
@@ -388,7 +412,8 @@ export default function DesktopCollegeStudents() {
       <StudentQuickViewModal
         student={quickViewStudent}
         onClose={() => setQuickViewStudent(null)}
-        onVerify={setStudentVerified}
+        onVerify={readOnly ? null : setStudentVerified}
+        readOnly={readOnly}
       />
 
     </div>

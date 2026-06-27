@@ -6,7 +6,8 @@ import { createDownloadUrlForKey, isS3Configured } from '@/lib/s3';
 import { extractS3Key, getLatestResumeForStudent } from '@/lib/employerApplicationAccess';
 import { isAuthoritativeResumeUrl, resolveStudentResumeUrl } from '@/lib/studentResumeUrl';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
-import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
+import { resolveCollegeStaffTenantFromSession } from '@/lib/sessionTenant';
+import { assertCollegeStaff } from '@/lib/collegeAccess';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -29,11 +30,12 @@ function isS3Url(url) {
 async function __platform_GET(_request, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeStaff(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }

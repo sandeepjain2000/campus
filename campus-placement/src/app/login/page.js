@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { getDashboardPath } from '@/lib/utils';
 import { DEMO_LOGINS, DEMO_SEED_PASSWORD, isDemoLoginsEnabled, SEEDED_EMPLOYER_CREDENTIALS } from '@/lib/demoLogins';
-import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff, MessageCircleQuestion, FlaskConical, BookOpen } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, KeyRound, GraduationCap, Building2, School, ShieldCheck, Users, Eye, EyeOff, MessageCircleQuestion, FlaskConical, BookOpen, ClipboardList } from 'lucide-react';
 import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
 import DocumentationHelpWidget from '@/components/DocumentationHelpWidget';
 import LoginSupportContact from '@/components/auth/LoginSupportContact';
@@ -49,6 +49,13 @@ const DEMO_GROUP_META = {
     bg: 'var(--warning-50)',
     border: 'var(--warning-200)',
   },
+  placement_committee: {
+    label: 'Placement Committees',
+    icon: ClipboardList,
+    color: '#0f766e',
+    bg: '#f0fdfa',
+    border: '#99f6e4',
+  },
   superadmin: {
     label: 'Super Admins',
     icon: ShieldCheck,
@@ -68,6 +75,7 @@ const DEMO_GROUP_META = {
 function getGroupKey(demo) {
   if (demo.isDummy) return 'dummy';
   if (demo.group === 'alumni') return 'alumni';
+  if (demo.group === 'placement_committee' || demo.icon === '📋') return 'placement_committee';
   if (demo.icon === '🎓') return 'student';
   if (demo.icon === '🏢') return 'employer';
   if (demo.icon === '⚙️') return 'superadmin';
@@ -171,7 +179,7 @@ function LoginPageInner() {
     });
   }, []);
   const demosByGroup = useMemo(() => {
-    const buckets = { student: [], alumni: [], employer: [], admin: [], superadmin: [], dummy: [] };
+    const buckets = { student: [], alumni: [], employer: [], admin: [], placement_committee: [], superadmin: [], dummy: [] };
     for (const d of uniqueDemoLogins) {
       const k = getGroupKey(d);
       if (buckets[k]) buckets[k].push(d);
@@ -524,6 +532,7 @@ function LoginPageInner() {
                 justifyContent: 'space-between',
                 padding: '0.45rem 0.6rem',
                 borderBottom: i < items.length - 1 ? '1px solid var(--border-default)' : 'none',
+                borderLeft: demo.isDummy ? undefined : `3px solid ${meta.color}`,
                 background: 'var(--bg-primary)',
                 gap: '0.4rem',
               }}
@@ -751,6 +760,7 @@ function LoginPageInner() {
                       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {renderDemoListCard('superadmin')}
                         {renderDemoListCard('admin')}
+                        {renderDemoListCard('placement_committee')}
                       </div>
                     </div>
                   </div>

@@ -64,7 +64,7 @@ export async function getObjectBufferFromKey(key) {
   };
 }
 
-export async function createDownloadUrlForKey(key, expiresInSeconds = 60 * 60 * 24 * 7) {
+export async function createDownloadUrlForKey(key, expiresInSeconds = 60 * 60 * 24 * 7, { downloadFileName } = {}) {
   if (!isS3Configured()) {
     throw new Error('S3 is not configured (missing AWS env vars).');
   }
@@ -73,6 +73,11 @@ export async function createDownloadUrlForKey(key, expiresInSeconds = 60 * 60 * 
   const command = new GetObjectCommand({
     Bucket: bucket,
     Key: key,
+    ...(downloadFileName
+      ? {
+          ResponseContentDisposition: `attachment; filename="${String(downloadFileName).replace(/"/g, '')}"`,
+        }
+      : {}),
   });
   const downloadUrl = await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
   return { bucket, key, downloadUrl, expiresIn: expiresInSeconds };

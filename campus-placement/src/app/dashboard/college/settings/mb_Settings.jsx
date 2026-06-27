@@ -25,6 +25,8 @@ export default function mb_Settings() {
       patentCount: '', startupCount: '', incubationCells: '', researchCenters: ''
     },
     placementOfficer: { name: '', email: '', designation: '' },
+    requireCvVerification: false,
+    delegateCvVerificationToCommittee: false,
   });
 
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -38,7 +40,12 @@ export default function mb_Settings() {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load');
         if (!mounted) return;
-        setForm(prev => ({ ...prev, ...json }));
+        setForm(prev => ({
+          ...prev,
+          ...json,
+          requireCvVerification: Boolean(json.requireCvVerification),
+          delegateCvVerificationToCommittee: Boolean(json.delegateCvVerificationToCommittee),
+        }));
       } catch (e) {
         if (!mounted) return;
         addToast(e.message || 'Failed to load settings', 'error');
@@ -172,6 +179,43 @@ export default function mb_Settings() {
                   <label className="text-xs text-secondary mb-1 block">Phone</label>
                   <input className="form-input" value={form.institution.phone} onChange={(e) => setNested('institution', 'phone', e.target.value)} />
                 </div>
+
+                <hr style={{ margin: '0.5rem 0', borderColor: 'var(--border-default)' }} />
+                <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.9rem' }}>CV Verification</h4>
+                <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.requireCvVerification)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setForm((prev) => ({
+                        ...prev,
+                        requireCvVerification: checked,
+                        delegateCvVerificationToCommittee: checked ? prev.delegateCvVerificationToCommittee : false,
+                      }));
+                    }}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <span className="text-xs">Require verified CV for drives &amp; internships</span>
+                </label>
+                <label
+                  style={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    alignItems: 'flex-start',
+                    cursor: form.requireCvVerification ? 'pointer' : 'not-allowed',
+                    opacity: form.requireCvVerification ? 1 : 0.55,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={!form.requireCvVerification}
+                    checked={Boolean(form.delegateCvVerificationToCommittee)}
+                    onChange={(e) => setRoot('delegateCvVerificationToCommittee', e.target.checked)}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <span className="text-xs">Delegate CV verification to Placement Committee</span>
+                </label>
                 
                 <hr style={{ margin: '0.5rem 0', borderColor: 'var(--border-default)' }} />
                 <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><UserCircle size={16} /> Placement Officer</h4>

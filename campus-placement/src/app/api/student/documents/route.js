@@ -79,21 +79,38 @@ async function __platform_DELETE(req) {
 
     const deleted = await transaction(async (client) => {
       const res = await client.query(
+        `SELECT id, document_type, file_url FROM student_documents
+         WHERE id = $1 AND student_id = $2`,
+        [docId, studentId],
+      );
+      if (!res.rowCount) return null;
+      const row = res.rows[0];
+      if (String(row.document_type || '').toLowerCase() === 'resume') {
+        return { blocked: true };
+      }
+
+      const del = await client.query(
         `DELETE FROM student_documents
          WHERE id = $1 AND student_id = $2
          RETURNING id, document_type, file_url`,
         [docId, studentId],
       );
 
-      if (res.rowCount === 0) return null;
+      if (del.rowCount === 0) return null;
 
-      const row = res.rows[0];
       await syncProfileResumeAfterDocumentDelete(client, studentId, {
         documentType: row.document_type,
         fileUrl: row.file_url,
       });
-      return row;
+      return del.rows[0];
     });
+
+    if (deleted?.blocked) {
+      return NextResponse.json(
+        { error: 'CVs cannot be deleted. Open My CVs to archive a résumé instead.' },
+        { status: 403 },
+      );
+    }
 
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });

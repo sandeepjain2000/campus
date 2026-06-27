@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatStatus } from '@/lib/utils';
+import CollegeStudentCvsPanel from '@/components/college/CollegeStudentCvsPanel';
 import {
   getCompletedSectionCount,
   getProfileSectionTotal,
@@ -181,7 +182,7 @@ function ActivityList({ items, empty }) {
   );
 }
 
-export default function StudentProfileView({ student, onVerify }) {
+export default function StudentProfileView({ student, onVerify, readOnly = false }) {
   const [activeSection, setActiveSection] = useState(PROFILE_SECTION_TABS[0].id);
 
   const scrollToSection = useCallback((sectionId) => {
@@ -250,13 +251,15 @@ export default function StudentProfileView({ student, onVerify }) {
           <ArrowLeft size={16} aria-hidden />
           Back to students
         </Link>
-        <Link
-          href={`/dashboard/college/students/${student.id}/edit`}
-          className="btn btn-secondary btn-sm"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-        >
-          Edit student
-        </Link>
+        {!readOnly ? (
+          <Link
+            href={`/dashboard/college/students/${student.id}/edit`}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            Edit student
+          </Link>
+        ) : null}
       </div>
 
       <article className="student-profile-shell" aria-labelledby="student-detail-title">
@@ -448,6 +451,10 @@ export default function StudentProfileView({ student, onVerify }) {
             description="Resume and document artifacts available in the student profile."
           >
             <div className="student-list-stack">
+              <div className="student-subsection-title" style={{ marginBottom: '0.5rem' }}>
+                Uploaded CVs
+              </div>
+              <CollegeStudentCvsPanel studentId={student.id} />
               {resumeHref ? (
                 <article className="student-list-row">
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%' }}>
@@ -515,13 +522,15 @@ export default function StudentProfileView({ student, onVerify }) {
         </div>
 
         <div className="modal-footer student-detail-footer">
-          {student.verified ? (
-            <button type="button" className="btn btn-ghost" onClick={() => onVerify(student.id, false)}>Clear Verification</button>
-          ) : (
-            <button type="button" className="btn btn-primary" onClick={() => onVerify(student.id, true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <CheckCircle2 size={16} /> Approve & Verify Student
-            </button>
-          )}
+          {onVerify && !readOnly ? (
+            student.verified ? (
+              <button type="button" className="btn btn-ghost" onClick={() => onVerify(student.id, false)}>Clear Verification</button>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={() => onVerify(student.id, true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CheckCircle2 size={16} /> Approve & Verify Student
+              </button>
+            )
+          ) : null}
           <Link href="/dashboard/college/students" className="btn btn-secondary">Back to list</Link>
         </div>
       </article>

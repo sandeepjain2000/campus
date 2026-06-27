@@ -34,6 +34,7 @@ export const ROLE_HOME_PATHS = {
   student: '/dashboard/student',
   employer: '/dashboard/employer',
   college_admin: '/dashboard/college',
+  placement_committee: '/dashboard/college',
   super_admin: '/dashboard/admin',
 };
 
@@ -231,8 +232,8 @@ export const menuConfig = {
         title: 'Profile & Documents',
         items: [
           { label: 'My Profile', href: '/dashboard/student/profile', icon: User },
+          { label: 'My CVs', href: '/dashboard/student/cvs', icon: FileEdit },
           { label: 'Documents', href: '/dashboard/student/documents', icon: FileText },
-          { label: 'Resume', href: '/dashboard/student/documents', icon: FileEdit },
           {
             id: 'future-certificates',
             label: 'Certificates (Future)',
@@ -488,6 +489,33 @@ export const menuConfig = {
           { label: 'Infrastructure', href: '/dashboard/college/infrastructure', icon: Building },
           { label: 'Settings', href: '/dashboard/college/settings', icon: Settings },
         ],
+      },
+    ],
+  },
+  placement_committee: {
+    title: 'Placement Committee',
+    sections: [
+      {
+        id: 'committee-overview',
+        title: 'Overview',
+        items: [
+          { label: 'Dashboard', href: '/dashboard/college/overview', icon: LayoutDashboard },
+          { label: 'Getting Started', href: '/dashboard/college/getting-started', icon: Rocket },
+          { label: 'Alerts', href: '/dashboard/alerts', icon: Bell },
+        ],
+      },
+      {
+        id: 'committee-students',
+        title: 'Student data (read-only)',
+        items: [
+          { label: 'Students', href: '/dashboard/college/students', icon: Users },
+          { label: 'Applications', href: '/dashboard/college/applications', icon: ClipboardList },
+        ],
+      },
+      {
+        id: 'committee-support',
+        title: 'Support',
+        items: [{ label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquare }],
       },
     ],
   },

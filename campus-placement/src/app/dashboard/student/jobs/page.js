@@ -32,6 +32,7 @@ import { buildStudentOpportunityCsvPayload, downloadStudentOpportunityCsv } from
 import { useTableRowSelection, usePruneRowSelection } from '@/hooks/useTableRowSelection';
 import TableBulkActionBar from '@/components/table/TableBulkActionBar';
 import OpportunityEmailComposeModal from '@/components/student/OpportunityEmailComposeModal';
+import { useProgramApplicationWithCv } from '@/components/student/StudentCvApply';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -48,10 +49,14 @@ export default function StudentJobsPage() {
   const { addToast } = useToast();
   const [selectedRow, setSelectedRow] = useState(null);
   const [emailComposeRows, setEmailComposeRows] = useState(null);
-  const [applyingId, setApplyingId] = useState(null);
   const { data, error, isLoading, mutate } = useSWR('/api/student/program-opportunities?kind=job', fetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 0,
+  });
+  const { startApply, applyingId, pickerModal } = useProgramApplicationWithCv({
+    addToast,
+    mutate,
+    fetchApply: debugFetch,
   });
 
   const items = data?.items || [];
@@ -106,31 +111,8 @@ export default function StudentJobsPage() {
       return;
     }
 
-    setApplyingId(jobId);
-    try {
-      clientDebugLog('student_apply', 'sending_request', { jobId });
-      const res = await debugFetch('/api/student/program-applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId }),
-      });
-      const json = await res.json().catch(() => ({}));
-      clientDebugLog('student_apply', 'response_received', { status: res.status, json });
-      if (!res.ok) {
-        addToast(json.error || 'Could not apply', 'error');
-        clientDebugLog('student_apply', 'apply_failed', { error: json.error });
-        return;
-      }
-      addToast(`Applied to ${title}`, 'success');
-      clientDebugLog('student_apply', 'apply_success', { jobId, title });
-      mutate();
-    } catch (err) {
-      addToast('Network error', 'error');
-      clientDebugLog('student_apply', 'apply_exception', { message: err?.message || String(err) });
-    } finally {
-      setApplyingId(null);
-      await flushClientDebugLog('student_apply', session?.user?.email);
-    }
+    startApply(jobId, title);
+    await flushClientDebugLog('student_apply', session?.user?.email);
   };
 
   const buildCsvRows = (scope) => {
@@ -431,6 +413,7 @@ export default function StudentJobsPage() {
       ) : null}
       </StudentBrowsePrerequisitePanel>
       )}
+      {pickerModal}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { AND_DRIVE_PD_NOT_DELETED, AND_JP_NOT_DELETED, AND_OFFER_NOT_DELETED } from '@/lib/softDeleteSql';
 import { STUDENT_PROFILE_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
+import { resolveCollegeStaffTenantFromSession } from '@/lib/sessionTenant';
+import { assertCollegeStaff } from '@/lib/collegeAccess';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -15,12 +17,15 @@ export const revalidate = 0;
 async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeStaff(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = session.user.tenant_id ?? session.user.tenantId;
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
+    }
 
     // Fetch placement stats
     const statsQuery = await query(`

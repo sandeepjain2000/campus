@@ -14,6 +14,7 @@ import {
   resolveApplyBlockReason,
 } from '@/lib/getApplyBlockReason';
 import { buildStudentApplyContext, programOpportunityFromRow } from '@/lib/studentApplyContext';
+import { useProgramApplicationWithCv } from '@/components/student/StudentCvApply';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -36,28 +37,15 @@ export default function StudentHackathonsPage() {
   const canApply = data?.canApply !== false;
   const globalBlockedReason = globalApplyBlockedReason(canApply, applyBlockedReason);
 
+  const { startApply, pickerModal } = useProgramApplicationWithCv({ addToast, mutate });
+
   const apply = async (jobId, title) => {
     const row = items.find((i) => i.id === jobId);
     const blockReason = row
       ? resolveApplyBlockReason(programOpportunityFromRow(row), currentStudent, { globalBlockedReason })
       : null;
     if (blockReason) return;
-    try {
-      const res = await fetch('/api/student/program-applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        addToast(json.error || 'Could not apply', 'error');
-        return;
-      }
-      addToast(`Applied to ${title}`, 'success');
-      mutate();
-    } catch {
-      addToast('Network error', 'error');
-    }
+    startApply(jobId, title);
   };
 
   return (
@@ -174,6 +162,7 @@ export default function StudentHackathonsPage() {
           </div>
         ))}
       </div>
+      {pickerModal}
     </div>
   );
 }

@@ -11,9 +11,11 @@ import {
   academicYearQueryString,
   readActiveAcademicYearContext,
 } from '@/lib/collegeAcademicYearContext';
+import { usePlacementCommitteeReadOnly } from '@/lib/placementCommittee';
 
 export default function CollegeStudentProfilePage({ mobile = false }) {
   const { addToast } = useToast();
+  const readOnly = usePlacementCommitteeReadOnly();
   const params = useParams();
   const studentId = String(params?.id || '');
   const [student, setStudent] = useState(null);
@@ -82,7 +84,13 @@ export default function CollegeStudentProfilePage({ mobile = false }) {
         </div>
       );
     }
-    return <StudentProfileView student={student} onVerify={setStudentVerified} />;
+    return (
+      <StudentProfileView
+        student={student}
+        onVerify={readOnly ? null : setStudentVerified}
+        readOnly={readOnly}
+      />
+    );
   })();
 
   if (mobile) {

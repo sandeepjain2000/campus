@@ -36,6 +36,7 @@ import {
 } from '@/lib/employerAcademicYearContext';
 import { resolveBrandLogoUrl } from '@/lib/resolveBrandLogoUrl';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
+import { isCollegeStaffRole } from '@/lib/collegeAccess';
 
 const settingsFetcher = async (url) => {
   const res = await fetch(url);
@@ -83,7 +84,7 @@ export default function DashboardLayout({ children }) {
     settingsFetcher,
   );
   const { data: academicYearsBundle } = useSWR(
-    session?.user?.role === 'college_admin' ? '/api/college/academic-years' : null,
+    isCollegeStaffRole(session?.user?.role) ? '/api/college/academic-years' : null,
     settingsFetcher,
   );
   const { data: employerAcademicYearsBundle } = useSWR(
@@ -94,7 +95,7 @@ export default function DashboardLayout({ children }) {
   );
   const fallbackAcademicYearOptions = getAcademicYearOptions(getCurrentAcademicYear(), 3);
   const academicYearOptions = useMemo(() => {
-    if (session?.user?.role !== 'college_admin') return fallbackAcademicYearOptions;
+    if (!isCollegeStaffRole(session?.user?.role)) return fallbackAcademicYearOptions;
     const fromTenant = Array.isArray(academicYearsBundle?.years)
       ? academicYearsBundle.years.map((y) => y.label).filter(Boolean)
       : [];
@@ -323,10 +324,28 @@ export default function DashboardLayout({ children }) {
       </div>
     ) : null;
 
+  const committeeReadOnlyBanner =
+    role === 'placement_committee' ? (
+      <div
+        className="card"
+        style={{
+          margin: isHub ? '1rem auto 0' : '0 0 1rem',
+          maxWidth: isHub ? '56rem' : undefined,
+          padding: '0.75rem 1rem',
+          fontSize: '0.875rem',
+          borderColor: 'var(--border-default)',
+          background: 'var(--bg-secondary)',
+        }}
+      >
+        <strong>Read-only placement committee view.</strong> You can browse students and applications for your college. Adding or editing records requires a college administrator.
+      </div>
+    ) : null;
+
   if (isHub) {
     return (
       <>
         {studentVerifyBanner}
+        {committeeReadOnlyBanner}
         {children}
       </>
     );
@@ -571,7 +590,7 @@ export default function DashboardLayout({ children }) {
                 </>
               )}
 
-              {role === 'college_admin' && (
+              {(role === 'college_admin' || role === 'placement_committee') && (
                 <>
                   <div className="topbar-divider-mobile-hide" style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 0.5rem' }} />
                   <div className="topbar-academic-year-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -587,12 +606,15 @@ export default function DashboardLayout({ children }) {
                         try {
                           const match = academicYearsBundle?.years?.find((y) => y.label === v);
                           writeActiveAcademicYearContext({ id: match?.id || null, label: v });
-                          const res = await fetch('/api/college/settings/placement-season', {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ placementSeasonLabel: v }),
-                          });
-                          if (res.ok) await swrMutate('/api/college/settings');
+                          if (role === 'college_admin') {
+                            const res = await fetch('/api/college/settings/placement-season', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ placementSeasonLabel: v }),
+                            });
+                            if (res.ok) await swrMutate('/api/college/settings');
+                          }
+                          window.dispatchEvent(new Event('placementhub-academic-year'));
                         } catch {
                           /* ignore */
                         }
@@ -642,6 +664,7 @@ export default function DashboardLayout({ children }) {
 
         <main id="main-content" className="page-content">
           {studentVerifyBanner}
+          {committeeReadOnlyBanner}
           {children}
         </main>
         <SessionAdBanner />

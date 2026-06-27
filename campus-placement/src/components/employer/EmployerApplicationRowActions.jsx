@@ -23,7 +23,7 @@ export default function EmployerApplicationRowActions({ app, onViewProfile, onOp
           variant="ghost"
           onClick={onOpenResume}
           disabled={busy}
-          tooltip="Open CV in new tab"
+          tooltip={app.cvLabel ? `Open CV: ${app.cvLabel}` : 'Open CV in new tab'}
         />
       ) : null}
       {app.status !== 'withdrawn' && (app.status === 'applied' || app.status === 'on_hold') ? (

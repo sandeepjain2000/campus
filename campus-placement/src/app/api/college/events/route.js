@@ -6,6 +6,11 @@ import { validatePlacementDate } from '@/lib/dateOnly';
 import { validateTitlePayload } from '@/lib/apiInputValidation';
 import { normalizeTitle } from '@/lib/validators';
 import { AND_DRIVE_NOT_DELETED, AND_JP_NOT_DELETED } from '@/lib/softDeleteSql';
+import {
+  defaultBlockingForEventType,
+  detectCalendarProgramClashes,
+  formatClashSummary,
+} from '@/lib/calendarClashDetection';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -78,7 +83,8 @@ async function __platform_POST(request) {
     const startDate = String(body?.startDate || '').trim();
     const endDate = String(body?.endDate || startDate).trim();
     const description = String(body?.description || '').trim();
-    const isBlocking = Boolean(body?.isBlocking);
+    const isBlocking =
+      body?.isBlocking != null ? Boolean(body.isBlocking) : defaultBlockingForEventType(eventType);
 
     const allowedTypes = new Set(['exam', 'holiday', 'festival', 'placement_drive', 'interview_slot', 'workshop', 'other']);
     if (!title || !startDate || !allowedTypes.has(eventType)) {
@@ -98,13 +104,29 @@ async function __platform_POST(request) {
       return NextResponse.json({ error: endCheck.error }, { status: 400 });
     }
 
+    const clashPreview = await detectCalendarProgramClashes(
+      query,
+      tenantId,
+      startCheck.value,
+      endCheck.value,
+    );
+
     await query(
       `INSERT INTO college_calendar (tenant_id, title, event_type, start_date, end_date, is_blocking, description)
        VALUES ($1::uuid, $2, $3, $4::date, $5::date, $6, $7)`,
       [tenantId, title, eventType, startCheck.value, endCheck.value, isBlocking, description || null]
     );
 
-    return NextResponse.json({ success: true });
+    const driveClashes = clashPreview.clashes;
+    return NextResponse.json({
+      success: true,
+      hasDriveClashes: driveClashes.length > 0,
+      driveClashes,
+      warning:
+        driveClashes.length > 0
+          ? formatClashSummary(driveClashes)
+          : null,
+    });
   } catch (error) {
     console.error('POST /api/college/events', error);
     return NextResponse.json({ error: 'Failed to save event' }, { status: 500 });

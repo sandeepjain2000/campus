@@ -7,18 +7,22 @@ import {
   STUDENT_RESUME_VALIDATION_ERROR,
   validateStudentResumeFileAsync,
 } from '@/lib/studentDocumentUpload';
+import { CvLabelInput } from '@/components/student/StudentCvApply';
+import { CV_LABEL_MAX_LENGTH } from '@/lib/studentCvShared';
 
 /**
- * Always-visible résumé upload on the student profile (not gated by edit mode or tab).
+ * Résumé card on student profile — uploads go through labelled CV API when enabled.
  */
 export default function StudentResumeUploadCard({
   resumeViewUrl = '',
-  resumeLabel = 'View résumé',
+  resumeLabel = '',
   cvUploading = false,
-  onCvChange,
+  onCvUpload,
+  useCvApi = false,
 }) {
   const [cvError, setCvError] = useState('');
-  const hasResume = Boolean(resumeViewUrl);
+  const [label, setLabel] = useState('');
+  const hasResume = Boolean(resumeViewUrl || resumeLabel);
 
   const handleCvInputChange = async (e) => {
     const file = e.target.files?.[0];
@@ -33,8 +37,27 @@ export default function StudentResumeUploadCard({
       return;
     }
 
-    if (typeof onCvChange === 'function') {
-      onCvChange(e);
+    if (useCvApi) {
+      const trimmed = label.trim();
+      if (!trimmed) {
+        setCvError('CV label is required');
+        e.target.value = '';
+        return;
+      }
+      if (trimmed.length > CV_LABEL_MAX_LENGTH) {
+        setCvError(`Label must be at most ${CV_LABEL_MAX_LENGTH} characters`);
+        e.target.value = '';
+        return;
+      }
+      if (typeof onCvUpload === 'function') {
+        onCvUpload({ file, label: trimmed });
+      }
+      e.target.value = '';
+      return;
+    }
+
+    if (typeof onCvUpload === 'function') {
+      onCvUpload({ file, event: e });
     }
   };
 
@@ -59,20 +82,13 @@ export default function StudentResumeUploadCard({
           </h3>
           <p className="text-sm text-secondary" style={{ margin: '0.35rem 0 0', lineHeight: 1.5 }}>
             {hasResume
-              ? 'This is your primary CV — employers and your college see this file when you apply.'
-              : 'Upload your primary CV here. Employers use this file when you apply to drives.'}
-          </p>
-          <p className="text-xs text-tertiary" style={{ margin: '0.35rem 0 0' }}>
-            To keep extra versions (not shown to employers yet), use{' '}
-            <Link href="/dashboard/student/documents" style={{ fontWeight: 600 }}>
-              My documents → Additional CVs
-            </Link>
-            .
+              ? 'Labelled CVs are attached when you apply. Employers see your label — not the original file name.'
+              : 'Upload a labelled CV to apply to drives and opportunities.'}
           </p>
           {hasResume ? (
             <p className="text-sm" style={{ margin: '0.5rem 0 0', fontWeight: 600 }}>
               <span aria-hidden="true">📄 </span>
-              {resumeLabel}
+              {resumeLabel || 'CV on file'}
             </p>
           ) : (
             <p
@@ -87,7 +103,10 @@ export default function StudentResumeUploadCard({
             </p>
           )}
           <p className="text-xs text-tertiary" style={{ margin: '0.25rem 0 0' }}>
-            PDF or Word, up to 5 MB
+            PDF or Word, up to 5 MB · manage multiple versions in{' '}
+            <Link href="/dashboard/student/cvs" style={{ fontWeight: 600 }}>
+              My CVs
+            </Link>
           </p>
           {cvError ? (
             <p
@@ -103,43 +122,49 @@ export default function StudentResumeUploadCard({
         <div
           style={{
             display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: '0.75rem',
+            alignItems: 'stretch',
             flexShrink: 0,
+            minWidth: 200,
           }}
         >
-          {hasResume ? (
-            <a
-              href={resumeViewUrl || '/api/student/resume/view'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-secondary btn-sm"
-            >
-              View résumé
-            </a>
+          {useCvApi ? (
+            <CvLabelInput label={label} onChange={setLabel} disabled={cvUploading} />
           ) : null}
-          <label
-            className={`btn btn-primary btn-sm${cvUploading ? ' disabled' : ''}`}
-            style={{
-              cursor: cvUploading ? 'wait' : 'pointer',
-              margin: 0,
-              opacity: cvUploading ? 0.85 : 1,
-            }}
-            aria-label={cvUploading ? 'Uploading résumé' : hasResume ? 'Replace résumé' : 'Upload résumé'}
-          >
-            {cvUploading ? 'Uploading…' : hasResume ? 'Replace résumé' : 'Upload résumé'}
-            <input
-              type="file"
-              accept={STUDENT_RESUME_ACCEPT_ATTR}
-              hidden
-              disabled={cvUploading}
-              onChange={handleCvInputChange}
-            />
-          </label>
-          <Link href="/dashboard/student/documents" className="btn btn-ghost btn-sm">
-            All documents
-          </Link>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+            {hasResume && resumeViewUrl ? (
+              <a
+                href={resumeViewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary btn-sm"
+              >
+                View résumé
+              </a>
+            ) : null}
+            <label
+              className={`btn btn-primary btn-sm${cvUploading ? ' disabled' : ''}`}
+              style={{
+                cursor: cvUploading ? 'wait' : 'pointer',
+                margin: 0,
+                opacity: cvUploading ? 0.85 : 1,
+              }}
+              aria-label={cvUploading ? 'Uploading résumé' : hasResume ? 'Replace résumé' : 'Upload résumé'}
+            >
+              {cvUploading ? 'Uploading…' : hasResume ? 'Replace résumé' : 'Upload résumé'}
+              <input
+                type="file"
+                accept={STUDENT_RESUME_ACCEPT_ATTR}
+                hidden
+                disabled={cvUploading}
+                onChange={handleCvInputChange}
+              />
+            </label>
+            <Link href="/dashboard/student/cvs" className="btn btn-ghost btn-sm">
+              My CVs
+            </Link>
+          </div>
         </div>
       </div>
     </section>

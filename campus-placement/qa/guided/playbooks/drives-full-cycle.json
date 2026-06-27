@@ -228,8 +228,14 @@
     {
       "phase": "STUDENT",
       "label": "Log in as student (Arjun Verma)",
-      "observe": "Student dashboard — profile must have a primary CV to apply.",
+      "observe": "Student dashboard — profile must have labelled CVs to apply.",
       "action": { "type": "login", "account": "student" }
+    },
+    {
+      "phase": "STUDENT",
+      "label": "Upload sample CVs from docs/CVs",
+      "observe": "Five labelled .docx files from docs/CVs — enables CV picker when applying.",
+      "action": { "type": "uploadSampleCvs" }
     },
     {
       "phase": "STUDENT",
@@ -321,6 +327,23 @@
       "label": "Open My Applications — Drives",
       "observe": "Student sees Selected — placement drive full cycle verified end-to-end.",
       "action": { "type": "goto", "path": "/dashboard/student/applications/drives" }
+    },
+    {
+      "phase": "CLOSURE",
+      "label": "Download application CVs to qa folder",
+      "observe": "Terminal prints qa/data/downloads/cvs/<timestamp>/. Filenames use student CV labels.",
+      "action": { "type": "login", "account": "employer" }
+    },
+    {
+      "phase": "CLOSURE",
+      "label": "Save employer CV downloads",
+      "observe": "Up to 5 drive-application CVs (GT- marker) saved under qa/data/downloads/cvs/.",
+      "action": {
+        "type": "downloadEmployerCvs",
+        "limit": 5,
+        "filterMarker": true,
+        "tabs": "drives"
+      }
     }
   ]
 }

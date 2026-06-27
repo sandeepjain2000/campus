@@ -144,7 +144,13 @@ export default function EmployerApplicationsPage() {
     error: profileError,
     isLoading: profileLoading,
   } = useSWR(
-    profileStudentId ? `/api/employer/applications/student-profile?studentId=${encodeURIComponent(profileStudentId)}` : null,
+    profileStudentId
+      ? `/api/employer/applications/student-profile?studentId=${encodeURIComponent(profileStudentId)}${
+          profileContext?.applicationId
+            ? `&applicationId=${encodeURIComponent(profileContext.applicationId)}&source=${encodeURIComponent(profileContext.sourceKind || '')}`
+            : ''
+        }`
+      : null,
     fetcher,
   );
 
@@ -598,6 +604,7 @@ export default function EmployerApplicationsPage() {
                         busy={updatingAppKey === `${app.sourceKind}-${app.id}`}
                         onViewProfile={() =>
                           setProfileContext({
+                            applicationId: app.id,
                             studentId: app.studentProfileId,
                             openingTitle: app.openingTitle,
                             status: app.status,

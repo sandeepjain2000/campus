@@ -21,7 +21,10 @@ import {
 import { resolveTenantAcademicYear } from '@/lib/resolveAcademicYearFromRequest';
 import { displaySemesterForStudentList } from '@/lib/academicYearTenant';
 import { SP_ACTIVE_CLAUSE } from '@/lib/studentProfileActive';
-import { resolveCollegeAdminTenantFromSession } from '@/lib/sessionTenant';
+import { resolveCollegeStaffTenantFromSession } from '@/lib/sessionTenant';
+import { assertCollegeStaff, assertCollegeWriter } from '@/lib/collegeAccess';
+import { getCollegeCvVerificationSettings } from '@/lib/collegeCvVerification';
+import { loadStudentCvVerificationSummaries } from '@/lib/studentCv';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -31,11 +34,12 @@ export const revalidate = 0;
 async function __platform_GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeStaff(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
@@ -61,9 +65,32 @@ async function __platform_GET(request) {
     );
 
     const rows = students.rows.map((row) => mapCollegeStudentRow(row, { semesterDisplay }));
+    const cvSettings = await getCollegeCvVerificationSettings(tenantId);
+    const cvSummaries = cvSettings.requireCvVerification
+      ? await loadStudentCvVerificationSummaries(rows.map((r) => r.id))
+      : new Map();
+
+    const studentsWithCv = rows.map((student) => {
+      if (!cvSettings.requireCvVerification) {
+        return { ...student, cvStatus: null, activeCvCount: null, verifiedCvCount: null };
+      }
+      const summary = cvSummaries.get(String(student.id)) || {
+        activeCvCount: 0,
+        verifiedCvCount: 0,
+        cvStatus: 'none',
+      };
+      return {
+        ...student,
+        cvStatus: summary.cvStatus,
+        activeCvCount: summary.activeCvCount,
+        verifiedCvCount: summary.verifiedCvCount,
+      };
+    });
 
     return NextResponse.json({
-      students: rows,
+      students: studentsWithCv,
+      requireCvVerification: cvSettings.requireCvVerification,
+      delegateCvVerificationToCommittee: cvSettings.delegateCvVerificationToCommittee,
       session: {
         academicYearId: ayContext.year?.id || null,
         academicYearLabel: ayContext.year?.label || '',
@@ -104,11 +131,12 @@ async function __platform_GET(request) {
 async function __platform_POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'college_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const gate = assertCollegeWriter(session);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
     }
 
-    const tenantId = await resolveCollegeAdminTenantFromSession(session);
+    const tenantId = await resolveCollegeStaffTenantFromSession(session);
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant context missing' }, { status: 400 });
     }
