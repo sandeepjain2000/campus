@@ -22,7 +22,7 @@ import {
 import { usePlacementCommitteeReadOnly } from '@/lib/placementCommittee';
 import StudentCvVerificationBadge from '@/components/college/StudentCvVerificationBadge';
 
-export default function mb_CollegeStudents() {
+export default function CollegeStudentsMobile() {
   const router = useRouter();
   const readOnly = usePlacementCommitteeReadOnly();
   const { addToast } = useToast();

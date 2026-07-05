@@ -1,3 +1,4 @@
+/** @no-platform-error-wrap — client debug ingest; manual try/catch to avoid recursion */
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 

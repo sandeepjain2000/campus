@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { reportClientError } from '@/lib/clientErrorReport';
 
 export default function Error({ error, reset }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error(error);
+    reportClientError(error?.message || 'Application error', { source: 'next.error' });
   }, [error]);
 
   return (

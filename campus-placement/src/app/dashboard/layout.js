@@ -37,6 +37,7 @@ import {
 import { resolveBrandLogoUrl } from '@/lib/resolveBrandLogoUrl';
 import { DEFAULT_ENTITY_LOGO_URL } from '@/lib/clientAssetUrl';
 import { isCollegeStaffRole } from '@/lib/collegeAccess';
+import DashboardErrorBoundary from '@/components/DashboardErrorBoundary';
 
 const settingsFetcher = async (url) => {
   const res = await fetch(url);
@@ -598,31 +599,12 @@ export default function DashboardLayout({ children }) {
                     <select
                       className="form-input"
                       aria-label="Academic Year"
-                      style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                      style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem', opacity: 0.65, cursor: 'not-allowed' }}
                       value={academicYear}
-                      onChange={async (e) => {
-                        const v = e.target.value;
-                        setAcademicYearOverride(v);
-                        try {
-                          const match = academicYearsBundle?.years?.find((y) => y.label === v);
-                          writeActiveAcademicYearContext({ id: match?.id || null, label: v });
-                          if (role === 'college_admin') {
-                            const res = await fetch('/api/college/settings/placement-season', {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ placementSeasonLabel: v }),
-                            });
-                            if (res.ok) await swrMutate('/api/college/settings');
-                          }
-                          window.dispatchEvent(new Event('placementhub-academic-year'));
-                        } catch {
-                          /* ignore */
-                        }
-                      }}
+                      disabled
+                      title="Academic year switching is not active yet — display only"
                     >
-                      {academicYearOptions.map((opt) => (
-                        <option key={opt}>{opt}</option>
-                      ))}
+                      <option value={academicYear}>{academicYear}</option>
                     </select>
                   </div>
                 </>
@@ -665,7 +647,7 @@ export default function DashboardLayout({ children }) {
         <main id="main-content" className="page-content">
           {studentVerifyBanner}
           {committeeReadOnlyBanner}
-          {children}
+          <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
         </main>
         <SessionAdBanner />
         <DocumentationHelpWidget />

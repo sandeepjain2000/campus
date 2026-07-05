@@ -54,6 +54,9 @@ export const FIELD_IDS = {
   EMPLOYER_STIPEND_MIN: 'employer.stipendMin',
   EMPLOYER_STIPEND_MAX: 'employer.stipendMax',
   EMPLOYER_VACANCIES: 'employer.vacancies',
+  EMPLOYER_MIN_EXPERIENCE: 'employer.minExperience',
+  EMPLOYER_MAX_EXPERIENCE: 'employer.maxExperience',
+  EMPLOYER_NOTICE_PERIOD: 'employer.noticePeriodDays',
   EMPLOYER_MIN_CGPA: 'employer.minCgpa',
   EMPLOYER_DRIVE_DATE: 'employer.drive.date',
   EMPLOYER_INTERVIEW_DATE: 'employer.interview.date',
@@ -454,6 +457,41 @@ export function validateField(fieldId, value, ctx = {}) {
         max: 10000,
         allowEmpty: !ctx.required,
         label: ctx.label || 'Vacancies',
+      });
+
+    case FIELD_IDS.EMPLOYER_MIN_EXPERIENCE:
+      return checkIntRange(value, {
+        min: 0,
+        max: 40,
+        allowZero: true,
+        allowEmpty: true,
+        label: ctx.label || 'Minimum experience (years)',
+      });
+
+    case FIELD_IDS.EMPLOYER_MAX_EXPERIENCE: {
+      const r = checkIntRange(value, {
+        min: 0,
+        max: 40,
+        allowZero: true,
+        allowEmpty: true,
+        label: ctx.label || 'Maximum experience (years)',
+      });
+      if (!r.ok) return r;
+      const { n } = parseNum(value);
+      const minN = parseNum(ctx.minExperience).n;
+      if (Number.isFinite(n) && Number.isFinite(minN) && n < minN) {
+        return err('Maximum experience cannot be less than minimum experience.');
+      }
+      return r;
+    }
+
+    case FIELD_IDS.EMPLOYER_NOTICE_PERIOD:
+      return checkIntRange(value, {
+        min: 0,
+        max: 180,
+        allowZero: true,
+        allowEmpty: true,
+        label: ctx.label || 'Notice period (days)',
       });
 
     case FIELD_IDS.EMPLOYER_INTERVIEW_ASSIGNED: {

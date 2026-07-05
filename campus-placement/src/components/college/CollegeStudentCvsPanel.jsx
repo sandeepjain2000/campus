@@ -30,7 +30,10 @@ export default function CollegeStudentCvsPanel({ studentId }) {
     if (!studentId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/college/students/${studentId}/cvs`);
+      let res = await fetch(`/api/college/students/${studentId}/student-cv-list`);
+      if (res.status === 404) {
+        res = await fetch(`/api/college/students/${studentId}/cvs`);
+      }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || 'Failed to load CVs');
       setItems(Array.isArray(json.items) ? json.items : []);
@@ -54,11 +57,21 @@ export default function CollegeStudentCvsPanel({ studentId }) {
     if (!studentId || !meta.canVerify) return;
     setUpdatingId(cvId);
     try {
-      const res = await fetch(`/api/college/students/${studentId}/cvs/${cvId}/verify`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verified }),
-      });
+      let res = await fetch(
+        `/api/college/students/${studentId}/student-cv-verify/${encodeURIComponent(cvId)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ verified }),
+        },
+      );
+      if (res.status === 404) {
+        res = await fetch(`/api/college/students/${studentId}/cvs/${cvId}/verify`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ verified }),
+        });
+      }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || 'Failed to update verification');
       setItems((prev) =>

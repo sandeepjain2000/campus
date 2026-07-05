@@ -104,7 +104,7 @@ export default function StudentResumeUploadCard({
           )}
           <p className="text-xs text-tertiary" style={{ margin: '0.25rem 0 0' }}>
             PDF or Word, up to 5 MB · manage multiple versions in{' '}
-            <Link href="/dashboard/student/cvs" style={{ fontWeight: 600 }}>
+            <Link href="/dashboard/student/my-cvs" style={{ fontWeight: 600 }}>
               My CVs
             </Link>
           </p>
@@ -161,7 +161,7 @@ export default function StudentResumeUploadCard({
                 onChange={handleCvInputChange}
               />
             </label>
-            <Link href="/dashboard/student/cvs" className="btn btn-ghost btn-sm">
+            <Link href="/dashboard/student/my-cvs" className="btn btn-ghost btn-sm">
               My CVs
             </Link>
           </div>

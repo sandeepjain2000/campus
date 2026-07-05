@@ -23,7 +23,6 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
   const { addToast } = useToast();
   const isSuperAdmin = session?.user?.role === 'super_admin';
   const isCollegeScope = session?.user?.role === 'college_admin';
-  const demoPurgeFilterActive = action.trim().toUpperCase() === 'DEMO_PURGE';
   const today = useMemo(() => new Date(), []);
   const thirtyDaysAgo = useMemo(() => new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), []);
   const [from, setFrom] = useState(toYmd(thirtyDaysAgo));
@@ -33,6 +32,7 @@ export default function AuditReportsPage({ scopeLabel = 'Audit Reports' }) {
   const [tenantFilter, setTenantFilter] = useState('');
   const [email, setEmail] = useState(session?.user?.email || '');
   const [exporting, setExporting] = useState(false);
+  const demoPurgeFilterActive = action.trim().toUpperCase() === 'DEMO_PURGE';
 
   const { data: collegesData } = useSWR(
     isSuperAdmin ? '/api/admin/colleges?limit=100' : null,

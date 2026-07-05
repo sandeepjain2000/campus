@@ -1,5 +1,6 @@
 'use client';
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { registerClientErrorReporter } from '@/lib/clientErrorReport';
 
 const ToastContext = createContext();
 
@@ -41,6 +42,11 @@ export function ToastProvider({ children }) {
 
   const info = useCallback((message) => addToast(message, 'info'), [addToast]);
   const warn = useCallback((message) => addToast(message, 'warning'), [addToast]);
+
+  useEffect(() => {
+    registerClientErrorReporter(addToast);
+    return () => registerClientErrorReporter(null);
+  }, [addToast]);
 
   return (
     <ToastContext.Provider value={{ addToast, info, warn }}>

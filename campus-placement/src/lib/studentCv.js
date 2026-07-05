@@ -9,6 +9,8 @@ import {
 
 import {
   mapStudentCvRow,
+  extractFileExtension,
+  validateCvLabel,
 } from '@/lib/studentCvShared';
 
 export {
@@ -23,6 +25,7 @@ export { mapStudentCvRow };
 
 let studentCvsTableReady;
 let studentCvVerificationColumnsReady;
+let studentCvUsageCountSqlCache;
 
 export async function isStudentCvsTableReady() {
   if (studentCvsTableReady !== undefined) return studentCvsTableReady;
@@ -43,6 +46,26 @@ export async function isStudentCvVerificationReady() {
     studentCvVerificationColumnsReady = false;
   }
   return studentCvVerificationColumnsReady;
+}
+
+/** Safe `used_on_applications` select when migration 099 FK columns are partial. */
+export async function buildStudentCvUsageCountSelect() {
+  if (studentCvUsageCountSqlCache !== undefined) return studentCvUsageCountSqlCache;
+  try {
+    const parts = [];
+    if (await hasColumn('program_applications', 'student_cv_id')) {
+      parts.push('(SELECT COUNT(*)::int FROM program_applications pa WHERE pa.student_cv_id = sc.id)');
+    }
+    if (await hasColumn('applications', 'student_cv_id')) {
+      parts.push('(SELECT COUNT(*)::int FROM applications a WHERE a.student_cv_id = sc.id)');
+    }
+    studentCvUsageCountSqlCache = parts.length
+      ? `(${parts.join(' + ')}) AS used_on_applications`
+      : '0::int AS used_on_applications';
+  } catch {
+    studentCvUsageCountSqlCache = '0::int AS used_on_applications';
+  }
+  return studentCvUsageCountSqlCache;
 }
 
 const STUDENT_CV_SELECT =
@@ -206,13 +229,36 @@ export async function getStudentCvApplyState(studentId) {
     }
   }
 
-  const [profileRes, docsRes] = await Promise.all([
-    query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]),
-    query(
+  const legacy = await loadLegacyStudentResumeState(studentId);
+  return {
+    hasResume: legacy.hasResume,
+    resumeUrl: legacy.resumeUrl,
+    activeCvs: [],
+    defaultCvId: null,
+  };
+}
+
+async function queryLegacyStudentDocuments(studentId) {
+  try {
+    return await query(
+      `SELECT document_type AS type, file_url AS url, uploaded_at AS "uploadedAt", document_name, file_size
+       FROM student_documents WHERE student_id = $1::uuid`,
+      [studentId],
+    );
+  } catch (e) {
+    if (e?.code !== '42703') throw e;
+    return query(
       `SELECT document_type AS type, file_url AS url, uploaded_at AS "uploadedAt"
        FROM student_documents WHERE student_id = $1::uuid`,
       [studentId],
-    ),
+    );
+  }
+}
+
+async function loadLegacyStudentResumeState(studentId) {
+  const [profileRes, docsRes] = await Promise.all([
+    query(`SELECT resume_url FROM student_profiles WHERE id = $1::uuid`, [studentId]),
+    queryLegacyStudentDocuments(studentId),
   ]);
 
   const resumeUrl = resolveStudentResumeUrl({
@@ -223,9 +269,55 @@ export async function getStudentCvApplyState(studentId) {
   return {
     hasResume: isAuthoritativeResumeUrl(resumeUrl),
     resumeUrl,
-    activeCvs: [],
-    defaultCvId: null,
+    documents: docsRes.rows,
   };
+}
+
+/**
+ * When student_cvs exists but a student only has a pre-migration profile/documents résumé,
+ * create one labelled row so apply + employer download stay consistent.
+ * @returns {Promise<string | null>} new or existing active CV id
+ */
+export async function ensureLegacyCvRowFromProfile(studentId, client = null) {
+  const ready = await isStudentCvsTableReady();
+  if (!ready || !studentId) return null;
+
+  const q = client ? client.query.bind(client) : query;
+  const active = await listActiveStudentCvs(studentId, client);
+  if (active.length) return active.find((c) => c.isDefault)?.id || active[0].id;
+
+  const legacy = await loadLegacyStudentResumeState(studentId);
+  if (!legacy.hasResume) return null;
+
+  const fileUrl = String(legacy.resumeUrl || '').trim();
+  const legacyDoc = legacy.documents.find(
+    (d) =>
+      String(d.type || '').toLowerCase() === 'resume' &&
+      String(d.url || '').trim() === fileUrl,
+  );
+
+  const rawName = String(
+    legacyDoc?.document_name || fileUrl.split('/').pop() || 'resume.pdf',
+  ).slice(0, 255);
+  const labelCandidate = String(rawName).replace(/\.[^.]+$/, '').trim() || 'CV';
+  const labelCheck = validateCvLabel(labelCandidate);
+  const label = labelCheck.label || 'CV';
+  const extension = extractFileExtension(rawName);
+  const fileSize = legacyDoc?.file_size != null ? Number(legacyDoc.file_size) : null;
+
+  try {
+    const ins = await q(
+      `INSERT INTO student_cvs
+        (student_id, label, file_url, file_size, original_file_name, file_extension, is_default)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, true)
+       RETURNING id`,
+      [studentId, label, fileUrl, fileSize, rawName, extension],
+    );
+    return ins.rows[0]?.id ? String(ins.rows[0].id) : null;
+  } catch (e) {
+    console.error('ensureLegacyCvRowFromProfile', studentId, e);
+    return null;
+  }
 }
 
 /**
@@ -244,7 +336,20 @@ export async function resolveCvForApplication(studentId, requestedCvId, client =
     return { ok: true, studentCvId: null };
   }
 
-  const active = await listActiveStudentCvs(studentId, client);
+  let active = await listActiveStudentCvs(studentId, client);
+  if (!active.length) {
+    const backfilledId = await ensureLegacyCvRowFromProfile(studentId, client);
+    if (backfilledId) {
+      active = await listActiveStudentCvs(studentId, client);
+    } else {
+      const state = await getStudentCvApplyState(studentId);
+      if (!state.hasResume) {
+        return { ok: false, error: 'Upload a CV with a label before applying.' };
+      }
+      return { ok: true, studentCvId: null };
+    }
+  }
+
   if (!active.length) {
     return { ok: false, error: 'Upload a CV with a label before applying.' };
   }

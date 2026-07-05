@@ -88,7 +88,7 @@ const ROUTES_SORTED = [
   '/dashboard/student/clarifications',
   '/dashboard/student/mentorship-requests',
   '/dashboard/student/discussions',
-  '/dashboard/student/cvs',
+  '/dashboard/student/my-cvs',
   '/dashboard/student/documents',
   '/dashboard/student/drives',
   '/dashboard/student/internship-feedback',

@@ -7,10 +7,14 @@ import useSWR from 'swr';
 import { ArrowLeft, Target } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
-import { validateEmployerDriveDate } from '@/lib/apiInputValidation';
 import { buildDriveCtcBreakup } from '@/lib/amountInWords';
-import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
-import { parsePlacementDriveJobPayload, emptyPlacementDriveForm, placementDriveFormToApiBody } from '@/lib/placementDriveJobFields';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import {
+  emptyPlacementDriveForm,
+  mapDriveApiErrorToFieldErrors,
+  placementDriveFormToApiBody,
+  validatePlacementDriveForm,
+} from '@/lib/placementDriveJobFields';
 import { formatCurrency } from '@/lib/utils';
 import { DriveFormSection, driveFormCompactField, driveFormFullRow } from '@/components/employer/DriveFormSection';
 import PlacementDriveJobFormSections from '@/components/employer/PlacementDriveJobFormSections';
@@ -24,33 +28,41 @@ export default function EmployerRequestDrivePage() {
   const [campusId, setCampusId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(emptyPlacementDriveForm);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const clearFieldError = useCallback((key) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const scrollToFirstFieldError = useCallback((errors) => {
+    const firstKey = Object.keys(errors).find((k) => k !== '_form');
+    if (!firstKey) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`drive-field-${firstKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
 
   const { data: campusData } = useSWR('/api/employer/campuses', fetcher, { revalidateOnFocus: false });
   const approvedCampuses = useEmployerPostingCampuses(campusData, 'drives');
 
   const submitDrive = useCallback(async (e) => {
     e.preventDefault();
-    if (!campusId) {
-      addToast('Select a campus for this drive.', 'warning');
+    const nextErrors = {};
+    if (!campusId) nextErrors.campusId = 'Select a campus for this drive.';
+    Object.assign(nextErrors, validatePlacementDriveForm(form));
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      scrollToFirstFieldError(nextErrors);
       return;
     }
-    const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, form.title, { label: 'Drive title' });
-    if (titleErr) {
-      addToast(titleErr, 'error');
-      return;
-    }
-    const driveDateErr = validateEmployerDriveDate(form.driveDate);
-    if (driveDateErr) {
-      addToast(driveDateErr, 'warning');
-      return;
-    }
+    setFieldErrors({});
     const ctcBreakup = buildDriveCtcBreakup(form.packageCtc, form.ctcBreakup, formatCurrency);
     const apiBody = placementDriveFormToApiBody(form, { ctcBreakup });
-    const jobParsed = parsePlacementDriveJobPayload(apiBody);
-    if (jobParsed.error) {
-      addToast(jobParsed.error, 'warning');
-      return;
-    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/employer/drives', {
@@ -60,17 +72,19 @@ export default function EmployerRequestDrivePage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        addToast(json.userMessage || json.error || 'Request failed', 'error');
+        const apiErrors = mapDriveApiErrorToFieldErrors(json.userMessage || json.error || 'Request failed');
+        setFieldErrors(apiErrors);
+        scrollToFirstFieldError(apiErrors);
         return;
       }
       addToast('Drive saved. College admins were notified.', 'success');
       router.push('/dashboard/employer/drives');
     } catch {
-      addToast('Network error', 'error');
+      setFieldErrors({ _form: 'Network error. Check your connection and try again.' });
     } finally {
       setSubmitting(false);
     }
-  }, [campusId, form, addToast, router]);
+  }, [campusId, form, addToast, router, scrollToFirstFieldError]);
 
   return (
     <div className="animate-fadeIn" style={{ paddingBottom: '3rem' }}>
@@ -149,33 +163,60 @@ export default function EmployerRequestDrivePage() {
         </div>
       ) : (
         <form onSubmit={submitDrive} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
+          {fieldErrors._form ? (
+            <div
+              className="card"
+              style={{
+                padding: '0.875rem 1rem',
+                marginBottom: '0.75rem',
+                borderColor: 'var(--danger-200)',
+                background: 'var(--danger-50)',
+                color: 'var(--danger-800)',
+                fontSize: '0.875rem',
+              }}
+              data-drive-field-error
+            >
+              {fieldErrors._form}
+            </div>
+          ) : null}
           <DriveFormSection
             title="Drive details"
             description="Campus, schedule, and logistics for this placement drive request."
             first
           >
-            <div className="form-group" style={{ marginBottom: 0 }}>
+            <div className="form-group" style={{ marginBottom: 0 }} id="drive-field-campusId">
               <label className="form-label">Campus <span style={{ color: 'red' }}>*</span></label>
               <select
-                className="form-select"
+                className={`form-select${fieldErrors.campusId ? ' input-error' : ''}`}
                 value={campusId}
-                onChange={(e) => setCampusId(e.target.value)}
+                onChange={(e) => {
+                  clearFieldError('campusId');
+                  setCampusId(e.target.value);
+                }}
               >
                 <option value="">— Select a campus —</option>
                 {approvedCampuses.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <span className="form-hint">Only approved campus partnerships are shown.</span>
+              {fieldErrors.campusId ? (
+                <p className="form-error" data-drive-field-error>{fieldErrors.campusId}</p>
+              ) : (
+                <span className="form-hint">Only approved campus partnerships are shown.</span>
+              )}
             </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
+            <div className="form-group" style={{ marginBottom: 0 }} id="drive-field-title">
               <label className="form-label">Drive title <span style={{ color: 'red' }}>*</span></label>
               <input
-                className="form-input"
+                className={`form-input${fieldErrors.title ? ' input-error' : ''}`}
                 value={form.title}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                onChange={(e) => {
+                  clearFieldError('title');
+                  setForm((p) => ({ ...p, title: e.target.value }));
+                }}
                 placeholder="e.g. SDE — Phase 2"
               />
+              {fieldErrors.title ? <p className="form-error" data-drive-field-error>{fieldErrors.title}</p> : null}
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Drive type</label>
@@ -190,13 +231,20 @@ export default function EmployerRequestDrivePage() {
                 <option value="off_campus">Off campus</option>
               </select>
             </div>
-            <div className="form-group" style={driveFormCompactField}>
+            <div className="form-group" style={driveFormCompactField} id="drive-field-driveDate">
               <label className="form-label">Drive Date <span style={{ color: 'red' }}>*</span></label>
               <ValidatedDateInput
                 fieldId={FIELD_IDS.EMPLOYER_DRIVE_DATE}
                 value={form.driveDate}
-                onChange={(v) => setForm((p) => ({ ...p, driveDate: v }))}
+                onChange={(v) => {
+                  clearFieldError('driveDate');
+                  setForm((p) => ({ ...p, driveDate: v }));
+                }}
+                className={fieldErrors.driveDate ? 'form-input input-error' : 'form-input'}
               />
+              {fieldErrors.driveDate ? (
+                <p className="form-error" data-drive-field-error>{fieldErrors.driveDate}</p>
+              ) : null}
             </div>
             <div className="form-group" style={driveFormFullRow}>
               <label className="form-label">Venue</label>
@@ -220,7 +268,12 @@ export default function EmployerRequestDrivePage() {
             </div>
           </DriveFormSection>
 
-          <PlacementDriveJobFormSections form={form} setForm={setForm} />
+          <PlacementDriveJobFormSections
+            form={form}
+            setForm={setForm}
+            errors={fieldErrors}
+            onFieldEdit={clearFieldError}
+          />
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '1.25rem', borderTop: '1px solid var(--border-default)' }}>
             <button type="submit" className="btn btn-primary" disabled={submitting}>

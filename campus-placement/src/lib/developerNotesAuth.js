@@ -10,7 +10,7 @@ export const DEV_NOTES_SESSION_MAX_AGE_SEC = 7 * 24 * 60 * 60;
  */
 export const DEV_NOTES_PASSWORD_HASH =
   process.env.DEVELOPER_NOTES_PASSWORD_HASH ||
-  '$2b$12$jHl1vYNtclm/9R.i0bnIM.cdmfwxuRH2y9ac8tnIMB0vpPNLSAswa';
+  '$2b$12$U1Wht5mwGrYu0vyednBfuO8NpvKRwLKZYTBAybtaw.NaRwtaWN6VC';
 
 export function getDevNotesAuthSecret() {
   return (

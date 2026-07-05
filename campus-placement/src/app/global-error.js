@@ -1,6 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
+import { reportClientError } from '@/lib/clientErrorReport';
+
 export default function GlobalError({ error, reset }) {
+  useEffect(() => {
+    reportClientError(error?.message || 'Critical application error', { source: 'next.global-error' });
+  }, [error]);
   return (
     <html>
       <body>

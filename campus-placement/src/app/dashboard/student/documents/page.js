@@ -122,7 +122,7 @@ export default function StudentDocumentsPage() {
           <h1>📄 My documents</h1>
           <p>
             CVs are managed separately with mandatory labels.{' '}
-            <Link href="/dashboard/student/cvs" style={{ fontWeight: 600 }}>
+            <Link href="/dashboard/student/my-cvs" style={{ fontWeight: 600 }}>
               My CVs
             </Link>{' '}
             — use this page for ID proof, academic records, certificates, and other files.
@@ -133,7 +133,7 @@ export default function StudentDocumentsPage() {
             <button type="button" className={view === 'cards' ? 'active' : ''} onClick={() => setView('cards')}>Cards</button>
             <button type="button" className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>Table</button>
           </div>
-          <Link href="/dashboard/student/cvs" className="btn btn-secondary">
+          <Link href="/dashboard/student/my-cvs" className="btn btn-secondary">
             My CVs
           </Link>
           <button type="button" className="btn btn-primary" onClick={() => setShowUpload(!showUpload)}>
@@ -151,7 +151,7 @@ export default function StudentDocumentsPage() {
             Upload labelled CVs, choose which one to send with each application, and archive old versions. Employers see your
             label only — not the original file name.
           </p>
-          <Link href="/dashboard/student/cvs" className="btn btn-primary btn-sm">
+          <Link href="/dashboard/student/my-cvs" className="btn btn-primary btn-sm">
             Go to My CVs
           </Link>
         </div>
@@ -163,7 +163,7 @@ export default function StudentDocumentsPage() {
             <h3 style={{ marginBottom: '0.75rem' }}>Upload another document</h3>
             <p className="text-sm text-secondary" style={{ marginBottom: '1rem' }}>
               ID proof, academic records, certificates, and other files. For CVs, use{' '}
-              <Link href="/dashboard/student/cvs">My CVs</Link>.
+              <Link href="/dashboard/student/my-cvs">My CVs</Link>.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
               <select className="form-select" style={{ width: 'auto' }} value={docType} onChange={(e) => setDocType(e.target.value)} disabled={uploading}>

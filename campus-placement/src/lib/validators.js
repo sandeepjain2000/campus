@@ -3,8 +3,19 @@
  */
 
 export function validateEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(String(email || '').trim());
+  const trimmed = String(email || '').trim();
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+  return re.test(trimmed);
+}
+
+/** Returns an error message, or empty string when valid. */
+export function getEmailValidationError(email, { required = true } = {}) {
+  const trimmed = String(email || '').trim();
+  if (!trimmed) return required ? 'Email is required.' : '';
+  if (!validateEmail(trimmed)) {
+    return 'Enter a valid email address (e.g. name@example.com).';
+  }
+  return '';
 }
 
 /** Returns an error message, or empty string when valid. */
@@ -192,9 +203,56 @@ export function validatePassword(password) {
 
 /** E.164: leading +, country code, 8–15 digits total (spaces/dashes stripped). */
 export function validatePhone(phone) {
-  if (phone == null || String(phone).trim() === '') return true;
+  return !getPhoneValidationError(phone, { required: false });
+}
+
+/** Returns an error message, or empty string when valid. Empty allowed unless required. */
+export function getPhoneValidationError(phone, { required = false } = {}) {
+  if (phone == null || String(phone).trim() === '') {
+    return required ? 'Mobile number is required.' : '';
+  }
   const compact = String(phone).replace(/[\s-]/g, '');
-  return /^\+[1-9]\d{7,14}$/.test(compact);
+  if (!/^\+[1-9]\d{7,14}$/.test(compact)) {
+    return 'Enter a valid mobile number with country code (e.g. +91 9876543210).';
+  }
+  if (compact.startsWith('+91')) {
+    const national = compact.slice(3);
+    if (national.length !== 10 || !/^[6-9]\d{9}$/.test(national)) {
+      return 'Indian mobile numbers must be 10 digits starting with 6, 7, 8, or 9.';
+    }
+  } else if (compact.startsWith('+1')) {
+    const national = compact.slice(2);
+    if (national.length !== 10 || !/^\d{10}$/.test(national)) {
+      return 'US/Canada numbers must be 10 digits after +1.';
+    }
+  }
+  return '';
+}
+
+/** Build E.164 phone from registration form dial code + national number. */
+export function buildRegistrationPhoneE164({ phoneDialCode, phoneNational, PHONE_FULL_E164 = '__full__' }) {
+  if (phoneDialCode === PHONE_FULL_E164) {
+    const raw = String(phoneNational || '').trim().replace(/[\s-]/g, '');
+    if (!raw) return '';
+    return raw.startsWith('+') ? raw : `+${raw.replace(/^\++/, '')}`;
+  }
+  const digits = String(phoneNational || '').replace(/\D/g, '');
+  const dial = String(phoneDialCode || '').trim() || '+';
+  if (!digits) return '';
+  return `${dial.startsWith('+') ? dial : `+${dial}`}${digits}`;
+}
+
+/** Validate mobile on the registration form (dial picker + national input). */
+export function getRegistrationPhoneValidationError(
+  { phoneDialCode, phoneNational, PHONE_FULL_E164 = '__full__' },
+  { required = false } = {},
+) {
+  const nationalRaw = String(phoneNational || '').trim();
+  if (!nationalRaw) {
+    return required ? 'Mobile number is required.' : '';
+  }
+  const e164 = buildRegistrationPhoneE164({ phoneDialCode, phoneNational, PHONE_FULL_E164 });
+  return getPhoneValidationError(e164, { required: true });
 }
 
 export function validateURL(url) {
@@ -325,9 +383,11 @@ export function validateRequired(obj, fields) {
 export function validateRegistration(data) {
   const errors = {};
 
-  if (!data.email || !validateEmail(data.email)) {
-    errors.email = 'Valid email is required';
-  }
+  const emailErr = getEmailValidationError(data.email, { required: true });
+  if (emailErr) errors.email = emailErr;
+
+  const phoneErr = getPhoneValidationError(data.phone, { required: false });
+  if (phoneErr) errors.phone = phoneErr;
   const passwordErr = getPasswordValidationError(data.password);
   if (passwordErr) {
     errors.password = passwordErr === 'Password is required' ? PASSWORD_REQUIREMENTS_MESSAGE : passwordErr;

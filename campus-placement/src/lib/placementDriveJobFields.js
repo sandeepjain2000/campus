@@ -2,8 +2,13 @@
  * Campus job fields stored directly on placement_drives (formerly on linked job_postings).
  */
 
-import { validateEmployerJobPayload } from '@/lib/apiInputValidation';
-import { normalizeTitle } from '@/lib/validators';
+import {
+  validateEmployerDriveDate,
+  validateEmployerJobPayload,
+  validateTitlePayload,
+} from '@/lib/apiInputValidation';
+import { validateFieldOrError, FIELD_IDS } from '@/lib/inputConstraints';
+import { normalizeTitle, validateBatchYear } from '@/lib/validators';
 import { normalizeEmployerMinCgpa, resolveEmployerMinCgpaForSubmit } from '@/lib/employerJobDisplay';
 import {
   formatCommaList,
@@ -276,6 +281,116 @@ export function placementDriveFormToApiBody(form, { ctcBreakup } = {}) {
     applicationDeadline: form.applicationDeadline || null,
     ctcBreakup,
   };
+}
+
+/** Map a single validation/API error string to a form field key when possible. */
+export function mapPlacementDriveErrorToField(error) {
+  const msg = String(error || '').trim();
+  if (!msg) return null;
+  const lower = msg.toLowerCase();
+  if (lower.includes('drive title') || lower.includes('title is required') || lower.includes('title must')) {
+    return { field: 'title', message: msg };
+  }
+  if (lower.includes('drive date')) return { field: 'driveDate', message: msg };
+  if (lower.includes('maximum salary') || lower.includes('maximum stipend')) {
+    return { field: 'salaryMax', message: msg };
+  }
+  if (lower.includes('minimum salary') || lower.includes('minimum stipend')) {
+    return { field: 'salaryMin', message: msg };
+  }
+  if (lower.includes('cgpa')) return { field: 'minCgpa', message: msg };
+  if (lower.includes('vacanc') || lower.includes('opening')) return { field: 'vacancies', message: msg };
+  if (lower.includes('batch year')) return { field: 'batchYear', message: msg };
+  if (lower.includes('10th') || lower.includes('class x')) return { field: 'minTenthPct', message: msg };
+  if (lower.includes('12th') || lower.includes('class xii')) return { field: 'minTwelfthPct', message: msg };
+  if (lower.includes('deadline') || lower.includes('application date')) {
+    return { field: 'applicationDeadline', message: msg };
+  }
+  if (lower.includes('backlog')) return { field: 'maxBacklogs', message: msg };
+  if (lower.includes('job type')) return { field: 'jobType', message: msg };
+  return null;
+}
+
+/**
+ * Client-side validation for placement drive request/edit forms.
+ * @returns {Record<string, string>} field key → error message (may include `_form`)
+ */
+export function validatePlacementDriveForm(form) {
+  const fieldErrors = {};
+
+  const titleErr = validateTitlePayload(form.title, { label: 'Drive title' });
+  if (titleErr) fieldErrors.title = titleErr;
+
+  const driveDateErr = validateEmployerDriveDate(form.driveDate);
+  if (driveDateErr) fieldErrors.driveDate = driveDateErr;
+
+  const batchErr = validateBatchYear(form.batchYear, { required: false });
+  if (batchErr) fieldErrors.batchYear = batchErr;
+
+  if (form.maxBacklogs !== '' && form.maxBacklogs != null) {
+    const backlogErr = validateFieldOrError(FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS, form.maxBacklogs, {
+      label: 'Max active backlogs',
+    });
+    if (backlogErr) fieldErrors.maxBacklogs = backlogErr;
+  }
+
+  if (form.minTenthPct !== '' && form.minTenthPct != null) {
+    const pctErr = validateFieldOrError(FIELD_IDS.STUDENT_PERCENT, form.minTenthPct, { label: 'Min 10th %' });
+    if (pctErr) fieldErrors.minTenthPct = pctErr;
+  }
+
+  if (form.minTwelfthPct !== '' && form.minTwelfthPct != null) {
+    const pctErr = validateFieldOrError(FIELD_IDS.STUDENT_PERCENT, form.minTwelfthPct, { label: 'Min 12th %' });
+    if (pctErr) fieldErrors.minTwelfthPct = pctErr;
+  }
+
+  if (form.applicationDeadline != null && String(form.applicationDeadline).trim() !== '') {
+    const normalized = normalizeApplicationDeadline(form.applicationDeadline);
+    if (!normalized) {
+      fieldErrors.applicationDeadline = 'Enter a complete application deadline (DD / MM / YYYY).';
+    } else {
+      const deadlineErr = validateFieldOrError(FIELD_IDS.EMPLOYER_DRIVE_DATE, normalized.slice(0, 10), {
+        label: 'Application deadline',
+      });
+      if (deadlineErr) fieldErrors.applicationDeadline = deadlineErr;
+    }
+  }
+
+  const apiBody = placementDriveFormToApiBody(form, { ctcBreakup: '' });
+  const jobParsed = parsePlacementDriveJobPayload(apiBody);
+  if (jobParsed.error) {
+    const mapped = mapPlacementDriveErrorToField(jobParsed.error);
+    if (mapped && !fieldErrors[mapped.field]) {
+      fieldErrors[mapped.field] = mapped.message;
+    } else if (!mapped) {
+      fieldErrors._form = jobParsed.error;
+    }
+  }
+
+  const jobErr = validateEmployerJobPayload({
+    salaryMin: form.salaryMin,
+    salaryMax: form.salaryMax,
+    minCgpa: form.minCgpa,
+    vacancies: form.vacancies,
+    jobType: form.jobType,
+  });
+  if (jobErr) {
+    const mapped = mapPlacementDriveErrorToField(jobErr);
+    if (mapped && !fieldErrors[mapped.field]) {
+      fieldErrors[mapped.field] = mapped.message;
+    } else if (!fieldErrors._form) {
+      fieldErrors._form = jobErr;
+    }
+  }
+
+  return fieldErrors;
+}
+
+/** Turn an API error string into field errors for inline display. */
+export function mapDriveApiErrorToFieldErrors(error) {
+  const mapped = mapPlacementDriveErrorToField(error);
+  if (mapped) return { [mapped.field]: mapped.message };
+  return { _form: String(error || 'Save failed').trim() };
 }
 
 /** @param {Record<string, unknown> | null | undefined} row */

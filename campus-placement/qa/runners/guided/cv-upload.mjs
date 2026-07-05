@@ -79,7 +79,7 @@ export async function uploadSampleCvs(page, baseUrl, options = {}) {
     const buffer = fs.readFileSync(filePath);
     const makeDefault = firstAsDefault && uploaded.length === 0 && !existingLabels.size;
 
-    const res = await page.request.post(`${apiBase}/api/student/cvs/upload`, {
+    let res = await page.request.post(`${apiBase}/api/student/cv-upload`, {
       multipart: {
         file: {
           name: fileName,
@@ -90,6 +90,19 @@ export async function uploadSampleCvs(page, baseUrl, options = {}) {
         set_as_default: makeDefault ? '1' : '0',
       },
     });
+    if (res.status() === 404) {
+      res = await page.request.post(`${apiBase}/api/student/cvs/upload`, {
+        multipart: {
+          file: {
+            name: fileName,
+            mimeType: DOCX_MIME,
+            buffer,
+          },
+          label,
+          set_as_default: makeDefault ? '1' : '0',
+        },
+      });
+    }
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok()) {

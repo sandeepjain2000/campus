@@ -16,7 +16,7 @@ function toYmd(d) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
-export default function mb_AuditReports() {
+export default function AuditReportsMobile() {
   const { data: session } = useSession();
   const { addToast } = useToast();
   const today = useMemo(() => new Date(), []);

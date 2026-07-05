@@ -228,6 +228,13 @@ export async function executeAction(page, baseUrl, accounts, action, ctx) {
         }
         throw new Error(`No button "${buttonName}" in row matching "${rowText}"`);
       }
+      if (buttonName === 'Apply') {
+        const dialog = page.getByRole('dialog').filter({ hasText: 'Choose CV for this application' });
+        if (await dialog.isVisible({ timeout: 8000 }).catch(() => false)) {
+          await dialog.getByRole('button', { name: 'Submit application' }).click({ timeout: 10_000 });
+          await page.waitForTimeout(action.afterMs ?? 1200);
+        }
+      }
     } else if (action.role && action.name) {
       await row.getByRole(action.role, { name: resolveTemplate(action.name, ctx) }).first().click({ timeout: 15_000 });
     }

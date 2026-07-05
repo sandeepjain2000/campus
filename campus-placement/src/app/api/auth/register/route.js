@@ -2,7 +2,7 @@ import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query, transaction } from '@/lib/db';
-import { validateRegistration, validatePhone } from '@/lib/validators';
+import { validateRegistration } from '@/lib/validators';
 import { slugify } from '@/lib/utils';
 import { generateSurfaceToken, normalizeSurfaceTokenInput } from '@/lib/shardBinding';
 import { notifyRegistrationSubmitted } from '@/lib/registrationNotify';
@@ -50,19 +50,13 @@ async function __platform_POST(request) {
       firstName,
       lastName,
       role,
+      phone,
       campusBindingToken: body.campusBindingToken,
       departmentId: body.departmentId,
       batchYear: body.batchYear,
     });
     if (!validation.isValid) {
       return NextResponse.json({ error: Object.values(validation.errors)[0] }, { status: 400 });
-    }
-
-    if (phone && !validatePhone(phone)) {
-      return NextResponse.json(
-        { error: 'Enter a valid mobile number with country code (e.g. +1 4155550100 or +91 9876543210), or leave blank.' },
-        { status: 400 }
-      );
     }
     // Defense-in-depth: keep a route-level role allowlist even if validator logic changes later.
     if (!allowedRoles.has(role)) {

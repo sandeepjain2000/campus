@@ -1,3 +1,4 @@
+import { withApiHandlers } from '@/lib/platformErrorRoute';
 import { NextResponse } from 'next/server';
 import {
   DEV_NOTES_COOKIE,
@@ -6,7 +7,7 @@ import {
 } from '@/lib/developerNotesAuth';
 import { verifyDevNotesPassword } from '@/lib/developerNotesPassword';
 
-export async function POST(request) {
+async function __platform_POST(request) {
   let body;
   try {
     body = await request.json();
@@ -25,3 +26,5 @@ export async function POST(request) {
   response.cookies.set(DEV_NOTES_COOKIE, token, devNotesCookieOptions());
   return response;
 }
+
+export const { POST } = withApiHandlers({ POST: __platform_POST });

@@ -679,12 +679,25 @@ export default function EmployerJobsPage() {
 
                   <div className="form-group">
                     <label className="form-label font-bold">Min experience (years)</label>
-                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="2" value={form.minExperience} onChange={(v) => setField('minExperience', v)} className="form-input" />
+                    <ValidatedNumberInput
+                      fieldId={FIELD_IDS.EMPLOYER_MIN_EXPERIENCE}
+                      placeholder="2"
+                      value={form.minExperience}
+                      onChange={(v) => setField('minExperience', v)}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label font-bold">Max experience (years)</label>
-                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="8" value={form.maxExperience} onChange={(v) => setField('maxExperience', v)} className="form-input" />
+                    <ValidatedNumberInput
+                      fieldId={FIELD_IDS.EMPLOYER_MAX_EXPERIENCE}
+                      context={{ minExperience: form.minExperience }}
+                      placeholder="8"
+                      value={form.maxExperience}
+                      onChange={(v) => setField('maxExperience', v)}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
@@ -717,7 +730,13 @@ export default function EmployerJobsPage() {
 
                   <div className="form-group">
                     <label className="form-label font-bold">Notice period (days)</label>
-                    <ValidatedNumberInput fieldId={FIELD_IDS.EMPLOYER_VACANCIES} placeholder="30" value={form.noticePeriodDays} onChange={(v) => setField('noticePeriodDays', v)} className="form-input" />
+                    <ValidatedNumberInput
+                      fieldId={FIELD_IDS.EMPLOYER_NOTICE_PERIOD}
+                      placeholder="30"
+                      value={form.noticePeriodDays}
+                      onChange={(v) => setField('noticePeriodDays', v)}
+                      className="form-input"
+                    />
                   </div>
                   
                   <div className="form-group">

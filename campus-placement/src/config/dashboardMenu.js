@@ -232,7 +232,7 @@ export const menuConfig = {
         title: 'Profile & Documents',
         items: [
           { label: 'My Profile', href: '/dashboard/student/profile', icon: User },
-          { label: 'My CVs', href: '/dashboard/student/cvs', icon: FileEdit },
+          { label: 'My CVs', href: '/dashboard/student/my-cvs', icon: FileEdit },
           { label: 'Documents', href: '/dashboard/student/documents', icon: FileText },
           {
             id: 'future-certificates',

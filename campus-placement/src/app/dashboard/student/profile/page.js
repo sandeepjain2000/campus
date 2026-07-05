@@ -28,6 +28,7 @@ import StudentResumeUploadCard from '@/components/student/StudentResumeUploadCar
 import PageLoading from '@/components/PageLoading';
 import ProfilePhotoLightbox from '@/components/student/ProfilePhotoLightbox';
 import { Pencil } from 'lucide-react';
+import { postStudentCvUpload, studentCvViewUrl } from '@/lib/studentCvApiPaths';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -171,8 +172,9 @@ export default function StudentProfilePage() {
     isAlumni ? null : '/api/student/calendar',
     calendarFetcher,
   );
-  const { data: cvData, mutate: mutateCvs } = useSWR('/api/student/cvs', async (url) => {
-    const res = await fetch(url);
+  const { data: cvData, mutate: mutateCvs } = useSWR('/api/student/cv-list', async () => {
+    let res = await fetch('/api/student/cv-list');
+    if (res.status === 404) res = await fetch('/api/student/cvs');
     const json = await res.json().catch(() => ({}));
     if (res.status === 503) return { items: [], legacy: true };
     if (!res.ok) throw new Error(json.error || 'Failed to load CVs');
@@ -497,7 +499,7 @@ export default function StudentProfilePage() {
         fd.append('file', file);
         fd.append('label', label);
         fd.append('set_as_default', '1');
-        const res = await fetch('/api/student/cvs/upload', { method: 'POST', body: fd });
+        const res = await postStudentCvUpload(fd);
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
           addToast(json.error || 'Upload failed', 'warning');
@@ -557,7 +559,7 @@ export default function StudentProfilePage() {
   const rawAvatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
   const avatarSrc = rawAvatarSrc.startsWith('data:') ? rawAvatarSrc : toSignedViewUrl(rawAvatarSrc);
   const resumeViewUrl = defaultCv
-    ? `/api/student/cvs/${encodeURIComponent(defaultCv.id)}/view`
+    ? studentCvViewUrl(defaultCv.id)
     : profile.resumeUrl
       ? '/api/student/resume/view'
       : '';
@@ -1895,7 +1897,7 @@ export default function StudentProfilePage() {
                   onChange={onAvatarChange}
                 />
               </label>
-              <Link href="/dashboard/student/cvs" className="btn btn-secondary btn-sm">
+              <Link href="/dashboard/student/my-cvs" className="btn btn-secondary btn-sm">
                 Manage CVs
               </Link>
             </div>

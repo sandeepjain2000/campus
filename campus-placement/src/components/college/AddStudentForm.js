@@ -17,6 +17,7 @@ import {
   validateCollegeStudentForm,
 } from '@/lib/collegeStudentAdminFields';
 import AcademicProgramPicker from '@/components/college/AcademicProgramPicker';
+import AdmissionBatchYearPicker from '@/components/college/AdmissionBatchYearPicker';
 import { mapProgramToStudentFields } from '@/lib/academicTaxonomy/mapProgram';
 import { getMaxAdmissionBatchYear } from '@/lib/admissionBatchYear';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';

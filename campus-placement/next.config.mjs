@@ -39,6 +39,33 @@ const nextConfig = {
   // Helps dev/SSR reliably resolve `next-auth` subpath exports (`next-auth/react`).
   transpilePackages: ['next-auth'],
   serverExternalPackages: ['pdf-parse', 'mammoth', 'pg', 'pg-connection-string'],
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/student/cvs',
+        destination: '/dashboard/student/my-cvs',
+        permanent: true,
+      },
+    ];
+  },
+  // Vercel omits App Router routes whose path contains a `cvs/` segment (introduced with multi-CV).
+  // Rewrite legacy URLs to production-safe aliases so bookmarks and older clients keep working.
+  async rewrites() {
+    return [
+      { source: '/api/student/cvs', destination: '/api/student/cv-list' },
+      { source: '/api/student/cvs/upload', destination: '/api/student/cv-upload' },
+      { source: '/api/student/cvs/:id/view', destination: '/api/student/cv-view/:id' },
+      { source: '/api/student/cvs/:id', destination: '/api/student/cv-item/:id' },
+      {
+        source: '/api/college/students/:id/cvs/:cvId/verify',
+        destination: '/api/college/students/:id/student-cv-verify/:cvId',
+      },
+      {
+        source: '/api/college/students/:id/cvs',
+        destination: '/api/college/students/:id/student-cv-list',
+      },
+    ];
+  },
   async headers() {
     return [
       {

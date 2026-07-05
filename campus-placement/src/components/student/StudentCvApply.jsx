@@ -17,9 +17,13 @@ export function useStudentCvApply({ onApply, onError }) {
   const runApplyFlow = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/student/cvs');
+      let res = await fetch('/api/student/cv-list');
+      if (res.status === 404) {
+        res = await fetch('/api/student/cvs');
+      }
       const json = await res.json().catch(() => ({}));
-      if (res.status === 503) {
+      // 503 = migration not applied; 404 = route missing on stale deploy — apply API still resolves CV
+      if (res.status === 503 || res.status === 404) {
         await onApply(null);
         return;
       }
@@ -33,6 +37,10 @@ export function useStudentCvApply({ onApply, onError }) {
         ? items.filter((c) => c.isVerified)
         : items;
       if (!items.length) {
+        if (json.legacyResumeAvailable) {
+          await onApply(null);
+          return;
+        }
         onError?.('Upload a labelled CV before applying.');
         return;
       }
@@ -132,7 +140,7 @@ export function useStudentCvApply({ onApply, onError }) {
           <button type="button" className="btn btn-primary" onClick={confirmPicker}>
             Submit application
           </button>
-          <Link href="/dashboard/student/cvs" className="btn btn-secondary">
+          <Link href="/dashboard/student/my-cvs" className="btn btn-secondary">
             Manage CVs
           </Link>
         </div>

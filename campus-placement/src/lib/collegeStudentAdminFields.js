@@ -312,6 +312,8 @@ export function parseCollegeStudentAdminPayload(body, { isEdit = false, collegeS
   const salMin = parseOptionalSalary(form.expected_salary_min, 'Min salary');
   const salMax = parseOptionalSalary(form.expected_salary_max, 'Max salary');
 
+  const semesterParsed = parseOptionalInt(form.semester, 'Semester', { min: 1, max: 24 });
+
   return {
     identity,
     profile: {
@@ -326,6 +328,8 @@ export function parseCollegeStudentAdminPayload(body, { isEdit = false, collegeS
       batch_year: batchReconciled.batchYear,
       graduation_year: batchReconciled.graduationYear,
       joining_academic_year: batchReconciled.joiningAcademicYear || null,
+      semester_number: semesterParsed.value,
+      program_duration_years: 4,
       tenth_percentage: tenth.value,
       twelfth_percentage: twelfth.value,
       diploma_percentage: diploma.value,

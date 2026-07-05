@@ -1,3 +1,4 @@
+/** @no-platform-error-wrap — login debug ingest; manual try/catch to avoid recursion */
 import { NextResponse } from 'next/server';
 import { writePlatformErrorLog } from '@/lib/platformErrorLog';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';

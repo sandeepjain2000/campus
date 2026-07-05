@@ -51,6 +51,8 @@ export const COLLEGE_STUDENT_SELECT_SQL = `
   sp.batch_year,
   sp.graduation_year,
   sp.joining_academic_year,
+  sp.semester_number,
+  sp.program_duration_years,
   sp.cgpa,
   sp.tenth_percentage,
   sp.twelfth_percentage,
@@ -196,7 +198,10 @@ export function mapCollegeStudentRow(row, { semesterDisplay = '' } = {}) {
       department: row.department,
       educationRecords,
     }),
-    semester: aux.semester || semesterDisplay,
+    semester:
+      row.semester_number != null
+        ? String(row.semester_number)
+        : aux.semester || semesterDisplay,
     ...(() => {
       const batchResolved = resolveStudentBatch({
         batchYear: row.batch_year,

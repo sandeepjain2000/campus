@@ -11,6 +11,27 @@ export function isS3Configured() {
   );
 }
 
+/** User-facing hint when S3/STS rejects server credentials (common on stale Vercel env). */
+export function describeStorageError(error) {
+  const name = String(error?.name || error?.Code || '');
+  const message = String(error?.message || '');
+  if (
+    name === 'InvalidAccessKeyId'
+    || name === 'InvalidClientTokenId'
+    || /access key id you provided does not exist/i.test(message)
+    || /security token included in the request is invalid/i.test(message)
+  ) {
+    return 'File storage credentials are invalid. Update AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY on the server, then try again.';
+  }
+  if (name === 'SignatureDoesNotMatch' || /signature we calculated does not match/i.test(message)) {
+    return 'File storage credentials are misconfigured (secret key mismatch). Check AWS_SECRET_ACCESS_KEY on the server.';
+  }
+  if (name === 'AccessDenied' || name === 'AccessDeniedException') {
+    return 'File storage access denied. The AWS IAM user needs s3:PutObject and s3:GetObject on the documents bucket.';
+  }
+  return message || 'Upload failed';
+}
+
 function getClient() {
   return new S3Client({
     region: process.env.AWS_REGION,

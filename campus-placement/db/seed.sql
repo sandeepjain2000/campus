@@ -38,6 +38,7 @@ TRUNCATE TABLE
   job_postings,
   student_education,
   student_documents,
+  student_cvs,
   student_projects,
   student_skills,
   student_profiles,
@@ -550,8 +551,79 @@ INSERT INTO application_status_log (application_id, from_status, to_status, chan
 INSERT INTO student_documents (student_id, document_type, document_name, file_url, file_size, is_verified) VALUES
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021001'), 'resume', 'Arjun_Verma_Resume.pdf', 'https://example-bucket.local/docs/arjun-resume.pdf', 245000, true),
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021002'), 'resume', 'Sneha_Iyer_Resume.pdf', 'https://example-bucket.local/docs/sneha-resume.pdf', 231000, true),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021003'), 'resume', 'Kavya_Reddy_Resume.pdf', 'https://example-bucket.local/docs/kavya-resume.pdf', 228000, true),
 ((SELECT id FROM student_profiles WHERE roll_number = 'CS2021003'), 'certificate', 'Kavya_Cloud_Cert.pdf', 'https://example-bucket.local/docs/kavya-cloud-cert.pdf', 188000, false),
-((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'resume', 'Sneha_Rao_Resume.pdf', 'https://example-bucket.local/docs/sneha-rao-resume.pdf', 212000, true);
+((SELECT id FROM student_profiles WHERE roll_number = 'EC2021001'), 'resume', 'Rohan_Sharma_Resume.pdf', 'https://example-bucket.local/docs/rohan-resume.pdf', 219000, true),
+((SELECT id FROM student_profiles WHERE roll_number = 'ME2021001'), 'resume', 'Vikram_Singh_Resume.pdf', 'https://example-bucket.local/docs/vikram-resume.pdf', 205000, true),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021101'), 'resume', 'Sneha_Rao_Resume.pdf', 'https://example-bucket.local/docs/sneha-rao-resume.pdf', 212000, true),
+((SELECT id FROM student_profiles WHERE roll_number = 'EE2021102'), 'resume', 'Aditya_Menon_Resume.pdf', 'https://example-bucket.local/docs/aditya-resume.pdf', 198000, true),
+((SELECT id FROM student_profiles WHERE roll_number = 'CS2021201'), 'resume', 'Rahul_Mehta_Resume.pdf', 'https://example-bucket.local/docs/rahul-resume.pdf', 241000, true);
+
+-- 18b. Sync profile resume_url from real resume documents (dummy.pdf is ignored by the app)
+UPDATE student_profiles sp
+SET resume_url = latest.file_url, updated_at = NOW()
+FROM (
+  SELECT DISTINCT ON (sd.student_id)
+    sd.student_id,
+    sd.file_url
+  FROM student_documents sd
+  WHERE LOWER(sd.document_type) = 'resume'
+    AND sd.file_url IS NOT NULL
+    AND TRIM(sd.file_url) <> ''
+    AND sd.file_url NOT ILIKE '%dummy.pdf%'
+  ORDER BY sd.student_id, sd.uploaded_at DESC NULLS LAST
+) AS latest
+WHERE sp.id = latest.student_id;
+
+-- 18c. Labelled student_cvs rows (multi-CV apply + employer download labels)
+INSERT INTO student_cvs (
+  student_id, label, file_url, file_size, original_file_name, file_extension,
+  is_default, created_at, updated_at
+)
+SELECT
+  sd.student_id,
+  LEFT(
+    COALESCE(
+      NULLIF(TRIM(regexp_replace(sd.document_name, '\.[^.]+$', '')), ''),
+      'CV'
+    ),
+    20
+  ) AS label,
+  sd.file_url,
+  sd.file_size,
+  sd.document_name,
+  COALESCE(
+    NULLIF(LOWER(substring(sd.document_name from '\.[^.]+$')), ''),
+    '.pdf'
+  ) AS file_extension,
+  (
+    sp.resume_url IS NOT NULL
+    AND TRIM(sp.resume_url) <> ''
+    AND TRIM(sd.file_url) = TRIM(sp.resume_url)
+  ) AS is_default,
+  COALESCE(sd.uploaded_at, NOW()),
+  COALESCE(sd.uploaded_at, NOW())
+FROM student_documents sd
+INNER JOIN student_profiles sp ON sp.id = sd.student_id
+WHERE LOWER(sd.document_type) = 'resume'
+  AND NOT EXISTS (
+    SELECT 1 FROM student_cvs sc
+    WHERE sc.student_id = sd.student_id AND sc.file_url = sd.file_url
+  );
+
+UPDATE student_cvs sc
+SET is_default = true, updated_at = NOW()
+FROM (
+  SELECT DISTINCT ON (student_id) id, student_id
+  FROM student_cvs
+  WHERE archived_at IS NULL
+  ORDER BY student_id, is_default DESC, created_at DESC
+) pick
+WHERE sc.id = pick.id
+  AND NOT EXISTS (
+    SELECT 1 FROM student_cvs d
+    WHERE d.student_id = sc.student_id AND d.is_default = true AND d.archived_at IS NULL
+  );
 
 -- 19. College facilities / venues (for infrastructure booking)
 INSERT INTO college_facilities (tenant_id, name, facility_type, capacity, has_projector, has_ac, has_wifi, has_video_conf, is_available) VALUES
@@ -1187,6 +1259,39 @@ INSERT INTO student_profiles (user_id, tenant_id, roll_number, enrollment_number
 INSERT INTO student_projects (student_id, title, description, tech_stack, project_url, github_url, start_date, end_date) VALUES
 ((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'FPGA Signal Lab', 'Teaching lab exercises for DSP on FPGA boards.', ARRAY['VHDL', 'Verilog'], 'https://projects.example.com/fpga-lab', NULL, '2026-05-01', '2026-09-01'),
 ((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'Campus Shuttle ETA', 'Live shuttle tracking mini-app for Pilani campus.', ARRAY['React Native', 'Node.js'], 'https://projects.example.com/shuttle-eta', NULL, '2026-02-15', '2026-06-30');
+
+INSERT INTO student_documents (student_id, document_type, document_name, file_url, file_size, is_verified) VALUES
+((SELECT id FROM student_profiles WHERE roll_number = 'EC2021202'), 'resume', 'Priya_Singh_Resume.pdf', 'https://example-bucket.local/docs/priya-singh-resume.pdf', 207000, true);
+
+UPDATE student_profiles sp
+SET resume_url = sd.file_url, updated_at = NOW()
+FROM student_documents sd
+WHERE sd.student_id = sp.id
+  AND sp.roll_number = 'EC2021202'
+  AND LOWER(sd.document_type) = 'resume'
+  AND sd.file_url NOT ILIKE '%dummy.pdf%';
+
+INSERT INTO student_cvs (
+  student_id, label, file_url, file_size, original_file_name, file_extension,
+  is_default, created_at, updated_at
+)
+SELECT
+  sd.student_id,
+  LEFT(COALESCE(NULLIF(TRIM(regexp_replace(sd.document_name, '\.[^.]+$', '')), ''), 'CV'), 20),
+  sd.file_url,
+  sd.file_size,
+  sd.document_name,
+  COALESCE(NULLIF(LOWER(substring(sd.document_name from '\.[^.]+$')), ''), '.pdf'),
+  true,
+  COALESCE(sd.uploaded_at, NOW()),
+  COALESCE(sd.uploaded_at, NOW())
+FROM student_documents sd
+JOIN student_profiles sp ON sp.id = sd.student_id AND sp.roll_number = 'EC2021202'
+WHERE LOWER(sd.document_type) = 'resume'
+  AND NOT EXISTS (
+    SELECT 1 FROM student_cvs sc
+    WHERE sc.student_id = sd.student_id AND sc.file_url = sd.file_url
+  );
 
 -- 3. Tie up every employer to all three seeded colleges (≥2 employers per campus; here: full grid, all approved)
 DELETE FROM employer_approvals;

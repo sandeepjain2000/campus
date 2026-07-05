@@ -8,6 +8,7 @@ import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import ValidatedDateInput from '@/components/form/ValidatedDateInput';
 import { FIELD_IDS } from '@/lib/inputConstraints';
 import { validateAcademicYearsList } from '@/lib/apiInputValidation';
+import SemesterRolloverPanel from '@/components/college/SemesterRolloverPanel';
 
 function emptyYear(sequenceNumber = 1) {
   return {
@@ -346,6 +347,8 @@ export default function AcademicYearsEditor({ compact = false }) {
           ))}
         </div>
       )}
+
+      <SemesterRolloverPanel />
     </div>
   );
 }

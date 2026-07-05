@@ -2,7 +2,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DEFAULT_PHONE_DIAL_CODE, PHONE_DIAL_CODES, PHONE_FULL_E164 } from '@/lib/phoneDialCodes';
-import { validatePhone, validateEmail, validatePersonName, validateBatchYear, getPasswordValidationError, PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS_HINT } from '@/lib/validators';
+import {
+  validatePersonName,
+  validateBatchYear,
+  getPasswordValidationError,
+  getEmailValidationError,
+  getRegistrationPhoneValidationError,
+  buildRegistrationPhoneE164,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_REQUIREMENTS_HINT,
+} from '@/lib/validators';
 import { isRegistrationJobAidEnabled } from '@/lib/registrationJobAid';
 import RegisterJobAidPanel from '@/components/auth/RegisterJobAidPanel';
 import LoginCaptchaField from '@/components/auth/LoginCaptchaField';
@@ -10,15 +19,42 @@ import { verifyCaptchaAnswer } from '@/lib/captchaClient';
 import { redirectToLoginAfterRegistration } from '@/lib/postRegistrationRedirect';
 
 function buildRegisterPhone(formData) {
-  if (formData.phoneDialCode === PHONE_FULL_E164) {
-    const raw = String(formData.phoneNational || '').trim().replace(/[\s-]/g, '');
-    if (!raw) return '';
-    return raw.startsWith('+') ? raw : `+${raw.replace(/^\++/, '')}`;
+  return buildRegistrationPhoneE164({
+    phoneDialCode: formData.phoneDialCode,
+    phoneNational: formData.phoneNational,
+    PHONE_FULL_E164,
+  });
+}
+
+function validateRegisterStep2Fields(formData) {
+  const fieldErrors = {};
+  const fnErr = validatePersonName(formData.firstName, { required: true, label: 'First name' });
+  if (fnErr) fieldErrors.firstName = fnErr;
+  const lnErr = validatePersonName(formData.lastName, { required: false, label: 'Last name' });
+  if (lnErr) fieldErrors.lastName = lnErr;
+  const emailErr = getEmailValidationError(formData.email, { required: true });
+  if (emailErr) fieldErrors.email = emailErr;
+  const phoneErr = getRegistrationPhoneValidationError(
+    {
+      phoneDialCode: formData.phoneDialCode,
+      phoneNational: formData.phoneNational,
+      PHONE_FULL_E164,
+    },
+    { required: false },
+  );
+  if (phoneErr) fieldErrors.phone = phoneErr;
+  if (formData.role === 'student') {
+    const bErr = validateBatchYear(formData.batchYear, { required: true });
+    if (bErr) fieldErrors.batchYear = bErr;
+    if (!formData.departmentId) fieldErrors.departmentId = 'Please select your department.';
   }
-  const digits = String(formData.phoneNational || '').replace(/\D/g, '');
-  const dial = String(formData.phoneDialCode || '').trim() || '+';
-  if (!digits) return '';
-  return `${dial.startsWith('+') ? dial : `+${dial}`}${digits}`;
+  if (formData.role === 'employer' && !String(formData.companyName || '').trim()) {
+    fieldErrors.companyName = 'Company name is required.';
+  }
+  if (formData.role === 'college_admin' && !String(formData.collegeFullName || '').trim()) {
+    fieldErrors.collegeFullName = 'College name is required.';
+  }
+  return fieldErrors;
 }
 
 export default function RegisterPage() {
@@ -48,6 +84,7 @@ export default function RegisterPage() {
     campusBindingToken: '',
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showSignInLink, setShowSignInLink] = useState(false);
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
@@ -59,6 +96,44 @@ export default function RegisterPage() {
 
   const captchaReady = Boolean(formData.role);
 
+  const clearFieldError = (key) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validateEmailField = () => {
+    const message = getEmailValidationError(formData.email, { required: true });
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (message) next.email = message;
+      else delete next.email;
+      return next;
+    });
+    return !message;
+  };
+
+  const validatePhoneField = () => {
+    const message = getRegistrationPhoneValidationError(
+      {
+        phoneDialCode: formData.phoneDialCode,
+        phoneNational: formData.phoneNational,
+        PHONE_FULL_E164,
+      },
+      { required: false },
+    );
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (message) next.phone = message;
+      else delete next.phone;
+      return next;
+    });
+    return !message;
+  };
+
   const selectRegisterRole = (roleId) => {
     setFormData((prev) => ({ ...prev, role: roleId }));
     setCaptchaToken('');
@@ -66,6 +141,7 @@ export default function RegisterPage() {
     setCaptchaKey((k) => k + 1);
     setCaptchaVerified(false);
     setError('');
+    setFieldErrors({});
     setShowSignInLink(false);
   };
 
@@ -127,20 +203,14 @@ export default function RegisterPage() {
     setError('');
     setShowSignInLink(false);
 
-    const fnErr = validatePersonName(formData.firstName, { required: true, label: 'First name' });
-    if (fnErr) {
-      setError(fnErr);
+    const step2Errors = validateRegisterStep2Fields(formData);
+    if (Object.keys(step2Errors).length > 0) {
+      setFieldErrors(step2Errors);
+      setStep(2);
       return;
     }
-    const lnErr = validatePersonName(formData.lastName, { required: false, label: 'Last name' });
-    if (lnErr) {
-      setError(lnErr);
-      return;
-    }
-    if (!validateEmail(formData.email)) {
-      setError('Enter a valid email address.');
-      return;
-    }
+    setFieldErrors({});
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -148,12 +218,6 @@ export default function RegisterPage() {
     const passwordErr = getPasswordValidationError(formData.password);
     if (passwordErr) {
       setError(passwordErr);
-      return;
-    }
-
-    const phone = buildRegisterPhone(formData);
-    if (phone && !validatePhone(phone)) {
-      setError('Check your mobile number: use a country code above, or pick “Other” and type a full number starting with +.');
       return;
     }
 
@@ -172,6 +236,7 @@ export default function RegisterPage() {
     setError('');
     try {
       const { phoneDialCode, phoneNational, confirmPassword, ...rest } = formData;
+      const phone = buildRegisterPhone(formData);
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,6 +255,14 @@ export default function RegisterPage() {
         clearRegistrationPasswords();
         setShowSignInLink(isConflict);
         setError(msg);
+        const lower = String(msg).toLowerCase();
+        if (lower.includes('email')) {
+          setFieldErrors({ email: msg });
+          setStep(2);
+        } else if (lower.includes('mobile') || lower.includes('phone')) {
+          setFieldErrors({ phone: msg });
+          setStep(2);
+        }
         if (res.status === 400 && String(msg).toLowerCase().includes('verification')) {
           refreshCaptchaAfterFailure();
           setStep(1);
@@ -345,8 +418,17 @@ export default function RegisterPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div className="form-group">
                   <label className="form-label">First Name <span className="required">*</span></label>
-                  <input className="form-input" placeholder="First name" value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value.replace(/\d/g, '') })} required />
+                  <input
+                    className={`form-input${fieldErrors.firstName ? ' input-error' : ''}`}
+                    placeholder="First name"
+                    value={formData.firstName}
+                    onChange={(e) => {
+                      clearFieldError('firstName');
+                      setFormData({ ...formData, firstName: e.target.value.replace(/\d/g, '') });
+                    }}
+                    required
+                  />
+                  {fieldErrors.firstName ? <p className="form-error">{fieldErrors.firstName}</p> : null}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Last Name</label>
@@ -357,8 +439,19 @@ export default function RegisterPage() {
 
               <div className="form-group">
                 <label className="form-label">Email <span className="required">*</span></label>
-                <input type="email" className="form-input" placeholder="you@example.com" value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+                <input
+                  type="email"
+                  className={`form-input${fieldErrors.email ? ' input-error' : ''}`}
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) => {
+                    clearFieldError('email');
+                    setFormData({ ...formData, email: e.target.value.trim() });
+                  }}
+                  onBlur={validateEmailField}
+                  required
+                />
+                {fieldErrors.email ? <p className="form-error">{fieldErrors.email}</p> : null}
               </div>
 
               <div className="form-group">
@@ -368,7 +461,10 @@ export default function RegisterPage() {
                     className="form-select"
                     style={{ width: 'auto', minWidth: '10rem', maxWidth: '100%' }}
                     value={formData.phoneDialCode}
-                    onChange={(e) => setFormData({ ...formData, phoneDialCode: e.target.value, phoneNational: '' })}
+                    onChange={(e) => {
+                      clearFieldError('phone');
+                      setFormData({ ...formData, phoneDialCode: e.target.value, phoneNational: '' });
+                    }}
                     aria-label="Country calling code"
                   >
                     {PHONE_DIAL_CODES.map((o) => (
@@ -379,31 +475,41 @@ export default function RegisterPage() {
                   </select>
                   {formData.phoneDialCode !== PHONE_FULL_E164 ? (
                     <input
-                      className="form-input"
+                      className={`form-input${fieldErrors.phone ? ' input-error' : ''}`}
                       style={{ flex: '1', minWidth: '140px' }}
                       placeholder="National number (no leading 0)"
                       inputMode="numeric"
                       autoComplete="tel-national"
                       value={formData.phoneNational}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phoneNational: e.target.value.replace(/\D/g, '') })
-                      }
+                      onChange={(e) => {
+                        clearFieldError('phone');
+                        setFormData({ ...formData, phoneNational: e.target.value.replace(/\D/g, '') });
+                      }}
+                      onBlur={validatePhoneField}
                     />
                   ) : (
                     <input
-                      className="form-input"
+                      className={`form-input${fieldErrors.phone ? ' input-error' : ''}`}
                       style={{ flex: '1', minWidth: '180px' }}
                       placeholder="e.g. +44 7911 123456"
                       inputMode="tel"
                       autoComplete="tel"
                       value={formData.phoneNational}
-                      onChange={(e) => setFormData({ ...formData, phoneNational: e.target.value })}
+                      onChange={(e) => {
+                        clearFieldError('phone');
+                        setFormData({ ...formData, phoneNational: e.target.value });
+                      }}
+                      onBlur={validatePhoneField}
                     />
                   )}
                 </div>
-                <span className="form-hint">
-                  Defaults to <strong>India (+91)</strong>; change the country if needed, or pick <strong>Other</strong> for any region not listed.
-                </span>
+                {fieldErrors.phone ? (
+                  <p className="form-error">{fieldErrors.phone}</p>
+                ) : (
+                  <span className="form-hint">
+                    Defaults to <strong>India (+91)</strong>; change the country if needed, or pick <strong>Other</strong> for any region not listed.
+                  </span>
+                )}
               </div>
 
               {/* Role-specific fields */}
@@ -467,8 +573,17 @@ export default function RegisterPage() {
                 <>
                   <div className="form-group">
                     <label className="form-label">Company Name <span className="required">*</span></label>
-                    <input className="form-input" placeholder="TechCorp Solutions" value={formData.companyName}
-                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} required />
+                    <input
+                      className={`form-input${fieldErrors.companyName ? ' input-error' : ''}`}
+                      placeholder="TechCorp Solutions"
+                      value={formData.companyName}
+                      onChange={(e) => {
+                        clearFieldError('companyName');
+                        setFormData({ ...formData, companyName: e.target.value });
+                      }}
+                      required
+                    />
+                    {fieldErrors.companyName ? <p className="form-error">{fieldErrors.companyName}</p> : null}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Industry</label>
@@ -492,8 +607,17 @@ export default function RegisterPage() {
                 <>
                   <div className="form-group">
                     <label className="form-label">College Name <span className="required">*</span></label>
-                    <input className="form-input" placeholder="Indian Institute of Technology" value={formData.collegeFullName}
-                      onChange={(e) => setFormData({ ...formData, collegeFullName: e.target.value })} required />
+                    <input
+                      className={`form-input${fieldErrors.collegeFullName ? ' input-error' : ''}`}
+                      placeholder="Indian Institute of Technology"
+                      value={formData.collegeFullName}
+                      onChange={(e) => {
+                        clearFieldError('collegeFullName');
+                        setFormData({ ...formData, collegeFullName: e.target.value });
+                      }}
+                      required
+                    />
+                    {fieldErrors.collegeFullName ? <p className="form-error">{fieldErrors.collegeFullName}</p> : null}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div className="form-group">
@@ -527,38 +651,12 @@ export default function RegisterPage() {
                   }
                   onClick={() => {
                     setError('');
-                    const fnErr = validatePersonName(formData.firstName, { required: true, label: 'First name' });
-                    if (fnErr) {
-                      setError(fnErr);
+                    const nextErrors = validateRegisterStep2Fields(formData);
+                    if (Object.keys(nextErrors).length > 0) {
+                      setFieldErrors(nextErrors);
                       return;
                     }
-                    const lnErr = validatePersonName(formData.lastName, { required: false, label: 'Last name' });
-                    if (lnErr) {
-                      setError(lnErr);
-                      return;
-                    }
-                    if (!validateEmail(formData.email)) {
-                      setError('Enter a valid email address.');
-                      return;
-                    }
-                    if (formData.role === 'student') {
-                      const bErr = validateBatchYear(formData.batchYear, { required: true });
-                      if (bErr) {
-                        setError(bErr);
-                        return;
-                      }
-                      if (!formData.departmentId) {
-                        setError('Please select your department.');
-                        return;
-                      }
-                    }
-                    const phone = buildRegisterPhone(formData);
-                    if (phone && !validatePhone(phone)) {
-                      setError(
-                        'Check your mobile number: use a country code above, or pick “Other” and type a full number starting with +.',
-                      );
-                      return;
-                    }
+                    setFieldErrors({});
                     setStep(3);
                   }}
                 >

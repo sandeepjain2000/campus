@@ -23,7 +23,7 @@ qa/data/state/.last-guided-marker.txt
 qa/data/voice/audio/
 qa/data/voice/transcripts/
 qa/data/voice/voice_manifest.jsonl
-qa/data/downloads/cvs/
+qa/data/downloads/cv-exports/
 db/sqlite/guided_testing.sqlite
 db/sqlite/*.sqlite
 npm-debug.log*
