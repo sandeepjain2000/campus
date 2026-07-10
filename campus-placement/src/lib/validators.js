@@ -2,6 +2,22 @@
  * Input validation helpers for the Campus Placement platform
  */
 
+import { formatValidationError, stripValidationErrorCode } from '@/lib/validationErrorCode';
+
+/** Prefix a validation message with [VAL-{FIELD}-{RULE}] when non-empty. */
+function val(fieldId, message) {
+  const text = String(message || '').trim();
+  if (!text) return '';
+  return formatValidationError(fieldId, text);
+}
+
+function personNameFieldId(label) {
+  const l = String(label || 'Name').toLowerCase();
+  if (l.includes('first')) return 'auth.firstName';
+  if (l.includes('last')) return 'auth.lastName';
+  return 'student.name';
+}
+
 export function validateEmail(email) {
   const trimmed = String(email || '').trim();
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
@@ -11,9 +27,9 @@ export function validateEmail(email) {
 /** Returns an error message, or empty string when valid. */
 export function getEmailValidationError(email, { required = true } = {}) {
   const trimmed = String(email || '').trim();
-  if (!trimmed) return required ? 'Email is required.' : '';
+  if (!trimmed) return required ? val('auth.email', 'Email is required.') : '';
   if (!validateEmail(trimmed)) {
-    return 'Enter a valid email address (e.g. name@example.com).';
+    return val('auth.email', 'Enter a valid email address (e.g. name@example.com).');
   }
   return '';
 }
@@ -22,7 +38,7 @@ export function getEmailValidationError(email, { required = true } = {}) {
 export function validateStudentProfileEmails({ communicationEmail, emails } = {}) {
   const comm = String(communicationEmail || '').trim();
   if (comm && !validateEmail(comm)) {
-    return 'Communication email must be a valid email address (e.g. name@example.com).';
+    return val('student.email', 'Communication email must be a valid email address (e.g. name@example.com).');
   }
 
   const rows = Array.isArray(emails) ? emails : [];
@@ -31,7 +47,7 @@ export function validateStudentProfileEmails({ communicationEmail, emails } = {}
     if (!value) continue;
     const label = String(row?.label || 'Email').trim() || 'Email';
     if (!validateEmail(value)) {
-      return `${label} must be a valid email address (e.g. name@example.com).`;
+      return val('student.email', `${label} must be a valid email address (e.g. name@example.com).`);
     }
   }
   return '';
@@ -44,7 +60,7 @@ export function validateStudentBranchField(value, { label = 'Branch / specialisa
   const s = String(value ?? '').trim();
   if (!s) return '';
   if (s.length > MAX_STUDENT_BRANCH_LENGTH) {
-    return `${label} must be ${MAX_STUDENT_BRANCH_LENGTH} characters or fewer`;
+    return val('student.branch', `${label} must be ${MAX_STUDENT_BRANCH_LENGTH} characters or fewer`);
   }
   return '';
 }
@@ -65,16 +81,23 @@ export function normalizePersonName(name) {
 }
 
 export function validatePersonName(name, { required = true, label = 'Name' } = {}) {
+  const fieldId = personNameFieldId(label);
   const s = normalizePersonName(name);
-  if (!s) return required ? `${label} is required` : '';
-  if (s.length < 2) return `${label} must be at least 2 characters`;
-  if (s.length > 100) return `${label} is too long`;
-  if (/\d/.test(s)) return `${label} cannot contain numbers`;
+  if (!s) return required ? val(fieldId, `${label} is required`) : '';
+  if (s.length < 2) return val(fieldId, `${label} must be at least 2 characters`);
+  if (s.length > 100) return val(fieldId, `${label} is too long`);
+  if (/\d/.test(s)) return val(fieldId, `${label} cannot contain numbers`);
   if (/[^\p{L}\p{M}\s\u0027\u2019\u02BC.\u00B7-]/u.test(s)) {
-    return `${label} may only contain letters and common name characters (spaces, hyphens, apostrophes, periods)`;
+    return val(
+      fieldId,
+      `${label} may only contain letters and common name characters (spaces, hyphens, apostrophes, periods)`,
+    );
   }
   if (!PERSON_NAME_PATTERN.test(s)) {
-    return `${label} must use letters with spaces or connectors (e.g. hyphen, apostrophe) between name parts`;
+    return val(
+      fieldId,
+      `${label} must use letters with spaces or connectors (e.g. hyphen, apostrophe) between name parts`,
+    );
   }
   return '';
 }
@@ -84,10 +107,10 @@ const ROLL_BODY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 function validateRollBody(roll) {
   const s = String(roll || '').trim();
-  if (!s) return { error: 'Roll No is required' };
-  if (s.length > 48) return { error: 'Roll No is too long' };
+  if (!s) return { error: val('student.rollNo', 'Roll No is required') };
+  if (s.length > 48) return { error: val('student.rollNo', 'Roll No is too long') };
   if (!ROLL_BODY_PATTERN.test(s)) {
-    return { error: 'Roll No may only contain letters, numbers, hyphens, and underscores' };
+    return { error: val('student.rollNo', 'Roll No may only contain letters, numbers, hyphens, and underscores') };
   }
   return { rollNumber: s };
 }
@@ -102,7 +125,7 @@ function escapeRegExp(s) {
  */
 export function resolveStudentRollNumber(rawInput, shortCode) {
   const input = String(rawInput || '').trim();
-  if (!input) return { error: 'Roll No is required' };
+  if (!input) return { error: val('student.rollNo', 'Roll No is required') };
 
   const code = String(shortCode || '').trim();
   if (!code) {
@@ -128,11 +151,11 @@ export function resolveStudentRollNumber(rawInput, shortCode) {
     const tail = input.slice(dash + 1).trim();
     if (/^[A-Za-z]{2,12}$/.test(head) && !/\d/.test(head) && head.toLowerCase() !== code.toLowerCase()) {
       return {
-        error: `System ID must use your college prefix "${code}-" (found "${head}-")`,
+        error: val('student.rollNo', `System ID must use your college prefix "${code}-" (found "${head}-")`),
       };
     }
     if (!tail && head.toLowerCase() === code.toLowerCase()) {
-      return { error: 'Roll No is required after college prefix' };
+      return { error: val('student.rollNo', 'Roll No is required after college prefix') };
     }
   }
 
@@ -158,13 +181,15 @@ export function parseStudentFullName(name) {
 /** Admission / batch start year (e.g. UG batch of 2024). */
 export function validateBatchYear(yearStr, { required = false } = {}) {
   const raw = String(yearStr ?? '').trim();
-  if (!raw) return required ? 'Batch year is required' : '';
+  if (!raw) return required ? val('student.batchYear', 'Batch year is required') : '';
   const y = parseInt(raw, 10);
-  if (!/^\d{4}$/.test(raw) || Number.isNaN(y)) return 'Enter batch year as a 4-digit year (e.g. 2024)';
+  if (!/^\d{4}$/.test(raw) || Number.isNaN(y)) {
+    return val('student.batchYear', 'Enter batch year as a 4-digit year (e.g. 2024)');
+  }
   const now = new Date().getFullYear();
   const min = now - 12;
   const max = now + 8;
-  if (y < min || y > max) return `Batch year must be between ${min} and ${max}`;
+  if (y < min || y > max) return val('student.batchYear', `Batch year must be between ${min} and ${max}`);
   return '';
 }
 
@@ -184,15 +209,15 @@ const PASSWORD_SPECIAL_CHAR_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
 /** Returns an error message, or empty string when valid. */
 export function getPasswordValidationError(password) {
   const s = String(password ?? '');
-  if (!s) return 'Password is required';
+  if (!s) return val('auth.password', 'Password is required');
   if (s.length < PASSWORD_MIN_LENGTH) {
-    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+    return val('auth.password', `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
   }
-  if (!/[a-z]/.test(s)) return 'Password must include a lowercase letter';
-  if (!/[A-Z]/.test(s)) return 'Password must include an uppercase letter';
-  if (!/\d/.test(s)) return 'Password must include a number';
+  if (!/[a-z]/.test(s)) return val('auth.password', 'Password must include a lowercase letter');
+  if (!/[A-Z]/.test(s)) return val('auth.password', 'Password must include an uppercase letter');
+  if (!/\d/.test(s)) return val('auth.password', 'Password must include a number');
   if (!PASSWORD_SPECIAL_CHAR_RE.test(s)) {
-    return 'Password must include a special character (!@#$%^&* etc.)';
+    return val('auth.password', 'Password must include a special character (!@#$%^&* etc.)');
   }
   return '';
 }
@@ -209,21 +234,21 @@ export function validatePhone(phone) {
 /** Returns an error message, or empty string when valid. Empty allowed unless required. */
 export function getPhoneValidationError(phone, { required = false } = {}) {
   if (phone == null || String(phone).trim() === '') {
-    return required ? 'Mobile number is required.' : '';
+    return required ? val('auth.phone', 'Mobile number is required.') : '';
   }
   const compact = String(phone).replace(/[\s-]/g, '');
   if (!/^\+[1-9]\d{7,14}$/.test(compact)) {
-    return 'Enter a valid mobile number with country code (e.g. +91 9876543210).';
+    return val('auth.phone', 'Enter a valid mobile number with country code (e.g. +91 9876543210).');
   }
   if (compact.startsWith('+91')) {
     const national = compact.slice(3);
     if (national.length !== 10 || !/^[6-9]\d{9}$/.test(national)) {
-      return 'Indian mobile numbers must be 10 digits starting with 6, 7, 8, or 9.';
+      return val('auth.phone', 'Indian mobile numbers must be 10 digits starting with 6, 7, 8, or 9.');
     }
   } else if (compact.startsWith('+1')) {
     const national = compact.slice(2);
     if (national.length !== 10 || !/^\d{10}$/.test(national)) {
-      return 'US/Canada numbers must be 10 digits after +1.';
+      return val('auth.phone', 'US/Canada numbers must be 10 digits after +1.');
     }
   }
   return '';
@@ -249,7 +274,7 @@ export function getRegistrationPhoneValidationError(
 ) {
   const nationalRaw = String(phoneNational || '').trim();
   if (!nationalRaw) {
-    return required ? 'Mobile number is required.' : '';
+    return required ? val('auth.phone', 'Mobile number is required.') : '';
   }
   const e164 = buildRegistrationPhoneE164({ phoneDialCode, phoneNational, PHONE_FULL_E164 });
   return getPhoneValidationError(e164, { required: true });
@@ -272,10 +297,10 @@ export function validateCGPA(cgpa) {
 /** Student / college-record CGPA: when set, must be in (0, 10]. Empty allowed unless required. */
 export function validateStudentCgpa(cgpa, { required = false } = {}) {
   const raw = cgpa === '' || cgpa == null ? '' : String(cgpa).trim();
-  if (!raw) return required ? 'CGPA is required' : '';
+  if (!raw) return required ? val('student.cgpa', 'CGPA is required') : '';
   const num = parseFloat(raw);
   if (!Number.isFinite(num) || num <= 0 || num > 10) {
-    return 'CGPA must be greater than 0 and at most 10';
+    return val('student.cgpa', 'CGPA must be greater than 0 and at most 10');
   }
   return '';
 }
@@ -296,10 +321,10 @@ export function validatePercentage(pct) {
 /** Board / diploma percentage: when set, must be in [0, 100]. Empty allowed unless required. */
 export function validateStudentPercentage(pct, { label = 'Percentage', required = false } = {}) {
   const raw = pct === '' || pct == null ? '' : String(pct).trim();
-  if (!raw) return required ? `${label} is required` : '';
+  if (!raw) return required ? val('student.percent', `${label} is required`) : '';
   const num = parseFloat(raw);
   if (!Number.isFinite(num) || num <= 0 || num > 100) {
-    return `${label} must be greater than 0 and at most 100`;
+    return val('student.percent', `${label} must be greater than 0 and at most 100`);
   }
   return '';
 }
@@ -319,9 +344,9 @@ export function parseStudentPercentageOrNull(pct, label, options = {}) {
 /** Board / university name: when set, must contain at least one letter (not digits-only). */
 export function validateEducationBoard(value, { label = 'Board', allowEmpty = true } = {}) {
   const s = String(value ?? '').trim();
-  if (!s) return allowEmpty ? '' : `${label} is required.`;
+  if (!s) return allowEmpty ? '' : val('student.educationBoard', `${label} is required.`);
   if (!/\p{L}/u.test(s)) {
-    return `${label} must include at least one letter (e.g. CBSE, ICSE, State Board).`;
+    return val('student.educationBoard', `${label} must include at least one letter (e.g. CBSE, ICSE, State Board).`);
   }
   return '';
 }
@@ -390,14 +415,17 @@ export function validateRegistration(data) {
   if (phoneErr) errors.phone = phoneErr;
   const passwordErr = getPasswordValidationError(data.password);
   if (passwordErr) {
-    errors.password = passwordErr === 'Password is required' ? PASSWORD_REQUIREMENTS_MESSAGE : passwordErr;
+    errors.password =
+      stripValidationErrorCode(passwordErr) === 'Password is required'
+        ? val('auth.password', PASSWORD_REQUIREMENTS_MESSAGE)
+        : passwordErr;
   }
   const fnErr = validatePersonName(data.firstName, { required: true, label: 'First name' });
   if (fnErr) errors.firstName = fnErr;
   const lnErr = validatePersonName(data.lastName, { required: false, label: 'Last name' });
   if (lnErr) errors.lastName = lnErr;
   if (!data.role || !['student', 'employer', 'college_admin'].includes(data.role)) {
-    errors.role = 'Valid role is required';
+    errors.role = val('auth.role', 'Valid role is required');
   }
 
   if (data.role === 'student') {
@@ -406,13 +434,15 @@ export function validateRegistration(data) {
         ? data.campusBindingToken.trim().replace(/\s+/g, '')
         : '';
     if (key.length < 15) {
-      errors.campusBindingToken =
-        'Campus enrollment key is too short — paste the full code from your placement office';
+      errors.campusBindingToken = val(
+        'auth.campusBindingToken',
+        'Campus enrollment key is too short — paste the full code from your placement office',
+      );
     }
     const deptId = typeof data.departmentId === 'string' ? data.departmentId.trim() : '';
     const deptText = typeof data.department === 'string' ? data.department.trim() : '';
     if (!deptId && (!deptText || deptText.length < 2)) {
-      errors.department = 'Please select a department';
+      errors.department = val('auth.department', 'Please select a department');
     }
     const byErr = validateBatchYear(data.batchYear, { required: true });
     if (byErr) errors.batchYear = byErr;
@@ -441,12 +471,13 @@ export function validateTitle(
   title,
   { required = true, label = 'Title', minLength = 3, maxLength = MAX_TITLE_LENGTH } = {},
 ) {
+  const prefix = (msg) => formatValidationError('common.title', msg);
   const s = normalizeTitle(title);
-  if (!s) return required ? `${label} is required` : '';
-  if (s.length < minLength) return `${label} must be at least ${minLength} characters`;
-  if (s.length > maxLength) return `${label} must be ${maxLength} characters or fewer`;
+  if (!s) return required ? prefix(`${label} is required.`) : '';
+  if (s.length < minLength) return prefix(`${label} must be at least ${minLength} characters`);
+  if (s.length > maxLength) return prefix(`${label} must be ${maxLength} characters or fewer`);
   if (!TITLE_PATTERN.test(s)) {
-    return `${label} may only contain letters, numbers, spaces, hyphens, and underscores`;
+    return prefix(`${label} may only contain letters, numbers, spaces, hyphens, and underscores`);
   }
   return '';
 }
@@ -457,13 +488,13 @@ export function validateJobPosting(data) {
   const titleErr = validateTitle(data.title, { label: 'Job title' });
   if (titleErr) errors.title = titleErr;
   if (!data.job_type || !['full_time', 'internship', 'contract', 'ppo'].includes(data.job_type)) {
-    errors.job_type = 'Valid job type is required';
+    errors.job_type = val('employer.jobType', 'Valid job type is required');
   }
   if (data.salary_min && data.salary_max && parseFloat(data.salary_min) > parseFloat(data.salary_max)) {
-    errors.salary = 'Minimum salary cannot exceed maximum salary';
+    errors.salary = val('employer.salaryRange', 'Minimum salary cannot exceed maximum salary');
   }
   if (data.min_cgpa && !validateCGPA(data.min_cgpa)) {
-    errors.min_cgpa = 'CGPA must be between 0 and 10';
+    errors.min_cgpa = val('employer.minCgpa', 'CGPA must be between 0 and 10');
   }
   
   return {

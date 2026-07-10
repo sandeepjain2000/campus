@@ -89,6 +89,8 @@ export async function resolveEmployerIdByCompanyName(tenantId, companyName, clie
   const r = await q(
     `SELECT ep.id
      FROM employer_profiles ep
+     INNER JOIN employer_approvals ea
+       ON ea.employer_id = ep.id AND ea.tenant_id = $1::uuid
      WHERE lower(trim(ep.company_name)) = lower(trim($2))
      LIMIT 1`,
     [tenantId, name],

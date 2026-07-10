@@ -13,4 +13,13 @@ Double-click or run from any directory — each script `cd`s to the **campus-pla
 
 Voice deps (once): `pip install -r qa/data/requirements/requirements-voice.txt`
 
+**Feature verification (recent fixes):**
+
+| npm script | What it checks |
+|------------|----------------|
+| `npm run qa:verify:features` | Guided-runner 403 polling, campus jobs hidden, unified CV apply modal, profile photo |
+| `npm run qa:verify:recent-fixes` | Offer template edit, internship backlogs default |
+| `npm run test:guided:upload-qa2-cvs` | Upload PDFs from `qa2/CVs/` |
+| `npm run test:guided:upload-profile-photos` | Upload from `qa2/profilepics/` |
+
 From repo root: `qa\runners\batch\<script>.bat` · Parent folder: `CampusPlacement\run-guided.bat` forwards to `run-guided` here.

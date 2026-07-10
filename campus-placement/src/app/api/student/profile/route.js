@@ -11,6 +11,11 @@ import {
   validateStudentProfileEmailsPayload,
 } from '@/lib/apiInputValidation';
 import { resolveAlumniStudentFlag } from '@/lib/studentAlumniServer';
+import {
+  applyCollegeControlledProfileFields,
+  checkStudentCollegeFieldViolations,
+  mergeStudentAuxProfilePreservingCollegeFields,
+} from '@/lib/studentCollegeControlledFields';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -145,10 +150,29 @@ async function __platform_PUT(request) {
 
     await ensureStudentProfileRow(session.user.id);
 
-    const existingRes = await query(`SELECT cgpa FROM student_profiles WHERE user_id = $1::uuid`, [session.user.id]);
-    const existingCgpa = existingRes.rows[0]?.cgpa ?? null;
+    const existingRes = await query(
+      `SELECT cgpa, department, branch, batch_year, graduation_year, joining_academic_year, aux_profile
+       FROM student_profiles WHERE user_id = $1::uuid`,
+      [session.user.id],
+    );
+    const existing = existingRes.rows[0];
+    if (!existing) {
+      return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
+    }
 
-    const parts = payloadToDbParts({ ...body, emails: body.emails, phones: body.phones, communicationEmail: body.communicationEmail });
+    const collegeFieldErr = checkStudentCollegeFieldViolations(body, existing);
+    if (collegeFieldErr) {
+      return NextResponse.json({ error: collegeFieldErr }, { status: 403 });
+    }
+
+    const existingCgpa = existing.cgpa ?? null;
+
+    let parts = payloadToDbParts({ ...body, emails: body.emails, phones: body.phones, communicationEmail: body.communicationEmail });
+    parts = applyCollegeControlledProfileFields(parts, existing);
+    parts.aux_profile = mergeStudentAuxProfilePreservingCollegeFields(
+      existing.aux_profile,
+      parts.aux_profile,
+    );
 
     const academicErr = validateStudentAcademicScores({
       cgpa: existingCgpa,

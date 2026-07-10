@@ -62,7 +62,7 @@ export const emptyPlacementDriveForm = {
   salaryMax: '',
   minCgpa: '',
   eligibleBranches: '',
-  maxBacklogs: '',
+  maxBacklogs: '0',
   batchYear: '',
   minTenthPct: '',
   minTwelfthPct: '',
@@ -241,7 +241,7 @@ export function driveFormFromApiDrive(drive) {
       return n != null ? String(n) : '';
     })(),
     eligibleBranches: formatCommaList(job.eligibleBranches),
-    maxBacklogs: job.maxBacklogs != null ? String(job.maxBacklogs) : '',
+    maxBacklogs: job.maxBacklogs != null ? String(job.maxBacklogs) : '0',
     batchYear: job.batchYear != null ? String(job.batchYear) : '',
     minTenthPct: job.minTenthPct != null ? String(job.minTenthPct) : '',
     minTwelfthPct: job.minTwelfthPct != null ? String(job.minTwelfthPct) : '',
@@ -327,12 +327,12 @@ export function validatePlacementDriveForm(form) {
   const batchErr = validateBatchYear(form.batchYear, { required: false });
   if (batchErr) fieldErrors.batchYear = batchErr;
 
-  if (form.maxBacklogs !== '' && form.maxBacklogs != null) {
-    const backlogErr = validateFieldOrError(FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS, form.maxBacklogs, {
-      label: 'Max active backlogs',
-    });
-    if (backlogErr) fieldErrors.maxBacklogs = backlogErr;
-  }
+  const backlogErr = validateFieldOrError(
+    FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS,
+    form.maxBacklogs === '' || form.maxBacklogs == null ? '0' : form.maxBacklogs,
+    { label: 'Max active backlogs' },
+  );
+  if (backlogErr) fieldErrors.maxBacklogs = backlogErr;
 
   if (form.minTenthPct !== '' && form.minTenthPct != null) {
     const pctErr = validateFieldOrError(FIELD_IDS.STUDENT_PERCENT, form.minTenthPct, { label: 'Min 10th %' });

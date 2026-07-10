@@ -2,10 +2,11 @@
  * Shared clarifications client for DB-backed APIs.
  */
 
+import { throwIfApiError } from '@/lib/apiFetchError';
+
 export async function loadClarifications() {
   const res = await fetch('/api/clarifications');
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to load clarifications');
+  const json = await throwIfApiError(res, 'Failed to load clarifications');
   return json?.batches ? json : { batches: [] };
 }
 
@@ -15,9 +16,7 @@ export async function publishClarificationBatch({ company, postedBy, questionTex
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ company, postedBy, questionTexts }),
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to publish clarification batch');
-  return json;
+  return throwIfApiError(res, 'Failed to publish clarification batch');
 }
 
 export async function saveAnswer(batchId, questionId, answer, answeredBy) {
@@ -26,9 +25,7 @@ export async function saveAnswer(batchId, questionId, answer, answeredBy) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ batchId, questionId, answer, answeredBy }),
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Failed to save answer');
-  return json;
+  return throwIfApiError(res, 'Failed to save answer');
 }
 
 export const CLARIFICATION_RULES = {

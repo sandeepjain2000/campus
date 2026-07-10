@@ -19,7 +19,7 @@ async function getEmployerId(session) {
   return r.rows[0]?.id || null;
 }
 
-async function __platform_PATCH(request, { params }) {
+async function __platform_PATCH(request, routeContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -28,7 +28,8 @@ async function __platform_PATCH(request, { params }) {
     const employerId = await getEmployerId(session);
     if (!employerId) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
-    const id = String(params?.id || '').trim();
+    const { id: rawId } = await routeContext.params;
+    const id = String(rawId || '').trim();
     if (!id) return NextResponse.json({ error: 'Template id required' }, { status: 400 });
 
     const body = await request.json();
@@ -85,7 +86,7 @@ async function __platform_PATCH(request, { params }) {
   }
 }
 
-async function __platform_DELETE(_request, { params }) {
+async function __platform_DELETE(_request, routeContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || session.user.role !== 'employer') {
@@ -94,7 +95,9 @@ async function __platform_DELETE(_request, { params }) {
     const employerId = await getEmployerId(session);
     if (!employerId) return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
 
-    const id = String(params?.id || '').trim();
+    const { id: rawId } = await routeContext.params;
+    const id = String(rawId || '').trim();
+    if (!id) return NextResponse.json({ error: 'Template id required' }, { status: 400 });
     await query(
       `UPDATE employer_offer_templates SET is_active = false, updated_at = NOW()
        WHERE id = $1::uuid AND employer_id = $2::uuid`,

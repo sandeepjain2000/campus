@@ -24,8 +24,10 @@
     { "slug": "audit-report-export", "playbook": "audit-report-export", "title": "Audit report export email", "tourKey": "audit-report-export" },
     { "slug": "login-support-feedback", "playbook": "login-support-feedback", "title": "Login support & feedback reply", "tourKey": "login-support-feedback" },
     { "slug": "data-export-notice", "playbook": "data-export-notice", "title": "Personal data export notice", "tourKey": "data-export-notice" },
-    { "slug": "guest-engagement", "playbook": "guest-engagement", "title": "Guest engagement confirmation", "tourKey": "guest-engagement" },
+    { "slug": "guest-engagement", "playbook": "guest-engagement", "title": "Guest engagement confirmation", "tourKey": "guest-engagement", "ucId": "UC-GUEST" },
     { "slug": "college-internship-approve", "playbook": "internships-employer-publish", "title": "College internship approve (list view)" },
+    { "slug": "college-offers-upload", "playbook": "college-offers-upload", "title": "College offers upload and student visibility", "ucId": "UC-007" },
+    { "slug": "admin-governance", "playbook": "admin-governance", "title": "Super admin governance and audit visibility", "ucId": "UC-010" },
     {
       "slug": "internship-guides-feedback-supervisors",
       "playbook": "internship-guides-feedback-supervisors",

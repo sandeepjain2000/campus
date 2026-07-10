@@ -109,6 +109,14 @@ export function validateEmployerDriveDate(driveDate, { required = true } = {}) {
   return validateFieldOrError(FIELD_IDS.EMPLOYER_DRIVE_DATE, driveDate);
 }
 
+export function validateMaxBacklogsPayload(value) {
+  return validateFieldOrError(
+    FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS,
+    value === '' || value == null ? '0' : value,
+    { label: 'Max active backlogs' },
+  );
+}
+
 export function validateEmployerOfferPayload({ salary, deadline, joiningDate }) {
   return rejectIfInvalid([
     validateFieldOrError(FIELD_IDS.EMPLOYER_OFFER_SALARY, salary),

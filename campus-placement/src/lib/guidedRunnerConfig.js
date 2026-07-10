@@ -13,6 +13,9 @@ export function isGuidedRunnerFeatureEnabled() {
     return false;
   }
 
+  // Disable on any Vercel-hosted deployment (including custom domains).
+  if (process.env.NEXT_PUBLIC_VERCEL_URL) return false;
+
   if (typeof window !== 'undefined') {
     const hn = window.location.hostname;
     if (hn.includes('vercel.app')) {

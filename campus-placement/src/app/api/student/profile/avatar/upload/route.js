@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { isS3Configured, uploadStudentAvatarBuffer } from '@/lib/s3';
+import { isS3Configured, uploadStudentAvatarBuffer, describeStorageError } from '@/lib/s3';
+import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 import {
   normalizeStudentAvatarContentType,
   validateStudentAvatarBuffer,
   validateStudentAvatarFile,
 } from '@/lib/studentAvatarUpload';
+
+function buildAvatarViewUrl(fileUrl) {
+  return toSignedViewUrl(fileUrl) || String(fileUrl || '').trim();
+}
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -80,6 +85,7 @@ async function __platform_POST(req) {
     return NextResponse.json({
       avatar_url: upd.rows[0].avatar_url,
       fileUrl: uploaded.fileUrl,
+      viewUrl: buildAvatarViewUrl(upd.rows[0].avatar_url),
     });
   } catch (e) {
     console.error('POST /api/student/profile/avatar/upload', e);
@@ -87,7 +93,7 @@ async function __platform_POST(req) {
     if (msg.includes('S3 is not configured')) {
       return NextResponse.json({ error: 'Cloud storage not configured', hint: msg }, { status: 503 });
     }
-    return NextResponse.json({ error: msg || 'Upload failed' }, { status: 500 });
+    return NextResponse.json({ error: describeStorageError(e) }, { status: 500 });
   }
 }
 

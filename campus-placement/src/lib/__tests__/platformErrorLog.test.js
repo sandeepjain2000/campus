@@ -9,6 +9,7 @@ const {
   buildPlatformErrorResponse,
   writePlatformErrorLog,
   formatErrorReference,
+  logApiResponseIfFailure,
 } = require('@/lib/platformErrorLog');
 const { PLATFORM_ERROR_CONTEXT } = require('@/lib/platformErrorContext');
 
@@ -54,6 +55,8 @@ describe('platformErrorLog CRUD failure logging', () => {
     expect(query).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0][1][0]).toBe('warning');
     expect(body.error).toMatch(/No approved partnership/);
+    expect(body.reference).toBe(formatErrorReference('11111111-2222-3333-4444-555555555555'));
+    expect(body.error).toMatch(/\[Ref: 11111111\]/);
   });
 
   it('writes an info log for 401 unauthorized', async () => {
@@ -107,5 +110,22 @@ describe('platformErrorLog CRUD failure logging', () => {
     expect(id).toBeNull();
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  it('logApiResponseIfFailure attaches reference to 403 JSON responses', async () => {
+    const { NextResponse } = require('next/server');
+    const request = new Request('https://example.com/api/clarifications', { method: 'POST' });
+    const response = NextResponse.json({ error: 'Tenant context missing' }, { status: 403 });
+
+    const out = await logApiResponseIfFailure(request, response, {
+      context: 'api_clarifications',
+    });
+
+    expect(out.status).toBe(403);
+    const body = await out.json();
+    expect(body.reference).toBe(formatErrorReference('11111111-2222-3333-4444-555555555555'));
+    expect(body.error).toMatch(/Tenant context missing/);
+    expect(body.error).toMatch(/\[Ref: 11111111\]/);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 });

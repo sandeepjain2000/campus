@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query, transaction } from '@/lib/db';
-import { validateEmployerJobPayload, validateTitlePayload } from '@/lib/apiInputValidation';
+import { validateEmployerJobPayload, validateMaxBacklogsPayload, validateTitlePayload } from '@/lib/apiInputValidation';
 import { normalizeTitle } from '@/lib/validators';
 import { jobPostingNotDeletedSql } from '@/lib/migrationReady';
 import {
@@ -41,7 +41,7 @@ import {
   resolveInternshipDateInput,
   resolveInternshipDatesFromRow,
   resolveMaxBacklogsInput,
-  validateInternshipDatesForSubmit,
+  validateInternshipDateFields,
 } from '@/lib/internshipPostingMeta';
 
 export const dynamic = 'force-dynamic';
@@ -729,11 +729,12 @@ async function __platform_POST(request) {
     const startDateResolved = !alumniJob && jobType === 'internship' ? resolveInternshipDateInput(startDate) : null;
     const endDateResolved = !alumniJob && jobType === 'internship' ? resolveInternshipDateInput(endDate) : null;
     if (!alumniJob && jobType === 'internship') {
-      const datesErr = validateInternshipDatesForSubmit(startDateResolved, endDateResolved, {
+      const dates = validateInternshipDateFields(startDateResolved, endDateResolved, {
         required: status === 'published',
       });
-      if (datesErr) {
-        return NextResponse.json({ error: datesErr }, { status: 400 });
+      if (dates.formError) {
+        const field = dates.fieldErrors.endDate ? 'endDate' : dates.fieldErrors.startDate ? 'startDate' : 'dates';
+        return NextResponse.json({ error: dates.formError, field }, { status: 400 });
       }
     }
     let minCgpaResolved = { value: null };
@@ -775,6 +776,12 @@ async function __platform_POST(request) {
     const skills = parseKeywords(keywords);
     const skillsRequired = skills.length ? skills : ['General'];
     const branchesResolved = alumniJob ? null : resolveEligibleBranchesInput(eligibleBranches);
+    if (!alumniJob) {
+      const backlogErr = validateMaxBacklogsPayload(maxBacklogs);
+      if (backlogErr) {
+        return NextResponse.json({ error: backlogErr, field: 'maxBacklogs' }, { status: 400 });
+      }
+    }
     const maxBacklogsResolved = alumniJob ? null : resolveMaxBacklogsInput(maxBacklogs);
     const batchYearResolved = alumniJob ? null : resolveBatchYearInput(batchYear);
     const additionalInfoResolved = alumniJob
@@ -1040,6 +1047,15 @@ async function __platform_PATCH(request) {
         : eligibleBranches !== undefined
           ? resolveEligibleBranchesInput(eligibleBranches)
           : existing.eligible_branches;
+      if (!alumniJob && maxBacklogs !== undefined) {
+        const backlogErr = validateMaxBacklogsPayload(maxBacklogs);
+        if (backlogErr) {
+          const err = new Error(backlogErr);
+          err.statusCode = 400;
+          err.field = 'maxBacklogs';
+          throw err;
+        }
+      }
       const maxBacklogsForUpdate = alumniJob
         ? null
         : maxBacklogs !== undefined
@@ -1064,12 +1080,13 @@ async function __platform_PATCH(request) {
             ? resolveInternshipDateInput(endDate)
             : existingDates.endDate;
       if (!alumniJob && jobType === 'internship') {
-        const datesErr = validateInternshipDatesForSubmit(startDateForUpdate, endDateForUpdate, {
+        const dates = validateInternshipDateFields(startDateForUpdate, endDateForUpdate, {
           required: status === 'published',
         });
-        if (datesErr) {
-          const err = new Error(datesErr);
+        if (dates.formError) {
+          const err = new Error(dates.formError);
           err.statusCode = 400;
+          err.field = dates.fieldErrors.endDate ? 'endDate' : dates.fieldErrors.startDate ? 'startDate' : 'dates';
           throw err;
         }
       }

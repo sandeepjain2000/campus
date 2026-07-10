@@ -40,25 +40,41 @@ export function computeInternshipDurationMonths(startDate, endDate) {
 }
 
 /**
+ * Field-level internship date validation.
+ * @returns {{ fieldErrors: Record<string, string>, formError: string | null }}
+ */
+export function validateInternshipDateFields(startDate, endDate, options = {}) {
+  const { required = false } = options;
+  const fieldErrors = {};
+  const start = resolveInternshipDateInput(startDate);
+  const end = resolveInternshipDateInput(endDate);
+
+  if (!start && !end) {
+    if (required) {
+      fieldErrors.startDate = 'Internship start date is required.';
+      fieldErrors.endDate = 'Internship end date is required.';
+    }
+  } else if (!start) {
+    fieldErrors.startDate = 'Internship start date is required.';
+  } else if (!end) {
+    fieldErrors.endDate = 'Internship end date is required.';
+  } else if (end < start) {
+    fieldErrors.endDate = 'Internship end date must be on or after the start date.';
+  }
+
+  const messages = Object.values(fieldErrors);
+  const formError = messages.length === 1 ? messages[0] : messages.length > 1 ? messages.join(' ') : null;
+  return { fieldErrors, formError };
+}
+
+/**
  * @param {string | null | undefined} startDate
  * @param {string | null | undefined} endDate
  * @param {{ required?: boolean }} [options]
  * @returns {string | null}
  */
 export function validateInternshipDatesForSubmit(startDate, endDate, options = {}) {
-  const { required = false } = options;
-  const start = resolveInternshipDateInput(startDate);
-  const end = resolveInternshipDateInput(endDate);
-  if (!start && !end) {
-    return required ? 'Internship start date and end date are required.' : null;
-  }
-  if (!start || !end) {
-    return 'Both internship start date and end date are required.';
-  }
-  if (end < start) {
-    return 'Internship end date must be on or after the start date.';
-  }
-  return null;
+  return validateInternshipDateFields(startDate, endDate, options).formError;
 }
 
 /** @param {string | null | undefined} startDate @param {string | null | undefined} endDate */
@@ -238,7 +254,7 @@ export function resolveEligibleBranchesInput(raw) {
 }
 
 export function resolveMaxBacklogsInput(value) {
-  if (value === '' || value == null) return null;
+  if (value === '' || value == null) return 0;
   const n = Number(value);
   if (Number.isNaN(n)) return null;
   return Math.max(0, Math.floor(n));

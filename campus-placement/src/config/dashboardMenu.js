@@ -2,6 +2,8 @@ import {
   ALUMNI_BROWSE_JOBS_PATH,
   ALUMNI_GETTING_STARTED_PATH,
   ALUMNI_MY_JOBS_PATH,
+  LEGACY_STUDENT_APPLICATIONS_JOBS_PATH,
+  LEGACY_STUDENT_JOBS_PATH,
 } from '@/lib/alumniRoutes';
 import {
   EMPLOYER_ALUMNI_JOBS_PATH,
@@ -129,7 +131,6 @@ export const menuConfig = {
           { label: 'Browse Internships', href: '/dashboard/student/internships', icon: GraduationCap },
           { label: 'Browse Projects', href: '/dashboard/student/projects', icon: FolderDot },
           { label: 'Browse Hackathons', href: '/dashboard/student/hackathons', icon: Trophy },
-          { label: 'Browse Jobs', href: '/dashboard/student/jobs', icon: Briefcase },
         ],
       },
       {
@@ -147,7 +148,6 @@ export const menuConfig = {
             href: '/dashboard/student/internships/not-processed',
             icon: Lock,
           },
-          { label: 'My Jobs', href: '/dashboard/student/applications/jobs', icon: Briefcase },
         ],
       },
       {
@@ -582,17 +582,18 @@ const STUDENT_CAMPUS_ONLY_HREFS = new Set([
 const STUDENT_ALUMNI_ONLY_HREFS = new Set([
   ALUMNI_BROWSE_JOBS_PATH,
   ALUMNI_MY_JOBS_PATH,
-  '/dashboard/student/jobs',
-  '/dashboard/student/applications/jobs',
+  LEGACY_STUDENT_JOBS_PATH,
+  LEGACY_STUDENT_APPLICATIONS_JOBS_PATH,
 ]);
 
+const ALUMNI_STUDENT_NAV_ITEMS = {
+  'student-opportunities': [
+    { label: 'Browse Alumni Jobs', href: ALUMNI_BROWSE_JOBS_PATH, icon: Briefcase },
+  ],
+  'student-applications': [{ label: 'My Alumni Jobs', href: ALUMNI_MY_JOBS_PATH, icon: Briefcase }],
+};
+
 function mapStudentNavItem(item, isAlumni) {
-  if (isAlumni && item.href === '/dashboard/student/jobs') {
-    return { ...item, href: ALUMNI_BROWSE_JOBS_PATH, label: 'Browse Alumni Jobs' };
-  }
-  if (isAlumni && item.href === '/dashboard/student/applications/jobs') {
-    return { ...item, href: ALUMNI_MY_JOBS_PATH, label: 'My Alumni Jobs' };
-  }
   if (isAlumni && item.href === '/dashboard/student/getting-started') {
     return { ...item, href: ALUMNI_GETTING_STARTED_PATH };
   }
@@ -604,14 +605,18 @@ function filterStudentMenu(menu, isAlumni) {
   return {
     ...menu,
     sections: menu.sections
-      .map((section) => ({
-        ...section,
-        title:
-          isAlumni && section.id === 'student-opportunities' ? 'Alumni' : section.title,
-        items: section.items
+      .map((section) => {
+        const items = section.items
           .filter((item) => item.disabled || !hidden.has(item.href))
-          .map((item) => mapStudentNavItem(item, isAlumni)),
-      }))
+          .map((item) => mapStudentNavItem(item, isAlumni));
+        const alumniItems = isAlumni ? ALUMNI_STUDENT_NAV_ITEMS[section.id] || [] : [];
+        return {
+          ...section,
+          title:
+            isAlumni && section.id === 'student-opportunities' ? 'Alumni' : section.title,
+          items: [...items, ...alumniItems],
+        };
+      })
       .filter((section) => section.items.length > 0),
   };
 }

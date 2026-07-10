@@ -6,6 +6,7 @@ import {
   getRequestIp,
   sanitizePayloadForLog,
   writePlatformErrorLog,
+  formatErrorReference,
 } from '@/lib/platformErrorLog';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
@@ -59,7 +60,12 @@ async function __platform_POST(request) {
       },
     });
 
-    return NextResponse.json({ ok: true, referenceId: id || undefined });
+    const ref = formatErrorReference(id);
+    return NextResponse.json({
+      ok: true,
+      referenceId: id || undefined,
+      reference: ref || undefined,
+    });
   } catch (e) {
     console.error('POST /api/platform/report-error', e);
     return NextResponse.json({ error: 'Failed to record error' }, { status: 500 });

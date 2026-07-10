@@ -19,7 +19,10 @@ export function isBrowserLoadableAssetUrl(value) {
 
 export function isAwsS3Url(value) {
   const s = String(value || '').trim();
-  return /^https:\/\/[^/]+\.s3\.[^/]+\.amazonaws\.com\/.+/i.test(s);
+  if (!s) return false;
+  if (/^https:\/\/[^/]+\.s3\.[^/]+\.amazonaws\.com\/.+/i.test(s)) return true;
+  if (/^https:\/\/s3\.[^/]+\.amazonaws\.com\/[^/]+\/.+/i.test(s)) return true;
+  return false;
 }
 
 export function toSignedViewUrl(value) {

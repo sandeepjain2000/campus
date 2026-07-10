@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 import { isGuidedRunnerLoggingEnabled } from '@/lib/guidedRunnerConfig';
+import { appendErrorReference, formatErrorReference } from '@/lib/errorReference';
+
+export { formatErrorReference } from '@/lib/errorReference';
 
 export { PLATFORM_ERROR_CONTEXT };
 
@@ -145,12 +148,6 @@ export async function writePlatformErrorLog(payload) {
   }
 }
 
-/** @param {string | null | undefined} id */
-export function formatErrorReference(id) {
-  if (!id) return null;
-  return String(id).replace(/-/g, '').slice(0, 8).toUpperCase();
-}
-
 const API_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
 /**
@@ -176,7 +173,7 @@ export function inferApiErrorContext(pathname, method = '') {
 
 /**
  * Log an HTTP error response that did not already persist a platform_error_logs row.
- * Optionally attaches a reference id to 5xx JSON bodies for user support.
+ * Attaches a support reference id to all 4xx/5xx JSON bodies when not already present.
  * @param {Request} request
  * @param {Response} response
  * @param {{ context?: string; sessionUser?: object }} [opts]
@@ -242,7 +239,7 @@ export async function logApiResponseIfFailure(request, response, opts = {}) {
     },
   });
 
-  if (!referenceId || statusCode < 500) return response;
+  if (!referenceId) return response;
 
   const ref = formatErrorReference(referenceId);
   const headers = new Headers(response.headers);
@@ -250,12 +247,22 @@ export async function logApiResponseIfFailure(request, response, opts = {}) {
     headers.set('content-type', 'application/json');
   }
 
+  const baseMessage = body.userMessage || body.error || message;
+  const userMessage =
+    statusCode >= 500
+      ? (body.userMessage || appendErrorReference(
+        [baseMessage, 'Full details were saved for the platform administrator.'].filter(Boolean).join(' '),
+        { reference: ref, referenceId },
+      ))
+      : appendErrorReference(baseMessage, { reference: ref, referenceId });
+
   return NextResponse.json(
     {
       ...body,
+      error: userMessage,
+      userMessage,
       referenceId,
       reference: ref,
-      userMessage: body.userMessage || body.error || message,
     },
     { status: statusCode, headers },
   );
@@ -279,10 +286,12 @@ export function getRequestIp(request) {
 
 function buildErrorBody(statusCode, rawMessage, defaultMessage, hint, referenceId) {
   const ref = formatErrorReference(referenceId);
+  const baseMessage = rawMessage || defaultMessage || 'Request failed';
   if (statusCode < 500) {
+    const displayed = appendErrorReference(baseMessage, { reference: ref, referenceId });
     const body = {
-      error: rawMessage || defaultMessage || 'Request failed',
-      userMessage: rawMessage || defaultMessage || 'Request failed',
+      error: displayed,
+      userMessage: displayed,
     };
     if (ref) {
       body.referenceId = referenceId;
@@ -367,8 +376,13 @@ export async function buildPlatformErrorResponse(error, opts) {
       details: logDetails,
     });
 
+  const body = buildErrorBody(statusCode, rawMessage, opts.defaultMessage, hint, referenceId);
+  if (error && typeof error === 'object' && error.field) {
+    body.field = error.field;
+  }
+
   return {
     status: statusCode,
-    body: buildErrorBody(statusCode, rawMessage, opts.defaultMessage, hint, referenceId),
+    body,
   };
 }

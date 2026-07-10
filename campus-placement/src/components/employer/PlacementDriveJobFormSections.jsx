@@ -138,14 +138,11 @@ export default function PlacementDriveJobFormSections({ form, setForm, errors = 
         </div>
         <div className="form-group" style={{ marginBottom: 0 }} id="drive-field-maxBacklogs">
           <label className="form-label">Max active backlogs</label>
-          <input
-            className={inputClass(errors.maxBacklogs)}
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Leave blank for no limit"
+          <ValidatedNumberInput
+            fieldId={FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS}
             value={form.maxBacklogs}
-            onChange={(e) => setField('maxBacklogs', e.target.value)}
+            onChange={(v) => setField('maxBacklogs', v)}
+            className={inputClass(errors.maxBacklogs)}
           />
           <FieldError message={errors.maxBacklogs} />
         </div>

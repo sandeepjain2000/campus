@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { formatDate, formatStatus, getStatusColor } from '@/lib/utils';
 import EntityLogo from '@/components/EntityLogo';
@@ -22,6 +23,7 @@ import {
   WITHDRAWAL_CONFIRM_TITLE,
 } from '@/lib/applicationWithdrawal';
 import { ALUMNI_BROWSE_JOBS_PATH } from '@/lib/alumniRoutes';
+import { isAlumniStudent } from '@/lib/studentAlumni';
 import { useTableRowSelection, usePruneRowSelection } from '@/hooks/useTableRowSelection';
 import TableBulkActionBar from '@/components/table/TableBulkActionBar';
 import OpportunityEmailComposeModal from '@/components/student/OpportunityEmailComposeModal';
@@ -111,15 +113,26 @@ export default function StudentApplicationsPage({ params }) {
   }
 
   const { addToast } = useToast();
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isAlumni = isAlumniStudent(session?.user);
   const [statusTab, setStatusTab] = useState('');
   const [withdrawingId, setWithdrawingId] = useState(null);
   const [withdrawConfirmId, setWithdrawConfirmId] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
   const [emailComposeRows, setEmailComposeRows] = useState(null);
   const isJobApplications = type === 'jobs';
+
+  useEffect(() => {
+    if (status === 'loading' || !isJobApplications) return;
+    if (!isAlumni) {
+      router.replace('/dashboard/student/applications/drives');
+    }
+  }, [isAlumni, isJobApplications, router, status]);
+
   const apiEndpoint = type === 'drives' ? '/api/student/applications' : '/api/student/program-applications';
-  const { data, error, isLoading, mutate } = useSWR(apiEndpoint, fetcher);
+  const blockJobFetch = isJobApplications && !isAlumni;
+  const { data, error, isLoading, mutate } = useSWR(blockJobFetch ? null : apiEndpoint, fetcher);
   const {
     data: offers,
     mutate: mutateOffers,
@@ -270,6 +283,10 @@ export default function StudentApplicationsPage({ params }) {
   };
 
   if (error) return <PageError error={error} />;
+
+  if (isJobApplications && (status === 'loading' || !isAlumni)) {
+    return <PageLoading message="Loading…" />;
+  }
 
   const meta = TYPE_META[type] || TYPE_META.drives;
   const pageTitle = meta.title;

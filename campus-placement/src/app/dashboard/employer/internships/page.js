@@ -14,12 +14,11 @@ import { formatCurrency, formatDate, formatStatus, getStatusColor } from '@/lib/
 import { useToast } from '@/components/ToastProvider';
 import ValidatedNumberInput from '@/components/form/ValidatedNumberInput';
 import SegmentedDateInput from '@/components/form/SegmentedDateInput';
-import { FIELD_IDS, validateFieldOrError } from '@/lib/inputConstraints';
-import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
-import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
-import { toCsvIsoDate } from '@/lib/csvExport';
-import { formatEmployerMinCgpa, formatJobPostingStatus, normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
-import { validateAndResolveEmployerJobSubmit } from '@/lib/employerJobSubmitValidation';
+import { FIELD_IDS } from '@/lib/inputConstraints';
+import {
+  mapEmployerInternshipApiError,
+  validateEmployerInternshipForm,
+} from '@/lib/employerInternshipFormValidation';
 import EmployerCampusTargetPicker from '@/components/employer/EmployerCampusTargetPicker';
 import EligibilityGroupPicker from '@/components/employer/EligibilityGroupPicker';
 import { StandardTableIconAction } from '@/components/ui/StandardTableIconAction';
@@ -33,8 +32,11 @@ import {
   parseInternshipAdditionalInfo,
   parseInternshipDescription,
   resolveInternshipDatesFromRow,
-  validateInternshipDatesForSubmit,
 } from '@/lib/internshipPostingMeta';
+import { buildDefaultTenantSelection } from '@/lib/defaultTestCampus';
+import { ExportCsvSplitButton } from '@/components/export/ExportCsvSplitButton';
+import { toCsvIsoDate } from '@/lib/csvExport';
+import { formatEmployerMinCgpa, formatJobPostingStatus, normalizeEmployerMinCgpa } from '@/lib/employerJobDisplay';
 import { useEmployerPostingCampuses } from '@/hooks/useEmployerPostingCampuses';
 import EmployerListFormLayout from '@/components/employer/EmployerListFormLayout';
 import EmployerCampusSyncDialog from '@/components/employer/EmployerCampusSyncDialog';
@@ -44,6 +46,15 @@ async function swrFetcher(url) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
+}
+
+function InternFieldError({ message }) {
+  if (!message) return null;
+  return (
+    <p className="form-error" style={{ margin: '0.35rem 0 0' }}>
+      {message}
+    </p>
+  );
 }
 
 export default function EmployerInternshipsPage() {
@@ -72,7 +83,8 @@ export default function EmployerInternshipsPage() {
   const [keywords, setKeywords] = useState('');
   const [eligibleBranches, setEligibleBranches] = useState('');
   const [specializations, setSpecializations] = useState('');
-  const [maxBacklogs, setMaxBacklogs] = useState('');
+  const [maxBacklogs, setMaxBacklogs] = useState('0');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [batchYear, setBatchYear] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedTenantIds, setSelectedTenantIds] = useState({});
@@ -129,7 +141,8 @@ export default function EmployerInternshipsPage() {
     setKeywords('');
     setEligibleBranches('');
     setSpecializations('');
-    setMaxBacklogs('');
+    setMaxBacklogs('0');
+    setFieldErrors({});
     setBatchYear('');
     setNotes('');
     setEditingId(null);
@@ -169,7 +182,7 @@ export default function EmployerInternshipsPage() {
       setKeywords(intern.keywords || '');
       setEligibleBranches(formatCommaList(intern.branches ?? intern.eligibleBranches));
       setSpecializations(formatCommaList(intern.specializations));
-      setMaxBacklogs(intern.maxBacklogs != null ? String(intern.maxBacklogs) : '');
+      setMaxBacklogs(intern.maxBacklogs != null ? String(intern.maxBacklogs) : '0');
       setBatchYear(intern.batchYear != null ? String(intern.batchYear) : '');
       setNotes(parsed.notes);
       setSelectedTenantIds(buildDefaultTenantSelection(approvedCampuses, intern.tenantIds));
@@ -273,35 +286,31 @@ export default function EmployerInternshipsPage() {
 
   const submitInternship = useCallback(
     async (asDraft) => {
-      const titleErr = validateFieldOrError(FIELD_IDS.COMMON_TITLE, title, { label: 'Internship title' });
-      if (titleErr) {
-        addToast(titleErr, 'error');
-        return;
-      }
       const jobId = editingId || savedDraftId;
       const tenantIds = Object.entries(selectedTenantIds)
         .filter(([, v]) => v)
         .map(([k]) => k);
-      if (!asDraft && !tenantIds.length) {
-        addToast('Select at least one approved campus before publishing.', 'warning');
-        return;
-      }
-      const validated = validateAndResolveEmployerJobSubmit({
-        salaryMin: stipend,
-        salaryMax: stipendMax,
+
+      const validation = validateEmployerInternshipForm({
+        title,
+        startDate,
+        endDate,
+        maxBacklogs,
         minCgpa,
+        stipend,
+        stipendMax,
         vacancies,
-        jobType: 'internship',
+        tenantIds,
+        asDraft,
       });
-      if (validated.error) {
-        addToast(validated.error, 'warning');
+
+      if (validation.formError || Object.keys(validation.fieldErrors).length) {
+        setFieldErrors(validation.fieldErrors);
+        addToast(validation.formError || 'Fix the highlighted fields and try again.', 'warning');
         return;
       }
-      const datesErr = validateInternshipDatesForSubmit(startDate, endDate, { required: !asDraft });
-      if (datesErr) {
-        addToast(datesErr, 'warning');
-        return;
-      }
+
+      setFieldErrors({});
       const sm = stipend === '' ? null : Number(stipend);
       const sx = stipendMax === '' ? null : Number(stipendMax);
 
@@ -323,12 +332,12 @@ export default function EmployerInternshipsPage() {
           status: resolveStatus(),
           salaryMin: sm,
           salaryMax: sx != null && !Number.isNaN(sx) ? sx : sm,
-          minCgpa: validated.minCgpa,
+          minCgpa: validation.minCgpa,
           vacancies: vacancies === '' ? 1 : vacancies,
           keywords,
           eligibleBranches,
           specializations,
-          maxBacklogs: maxBacklogs === '' ? null : maxBacklogs,
+          maxBacklogs: validation.maxBacklogs,
           batchYear: batchYear === '' ? null : batchYear,
           startDate: startDate || null,
           endDate: endDate || null,
@@ -343,7 +352,9 @@ export default function EmployerInternshipsPage() {
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          addToast(json.error || (asDraft ? 'Could not save draft' : jobId ? 'Could not save changes' : 'Could not publish'), 'error');
+          const mapped = mapEmployerInternshipApiError(json.error, json.field);
+          setFieldErrors(mapped.fieldErrors);
+          addToast(mapped.formError || (asDraft ? 'Could not save draft' : jobId ? 'Could not save changes' : 'Could not publish'), 'error');
           return;
         }
 
@@ -589,28 +600,46 @@ export default function EmployerInternshipsPage() {
                 }
                 emptyMessage="No approved campuses. Request access from the campus directory first."
               />
+              <InternFieldError message={fieldErrors._campuses} />
             </div>
           ) : null}
           <div className="form-group">
             <label className="form-label">Internship Title <span className="required">*</span></label>
-            <input className="form-input" placeholder="e.g., Summer Data Intern" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              className={`form-input${fieldErrors.title ? ' input-error' : ''}`}
+              placeholder="e.g., Summer Data Intern"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (fieldErrors.title) setFieldErrors((prev) => ({ ...prev, title: '' }));
+              }}
+            />
+            <InternFieldError message={fieldErrors.title} />
           </div>
           <div className="form-group">
             <label className="form-label">Start date <span className="required">*</span></label>
             <SegmentedDateInput
               value={startDate}
-              onChange={setStartDate}
+              onChange={(v) => {
+                setStartDate(v);
+                if (fieldErrors.startDate) setFieldErrors((prev) => ({ ...prev, startDate: '' }));
+              }}
               aria-label="Internship start date"
             />
+            <InternFieldError message={fieldErrors.startDate} />
           </div>
           <div className="form-group">
             <label className="form-label">End date <span className="required">*</span></label>
             <SegmentedDateInput
               value={endDate}
               min={startDate || undefined}
-              onChange={setEndDate}
+              onChange={(v) => {
+                setEndDate(v);
+                if (fieldErrors.endDate) setFieldErrors((prev) => ({ ...prev, endDate: '' }));
+              }}
               aria-label="Internship end date"
             />
+            <InternFieldError message={fieldErrors.endDate} />
           </div>
           <div className="form-group">
             <label className="form-label">Stipend / month (min, INR)</label>
@@ -656,15 +685,19 @@ export default function EmployerInternshipsPage() {
           </div>
           <div className="form-group">
             <label className="form-label">Max active backlogs</label>
-            <input
-              className="form-input"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="Leave blank for no limit"
+            <ValidatedNumberInput
+              fieldId={FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS}
               value={maxBacklogs}
-              onChange={(e) => setMaxBacklogs(e.target.value)}
+              onChange={(v) => {
+                setMaxBacklogs(v);
+                if (fieldErrors.maxBacklogs) setFieldErrors((prev) => ({ ...prev, maxBacklogs: '' }));
+              }}
+              className={fieldErrors.maxBacklogs ? 'input-error' : undefined}
             />
+            <p className="text-xs text-secondary" style={{ margin: '0.35rem 0 0' }}>
+              0 means students with no active backlogs only. Increase if you allow backlogs.
+            </p>
+            <InternFieldError message={fieldErrors.maxBacklogs} />
           </div>
           <div className="form-group">
             <label className="form-label">Batch year</label>

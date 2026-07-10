@@ -32,6 +32,7 @@ export default function CollegeGuestEngagementsAddPage() {
       addToast(titleErr, 'error');
       return;
     }
+    const title = form.title.trim();
     const summary = form.summary.trim();
     if (!summary) {
       addToast('Summary is required.', 'error');

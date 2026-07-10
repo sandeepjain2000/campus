@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/sessionPolicy';
-import { writePlatformErrorLog } from '@/lib/platformErrorLog';
+import { getRequestIp, writePlatformErrorLog } from '@/lib/platformErrorLog';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -19,10 +19,8 @@ const ROLE_HOME_PATHS = {
  */
 export async function GET(request) {
   const cookieHeader = request.headers.get('cookie') || '';
-  console.log('[Auth Continue] GET endpoint invoked.');
-  console.log('[Auth Continue] Cookie header:', cookieHeader);
+  const hasSessionCookie = cookieHeader.includes(SESSION_COOKIE_NAME);
 
-  // Try parsing token using both SESSION_COOKIE_NAME and fallback options
   let token = null;
   let tokenError = null;
 
@@ -35,37 +33,36 @@ export async function GET(request) {
     });
   } catch (err) {
     tokenError = err;
-    console.error('[Auth Continue] Error getting token with custom name:', err);
+    console.error('[Auth Continue] Error reading session token:', err);
   }
-
-  // Let's also log to platform_error_logs for direct inspection
-  await writePlatformErrorLog({
-    context: 'auth_continue_debug',
-    severity: 'info',
-    statusCode: 200,
-    error: tokenError || new Error('Auth continue debug trace'),
-    userMessage: 'Auth continue debug log',
-    details: {
-      sessionCookieName: SESSION_COOKIE_NAME,
-      cookieHeader: cookieHeader.slice(0, 500),
-      tokenFound: !!token,
-      tokenRole: token?.role || null,
-      tokenId: token?.id || null,
-      tokenEmail: token?.email || null,
-      nodeEnv: process.env.NODE_ENV,
-      vercelEnv: process.env.VERCEL,
-      requestUrl: request.url,
-      headers: Object.fromEntries(request.headers.entries()),
-    }
-  });
 
   if (token?.role && ROLE_HOME_PATHS[token.role]) {
     const dest = ROLE_HOME_PATHS[token.role];
-    console.log(`[Auth Continue] JWT token found. User ID: ${token.id}, Role: ${token.role}. Redirecting to dashboard home: ${dest}`);
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
-  console.warn('[Auth Continue] Token verification failed or role is missing/invalid. Redirecting back to /login?error=session. Token:', token ? { id: token.id, email: token.email, role: token.role } : null);
+  const failureMessage = tokenError
+    ? 'Session token could not be read after sign-in'
+    : 'Session token missing or role invalid after sign-in';
+
+  await writePlatformErrorLog({
+    context: 'auth_continue_failed',
+    severity: 'warning',
+    statusCode: 401,
+    error: tokenError || new Error(failureMessage),
+    userMessage: failureMessage,
+    userId: token?.id || token?.sub || null,
+    ipAddress: getRequestIp(request),
+    details: {
+      sessionCookieName: SESSION_COOKIE_NAME,
+      sessionCookiePresent: hasSessionCookie,
+      tokenFound: Boolean(token),
+      tokenRole: token?.role || null,
+      tokenEmail: token?.email || null,
+      requestUrl: request.url,
+    },
+  });
+
   return NextResponse.redirect(new URL('/login?error=session', request.url));
 }
 

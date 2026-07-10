@@ -235,11 +235,16 @@ export function profileFromDb({ sp, skills, projects, accountEmail, userPhone, a
   return {
     department: sp.department || '',
     branch: sp.branch || '',
+    degreePursued: String(aux.degreePursued || aux.degree_pursued || '').trim(),
     rollNumber: sp.roll_number || '',
     batch: batchResolved.batch,
     joiningAcademicYear: batchResolved.joiningAcademicYear || batchResolved.batch,
     batchYear: sp.batch_year != null ? Number(sp.batch_year) : '',
     graduationYear: sp.graduation_year != null ? Number(sp.graduation_year) : '',
+    semester:
+      sp.semester_number != null
+        ? String(sp.semester_number)
+        : String(aux.semester || '').trim(),
     cgpa: sp.cgpa != null ? Number(sp.cgpa) : '',
     tenthPercentage: sp.tenth_percentage != null ? Number(sp.tenth_percentage) : '',
     twelfthPercentage: sp.twelfth_percentage != null ? Number(sp.twelfth_percentage) : '',

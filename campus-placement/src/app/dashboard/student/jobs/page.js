@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { clientDebugLog, flushClientDebugLog, debugFetch } from '@/lib/clientDebugLog';
@@ -33,6 +34,7 @@ import { useTableRowSelection, usePruneRowSelection } from '@/hooks/useTableRowS
 import TableBulkActionBar from '@/components/table/TableBulkActionBar';
 import OpportunityEmailComposeModal from '@/components/student/OpportunityEmailComposeModal';
 import { useProgramApplicationWithCv } from '@/components/student/StudentCvApply';
+import { isAlumniStudent } from '@/lib/studentAlumni';
 
 async function fetcher(url) {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
@@ -45,14 +47,31 @@ async function fetcher(url) {
 }
 
 export default function StudentJobsPage() {
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isAlumni = isAlumniStudent(session?.user);
   const { addToast } = useToast();
   const [selectedRow, setSelectedRow] = useState(null);
   const [emailComposeRows, setEmailComposeRows] = useState(null);
-  const { data, error, isLoading, mutate } = useSWR('/api/student/program-opportunities?kind=job', fetcher, {
-    revalidateOnFocus: true,
-    dedupingInterval: 0,
-  });
+  const { data, error, isLoading, mutate } = useSWR(
+    isAlumni ? '/api/student/program-opportunities?kind=job' : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 0,
+    },
+  );
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!isAlumni) {
+      router.replace('/dashboard/student/drives');
+    }
+  }, [isAlumni, router, status]);
+
+  if (status === 'loading' || !isAlumni) {
+    return <PageLoading message="Loading…" />;
+  }
   const { startApply, applyingId, pickerModal } = useProgramApplicationWithCv({
     addToast,
     mutate,

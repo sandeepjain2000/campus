@@ -53,6 +53,7 @@ export default function SessionLifetimeGuard({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
+          failed: true,
           sessionId: `guard-signout-${Date.now()}`,
           steps: [
             {

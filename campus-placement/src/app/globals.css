@@ -2435,6 +2435,18 @@ button.dev-screen-id-tag {
   border-color: #f87171 !important;
 }
 
+.dev-guided-unavailable {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  background: var(--bg-tertiary, #f1f5f9);
+  border: 1px solid var(--border-default, #e2e8f0);
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  cursor: help;
+}
+
 @keyframes ph-guided-tag-shake {
   0%,
   100% {

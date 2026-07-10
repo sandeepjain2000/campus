@@ -13,6 +13,7 @@ import {
   validatePlacementDate,
 } from '@/lib/dateOnly';
 import { MAX_TITLE_LENGTH, validateEducationBoard, validateTitle } from '@/lib/validators';
+import { formatValidationError } from '@/lib/validationErrorCode';
 
 const NOW_YEAR = new Date().getFullYear();
 
@@ -372,7 +373,13 @@ export function validateField(fieldId, value, ctx = {}) {
       return checkIntRange(value, { min: 1, max: 90, allowEmpty: false, label: 'Acceptance window (days)' });
 
     case FIELD_IDS.COLLEGE_RULE_MAX_BACKLOGS:
-      return checkIntRange(value, { min: 0, max: 20, allowZero: true, allowEmpty: true, label: 'Max backlogs allowed' });
+      return checkIntRange(value, {
+        min: 0,
+        max: 20,
+        allowZero: true,
+        allowEmpty: true,
+        label: ctx.label || 'Max active backlogs',
+      });
 
     case FIELD_IDS.COLLEGE_RULE_BUFFER_DAYS:
       return checkIntRange(value, { min: 0, max: 30, allowZero: true, allowEmpty: false, label: 'Buffer days' });
@@ -456,7 +463,7 @@ export function validateField(fieldId, value, ctx = {}) {
         min: 1,
         max: 10000,
         allowEmpty: !ctx.required,
-        label: ctx.label || 'Vacancies',
+        label: ctx.label || 'Openings',
       });
 
     case FIELD_IDS.EMPLOYER_MIN_EXPERIENCE:
@@ -586,10 +593,10 @@ export function validateFieldWithConfirm(fieldId, value, ctx = {}) {
   return { proceed: true, error: null };
 }
 
-/** Server-side: first error string or null. */
+/** Server-side: first error string or null (includes [VAL-…] prefix). */
 export function validateFieldOrError(fieldId, value, ctx = {}) {
   const r = validateField(fieldId, value, ctx);
-  return r.ok ? null : r.error;
+  return r.ok ? null : formatValidationError(fieldId, r.error);
 }
 
 /** Pair salary min/max for forms. */

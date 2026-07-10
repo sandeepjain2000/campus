@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { getDevScreenId } from '@/config/devScreenIds';
+import { isGuidedRunnerFeatureEnabled } from '@/lib/guidedRunnerConfig';
 import {
   GUIDED_RUNNER_ROOT_ID,
+  GUIDED_RUNNER_DISABLED_MESSAGE,
   GUIDED_RUNNER_POLL_EVENT,
   acknowledgeGuidedNextClick,
   fetchGuidedState,
+  isGuidedRunnerApiDisabled,
   isStepArmed,
 } from '@/lib/guidedRunnerClient';
 
@@ -19,6 +22,14 @@ function showDevScreenTag(pathname, sessionActive) {
   if (p === '/' && sessionActive) return true;
   if ((p === '/login' || p === '/sign-in') && sessionActive) return true;
   if (p.startsWith('/developer')) return true;
+  return p.startsWith('/dashboard') || p.startsWith('/data-entry');
+}
+
+function shouldAnnounceGuidedUnavailable(pathname) {
+  const p = pathname || '';
+  if (process.env.NEXT_PUBLIC_SHOW_DEV_SCREEN_IDS === 'true') return true;
+  if (p.startsWith('/developer')) return true;
+  if (process.env.NODE_ENV !== 'production') return true;
   return p.startsWith('/dashboard') || p.startsWith('/data-entry');
 }
 
@@ -34,6 +45,7 @@ function resolveScreenId(pathname) {
 export default function DevScreenTag({ screenId } = {}) {
   const pathname = usePathname();
   const id = screenId || resolveScreenId(pathname);
+  const guidedRunnerEnabled = isGuidedRunnerFeatureEnabled();
   const [sessionActive, setSessionActive] = useState(false);
   const [armed, setArmed] = useState(false);
   const [running, setRunning] = useState(false);
@@ -41,7 +53,20 @@ export default function DevScreenTag({ screenId } = {}) {
   const [flash, setFlash] = useState(false);
   const [rejectFlash, setRejectFlash] = useState(false);
   const [clickHint, setClickHint] = useState('');
+  const [apiUnavailable, setApiUnavailable] = useState(() => isGuidedRunnerApiDisabled());
+  const [pollingStopped, setPollingStopped] = useState(
+    () => !guidedRunnerEnabled || isGuidedRunnerApiDisabled(),
+  );
   const clickInFlight = useRef(false);
+  const intervalRef = useRef(null);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current != null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setPollingStopped(true);
+  }, []);
 
   const applyState = useCallback((data) => {
     if (!data?.ok) return;
@@ -56,31 +81,64 @@ export default function DevScreenTag({ screenId } = {}) {
   }, []);
 
   const sync = useCallback(async () => {
+    if (!guidedRunnerEnabled || pollingStopped || isGuidedRunnerApiDisabled()) {
+      return { ok: false };
+    }
+
     try {
       const data = await fetchGuidedState();
-      applyState(data);
+      if (data?.disabled) {
+        setApiUnavailable(true);
+        stopPolling();
+        return data;
+      }
+      if (data?.ok) {
+        applyState(data);
+      }
       return data;
     } catch {
       return { ok: false };
     }
-  }, [applyState]);
+  }, [applyState, guidedRunnerEnabled, pollingStopped, stopPolling]);
 
   useEffect(() => {
+    if (!guidedRunnerEnabled || pollingStopped || isGuidedRunnerApiDisabled()) {
+      if (isGuidedRunnerApiDisabled()) {
+        setApiUnavailable(true);
+        setPollingStopped(true);
+      }
+      return undefined;
+    }
+
     void sync();
+
     const onUpdate = () => {
-      void sync();
+      if (!pollingStopped && !isGuidedRunnerApiDisabled()) {
+        void sync();
+      }
     };
+
     window.addEventListener(GUIDED_RUNNER_POLL_EVENT, onUpdate);
     const intervalMs = armed ? 80 : sessionActive ? 150 : 450;
-    const interval = window.setInterval(sync, intervalMs);
+    intervalRef.current = window.setInterval(() => {
+      if (pollingStopped || isGuidedRunnerApiDisabled()) {
+        stopPolling();
+        return;
+      }
+      void sync();
+    }, intervalMs);
+
     return () => {
       window.removeEventListener(GUIDED_RUNNER_POLL_EVENT, onUpdate);
-      window.clearInterval(interval);
+      if (intervalRef.current != null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [sync, armed, sessionActive]);
+  }, [sync, armed, sessionActive, guidedRunnerEnabled, pollingStopped, stopPolling]);
 
   const handleAckClick = useCallback(async () => {
-    if (clickInFlight.current) return;
+    if (clickInFlight.current || apiUnavailable) return;
     clickInFlight.current = true;
     setClickHint('');
 
@@ -90,6 +148,9 @@ export default function DevScreenTag({ screenId } = {}) {
         setFlash(true);
         setArmed(false);
         window.setTimeout(() => setFlash(false), 400);
+      } else if (result.reason === 'disabled') {
+        setApiUnavailable(true);
+        stopPolling();
       } else if (result.reason === 'running') {
         setRejectFlash(true);
         setClickHint('Running…');
@@ -102,22 +163,36 @@ export default function DevScreenTag({ screenId } = {}) {
           setClickHint('');
         }, 900);
       }
-      await sync();
+      if (result.reason !== 'disabled') {
+        await sync();
+      }
     } finally {
       clickInFlight.current = false;
     }
-  }, [sync]);
+  }, [apiUnavailable, stopPolling, sync]);
 
   useEffect(() => {
     const onKey = (ev) => {
       if (ev.key !== 'Enter' || !ev.altKey) return;
-      if (!armed || clickInFlight.current) return;
+      if (!armed || clickInFlight.current || apiUnavailable) return;
       ev.preventDefault();
       void handleAckClick();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [armed, handleAckClick]);
+  }, [armed, apiUnavailable, handleAckClick]);
+
+  if (apiUnavailable && shouldAnnounceGuidedUnavailable(pathname)) {
+    return (
+      <span
+        className="dev-guided-unavailable"
+        title={GUIDED_RUNNER_DISABLED_MESSAGE}
+        aria-label={GUIDED_RUNNER_DISABLED_MESSAGE}
+      >
+        Guided testing off
+      </span>
+    );
+  }
 
   if (!showDevScreenTag(pathname, sessionActive) || !id) return null;
 

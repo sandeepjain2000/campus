@@ -4,13 +4,14 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { formatDate, getInitials } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ToastProvider';
 import { ProfileLinkKindIcon } from '@/components/ProfileLinkKindIcon';
 import { defaultStudentProfile } from '@/lib/studentProfileStorage';
 import { toSignedViewUrl } from '@/lib/clientAssetUrl';
 import { uploadStudentAvatarViaServer } from '@/lib/clientStudentAvatarUpload';
-import { studentAvatarAcceptAttr, validateStudentAvatarFile } from '@/lib/studentAvatarUpload';
+import { studentAvatarAcceptAttr, validateStudentAvatarFileAsync } from '@/lib/studentAvatarUpload';
+import StudentProfileAvatar, { withAvatarCacheBust } from '@/components/student/StudentProfileAvatar';
 import {
   validateStudentAcademicPayload,
   validateEducationDetailsPayload,
@@ -29,6 +30,10 @@ import PageLoading from '@/components/PageLoading';
 import ProfilePhotoLightbox from '@/components/student/ProfilePhotoLightbox';
 import { Pencil } from 'lucide-react';
 import { postStudentCvUpload, studentCvViewUrl } from '@/lib/studentCvApiPaths';
+import {
+  resolveStudentBatchLabel,
+  resolveStudentDegreeLabel,
+} from '@/lib/studentCollegeControlledFields';
 
 const LINK_KINDS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -52,11 +57,18 @@ const PROFILE_TABS = [
 ];
 
 const PROFILE_EDUCATION_DETAIL_SECTIONS = [
-  ['graduation', 'Graduation', 'University / degree'],
-  ['diploma', 'Diploma', 'Diploma board'],
-  ['twelfth', '12th Standard', 'Class XII board'],
-  ['tenth', '10th Standard', 'Class X board'],
+  ['graduation', 'Graduation', 'University / degree', null],
+  ['diploma', 'Diploma', 'Diploma board', 'diplomaPercentage'],
+  ['twelfth', '12th Standard', 'Class XII board', 'twelfthPercentage'],
+  ['tenth', '10th Standard', 'Class X board', 'tenthPercentage'],
 ];
+
+function formatEducationPercent(value) {
+  if (value === '' || value == null) return '';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  return `${n}%`;
+}
 
 function newLinkId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -80,14 +92,9 @@ function deriveCurrentSemester(profile) {
   return String(semester);
 }
 
-/** Omit local-only / large fields from API save payload. */
+/** Omit college-controlled and local-only fields from API save payload. */
 function profilePutBody(p) {
   return {
-    department: p.department,
-    branch: p.branch,
-    batchYear: p.batchYear,
-    graduationYear: p.graduationYear,
-    cgpa: p.cgpa,
     tenthPercentage: p.tenthPercentage,
     twelfthPercentage: p.twelfthPercentage,
     diplomaPercentage: p.diplomaPercentage,
@@ -152,6 +159,8 @@ export default function StudentProfilePage() {
   const [suggestingSkills, setSuggestingSkills] = useState(false);
   const [suggestSkillsFeedback, setSuggestSkillsFeedback] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreviewBlobUrl, setAvatarPreviewBlobUrl] = useState('');
+  const [avatarCacheBust, setAvatarCacheBust] = useState(null);
   const [cvUploading, setCvUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -293,10 +302,13 @@ export default function StudentProfilePage() {
         return;
       }
       if (data.profile) {
-        setProfile({
+        setProfile((prev) => ({
           ...data.profile,
+          avatarUrl: data.profile.avatarUrl || prev.avatarUrl || '',
+          avatarDataUrl: prev.avatarDataUrl || '',
+          avatarName: prev.avatarName || data.profile.avatarName || '',
           isAlumni: Boolean(data.isAlumni ?? data.profile.isAlumni ?? isAlumni),
-        });
+        }));
       }
       setEditingTab(null);
       addToast(savedSummary ? 'Profile summary saved.' : 'Profile saved.', 'success');
@@ -448,33 +460,60 @@ export default function StudentProfilePage() {
     [addToast],
   );
 
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewBlobUrl) URL.revokeObjectURL(avatarPreviewBlobUrl);
+    };
+  }, [avatarPreviewBlobUrl]);
+
   const onAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
 
-    const validated = validateStudentAvatarFile(file);
+    const validated = await validateStudentAvatarFileAsync(file);
     if (!validated.ok) {
       addToast(validated.error, 'warning');
       return;
     }
 
+    const localPreview = URL.createObjectURL(file);
+    setAvatarPreviewBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return localPreview;
+    });
+
     setAvatarUploading(true);
     try {
       const serverResult = await uploadStudentAvatarViaServer(file);
       if (serverResult.ok) {
+        const nextAvatarUrl = serverResult.avatar_url || '';
         setProfile((prev) => ({
           ...prev,
-          avatarUrl: serverResult.avatar_url,
+          avatarUrl: nextAvatarUrl,
           avatarDataUrl: '',
           avatarName: file.name,
         }));
-        await update({ avatar: serverResult.avatar_url });
+        setAvatarCacheBust(Date.now());
+        try {
+          await update({ avatar: nextAvatarUrl });
+        } catch {
+          // Profile state already has the new URL; session avatar may refresh on next login.
+        }
+        await loadProfileFromApi({ silent: true });
         addToast('Profile photo updated.', 'success');
+        setAvatarPreviewBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return '';
+        });
         return;
       }
 
       if (serverResult.error === 'Cloud storage not configured' || serverResult.hint?.includes('S3')) {
+        setAvatarPreviewBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return '';
+        });
         await persistLocalAvatarDataUrl(file);
         return;
       }
@@ -486,6 +525,13 @@ export default function StudentProfilePage() {
       }
     } finally {
       setAvatarUploading(false);
+      setAvatarPreviewBlobUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev);
+          return '';
+        }
+        return prev;
+      });
     }
   };
 
@@ -556,8 +602,11 @@ export default function StudentProfilePage() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const rawAvatarSrc = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
-  const avatarSrc = rawAvatarSrc.startsWith('data:') ? rawAvatarSrc : toSignedViewUrl(rawAvatarSrc);
+  const rawAvatarPhoto = profile.avatarUrl || profile.avatarDataUrl || session?.user?.avatar || '';
+  const avatarLightboxSrc =
+    rawAvatarPhoto.startsWith('data:') || rawAvatarPhoto.startsWith('blob:')
+      ? rawAvatarPhoto
+      : withAvatarCacheBust(toSignedViewUrl(rawAvatarPhoto) || rawAvatarPhoto, avatarCacheBust);
   const resumeViewUrl = defaultCv
     ? studentCvViewUrl(defaultCv.id)
     : profile.resumeUrl
@@ -587,6 +636,8 @@ export default function StudentProfilePage() {
     { key: 'extracurriculars', title: 'Extra-curricular Activities', empty: 'No activities added yet.' },
   ];
   const cgpaNum = profile.cgpa === '' || profile.cgpa == null ? NaN : Number(profile.cgpa);
+  const degreeLabel = resolveStudentDegreeLabel(profile);
+  const batchLabel = resolveStudentBatchLabel(profile);
   const hasSalary =
     (profile.expectedSalaryMin != null && Number(profile.expectedSalaryMin) > 0) ||
     (profile.expectedSalaryMax != null && Number(profile.expectedSalaryMax) > 0);
@@ -609,22 +660,14 @@ export default function StudentProfilePage() {
             zIndex: 1,
           }}
         >
-          {avatarSrc ? (
-            <button
-              type="button"
-              className="profile-avatar profile-avatar--clickable"
-              style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}
-              onClick={() => setAvatarPreviewOpen(true)}
-              aria-label="View profile photo"
-              title="View profile photo"
-            >
-              <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </button>
-          ) : (
-            <div className="profile-avatar" style={{ overflow: 'hidden', padding: 0, background: 'var(--bg-tertiary)' }}>
-              {getInitials(session?.user?.name)}
-            </div>
-          )}
+          <StudentProfileAvatar
+            photo={rawAvatarPhoto}
+            name={session?.user?.name}
+            previewUrl={avatarPreviewBlobUrl}
+            cacheBust={avatarCacheBust}
+            clickable={Boolean(rawAvatarPhoto || avatarPreviewBlobUrl)}
+            onOpenPreview={() => setAvatarPreviewOpen(true)}
+          />
           <label
             aria-label={avatarUploading ? 'Uploading profile photo' : 'Change profile photo'}
             style={{
@@ -667,14 +710,7 @@ export default function StudentProfilePage() {
           {!editingHeader ? (
             <>
               <p style={{ margin: '0.35rem 0 0' }}>
-                {[
-                  profile.branch,
-                  profile.batch || profile.joiningAcademicYear
-                    ? `Batch ${profile.batch || profile.joiningAcademicYear}`
-                    : profile.batchYear !== '' && profile.batchYear != null
-                      ? `Batch ${profile.batchYear}`
-                      : '',
-                ]
+                {[degreeLabel !== '—' ? degreeLabel : '', batchLabel !== '—' ? `Batch ${batchLabel}` : '']
                   .filter(Boolean)
                   .join(' | ') || '—'}
               </p>
@@ -716,48 +752,22 @@ export default function StudentProfilePage() {
             </>
           ) : (
             <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <input
-                  className="form-input"
-                  style={{ minWidth: '140px', flex: '1 1 140px' }}
-                  placeholder="Branch / specialisation"
-                  maxLength={100}
-                  value={profile.branch}
-                  onChange={(e) => persist({ ...profile, branch: e.target.value })}
-                />
-                <input
-                  className="form-input"
-                  type="number"
-                  placeholder="Batch year"
-                  style={{ width: '8rem' }}
-                  value={profile.batchYear === '' || profile.batchYear == null ? '' : profile.batchYear}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === '') {
-                      persist({ ...profile, batchYear: '' });
-                      return;
-                    }
-                    const n = parseInt(v, 10);
-                    persist({ ...profile, batchYear: Number.isFinite(n) ? n : '' });
-                  }}
-                />
+              <div className="drive-info-item" style={{ margin: 0 }}>
+                <div className="drive-info-label">Degree / program</div>
+                <div className="drive-info-value">{degreeLabel}</div>
+              </div>
+              <div className="drive-info-item" style={{ margin: 0 }}>
+                <div className="drive-info-label">Batch</div>
+                <div className="drive-info-value">{batchLabel}</div>
               </div>
               <div className="drive-info-item" style={{ margin: 0 }}>
                 <div className="drive-info-label">Roll number</div>
-                <div className="drive-info-value" title="Assigned by your college">
-                  {profile.rollNumber || '—'}
-                  <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
-                    Set by placement office — not editable here
-                  </span>
-                </div>
+                <div className="drive-info-value">{profile.rollNumber || '—'}</div>
               </div>
               <div className="drive-info-item" style={{ margin: 0 }}>
                 <div className="drive-info-label">CGPA</div>
-                <div className="drive-info-value" title="Assigned by your college">
+                <div className="drive-info-value">
                   {Number.isFinite(cgpaNum) ? `${cgpaNum} / 10` : '—'}
-                  <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
-                    Set by placement office — not editable here
-                  </span>
                 </div>
               </div>
               <div>
@@ -987,43 +997,34 @@ export default function StudentProfilePage() {
           </div>
           <div className="drive-info-grid">
             <div className="drive-info-item">
-              <div className="drive-info-label">Department</div>
-              {editing ? (
-                <input className="form-input" value={profile.department} onChange={(e) => persist({ ...profile, department: e.target.value })} />
-              ) : (
-                <div className="drive-info-value">{profile.department}</div>
-              )}
+              <div className="drive-info-label">Degree / program</div>
+              <div className="drive-info-value">{degreeLabel}</div>
             </div>
             <div className="drive-info-item">
-              <div className="drive-info-label">Branch / Specialisation</div>
-              {editing ? (
-                <input className="form-input" maxLength={100} value={profile.branch} onChange={(e) => persist({ ...profile, branch: e.target.value })} />
-              ) : (
-                <div className="drive-info-value">{profile.branch}</div>
-              )}
+              <div className="drive-info-label">Department</div>
+              <div className="drive-info-value">{profile.department || '—'}</div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label">Branch / specialisation</div>
+              <div className="drive-info-value">{profile.branch || '—'}</div>
+            </div>
+            <div className="drive-info-item">
+              <div className="drive-info-label">Batch</div>
+              <div className="drive-info-value">{batchLabel}</div>
             </div>
             <div className="drive-info-item">
               <div className="drive-info-label">Roll number</div>
-              <div className="drive-info-value" title="Assigned by your college">
-                {profile.rollNumber || '—'}
-                <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
-                  Set by placement office — not editable
-                </span>
-              </div>
+              <div className="drive-info-value">{profile.rollNumber || '—'}</div>
             </div>
             <div className="drive-info-item">
               <div className="drive-info-label">CGPA</div>
               <div
                 className="drive-info-value"
-                title="Assigned by your college"
                 style={{
                   color: Number.isFinite(cgpaNum) && cgpaNum >= 8 ? 'var(--success-600)' : undefined,
                 }}
               >
                 {Number.isFinite(cgpaNum) ? `${cgpaNum} / 10` : '—'}
-                <span className="text-xs text-tertiary" style={{ display: 'block', marginTop: '0.25rem' }}>
-                  Set by placement office — not editable
-                </span>
               </div>
             </div>
             <div className="drive-info-item">
@@ -1076,24 +1077,15 @@ export default function StudentProfilePage() {
             </div>
             <div className="drive-info-item">
               <div className="drive-info-label">Graduation year</div>
-              {editing ? (
-                <ValidatedNumberInput
-                  fieldId={FIELD_IDS.STUDENT_GRAD_YEAR}
-                  context={{ batchYear: profile.batchYear, isAlumni }}
-                  value={profile.graduationYear === '' ? '' : profile.graduationYear}
-                  onChange={(v) => persist({ ...profile, graduationYear: v })}
-                />
-              ) : (
-                <div className="drive-info-value">
-                  {profile.graduationYear === '' || profile.graduationYear == null ? '—' : profile.graduationYear}
-                </div>
-              )}
+              <div className="drive-info-value">
+                {profile.graduationYear === '' || profile.graduationYear == null ? '—' : profile.graduationYear}
+              </div>
             </div>
             {!isAlumni ? (
               <>
                 <div className="drive-info-item">
-                  <div className="drive-info-label">Current Semester</div>
-                  <div className="drive-info-value">{currentSemester}</div>
+                  <div className="drive-info-label">Current semester</div>
+                  <div className="drive-info-value">{profile.semester || currentSemester}</div>
                 </div>
                 <div className="drive-info-item">
                   <div className="drive-info-label">Active Backlogs</div>
@@ -1139,9 +1131,11 @@ export default function StudentProfilePage() {
             </div>
           </div>
           <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.875rem' }}>
-            {PROFILE_EDUCATION_DETAIL_SECTIONS.map(([key, label, boardLabel]) => {
+            {PROFILE_EDUCATION_DETAIL_SECTIONS.map(([key, label, boardLabel, percentKey]) => {
               const row = (profile.educationDetails || {})[key] || {};
-              const hasDetails = row.institution || row.board || row.year || row.notes;
+              const percentLabel = formatEducationPercent(percentKey ? profile[percentKey] : '');
+              const hasNarrative = Boolean(row.institution || row.board || row.year || row.notes);
+              const hasDetails = hasNarrative || Boolean(percentLabel);
               return (
                 <div key={key} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.875rem', background: 'var(--bg-secondary)' }}>
                   <div className="drive-info-label" style={{ marginBottom: '0.6rem' }}>{label} Details</div>
@@ -1165,7 +1159,7 @@ export default function StudentProfilePage() {
                     </div>
                   ) : hasDetails ? (
                     <div className="text-sm" style={{ lineHeight: 1.6 }}>
-                      {[row.institution, row.board, row.year].filter(Boolean).join(' · ')}
+                      {[percentLabel, row.institution, row.board, row.year].filter(Boolean).join(' · ') || '—'}
                       {row.notes && <div className="text-secondary" style={{ marginTop: '0.25rem' }}>{row.notes}</div>}
                     </div>
                   ) : (
@@ -1911,9 +1905,9 @@ export default function StudentProfilePage() {
       </div>
       )}
 
-      {avatarPreviewOpen && avatarSrc ? (
+      {avatarPreviewOpen && (avatarPreviewBlobUrl || avatarLightboxSrc) ? (
         <ProfilePhotoLightbox
-          src={avatarSrc}
+          src={avatarPreviewBlobUrl || avatarLightboxSrc}
           alt={session?.user?.name ? `${session.user.name} profile photo` : 'Profile photo'}
           onClose={() => setAvatarPreviewOpen(false)}
         />

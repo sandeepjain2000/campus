@@ -125,17 +125,21 @@ function LoginPageInner() {
   // --- Login debug logging (per-browser, localStorage flag) ---
   const DEBUG_FLAG_KEY = 'placementhub_debug';
   const [debugMode, setDebugMode] = useState(false);
+  const debugModeRef = useRef(false);
   const debugStepsRef = useRef([]);
   const debugSessionId = useRef(`dbg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   useEffect(() => {
     try {
-      setDebugMode(localStorage.getItem(DEBUG_FLAG_KEY) === '1');
+      const enabled = localStorage.getItem(DEBUG_FLAG_KEY) === '1';
+      setDebugMode(enabled);
+      debugModeRef.current = enabled;
     } catch { /* ignore */ }
   }, []);
 
   const toggleDebugMode = (val) => {
     setDebugMode(val);
+    debugModeRef.current = val;
     try {
       if (val) localStorage.setItem(DEBUG_FLAG_KEY, '1');
       else localStorage.removeItem(DEBUG_FLAG_KEY);
@@ -143,15 +147,19 @@ function LoginPageInner() {
   };
 
   const debugLog = useRef((event, data = null) => {
+    if (!debugModeRef.current) return;
     const step = { t: new Date().toISOString(), event, data };
     debugStepsRef.current.push(step);
     console.log('[login-debug]', step);
   });
 
-  const flushDebugLog = useRef(async (email) => {
-    const steps = [...debugStepsRef.current];
+  const flushDebugLog = useRef(async (email, { failed = false } = {}) => {
+    if (!failed) return;
+    let steps = [...debugStepsRef.current];
     debugStepsRef.current = [];
-    if (!steps.length) return;
+    if (!steps.length) {
+      steps = [{ t: new Date().toISOString(), event: 'signin_failed', data: { email } }];
+    }
     try {
       await fetch('/api/debug/login-log', {
         method: 'POST',
@@ -159,6 +167,7 @@ function LoginPageInner() {
         body: JSON.stringify({
           steps,
           email,
+          failed: true,
           userAgent: navigator.userAgent,
           sessionId: debugSessionId.current,
         }),
@@ -367,7 +376,7 @@ function LoginPageInner() {
           }
           setError(userMsg);
           debugLog.current('signin_failed', { error: result?.error, userMsg });
-          await flushDebugLog.current(email);
+          await flushDebugLog.current(email, { failed: true });
           if (String(result?.error || '').toLowerCase().includes('verification')) {
             setCaptchaAnswer('');
             setCaptchaKey((k) => k + 1);
@@ -380,7 +389,6 @@ function LoginPageInner() {
         console.log('LoginPage: signIn succeeded. Marking browser session active and preparing redirection...');
         markBrowserSessionActive();
         debugLog.current('signin_success', { url: result?.url || null });
-        await flushDebugLog.current(email);
         
         // Display success message and wait 2 seconds before redirecting
         setRegisteredBanner('Sign in successful! Redirecting in 2 seconds...');
@@ -396,7 +404,7 @@ function LoginPageInner() {
       } catch (err) {
         console.error('LoginPage: submitCredentials exception caught:', err);
         debugLog.current('signin_exception', { message: err?.message || String(err) });
-        await flushDebugLog.current(email);
+        await flushDebugLog.current(email, { failed: true });
         setError('An unexpected error occurred during sign-in. Please try again.');
         loggingInRef.current = false;
         // Pause for 2 seconds to let the user see the failure message
@@ -1013,7 +1021,7 @@ function LoginPageInner() {
               onChange={(e) => toggleDebugMode(e.target.checked)}
               style={{ accentColor: 'var(--warning-600, #d97706)', width: 12, height: 12 }}
             />
-            {debugMode ? '🔴 Login debug logging ON — traces sent to Super Admin' : 'Enable login debug logging'}
+            {debugMode ? '🔴 Login debug ON — step trace in browser console; failures go to Error Logs' : 'Enable login debug (console only)'}
           </label>
         </div>
 

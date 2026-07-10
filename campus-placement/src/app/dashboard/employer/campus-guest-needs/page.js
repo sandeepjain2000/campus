@@ -215,11 +215,30 @@ export default function EmployerCampusGuestNeedsPage() {
       <div className="page-header">
         <div className="page-header-left">
           <h1>Campus guest needs</h1>
-          <p>Colleges publish guest faculty and lecture requirements here. Confirm interest to email the college directly.</p>
+          <p>Browse guest faculty and lecture requests published by colleges. Confirm interest to email the placement office directly.</p>
         </div>
         <Link href="/dashboard/employer/overview" className="btn btn-secondary btn-sm">
           Overview
         </Link>
+      </div>
+
+      <div
+        className="text-sm"
+        role="note"
+        style={{
+          marginBottom: '1rem',
+          padding: '0.75rem 1rem',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--primary-200)',
+          background: 'color-mix(in srgb, var(--primary-50) 85%, transparent)',
+          color: 'var(--text-secondary)',
+          lineHeight: 1.5,
+        }}
+      >
+        <strong style={{ color: 'var(--text-primary)' }}>Employers cannot create guest needs here.</strong>{' '}
+        Listings are initiated and published by the college placement office under{' '}
+        <strong>Guest Faculty &amp; Lectures</strong>. When a campus posts a need, it appears below — use{' '}
+        <strong>Confirm</strong> to express interest by email.
       </div>
 
       {error ? (
@@ -341,7 +360,7 @@ export default function EmployerCampusGuestNeedsPage() {
               >
                 <Mic size={40} className="text-tertiary" style={{ margin: '0 auto 1rem', opacity: 0.45 }} />
                 <p className="text-secondary" style={{ margin: 0 }}>
-                  No published campus needs right now.
+                  No published campus needs right now. Guest needs are created by the college — not by employers.
                 </p>
               </div>
             ) : (

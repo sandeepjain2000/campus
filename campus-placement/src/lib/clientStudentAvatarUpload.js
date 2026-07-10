@@ -27,5 +27,5 @@ export async function uploadStudentAvatarViaServer(file) {
     };
   }
 
-  return { ok: true, avatar_url: json.avatar_url, fileUrl: json.fileUrl };
+  return { ok: true, avatar_url: json.avatar_url, fileUrl: json.fileUrl, viewUrl: json.viewUrl };
 }

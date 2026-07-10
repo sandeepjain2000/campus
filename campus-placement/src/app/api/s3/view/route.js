@@ -8,6 +8,27 @@ function extractS3KeyAndHost(rawUrl) {
   try {
     const u = new URL(String(rawUrl || ''));
     if (!u.hostname || !u.pathname) return null;
+    const bucket = process.env.S3_BUCKET_NAME;
+    const region = process.env.AWS_REGION;
+    const host = String(u.hostname || '').toLowerCase();
+
+    if (bucket && region) {
+      const virtualHost = `${bucket}.s3.${region}.amazonaws.com`.toLowerCase();
+      if (host === virtualHost) {
+        const key = decodeURIComponent(u.pathname.replace(/^\/+/, ''));
+        if (key) return { host: u.hostname, key };
+      }
+
+      const pathStyleHost = `s3.${region}.amazonaws.com`.toLowerCase();
+      if (host === pathStyleHost) {
+        const parts = u.pathname.replace(/^\/+/, '').split('/').map((part) => decodeURIComponent(part));
+        if (parts[0] === bucket && parts.length > 1) {
+          const key = parts.slice(1).join('/');
+          if (key) return { host: u.hostname, key };
+        }
+      }
+    }
+
     const key = decodeURIComponent(u.pathname.replace(/^\/+/, ''));
     if (!key) return null;
     return { host: u.hostname, key };
@@ -20,8 +41,10 @@ function isHostInConfiguredBucket(host) {
   const bucket = process.env.S3_BUCKET_NAME;
   const region = process.env.AWS_REGION;
   if (!bucket || !region) return false;
-  const expected = `${bucket}.s3.${region}.amazonaws.com`.toLowerCase();
-  return String(host || '').toLowerCase() === expected;
+  const normalized = String(host || '').toLowerCase();
+  const virtualHost = `${bucket}.s3.${region}.amazonaws.com`.toLowerCase();
+  const pathStyleHost = `s3.${region}.amazonaws.com`.toLowerCase();
+  return normalized === virtualHost || normalized === pathStyleHost;
 }
 
 async function __platform_GET(request) {

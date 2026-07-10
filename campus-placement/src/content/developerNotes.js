@@ -3,6 +3,16 @@
  * Route: /developer — keep in sync with qa/docs/guided-runner-quickstart.md
  */
 
+import {
+  enrichUseCaseFlow,
+  groupUseCasesByRole,
+  useCaseAutoRunnerCommand,
+  useCaseApiRunnerCommand,
+  USE_CASE_ROLE_LABELS,
+} from '@/content/useCaseCatalog';
+
+export { USE_CASE_ROLE_LABELS, useCaseAutoRunnerCommand, useCaseApiRunnerCommand };
+
 export const DEVELOPER_PAGE_META = {
   title: 'Developer Notes',
   notesTitle: 'Guided Runner · Demo APIs · Cleanup',
@@ -18,6 +28,7 @@ export const DEVELOPER_PAGE_TOC = [
   { id: 'use-cases', label: 'Use cases', hint: '5 flows + voice runner per row' },
   { id: 'use-cases-more', label: 'More use cases', hint: '10 additional flows', href: '/developer/use-cases-more' },
   { id: 'use-cases-user-testing', label: 'User testing', hint: 'Email, admin, platform QA', href: '/developer/use-cases-user-testing' },
+  { id: 'use-cases-by-role', label: 'Use cases by role', hint: 'All flows per actor', href: '/developer/use-cases-by-role' },
   { id: 'runner-alerts', label: 'Runner alerts', hint: 'Recent UI / menu changes' },
   { id: 'pending', label: 'Pending backlog', hint: 'Bugs, features, wish list' },
   { id: 'production-hardening', label: 'Production hardening', hint: 'Pre-launch security & QA' },
@@ -31,6 +42,7 @@ export const DEVELOPER_PAGE_TOC = [
   { id: 'cleanup', label: 'Clean up & restore', hint: 'Full wipe + restore tie-ups' },
   { id: 'legacy', label: 'Legacy commands', hint: 'Sync routes, focus areas' },
   { id: 'database-schema', label: 'Database schema', hint: 'Tables, FKs, domain map', href: '/developer/database-schema' },
+  { id: 'form-field-registry', label: 'Form field registry', hint: 'Fields + [VAL-…] error codes', href: '/developer/form-field-registry' },
   { id: 'related', label: 'Related files', hint: 'Markdown & SQL in repo' },
 ];
 
@@ -467,11 +479,61 @@ export const USE_CASE_FLOWS_USER_TESTING = [
       'Email logs if selection follows: student_selection context',
     ],
   },
+  {
+    name: 'College offers upload and student visibility',
+    runnerSlug: 'college-offers-upload',
+    steps: [
+      'College: Offers → Upload — download CSV template',
+      'College: fill student roll, company, salary, deadline columns',
+      'College: upload CSV and fix any row-level validation errors',
+      'System: matching students receive offer rows',
+      'Student: My Offers shows uploaded offer',
+      'Student: accept or decline before deadline',
+      'College: Reports reflect accepted offers',
+    ],
+  },
+  {
+    name: 'Super admin governance and audit visibility',
+    runnerSlug: 'admin-governance',
+    steps: [
+      'Super admin: Platform overview — colleges and employers',
+      'Super admin: Pending registrations queue',
+      'Super admin: Error logs (S-111) with reference codes',
+      'Super admin: Email delivery logs',
+      'Super admin: Audit reports export',
+      'Super admin: Platform settings',
+      '—',
+    ],
+  },
 ];
 
 export const USE_CASES_USER_TESTING_NOTES = {
   href: '/developer/use-cases-user-testing',
   label: 'User testing use cases (email, admin, platform)',
+};
+
+/** All happy-path use cases (no edge cases), enriched with roles and UC ids. */
+export const ALL_USE_CASES = [
+  ...USE_CASE_FLOWS,
+  ...USE_CASE_FLOWS_MORE,
+  ...USE_CASE_FLOWS_USER_TESTING,
+].map(enrichUseCaseFlow);
+
+/** Use cases grouped by actor role. */
+export const USE_CASE_CATALOG_BY_ROLE = groupUseCasesByRole(ALL_USE_CASES);
+
+export const USE_CASES_BY_ROLE_NOTES = {
+  href: '/developer/use-cases-by-role',
+  label: `All use cases by role (${ALL_USE_CASES.length} flows)`,
+};
+
+/** Validation error code prefix — separate from platform API [Ref: …] codes. */
+export const VALIDATION_ERROR_CODES_NOTES = {
+  format: '[VAL-{FIELD}-{RULE}] Human-readable message',
+  example: '[VAL-STU-CGPA-RNG] CGPA must be greater than 0 and at most 10.',
+  libs: ['src/lib/validationErrorCode.js', 'src/lib/inputConstraints.js', 'src/lib/validators.js'],
+  apiErrors: 'HTTP/API failures use [Ref: XXXXXXXX] from platform_error_logs — not VAL codes.',
+  listCommand: 'npm run qa:uc:list',
 };
 
 /** Old login has Demo accounts picker; production-style login is /sign-in */
@@ -890,6 +952,9 @@ export const RELATED_DOCS = [
   { label: 'Build tour playbooks', path: 'npm run test:guided:build-uc-playbooks' },
   { label: 'More use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_MORE)', href: '/developer/use-cases-more' },
   { label: 'User testing use cases (in-app)', path: 'src/content/developerNotes.js (USE_CASE_FLOWS_USER_TESTING)', href: '/developer/use-cases-user-testing' },
+  { label: 'All use cases by role (in-app)', path: 'src/content/useCaseCatalog.js', href: '/developer/use-cases-by-role' },
+  { label: 'Use-case auto runners', path: 'npm run qa:uc:list', hint: 'Headless playbook per slug' },
+  { label: 'Validation error codes (VAL-…)', path: 'src/lib/validationErrorCode.js', hint: '[VAL-{FIELD}-{RULE}] prefix on form errors' },
   { label: 'Database schema & relationships', path: 'docs/help/developer/database-schema.md', href: '/developer/database-schema' },
   { label: 'Database relationships overview (source)', path: 'docs/help/developer/database-relationships-overview.md' },
   { label: 'Cleanup & restore (markdown)', path: 'docs/help/developer/purge.md' },

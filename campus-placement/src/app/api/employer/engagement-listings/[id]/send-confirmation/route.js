@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { query, transaction } from '@/lib/db';
+import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailer';
+import { smtpErrorForUser } from '@/lib/smtpErrors';
 
 export const dynamic = 'force-dynamic';
 import { withApiHandlers } from '@/lib/platformErrorRoute';
@@ -79,33 +80,37 @@ async function __platform_POST(request, { params }) {
       );
     }
 
+    let sendRowId = null;
     try {
-      await transaction(async (client) => {
-        await client.query(
-          `INSERT INTO campus_guest_confirmation_sends
-             (listing_id, employer_user_id, to_email, subject, body)
-           VALUES ($1::uuid, $2::uuid, $3, $4, $5)`,
-          [listingId, employerUserId, toEmail, subject, text],
-        );
+      const ins = await query(
+        `INSERT INTO campus_guest_confirmation_sends
+           (listing_id, employer_user_id, to_email, subject, body)
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+         RETURNING id`,
+        [listingId, employerUserId, toEmail, subject, text],
+      );
+      sendRowId = ins.rows[0]?.id || null;
 
-        const mailResult = await sendMail({
-          to: toEmail,
-          subject,
-          text,
-          context: 'guest_confirmation',
-          userId: employerUserId,
-        });
-
-        if (mailResult.skipped) {
-          throw Object.assign(
-            new Error(
-              'Outbound email is not configured. Set SMTP_USER, SMTP_PASS, and EMAIL_FROM (or SMTP as in server docs).',
-            ),
-            { code: 'MAIL_SKIPPED' },
-          );
-        }
+      const mailResult = await sendMail({
+        to: toEmail,
+        subject,
+        text,
+        context: 'guest_confirmation',
+        userId: employerUserId,
       });
+
+      if (mailResult.skipped) {
+        throw Object.assign(
+          new Error(
+            'Outbound email is not configured. Set SMTP_USER, SMTP_PASS, and EMAIL_FROM (or SMTP as in server docs).',
+          ),
+          { code: 'MAIL_SKIPPED' },
+        );
+      }
     } catch (e) {
+      if (sendRowId) {
+        await query(`DELETE FROM campus_guest_confirmation_sends WHERE id = $1::uuid`, [sendRowId]).catch(() => {});
+      }
       if (e.code === '23505') {
         return NextResponse.json(
           { error: 'Confirmation email was already sent for this listing.' },
@@ -121,7 +126,17 @@ async function __platform_POST(request, { params }) {
     return NextResponse.json({ ok: true, toEmail });
   } catch (e) {
     console.error('POST /api/employer/engagement-listings/[id]/send-confirmation', e);
-    return NextResponse.json({ error: e.message || 'Failed to send email' }, { status: 500 });
+    const message = smtpErrorForUser(e);
+    if (/timeout exceeded when trying to connect/i.test(String(e?.message || ''))) {
+      return NextResponse.json(
+        {
+          error:
+            'Database connection timed out while sending. Please try again in a few seconds.',
+        },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json({ error: message || e.message || 'Failed to send email' }, { status: 500 });
   }
 }
 

@@ -10,7 +10,7 @@ import StudentApplyResumeBanner from '@/components/StudentApplyResumeBanner';
 import StudentBrowsePrerequisitePanel from '@/components/student/StudentBrowsePrerequisitePanel';
 import PostingEligibilitySection from '@/components/student/PostingEligibilitySection';
 import StudentApplyEligibilityControls from '@/components/student/StudentApplyEligibilityControls';
-import { useStudentCvApply } from '@/components/student/StudentCvApply';
+import { useStudentApplyWithCvModal } from '@/components/student/StudentCvApply';
 import PageLoading from '@/components/PageLoading';
 import {
   globalApplyBlockedReason,
@@ -96,47 +96,8 @@ export default function StudentDrivesPage() {
   const [rangeFrom, setRangeFrom] = useState('');
   const [rangeTo, setRangeTo] = useState('');
   const [now, setNow] = useState(Date.now());
-  const [applyingTo, setApplyingTo] = useState(null);
   const [locationPref, setLocationPref] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const applyingToRef = useRef(null);
-  applyingToRef.current = applyingTo;
-
-  const { runApplyFlow, pickerModal, applying: cvApplying } = useStudentCvApply({
-    onApply: async (cvId) => {
-      const drive = applyingToRef.current;
-      if (!drive) return;
-      setIsSubmitting(true);
-      try {
-        const body = { drive_id: drive.id, location_preference: locationPref };
-        if (cvId) body.cvId = cvId;
-        const res = await fetch('/api/student/applications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok || data.success) {
-          await swrMutate('/api/student/drives');
-          await swrMutate('/api/student/applications');
-          addToast(`Applied to ${drive.company}. Good luck!`, 'info');
-          setApplyingTo(null);
-        } else {
-          addToast(data.error || 'Could not record application. Try again.', 'warning');
-        }
-      } catch {
-        addToast('Network error — application may not be saved.', 'warning');
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    onError: (msg) => addToast(msg, 'warning'),
-  });
-
-  const confirmApply = async () => {
-    if (!applyingTo || isSubmitting || cvApplying) return;
-    await runApplyFlow();
-  };
+  const applyingDriveRef = useRef(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
@@ -170,6 +131,57 @@ export default function StudentDrivesPage() {
   function driveOpportunity(drive) {
     return programOpportunityFromRow(drive);
   }
+
+  const { openApplyModal, applyModal, applying: isSubmitting } = useStudentApplyWithCvModal({
+    onApply: async (cvId, metadata) => {
+      const drive = metadata?.drive;
+      if (!drive) return;
+      const body = { drive_id: drive.id, location_preference: locationPref || '' };
+      if (cvId) body.cvId = cvId;
+      const res = await fetch('/api/student/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok || data.success) {
+        await swrMutate('/api/student/drives');
+        await swrMutate('/api/student/applications');
+        addToast(`Applied to ${drive.company}. Good luck!`, 'info');
+        applyingDriveRef.current = null;
+        setLocationPref('');
+      } else {
+        addToast(data.error || 'Could not record application. Try again.', 'warning');
+        throw new Error(data.error || 'apply failed');
+      }
+    },
+    onError: (msg) => addToast(msg, 'warning'),
+    renderExtras: (metadata) => {
+      const drive = metadata?.drive;
+      if (!drive) return null;
+      return (
+        <>
+          <PostingEligibilitySection
+            opportunity={driveOpportunity(drive)}
+            student={currentStudent}
+            audience="student"
+            openStatuses={driveOpenStatuses}
+          />
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Preferred location (optional)</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="E.g. Bangalore, Remote, Any"
+              value={locationPref}
+              onChange={(e) => setLocationPref(e.target.value)}
+              disabled={isSubmitting}
+            />
+          </div>
+        </>
+      );
+    },
+  });
 
   const monthBounds = useMemo(() => {
     const y = new Date().getFullYear();
@@ -210,15 +222,22 @@ export default function StudentDrivesPage() {
     });
   }, [drives, search, filterType, filterStatus, datePreset, monthFilter, rangeFrom, rangeTo]);
 
-  const openApplyModal = (drive) => {
+  const openApplyModalForDrive = (drive) => {
     if (drive.applied) return;
     const blockReason = resolveApplyBlockReason(driveOpportunity(drive), currentStudent, {
       ...driveApplyOptions,
       globalBlockedReason,
     });
     if (blockReason) return;
-    setApplyingTo(drive);
+    applyingDriveRef.current = drive;
     setLocationPref('');
+    openApplyModal({
+      title: `Apply to ${drive.company}`,
+      description: `Confirm application for ${drive.role}. Choose a CV, then submit.`,
+      blockReason,
+      submitLabel: 'Submit application',
+      metadata: { drive },
+    });
   };
 
   return (
@@ -449,7 +468,7 @@ export default function StudentDrivesPage() {
                       globalBlockedReason={globalBlockedReason}
                       openStatuses={driveOpenStatuses}
                       size="sm"
-                      onApply={() => openApplyModal(drive)}
+                      onApply={() => openApplyModalForDrive(drive)}
                     />
                   )}
                   {timeLeft && (
@@ -530,79 +549,7 @@ export default function StudentDrivesPage() {
       </StudentBrowsePrerequisitePanel>
       )}
 
-      {applyingTo && (() => {
-        const confirmBlockReason = resolveApplyBlockReason(driveOpportunity(applyingTo), currentStudent, {
-          ...driveApplyOptions,
-          globalBlockedReason,
-        });
-        return (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
-          <div className="card" style={{ width: '100%', maxWidth: '400px', margin: '1rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>
-              {(() => {
-                const st = applyingTo.applicationStatus ? String(applyingTo.applicationStatus).toLowerCase() : '';
-                return `Apply to ${applyingTo.company}`;
-              })()}
-            </h3>
-            <p className="text-secondary" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Confirm application for <strong>{applyingTo.role}</strong>. You can note a location preference if the role has multiple bases.
-            </p>
-            <PostingEligibilitySection
-              opportunity={driveOpportunity(applyingTo)}
-              student={currentStudent}
-              audience="student"
-              openStatuses={driveOpenStatuses}
-            />
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="form-label">Preferred location (optional)</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="E.g. Bangalore, Remote, Any"
-                value={locationPref}
-                onChange={(e) => setLocationPref(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-              <button type="button" className="btn btn-outline" onClick={() => setApplyingTo(null)} disabled={isSubmitting}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={confirmApply}
-                disabled={isSubmitting || cvApplying || Boolean(confirmBlockReason)}
-                aria-disabled={isSubmitting || cvApplying || confirmBlockReason ? 'true' : undefined}
-                title={confirmBlockReason || undefined}
-              >
-                {isSubmitting || cvApplying ? 'Submitting…' : 'Confirm application'}
-              </button>
-            </div>
-            {confirmBlockReason ? (
-              <p className="text-sm" style={{ marginTop: '0.75rem', color: 'var(--warning-700, #b45309)' }}>
-                {confirmBlockReason}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        );
-      })()}
-      {pickerModal}
+      {applyModal}
     </div>
   );
 }

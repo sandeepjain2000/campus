@@ -15,6 +15,8 @@ import {
   USE_CASE_FLOWS,
   USE_CASES_MORE_NOTES,
   USE_CASES_USER_TESTING_NOTES,
+  USE_CASES_BY_ROLE_NOTES,
+  VALIDATION_ERROR_CODES_NOTES,
   LOGIN_PAGE_LINKS,
   RUNNER_PANEL_STEPS,
   SCREEN_TAG_STATES,
@@ -237,6 +239,9 @@ export default function DeveloperPage() {
             intro="Five end-to-end flows across employer, college, and student roles. Each row lists the voice runner commands (npm + .bat) — not the Guided playbooks table above."
           />
           <p style={{ margin: '1.25rem 0 0', display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
+            <Link href={USE_CASES_BY_ROLE_NOTES.href} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+              {USE_CASES_BY_ROLE_NOTES.label}
+            </Link>
             <Link href={USE_CASES_MORE_NOTES.href} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
               {USE_CASES_MORE_NOTES.label}
             </Link>
@@ -245,6 +250,12 @@ export default function DeveloperPage() {
             </Link>
           </p>
           <p className="dev-notes-muted" style={{ margin: '1rem 0 0', fontSize: '0.875rem' }}>
+            Headless runner: <code className="dev-notes-inline-code">npm run qa:uc -- &lt;slug&gt;</code>
+            {' · '}
+            Validation errors use <code className="dev-notes-inline-code">{VALIDATION_ERROR_CODES_NOTES.format}</code>
+            {' · '}
+            API errors use <code className="dev-notes-inline-code">[Ref: …]</code>
+            {' · '}
             QA login:{' '}
             <Link href={LOGIN_PAGE_LINKS.oldWithDemoAccounts} style={{ fontWeight: 600 }}>
               Old Login Page (Demo accounts)

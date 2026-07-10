@@ -9,6 +9,8 @@ import {
   LEGACY_STUDENT_APPLICATIONS_JOBS_PATH,
   LEGACY_STUDENT_GETTING_STARTED_PATH,
   LEGACY_STUDENT_JOBS_PATH,
+  campusStudentJobRedirectPath,
+  isAlumniStudentJobPath,
 } from '@/lib/alumniRoutes';
 import {
   EMPLOYER_ALUMNI_JOBS_PATH,
@@ -120,17 +122,6 @@ export default async function proxy(request) {
 
   // ── /dashboard/* — per-role path enforcement ─────────────────────────────
   if (pathname.startsWith('/dashboard/')) {
-    if (pathname === LEGACY_STUDENT_JOBS_PATH) {
-      return appendLegacyCookieClearance(
-        NextResponse.redirect(new URL(ALUMNI_BROWSE_JOBS_PATH, request.url)),
-      );
-    }
-    if (pathname === LEGACY_STUDENT_APPLICATIONS_JOBS_PATH) {
-      return appendLegacyCookieClearance(
-        NextResponse.redirect(new URL(ALUMNI_MY_JOBS_PATH, request.url)),
-      );
-    }
-
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
@@ -144,6 +135,24 @@ export default async function proxy(request) {
     }
 
     const role = token.role;
+
+    if (role === 'student') {
+      if (!token.isAlumni && isAlumniStudentJobPath(pathname)) {
+        const dest = campusStudentJobRedirectPath(pathname);
+        return appendLegacyCookieClearance(NextResponse.redirect(new URL(dest, request.url)));
+      }
+      if (token.isAlumni && pathname === LEGACY_STUDENT_JOBS_PATH) {
+        return appendLegacyCookieClearance(
+          NextResponse.redirect(new URL(ALUMNI_BROWSE_JOBS_PATH, request.url)),
+        );
+      }
+      if (token.isAlumni && pathname === LEGACY_STUDENT_APPLICATIONS_JOBS_PATH) {
+        return appendLegacyCookieClearance(
+          NextResponse.redirect(new URL(ALUMNI_MY_JOBS_PATH, request.url)),
+        );
+      }
+    }
+
     const ownedPrefix = ROLE_OWNED_PREFIX[role];
 
     if (

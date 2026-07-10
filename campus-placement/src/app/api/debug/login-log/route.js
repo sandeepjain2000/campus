@@ -5,9 +5,22 @@ import { PLATFORM_ERROR_CONTEXT } from '@/lib/platformErrorContext';
 
 export const dynamic = 'force-dynamic';
 
+function stepIndicatesFailure(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return false;
+  return steps.some((s) => {
+    const event = String(s?.event || '').toLowerCase();
+    if (event.includes('fail') || event.includes('error') || event.includes('signout')) {
+      return true;
+    }
+    if (s?.data?.ok === false) return true;
+    return false;
+  });
+}
+
 /**
  * Public endpoint — no auth required (called from login page before session exists).
- * Accepts a structured debug trace from the browser and persists it to platform_error_logs.
+ * Persists login failures and session-guard sign-outs to platform_error_logs only.
+ * Successful sign-ins are not logged (avoids polluting the error log UI).
  */
 export async function POST(request) {
   try {
@@ -24,7 +37,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'steps array is required' }, { status: 400 });
     }
 
-    // Sanitize email - never log passwords
+    const failed = body.failed === true || stepIndicatesFailure(steps);
+    if (!failed) {
+      return NextResponse.json({ ok: true, skipped: true });
+    }
+
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase().slice(0, 200) : null;
 
     const xff = request.headers.get('x-forwarded-for');
@@ -42,18 +59,22 @@ export async function POST(request) {
       })),
     };
 
-    // Determine overall outcome from last step
-    const lastStep = steps[steps.length - 1];
-    const failed = lastStep?.event?.toLowerCase().includes('fail') ||
-                   lastStep?.event?.toLowerCase().includes('error') ||
-                   lastStep?.data?.ok === false;
+    const isStaleGuard = steps.some(
+      (s) => String(s?.event || '').toLowerCase().includes('guard_stale'),
+    );
+    const context = isStaleGuard
+      ? PLATFORM_ERROR_CONTEXT.SESSION_STALE_SIGNOUT
+      : PLATFORM_ERROR_CONTEXT.LOGIN_FAILED;
+    const summary = isStaleGuard
+      ? `Stale session sign-out for ${safeEmail || 'unknown'}`
+      : `Login failed for ${safeEmail || 'unknown'}`;
 
     const logId = await writePlatformErrorLog({
-      context: PLATFORM_ERROR_CONTEXT.LOGIN_DEBUG,
-      error: new Error(`Login debug trace: ${failed ? 'FAILED' : 'succeeded'} for ${safeEmail || 'unknown'}`),
-      statusCode: failed ? 401 : 200,
-      severity: failed ? 'warning' : 'info',
-      userMessage: `Login debug trace for ${safeEmail || 'unknown'} — ${failed ? 'FAILED' : 'succeeded'}`,
+      context,
+      error: new Error(summary),
+      statusCode: isStaleGuard ? 401 : 401,
+      severity: 'warning',
+      userMessage: summary,
       ipAddress,
       details,
     });

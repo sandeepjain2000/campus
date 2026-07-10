@@ -5,13 +5,14 @@ const {
   parseInternshipAdditionalInfo,
   parseInternshipDescription,
   resolveInternshipDatesFromRow,
+  resolveMaxBacklogsInput,
   validateInternshipDatesForSubmit,
 } = require('@/lib/internshipPostingMeta');
 
 describe('internshipPostingMeta dates', () => {
   it('validates publish-required dates', () => {
     expect(validateInternshipDatesForSubmit('', '', { required: true })).toMatch(/required/i);
-    expect(validateInternshipDatesForSubmit('2026-06-01', '', { required: true })).toMatch(/Both/);
+    expect(validateInternshipDatesForSubmit('2026-06-01', '', { required: true })).toMatch(/end date/i);
     expect(validateInternshipDatesForSubmit('2026-06-01', '2026-05-01', { required: true })).toMatch(/after/);
     expect(validateInternshipDatesForSubmit('2026-06-01', '2026-08-31', { required: true })).toBeNull();
     expect(validateInternshipDatesForSubmit('', '', { required: false })).toBeNull();
@@ -66,5 +67,12 @@ describe('internshipPostingMeta dates', () => {
   it('computes inclusive month span', () => {
     expect(computeInternshipDurationMonths('2026-06-01', '2026-08-31')).toBe(3);
     expect(computeInternshipDurationMonths('2026-01-01', '2026-01-31')).toBe(1);
+  });
+
+  it('defaults empty maxBacklogs input to 0', () => {
+    expect(resolveMaxBacklogsInput('')).toBe(0);
+    expect(resolveMaxBacklogsInput(null)).toBe(0);
+    expect(resolveMaxBacklogsInput(undefined)).toBe(0);
+    expect(resolveMaxBacklogsInput('3')).toBe(3);
   });
 });

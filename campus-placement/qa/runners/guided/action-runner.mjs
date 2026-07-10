@@ -55,6 +55,36 @@ async function fillSegmentedDateField(page, action, ctx) {
   await fillSegment('Year', year);
 }
 
+/** Fallback when guided-runner sign-in API is disabled (e.g. Vercel). */
+async function uiLogin(page, baseUrl, email, password = DEMO_SEED_PASSWORD) {
+  await page.goto(`${baseUrl}/login?email=${encodeURIComponent(email)}`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60_000,
+  });
+  await page.waitForSelector('#login-email', { timeout: 20_000 });
+  const pwd = await page.locator('#login-password').inputValue();
+  if (!pwd) await page.fill('#login-password', password);
+  await page.waitForFunction(
+    () => {
+      const btn = document.querySelector('#login-submit');
+      return btn && !btn.disabled;
+    },
+    { timeout: 30_000 },
+  );
+  const captcha = page.locator('#login-captcha');
+  if (await captcha.count()) {
+    const current = await captcha.inputValue();
+    if (!current) await captcha.fill('7');
+  }
+  await page.click('#login-submit');
+  await page.waitForURL(/\/(dashboard|auth\/continue)/, { timeout: 90_000 });
+  if (page.url().includes('/auth/continue')) {
+    await page.waitForURL(/\/dashboard\//, { timeout: 90_000 });
+  }
+  console.log(`    → signed in via UI (${email})`);
+  await page.waitForTimeout(400);
+}
+
 export async function executeAction(page, baseUrl, accounts, action, ctx) {
   if (!action?.type) return;
 
@@ -71,7 +101,13 @@ export async function executeAction(page, baseUrl, accounts, action, ctx) {
     });
     const data = await signInRes.json().catch(() => ({}));
     if (!signInRes.ok() || !data.ok || !data.redirectTo) {
-      throw new Error(data.error || `Guided sign-in failed (${signInRes.status()})`);
+      const guidedErr = data.error || `Guided sign-in failed (${signInRes.status()})`;
+      if (signInRes.status() === 403 || /disabled in this environment/i.test(String(guidedErr))) {
+        console.log(`    → guided API unavailable — UI login fallback`);
+        await uiLogin(page, baseUrl, email, password);
+        return;
+      }
+      throw new Error(guidedErr);
     }
 
     await page.goto(`${baseUrl}${data.redirectTo}`, { waitUntil: 'domcontentloaded' });

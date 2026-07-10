@@ -47,6 +47,7 @@ function parseArgs(argv) {
     auto: false,
     voice: false,
     noVoice: false,
+    headless: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
@@ -54,6 +55,7 @@ function parseArgs(argv) {
     else if (a === '--auto') args.auto = true;
     else if (a === '--voice') args.voice = true;
     else if (a === '--no-voice') args.noVoice = true;
+    else if (a === '--headless') args.headless = true;
     else if (a === '--playbook-list') args.playbookList = true;
     else if (a === '--uc' || a === '-u') {
       args.uc = argv[i + 1];
@@ -236,6 +238,7 @@ async function runPlaybook(page, baseUrl, accounts, playbook, runnerOptions = {}
     Number(voiceConfig?.auto_run?.pause_before_action_sec ?? 1.5) * 1000,
   );
   let lastPhase = '';
+  let actionErrors = 0;
 
   const ctx = await initPlaybookContext(page, playbook);
   const steps = playbook.steps || [];
@@ -333,6 +336,7 @@ async function runPlaybook(page, baseUrl, accounts, playbook, runnerOptions = {}
     try {
       await executeAction(page, baseUrl, accounts, step.action, ctx);
     } catch (err) {
+      actionErrors += 1;
       console.warn(`    (action error: ${err.message})`);
     }
 
@@ -341,8 +345,13 @@ async function runPlaybook(page, baseUrl, accounts, playbook, runnerOptions = {}
 
   await removeNextButton(page);
   endGuidedSession();
-  console.log('\n✓ Playbook finished. Close the browser when done.');
+  if (actionErrors > 0) {
+    console.log(`\n✗ Playbook finished with ${actionErrors} action error(s).`);
+  } else {
+    console.log('\n✓ Playbook finished.');
+  }
   console.log(`  Step log: npm run qa:guided:db-log\n`);
+  return actionErrors;
 }
 
 // ─── Legacy focus / UC runners (navigation-only) ─────────────────────────────
@@ -407,7 +416,7 @@ function resolveFocusSection(focus, sectionId) {
   };
 }
 
-async function launchBrowser(runFn, { auto = false, voice = false } = {}) {
+async function launchBrowser(runFn, { auto = false, voice = false, headless = false } = {}) {
   console.log('');
   if (auto) {
     console.log('  AUTO mode — steps advance on a timer (no blue-tag clicks).');
@@ -415,11 +424,12 @@ async function launchBrowser(runFn, { auto = false, voice = false } = {}) {
   } else {
     console.log('  Click the blue screen tag (S-xx) top-right when armed. Alt+Enter works.');
   }
+  if (headless) console.log('  HEADLESS — browser closes when the playbook ends.');
   console.log(`  Steps recorded in SQLite: ${GUIDED_TESTING_DB_PATH}`);
   console.log('');
   const browser = await chromium.launch({
-    headless: false,
-    slowMo: 100,
+    headless,
+    slowMo: headless ? 0 : 100,
     // Match a normal maximized browser — fixed 1400px viewport left empty space on the
     // right when the window was resized wider than the locked page width.
     args: ['--start-maximized'],
@@ -433,9 +443,11 @@ async function launchBrowser(runFn, { auto = false, voice = false } = {}) {
   attachRunnerResync(page);
   try {
     await runFn(page);
-    await page.bringToFront().catch(() => {});
-    console.log('\nClose the browser window when finished.');
-    await page.waitForEvent('close', { timeout: 0 }).catch(() => {});
+    if (!headless) {
+      await page.bringToFront().catch(() => {});
+      console.log('\nClose the browser window when finished.');
+      await page.waitForEvent('close', { timeout: 0 }).catch(() => {});
+    }
   } finally {
     endGuidedSession();
     await browser.close().catch(() => {});
@@ -493,16 +505,22 @@ async function main() {
       process.exit(1);
     }
     console.log(`Base URL: ${baseUrl}`);
+    let exitCode = 0;
     await launchBrowser(
       async (page) => {
         await page.goto(baseUrl, { waitUntil: 'load' }).catch(() => {});
         await page.waitForSelector('body', { timeout: 15000 }).catch(() => {});
         await clearRunnerUi(page);
         await page.bringToFront().catch(() => {});
-        await runPlaybook(page, baseUrl, accounts, pb, { auto: args.auto, voice: args.voice });
+        const errors = await runPlaybook(page, baseUrl, accounts, pb, {
+          auto: args.auto,
+          voice: args.voice,
+        });
+        if (errors > 0) exitCode = 1;
       },
-      { auto: args.auto, voice: args.voice },
+      { auto: args.auto, voice: args.voice, headless: args.headless },
     );
+    process.exit(exitCode);
     return;
   }
 

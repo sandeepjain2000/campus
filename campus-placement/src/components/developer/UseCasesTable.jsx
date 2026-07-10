@@ -1,4 +1,4 @@
-import { useCaseRunnerCommand, useCaseRunnerBat } from '@/content/developerNotes';
+import { useCaseRunnerCommand, useCaseRunnerBat, useCaseAutoRunnerCommand, ALL_USE_CASES } from '@/content/developerNotes';
 
 const STEP_COUNT = 7;
 
@@ -28,13 +28,13 @@ export default function UseCasesTable({ flows, intro, showRunner = true }) {
             color: 'var(--text-secondary)',
           }}
         >
-          <strong style={{ color: 'var(--text-primary)' }}>Voice + auto (OBS recordings)</strong> — each row below
-          includes copy-paste commands. Generic:{' '}
+          <strong style={{ color: 'var(--text-primary)' }}>Runners</strong> — each row includes voice + headless commands.
+          Voice:{' '}
           <code className="dev-notes-inline-code">npm run test:guided:voice -- &lt;slug&gt;</code>
           {' · '}
-          <code className="dev-notes-inline-code">run_use_case_auto_voice.bat &lt;slug&gt;</code>
+          Headless: <code className="dev-notes-inline-code">npm run qa:uc -- &lt;slug&gt;</code>
           {' · '}
-          All 23 slugs: <code className="dev-notes-inline-code">npm run test:guided:voice-list</code>
+          All {ALL_USE_CASES.length} slugs: <code className="dev-notes-inline-code">npm run qa:uc:list</code>
         </div>
       ) : null}
       <div className="dev-notes-table-wrap dev-notes-table-wrap--wide">
@@ -57,6 +57,12 @@ export default function UseCasesTable({ flows, intro, showRunner = true }) {
                   <div>{row.name}</div>
                   {showRunner && row.runnerSlug ? (
                     <div style={{ marginTop: '0.5rem' }}>
+                      <code
+                        className="dev-notes-inline-code"
+                        style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.7rem', whiteSpace: 'normal', wordBreak: 'break-word' }}
+                      >
+                        {useCaseAutoRunnerCommand(row.runnerSlug)}
+                      </code>
                       <code
                         className="dev-notes-inline-code"
                         style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.7rem', whiteSpace: 'normal', wordBreak: 'break-word' }}

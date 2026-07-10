@@ -10,6 +10,8 @@ export function contextLabel(value) {
   const FUNCTIONALITY_MAP = {
     // Login
     'login_debug': 'Login',
+    'login_failed': 'Login',
+    'session_stale_signout': 'Login',
     'api_auth_callback_credentials': 'Login',
     'api_auth_session': 'Login',
     
